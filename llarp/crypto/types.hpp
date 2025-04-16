@@ -1,234 +1,187 @@
 #pragma once
 
 #include "constants.hpp"
-#include <llarp/router_id.hpp>
+
+#include <llarp/constants/files.hpp>
+#include <llarp/contact/keys.hpp>
 #include <llarp/util/aligned.hpp>
-#include <llarp/util/types.hpp>
-#include <llarp/util/fs.hpp>
+#include <llarp/util/buffer.hpp>
 
 #include <algorithm>
-#include <iostream>
 
 namespace llarp
 {
-  using SharedSecret = AlignedBuffer<SHAREDKEYSIZE>;
-  using KeyExchangeNonce = AlignedBuffer<32>;
+    using SharedSecret = AlignedBuffer<SHAREDKEYSIZE>;
 
-  struct PubKey final : public AlignedBuffer<PUBKEYSIZE>
-  {
-    PubKey() = default;
+    struct RemoteRC;
+    struct RouterID;
+    struct PubKey;
+    struct Ed25519PrivateData;
 
-    explicit PubKey(const byte_t* ptr) : AlignedBuffer<SIZE>(ptr)
-    {}
-
-    explicit PubKey(const Data& data) : AlignedBuffer<SIZE>(data)
-    {}
-
-    explicit PubKey(const AlignedBuffer<SIZE>& other) : AlignedBuffer<SIZE>(other)
-    {}
-
-    std::string
-    ToString() const;
-
-    bool
-    FromString(const std::string& str);
-
-    operator RouterID() const
+    /// Stores a sodium "secret key" value, which is actually the Ed25519 seed
+    /// concatenated with the public key.  Note that the seed is *not* the private
+    /// key value itself, but rather the seed from which it can be calculated.
+    struct Ed25519SecretKey final : public AlignedBuffer<SECKEYSIZE>
     {
-      return {as_array()};
+        Ed25519SecretKey() = default;
+
+        explicit Ed25519SecretKey(const uint8_t* ptr) : AlignedBuffer<SECKEYSIZE>(ptr) {}
+
+        // The full data
+        explicit Ed25519SecretKey(const AlignedBuffer<SECKEYSIZE>& seed) : AlignedBuffer<SECKEYSIZE>(seed) {}
+
+        // Just the seed, we recalculate the pubkey
+        explicit Ed25519SecretKey(const AlignedBuffer<32>& seed)
+        {
+            std::copy(seed.begin(), seed.end(), begin());
+            recalculate();
+        }
+
+        /// recalculate public component
+        bool recalculate();
+
+        PubKey to_pubkey() const;
+
+        Ed25519PrivateData to_eddata() const;
+
+        Ed25519PrivateData derive_private_subkey_data(uint64_t domain = 1) const;
+
+        bool load_from_file(const fs::path& fname);
+
+        bool write_to_file(const fs::path& fname) const;
+
+        std::string_view to_string() const { return "[secretkey]"; }
+        static constexpr bool to_string_formattable{true};
+    };
+
+    /// Ed25519PrivateData is similar to Ed25519SecretKey except that it only stores the
+    /// private scalar and a hash, unlike SecretKey which stores the seed from which
+    /// the private key and hash value are generated.
+    struct Ed25519PrivateData final : public AlignedBuffer<64>
+    {
+        friend struct Ed25519SecretKey;
+
+        Ed25519PrivateData() = default;
+
+        explicit Ed25519PrivateData(const uint8_t* ptr) : AlignedBuffer<64>(ptr) {}
+
+        explicit Ed25519PrivateData(const AlignedBuffer<64>& key_and_hash) : AlignedBuffer<64>(key_and_hash) {}
+
+        // Returns writeable access to the 32-byte Ed25519 Private Scalar
+        std::span<uint8_t> scalar() { return {data(), 32}; }
+        // Returns readable access to the 32-byte Ed25519 Private Scalar
+        std::span<const uint8_t> scalar() const { return {data(), 32}; }
+        // Returns writeable access to the 32-byte Ed25519 Signing Hash
+        std::span<uint8_t> signing_hash() { return {data() + 32, 32}; }
+        // Returns readable access to the 32-byte Ed25519 Signing Hash
+        std::span<const uint8_t> signing_hash() const { return {data() + 32, 32}; }
+
+        PubKey to_pubkey() const;
+
+        std::string_view to_string() const { return "[privatekey]"; }
+        static constexpr bool to_string_formattable{true};
+    };
+
+    using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
+
+    struct Signature final : public AlignedBuffer<SIGSIZE>
+    {};
+
+    struct SymmNonce final : public AlignedBuffer<NONCESIZE>
+    {
+        using AlignedBuffer<NONCESIZE>::AlignedBuffer;
+
+        SymmNonce operator^(const SymmNonce& other) const
+        {
+            SymmNonce ret;
+            std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<>());
+            return ret;
+        }
+
+        static SymmNonce make(std::string n);
+
+        static SymmNonce make_random();
+    };
+
+    /// Holds all the data used for symmetric DH key-exchange (ex: path-build, session-init, etc)
+    struct shared_kx_data
+    {
+        shared_kx_data() = default;
+
+      private:
+        shared_kx_data(Ed25519SecretKey&& sk);
+
+      public:
+        Ed25519SecretKey ephemeral_key;
+        PubKey pubkey{};
+        SharedSecret shared_secret{};
+        SymmNonce nonce{SymmNonce::make_random()};
+        SymmNonce xor_nonce{SymmNonce::make_random()};
+
+        void generate_xor();
+
+        static shared_kx_data generate();
+
+        void client_dh(const RouterID& remote);
+
+        void server_dh(const Ed25519SecretKey& local_sk);
+
+        void encrypt(std::span<uint8_t> data);
+
+        void decrypt(std::span<uint8_t> enc);
+    };
+
+    struct hash_key : public AlignedBuffer<32>
+    {
+        explicit hash_key(const uint8_t* buf) : AlignedBuffer<SIZE>(buf) {}
+
+        explicit hash_key(const std::array<uint8_t, SIZE>& data) : AlignedBuffer<SIZE>(data) {}
+
+        explicit hash_key(const AlignedBuffer<SIZE>& data) : AlignedBuffer<SIZE>(data) {}
+
+        hash_key() : AlignedBuffer<SIZE>() {}
+
+        std::string to_string() const;
+
+        static hash_key derive_from_rid(PubKey root);
+
+        hash_key operator^(const hash_key& other) const
+        {
+            hash_key dist;
+            std::transform(begin(), end(), other.begin(), dist.begin(), std::bit_xor<uint8_t>());
+            return dist;
+        }
+
+        bool operator==(const hash_key& other) const { return as_array() == other.as_array(); }
+
+        bool operator!=(const hash_key& other) const { return as_array() != other.as_array(); }
+
+        bool operator<(const hash_key& other) const { return as_array() < other.as_array(); }
+
+        bool operator>(const hash_key& other) const { return as_array() > other.as_array(); }
+    };
+
+    namespace concepts
+    {
+        template <typename T, typename U = std::remove_cvref_t<T>>
+        concept XOR_comparable = U::SIZE == PUBKEYSIZE && (std::same_as<RouterID, U> || std::same_as<hash_key, U>);
     }
 
-    PubKey&
-    operator=(const byte_t* ptr)
+    struct XorMetric
     {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
-  };
+        const hash_key us;
 
-  inline bool
-  operator==(const PubKey& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+        XorMetric(hash_key ourKey) : us{std::move(ourKey)} {}
 
-  inline bool
-  operator==(const PubKey& lhs, const RouterID& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+        bool operator()(const hash_key& left, const hash_key& right) const;
 
-  inline bool
-  operator==(const RouterID& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+        bool operator()(const RemoteRC& left, const RemoteRC& right) const;
 
-  struct PrivateKey;
+        template <concepts::XOR_comparable T, concepts::XOR_comparable U>
+        bool operator()(const T& left, const U& right) const
+        {
+            return (left ^ us) < (right < us);
+        }
+    };
 
-  /// Stores a sodium "secret key" value, which is actually the seed
-  /// concatenated with the public key.  Note that the seed is *not* the private
-  /// key value itself, but rather the seed from which it can be calculated.
-  struct SecretKey final : public AlignedBuffer<SECKEYSIZE>
-  {
-    SecretKey() = default;
-
-    explicit SecretKey(const byte_t* ptr) : AlignedBuffer<SECKEYSIZE>(ptr)
-    {}
-
-    // The full data
-    explicit SecretKey(const AlignedBuffer<SECKEYSIZE>& seed) : AlignedBuffer<SECKEYSIZE>(seed)
-    {}
-
-    // Just the seed, we recalculate the pubkey
-    explicit SecretKey(const AlignedBuffer<32>& seed)
-    {
-      std::copy(seed.begin(), seed.end(), begin());
-      Recalculate();
-    }
-
-    /// recalculate public component
-    bool
-    Recalculate();
-
-    std::string_view
-    ToString() const
-    {
-      return "[secretkey]";
-    }
-
-    PubKey
-    toPublic() const
-    {
-      return PubKey(data() + 32);
-    }
-
-    /// Computes the private key from the secret key (which is actually the
-    /// seed)
-    bool
-    toPrivate(PrivateKey& key) const;
-
-    bool
-    LoadFromFile(const fs::path& fname);
-
-    bool
-    SaveToFile(const fs::path& fname) const;
-  };
-
-  /// PrivateKey is similar to SecretKey except that it only stores the private
-  /// key value and a hash, unlike SecretKey which stores the seed from which
-  /// the private key and hash value are generated.  This is primarily intended
-  /// for use with derived keys, where we can derive the private key but not the
-  /// seed.
-  struct PrivateKey final : public AlignedBuffer<64>
-  {
-    PrivateKey() = default;
-
-    explicit PrivateKey(const byte_t* ptr) : AlignedBuffer<64>(ptr)
-    {}
-
-    explicit PrivateKey(const AlignedBuffer<64>& key_and_hash) : AlignedBuffer<64>(key_and_hash)
-    {}
-
-    /// Returns a pointer to the beginning of the 32-byte hash which is used for
-    /// pseudorandomness when signing with this private key.
-    const byte_t*
-    signingHash() const
-    {
-      return data() + 32;
-    }
-
-    /// Returns a pointer to the beginning of the 32-byte hash which is used for
-    /// pseudorandomness when signing with this private key.
-    byte_t*
-    signingHash()
-    {
-      return data() + 32;
-    }
-
-    std::string_view
-    ToString() const
-    {
-      return "[privatekey]";
-    }
-
-    /// Computes the public key
-    bool
-    toPublic(PubKey& pubkey) const;
-  };
-
-  /// IdentitySecret is a secret key from a service node secret seed
-  struct IdentitySecret final : public AlignedBuffer<32>
-  {
-    IdentitySecret() : AlignedBuffer<32>()
-    {}
-
-    /// no copy constructor
-    explicit IdentitySecret(const IdentitySecret&) = delete;
-    // no byte data constructor
-    explicit IdentitySecret(const byte_t*) = delete;
-
-    /// load service node seed from file
-    bool
-    LoadFromFile(const fs::path& fname);
-
-    std::string_view
-    ToString() const
-    {
-      return "[IdentitySecret]";
-    }
-  };
-
-  template <>
-  constexpr inline bool IsToStringFormattable<PubKey> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<SecretKey> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<PrivateKey> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<IdentitySecret> = true;
-
-  using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
-  using LongHash = AlignedBuffer<HASHSIZE>;
-
-  struct Signature final : public AlignedBuffer<SIGSIZE>
-  {
-    byte_t*
-    Hi();
-
-    const byte_t*
-    Hi() const;
-
-    byte_t*
-    Lo();
-
-    const byte_t*
-    Lo() const;
-  };
-
-  using TunnelNonce = AlignedBuffer<TUNNONCESIZE>;
-  using SymmNonce = AlignedBuffer<NONCESIZE>;
-  using SymmKey = AlignedBuffer<32>;
-
-  using PQCipherBlock = AlignedBuffer<PQ_CIPHERTEXTSIZE + 1>;
-  using PQPubKey = AlignedBuffer<PQ_PUBKEYSIZE>;
-  using PQKeyPair = AlignedBuffer<PQ_KEYPAIRSIZE>;
-
-  /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
-
-  /// TKE(result, publickey, secretkey, nonce)
-  using transport_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
-
-  /// SH(result, body)
-  using shorthash_func = std::function<bool(ShortHash&, const llarp_buffer_t&)>;
 }  // namespace llarp
-
-namespace std
-{
-  template <>
-  struct hash<llarp::PubKey> : hash<llarp::AlignedBuffer<llarp::PubKey::SIZE>>
-  {};
-};  // namespace std

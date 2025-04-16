@@ -1,230 +1,109 @@
 #pragma once
 
+#include "path_types.hpp"
+
 #include <llarp/constants/path.hpp>
-#include <llarp/path/ihophandler.hpp>
-#include <llarp/path/path_types.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/router_id.hpp>
+#include <llarp/contact/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>
-#include <llarp/util/thread/queue.hpp>
 
 namespace llarp
 {
-  struct LR_CommitRecord;
+    struct Router;
 
-  namespace dht
-  {
-    struct GotIntroMessage;
-  }
-
-  namespace path
-  {
-    struct TransitHopInfo
+    namespace path
     {
-      TransitHopInfo() = default;
-      TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
+        struct SessionHop;
 
-      PathID_t txID, rxID;
-      RouterID upstream;
-      RouterID downstream;
+        struct TransitHop : std::enable_shared_from_this<TransitHop>
+        {
+            HopID _txid, _rxid;
 
-      std::string
-      ToString() const;
-    };
+            RouterID _upstream;
+            RouterID _rid;
+            RouterID _downstream;
 
-    inline bool
-    operator==(const TransitHopInfo& lhs, const TransitHopInfo& rhs)
-    {
-      return std::tie(lhs.txID, lhs.rxID, lhs.upstream, lhs.downstream)
-          == std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
-    }
+            TransitHop() = default;
 
-    inline bool
-    operator!=(const TransitHopInfo& lhs, const TransitHopInfo& rhs)
-    {
-      return !(lhs == rhs);
-    }
+            void deserialize(oxenc::bt_dict_consumer&& btdc, const RouterID& src, const Router& r);
 
-    inline bool
-    operator<(const TransitHopInfo& lhs, const TransitHopInfo& rhs)
-    {
-      return std::tie(lhs.txID, lhs.rxID, lhs.upstream, lhs.downstream)
-          < std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
-    }
+            shared_kx_data kx{};
 
-    struct TransitHop : public IHopHandler,
-                        public routing::IMessageHandler,
-                        std::enable_shared_from_this<TransitHop>
-    {
-      TransitHop();
+            std::chrono::milliseconds expiry{0s};
 
-      TransitHopInfo info;
-      SharedSecret pathKey;
-      ShortHash nonceXOR;
-      llarp_time_t started = 0s;
-      // 10 minutes default
-      llarp_time_t lifetime = default_lifetime;
-      llarp_proto_version_t version;
-      llarp_time_t m_LastActivity = 0s;
+            uint8_t version;
+            std::chrono::milliseconds _last_activity{0s};
+            bool terminal_hop{false};
 
-      PathID_t
-      RXID() const override
-      {
-        return info.rxID;
-      }
+            void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
-      void
-      Stop();
+            std::string bt_encode() const;
 
-      bool destroy = false;
+            RouterID router_id() { return _rid; }
+            const RouterID& router_id() const { return _rid; }
 
-      bool
-      operator<(const TransitHop& other) const
-      {
-        return info < other.info;
-      }
+            RouterID upstream() { return _upstream; }
+            const RouterID& upstream() const { return _upstream; }
 
-      bool
-      IsEndpoint(const RouterID& us) const
-      {
-        return info.upstream == us;
-      }
+            RouterID downstream() { return _downstream; }
+            const RouterID& downstream() const { return _downstream; }
 
-      llarp_time_t
-      ExpireTime() const;
+            HopID rxid() { return _rxid; }
+            const HopID& rxid() const { return _rxid; }
 
-      llarp_time_t
-      LastRemoteActivityAt() const override
-      {
-        return m_LastActivity;
-      }
+            HopID txid() { return _txid; }
+            const HopID& txid() const { return _txid; }
 
-      bool
-      HandleLRSM(
-          uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
+            std::optional<std::pair<RouterID, HopID>> next_id(const HopID& h) const;
 
-      std::string
-      ToString() const;
+            bool operator<(const TransitHop& other) const
+            {
+                return std::tie(_txid, _rxid, _upstream, _downstream)
+                    < std::tie(other._txid, other._rxid, other._upstream, other._downstream);
+            }
 
-      bool
-      Expired(llarp_time_t now) const override;
+            bool operator==(const TransitHop& other) const
+            {
+                return std::tie(_txid, _rxid, _upstream, _downstream)
+                    == std::tie(other._txid, other._rxid, other._upstream, other._downstream);
+            }
 
-      bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const override
-      {
-        return now >= ExpireTime() - dlt;
-      }
+            bool operator!=(const TransitHop& other) const { return !(*this == other); }
 
-      // send routing message when end of path
-      bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
+            std::chrono::milliseconds last_activity() const { return _last_activity; }
 
-      // handle routing message when end of path
-      bool
-      HandleRoutingMessage(const routing::IMessage& msg, AbstractRouter* r);
+            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return now >= expiry; };
 
-      bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
+            nlohmann::json ExtractStatus() const;
 
-      bool
-      HandlePathConfirmMessage(AbstractRouter* r);
+            std::string to_string() const;
+            static constexpr bool to_string_formattable = true;
+        };
 
-      bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, AbstractRouter* r) override;
-      bool
-      HandlePathTransferMessage(
-          const routing::PathTransferMessage& msg, AbstractRouter* r) override;
-      bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r) override;
+        struct SessionHop final : public TransitHop, public session_path_interface
+        {
+          protected:
+            handlers::SessionEndpoint& _parent;
+            std::unordered_set<session_tag> _linked_sessions;
 
-      bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
+            SessionHop(std::shared_ptr<TransitHop>& hop, handlers::SessionEndpoint& p);
 
-      bool
-      HandleUpdateExitVerifyMessage(
-          const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r) override;
+          public:
+            static std::shared_ptr<SessionHop> make(std::shared_ptr<TransitHop> hop, Router& r);
 
-      bool
-      HandleTransferTrafficMessage(
-          const routing::TransferTrafficMessage& msg, AbstractRouter* r) override;
+            void link_session(session_tag t) override;
+            bool unlink_session(session_tag t) override;
+            bool is_linked() const override { return not _linked_sessions.empty(); }
 
-      bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, AbstractRouter* r) override;
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
+            bool send_path_data_message(std::string body) override;
 
-      bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r) override;
-      bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r) override;
+            RouterID terminal_rid() const override { return _rid; }
+            HopID terminal_txid() const override { return _txid; }
 
-      bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
+            handlers::SessionEndpoint& parent() override { return _parent; }
 
-      bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& /*frame*/) override
-      {
-        /// TODO: implement me
-        LogWarn("Got hidden service data on transit hop");
-        return false;
-      }
-
-      bool
-      HandleGotIntroMessage(const dht::GotIntroMessage& msg);
-
-      bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
-
-      void
-      FlushUpstream(AbstractRouter* r) override;
-
-      void
-      FlushDownstream(AbstractRouter* r) override;
-
-      void
-      QueueDestroySelf(AbstractRouter* r);
-
-     protected:
-      void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
-
-      void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
-
-      void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
-
-      void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
-
-     private:
-      void
-      SetSelfDestruct();
-
-      std::set<std::shared_ptr<TransitHop>, ComparePtr<std::shared_ptr<TransitHop>>> m_FlushOthers;
-      thread::Queue<RelayUpstreamMessage> m_UpstreamGather;
-      thread::Queue<RelayDownstreamMessage> m_DownstreamGather;
-      std::atomic<uint32_t> m_UpstreamWorkCounter;
-      std::atomic<uint32_t> m_DownstreamWorkCounter;
-    };
-  }  // namespace path
-
-  template <>
-  constexpr inline bool IsToStringFormattable<path::TransitHop> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<path::TransitHopInfo> = true;
-
+            std::string to_string() const override;
+        };
+    }  // namespace path
 }  // namespace llarp
-
-namespace std
-{
-  template <>
-  struct hash<llarp::path::TransitHopInfo>
-  {
-    std::size_t
-    operator()(llarp::path::TransitHopInfo const& a) const
-    {
-      hash<llarp::RouterID> RHash{};
-      hash<llarp::PathID_t> PHash{};
-      return RHash(a.upstream) ^ RHash(a.downstream) ^ PHash(a.txID) ^ PHash(a.rxID);
-    }
-  };
-}  // namespace std

@@ -1,4 +1,3 @@
-#include "llarp_test.hpp"
 #include "test_util.hpp"
 
 #include <llarp/config/key_manager.hpp>
@@ -14,7 +13,7 @@
 
 using namespace ::llarp;
 
-struct KeyManagerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
+struct KeyManagerTest
 {
   // paranoid file guards for anything KeyManager might touch
   test::FileGuard m_rcFileGuard;
@@ -33,7 +32,7 @@ struct KeyManagerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
   bool
   generateRcFile()
   {
-    RouterContact rc;
+    RelayContact rc;
     return rc.Write(our_rc_filename);
   }
 };

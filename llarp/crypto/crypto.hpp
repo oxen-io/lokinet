@@ -1,181 +1,109 @@
 #pragma once
 
-#include "constants.hpp"
 #include "types.hpp"
 
+#include <llarp/contact/router_id.hpp>
 #include <llarp/util/buffer.hpp>
-
-#include <functional>
+#include <llarp/util/random.hpp>
 
 #include <cstdint>
 
-/**
- * crypto.hpp
- *
- * libsodium abstraction layer
- * potentially allow libssl support in the future
- */
-
 namespace llarp
 {
-  /// library crypto configuration
-  struct Crypto
-  {
-    virtual ~Crypto() = 0;
+    /*
+        TODO:
+          - make uint8_t pointers const where needed
+    */
 
-    /// decrypt cipherText name given the key generated from name
-    virtual std::optional<AlignedBuffer<32>>
-    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name) = 0;
-
-    /// xchacha symmetric cipher
-    virtual bool
-    xchacha20(const llarp_buffer_t&, const SharedSecret&, const TunnelNonce&) = 0;
-
-    /// xchacha symmetric cipher (multibuffer)
-    virtual bool
-    xchacha20_alt(
-        const llarp_buffer_t&, const llarp_buffer_t&, const SharedSecret&, const byte_t*) = 0;
-
-    /// path dh creator's side
-    virtual bool
-    dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
-    /// path dh relay side
-    virtual bool
-    dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
-    /// transport dh client side
-    virtual bool
-    transport_dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
-    /// transport dh server side
-    virtual bool
-    transport_dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
-    /// blake2b 256 bit
-    virtual bool
-    shorthash(ShortHash&, const llarp_buffer_t&) = 0;
-    /// blake2s 256 bit "hmac" (keyed hash)
-    virtual bool
-    hmac(byte_t*, const llarp_buffer_t&, const SharedSecret&) = 0;
-    /// ed25519 sign
-    virtual bool
-    sign(Signature&, const SecretKey&, const llarp_buffer_t&) = 0;
-    /// ed25519 sign (custom with derived keys)
-    virtual bool
-    sign(Signature&, const PrivateKey&, const llarp_buffer_t&) = 0;
-    /// ed25519 verify
-    virtual bool
-    verify(const PubKey&, const llarp_buffer_t&, const Signature&) = 0;
-
-    /// derive sub keys for public keys
-    virtual bool
-    derive_subkey(PubKey&, const PubKey&, uint64_t, const AlignedBuffer<32>* = nullptr) = 0;
-
-    /// derive sub keys for private keys
-    virtual bool
-    derive_subkey_private(
-        PrivateKey&, const SecretKey&, uint64_t, const AlignedBuffer<32>* = nullptr) = 0;
-
-    /// seed to secretkey
-    virtual bool
-    seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&) = 0;
-    /// randomize buffer
-    virtual void
-    randomize(const llarp_buffer_t&) = 0;
-    /// randomizer memory
-    virtual void
-    randbytes(byte_t*, size_t) = 0;
-    /// generate signing keypair
-    virtual void
-    identity_keygen(SecretKey&) = 0;
-    /// generate encryption keypair
-    virtual void
-    encryption_keygen(SecretKey&) = 0;
-    /// generate post quantum encrytion key
-    virtual void
-    pqe_keygen(PQKeyPair&) = 0;
-    /// post quantum decrypt (buffer, sharedkey_dst, sec)
-    virtual bool
-    pqe_decrypt(const PQCipherBlock&, SharedSecret&, const byte_t*) = 0;
-    /// post quantum encrypt (buffer, sharedkey_dst,  pub)
-    virtual bool
-    pqe_encrypt(PQCipherBlock&, SharedSecret&, const PQPubKey&) = 0;
-
-    virtual bool
-    check_identity_privkey(const SecretKey&) = 0;
-
-    /// check if a password hash string matches the challenge
-    virtual bool
-    check_passwd_hash(std::string pwhash, std::string challenge) = 0;
-  };
-
-  inline Crypto::~Crypto() = default;
-
-  /// return random 64bit unsigned interger
-  uint64_t
-  randint();
-
-  const byte_t*
-  seckey_topublic(const SecretKey& secret);
-
-  const byte_t*
-  pq_keypair_to_public(const PQKeyPair& keypair);
-
-  const byte_t*
-  pq_keypair_to_secret(const PQKeyPair& keypair);
-
-  struct CryptoManager
-  {
-   private:
-    static Crypto* m_crypto;
-
-    Crypto* m_prevCrypto;
-
-   public:
-    explicit CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
+    namespace crypto
     {
-      m_crypto = crypto;
-    }
+        /// decrypt cipherText given the key generated from name
+        std::optional<AlignedBuffer<32>> maybe_decrypt_name(
+            std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
-    ~CryptoManager()
-    {
-      m_crypto = m_prevCrypto;
-    }
+        /// xchacha symmetric cipher
+        bool xchacha20(uint8_t* buf, size_t size, const SharedSecret&, const SymmNonce&);
+        bool xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce);
 
-    static Crypto*
-    instance()
-    {
-#ifdef NDEBUG
-      return m_crypto;
-#else
-      if (m_crypto)
-        return m_crypto;
+        SymmNonce onion(
+            unsigned char* buf,
+            size_t size,
+            const SharedSecret& k,
+            const SymmNonce& nonce,
+            const SymmNonce& xor_factor);
 
-      assert(false && "Cryptomanager::instance() was undefined");
-      abort();
-#endif
-    }
-  };
+        /// path dh creator's side
+        bool dh_client(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
 
-  /// rng type that uses llarp::randint(), which is cryptographically secure
-  struct CSRNG
-  {
-    using result_type = uint64_t;
+        /// path dh relay side
+        bool dh_server(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
+        bool dh_server(uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_sk, const uint8_t* nonce);
 
-    static constexpr uint64_t
-    min()
-    {
-      return std::numeric_limits<uint64_t>::min();
-    };
+        /// blake2b 256 bit
+        bool shorthash(ShortHash&, uint8_t*, size_t size);
 
-    static constexpr uint64_t
-    max()
-    {
-      return std::numeric_limits<uint64_t>::max();
-    };
+        /// blake2s 256 bit hmac
+        bool hmac(uint8_t*, const uint8_t*, size_t, const SharedSecret&);
 
-    uint64_t
-    operator()()
-    {
-      return llarp::randint();
-    };
-  };
+        /// ed25519 sign
+        bool sign(Signature&, const Ed25519SecretKey&, uint8_t* buf, size_t size);
+
+        /// ed25519 sign, using pointers
+        bool sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size);
+        bool sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf);
+
+        /// ed25519 sign (custom with derived keys)
+        bool sign(Signature&, const Ed25519PrivateData&, const uint8_t* buf, size_t size);
+
+        /// ed25519 verify
+        bool verify(const PubKey&, std::span<const uint8_t>, std::span<const uint8_t>);
+        bool verify(const PubKey&, const uint8_t*, size_t, const Signature&);
+        bool verify(std::span<const uint8_t>, std::span<const uint8_t>, std::span<const uint8_t>);
+
+        /// Used in path-build and session initiation messages. Derives a shared secret key for symmetric DH, encrypting
+        /// the given payload in-place. Will throw on failure of either the client DH derivation or the xchacha20
+        /// payload mutation
+        void derive_encrypt_outer_wrapping(
+            const Ed25519SecretKey& shared_key,
+            SharedSecret& secret,
+            const SymmNonce& nonce,
+            const RouterID& remote,
+            std::span<uint8_t> payload);
+
+        /// Used in receiving path-build and session initiation messages. Derives a shared secret key using an ephemeral
+        /// pubkey and the provided nonce. The encrypted payload is mutated in-place. Will throw on failure of either
+        /// the server DH derivation or the xchacha20 payload mutation
+        void derive_decrypt_outer_wrapping(
+            const Ed25519SecretKey& local,
+            SharedSecret& shared,
+            const PubKey& remote,
+            const SymmNonce& nonce,
+            std::span<uint8_t> encrypted);
+
+        std::array<unsigned char, 32> make_scalar(const PubKey& k, uint64_t domain);
+
+        /// derive sub keys for public keys.  hash is really only intended for
+        /// testing ands key_n if given.
+        bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root, uint64_t key_n);
+
+        /// randomize buffer
+        void randomize(uint8_t* buf, size_t len);
+
+        /// randomizer memory
+        void randbytes(uint8_t*, size_t);
+
+        Ed25519SecretKey generate_identity();
+
+        bool check_identity_privkey(const Ed25519SecretKey&);
+
+        bool check_passwd_hash(std::string pwhash, std::string challenge);
+    };  // namespace crypto
+
+    /// return random 64bit unsigned interger
+    uint64_t randint();
+
+    const uint8_t* seckey_to_pubkey(const Ed25519SecretKey& secret);
+
+    /// rng type that uses llarp::randint(), which is cryptographically secure
 
 }  // namespace llarp

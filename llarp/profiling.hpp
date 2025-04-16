@@ -1,134 +1,125 @@
 #pragma once
 
-#include "path/path.hpp"
-#include "router_id.hpp"
-#include "util/bencode.hpp"
+#include "constants/proto.hpp"
+#include "contact/router_id.hpp"
+#include "ev/types.hpp"
 #include "util/thread/threading.hpp"
 
-#include "util/thread/annotations.hpp"
 #include <map>
 
 namespace oxenc
 {
-  class bt_dict_consumer;
-  class bt_dict_producer;
+    class bt_dict_consumer;
+    class bt_dict_producer;
 }  // namespace oxenc
 
 namespace llarp
 {
-  struct RouterProfile
-  {
-    static constexpr size_t MaxSize = 256;
-    uint64_t connectTimeoutCount = 0;
-    uint64_t connectGoodCount = 0;
-    uint64_t pathSuccessCount = 0;
-    uint64_t pathFailCount = 0;
-    uint64_t pathTimeoutCount = 0;
-    llarp_time_t lastUpdated = 0s;
-    llarp_time_t lastDecay = 0s;
-    uint64_t version = llarp::constants::proto_version;
+    struct Router;
 
-    RouterProfile() = default;
-    RouterProfile(oxenc::bt_dict_consumer dict);
-
-    void
-    BEncode(oxenc::bt_dict_producer& dict) const;
-    void
-    BEncode(oxenc::bt_dict_producer&& dict) const
+    namespace path
     {
-      BEncode(dict);
+        struct Path;
     }
 
-    void
-    BDecode(oxenc::bt_dict_consumer dict);
+    struct RouterProfile
+    {
+        static constexpr size_t MaxSize{256};
 
-    bool
-    IsGood(uint64_t chances) const;
+        uint64_t conn_timeout{};
+        uint64_t conn_success{};
+        uint64_t path_success{};
+        uint64_t path_fail{};
+        uint64_t path_timeout{};
+        std::chrono::milliseconds last_update{0s};
+        std::chrono::milliseconds last_decay{0s};
+        uint64_t version = llarp::constants::proto_version;
 
-    bool
-    IsGoodForConnect(uint64_t chances) const;
+        RouterProfile() = default;
+        RouterProfile(oxenc::bt_dict_consumer& btdc);
 
-    bool
-    IsGoodForPath(uint64_t chances) const;
+        void bt_encode(oxenc::bt_dict_producer& btdp) const;
 
-    /// decay stats
-    void
-    Decay();
+        void bt_decode(oxenc::bt_dict_consumer& btdc);
 
-    // rotate stats if timeout reached
-    void
-    Tick();
-  };
+        bool bt_decode(std::string_view buf);
 
-  struct Profiling
-  {
-    Profiling();
+        bool is_good(uint64_t chances) const;
 
-    inline static const int profiling_chances = 4;
+        bool is_good_for_connect(uint64_t chances) const;
 
-    /// generic variant
-    bool
-    IsBad(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
+        bool is_good_for_path(uint64_t chances) const;
 
-    /// check if this router should have paths built over it
-    bool
-    IsBadForPath(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
+        /// decay stats
+        void decay();
 
-    /// check if this router should be connected directly to
-    bool
-    IsBadForConnect(const RouterID& r, uint64_t chances = profiling_chances)
-        EXCLUDES(m_ProfilesMutex);
+        // rotate stats if timeout reached
+        void tick();
+    };
 
-    void
-    MarkConnectTimeout(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+    struct Profiling
+    {
+        static constexpr std::chrono::milliseconds SAVE_INTERVAL{10min};
 
-    void
-    MarkConnectSuccess(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+        friend struct Router;
 
-    void
-    MarkPathTimeout(path::Path* p) EXCLUDES(m_ProfilesMutex);
+        Profiling() = default;
 
-    void
-    MarkPathFail(path::Path* p) EXCLUDES(m_ProfilesMutex);
+        inline static const int profiling_chances{4};
 
-    void
-    MarkPathSuccess(path::Path* p) EXCLUDES(m_ProfilesMutex);
+        /// generic variant
+        bool is_bad(const RouterID& r, uint64_t chances = profiling_chances);
 
-    void
-    MarkHopFail(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+        /// check if this router should have paths built over it
+        bool is_bad_for_path(const RouterID& r, uint64_t chances = profiling_chances);
 
-    void
-    ClearProfile(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+        /// check if this router should be connected directly to
+        bool is_bad_for_connect(const RouterID& r, uint64_t chances = profiling_chances);
 
-    void
-    Tick() EXCLUDES(m_ProfilesMutex);
+        void connect_timeout(const RouterID& r);
 
-    bool
-    Load(const fs::path fname) EXCLUDES(m_ProfilesMutex);
+        void connect_succeess(const RouterID& r);
 
-    bool
-    Save(const fs::path fname) EXCLUDES(m_ProfilesMutex);
+        void path_timeout(path::Path* p);
 
-    bool
-    ShouldSave(llarp_time_t now) const;
+        void path_fail(path::Path* p);
 
-    void
-    Disable();
+        void path_success(path::Path* p);
 
-    void
-    Enable();
+        void hop_fail(const RouterID& r);
 
-   private:
-    void
-    BEncode(oxenc::bt_dict_producer& dict) const;
+        void clear_profile(const RouterID& r);
 
-    void
-    BDecode(oxenc::bt_dict_consumer dict);
+        void tick();
 
-    mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
-    std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
-    llarp_time_t m_LastSave = 0s;
-    std::atomic<bool> m_DisableProfiling;
-  };
+        bool load_from_disk();
+
+        bool save_to_disk();
+
+        bool should_save(std::chrono::milliseconds now) const;
+
+        void disable();
+
+        void enable();
+
+        bool is_enabled() const;
+
+      private:
+        void start_save_ticker(Router& r);
+
+        void stop_save_ticker();
+
+        void BEncode(oxenc::bt_dict_producer& dict) const;
+
+        void BDecode(oxenc::bt_dict_consumer dict);
+
+        std::shared_ptr<EventTicker> _disk_saver;
+
+        mutable util::Mutex _m;
+        fs::path _profile_file;
+        std::map<RouterID, RouterProfile> _profiles;
+        std::chrono::milliseconds _last_save{0s};
+        std::atomic<bool> _profiling_disabled{false};
+    };
 
 }  // namespace llarp

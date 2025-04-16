@@ -1,29 +1,22 @@
 #include <catch2/catch.hpp>
 
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/crypto/crypto_libsodium.hpp>
-#include <llarp/router_contact.hpp>
+#include <llarp/relay_contact.hpp>
 #include <llarp/net/net_int.hpp>
 #include <llarp/util/time.hpp>
-
-namespace
-{
-  llarp::sodium::CryptoLibSodium crypto;
-  llarp::CryptoManager cmanager(&crypto);
-}
 
 namespace llarp
 {
 
-TEST_CASE("RouterContact Sign and Verify", "[RC][RouterContact][signature][sign][verify]")
+TEST_CASE("RelayContact Sign and Verify", "[RC][RelayContact][signature][sign][verify]")
 {
-  RouterContact rc;
+  RelayContact rc;
 
   SecretKey sign;
-  cmanager.instance()->identity_keygen(sign);
+  crypto::identity_keygen(sign);
 
   SecretKey encr;
-  cmanager.instance()->encryption_keygen(encr);
+  crypto::encryption_keygen(encr);
 
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
@@ -32,15 +25,15 @@ TEST_CASE("RouterContact Sign and Verify", "[RC][RouterContact][signature][sign]
   REQUIRE(rc.Verify(time_now_ms()));
 }
 
-TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
+TEST_CASE("RelayContact Decode Version 1", "[RC][RelayContact][V1]")
 {
-  RouterContact rc;
+  RelayContact rc;
 
   SecretKey sign;
-  cmanager.instance()->identity_keygen(sign);
+  crypto::identity_keygen(sign);
 
   SecretKey encr;
-  cmanager.instance()->encryption_keygen(encr);
+  crypto::encryption_keygen(encr);
 
   rc.version = 1;
 
@@ -57,7 +50,7 @@ TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
   encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
   encoded_llarp.cur = encoded_llarp.base;
 
-  RouterContact decoded_rc;
+  RelayContact decoded_rc;
 
   REQUIRE(decoded_rc.BDecode(&encoded_llarp));
 
@@ -66,9 +59,9 @@ TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
   REQUIRE(decoded_rc == rc);
 }
 
-TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
+TEST_CASE("RelayContact Decode Mixed Versions", "[RC][RelayContact]")
 {
-  RouterContact rc1, rc2, rc3, rc4;
+  RelayContact rc1, rc2, rc3, rc4;
 
   rc1.version = 0;
   rc2.version = 1;
@@ -76,16 +69,16 @@ TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
   rc4.version = 1;
 
   SecretKey sign1, sign2, sign3, sign4;
-  cmanager.instance()->identity_keygen(sign1);
-  cmanager.instance()->identity_keygen(sign2);
-  cmanager.instance()->identity_keygen(sign3);
-  cmanager.instance()->identity_keygen(sign4);
+  crypto::identity_keygen(sign1);
+  crypto::identity_keygen(sign2);
+  crypto::identity_keygen(sign3);
+  crypto::identity_keygen(sign4);
 
   SecretKey encr1, encr2, encr3, encr4;
-  cmanager.instance()->encryption_keygen(encr1);
-  cmanager.instance()->encryption_keygen(encr2);
-  cmanager.instance()->encryption_keygen(encr3);
-  cmanager.instance()->encryption_keygen(encr4);
+  crypto::encryption_keygen(encr1);
+  crypto::encryption_keygen(encr2);
+  crypto::encryption_keygen(encr3);
+  crypto::encryption_keygen(encr4);
 
   rc1.enckey = encr1.toPublic();
   rc2.enckey = encr2.toPublic();
@@ -101,7 +94,7 @@ TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
   REQUIRE(rc3.Sign(sign3));
   REQUIRE(rc4.Sign(sign4));
 
-  std::vector<RouterContact> rc_vec;
+  std::vector<RelayContact> rc_vec;
   rc_vec.push_back(rc1);
   rc_vec.push_back(rc2);
   rc_vec.push_back(rc3);
@@ -114,7 +107,7 @@ TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
   encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
   encoded_llarp.cur = encoded_llarp.base;
 
-  std::vector<RouterContact> rc_vec_out;
+  std::vector<RelayContact> rc_vec_out;
 
   BEncodeReadList(rc_vec_out, &encoded_llarp);
 
