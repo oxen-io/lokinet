@@ -13,8 +13,10 @@
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/logging.hpp>
 
+#include <oxen/quic/endpoint.hpp>
 #include <oxen/quic/format.hpp>
 #include <oxen/quic/gnutls_crypto.hpp>
+#include <oxen/quic/loop.hpp>
 
 #include <atomic>
 #include <set>
@@ -141,12 +143,9 @@ namespace llarp
 
         const bool _is_service_node;
 
-        // NOTE: DO NOT CHANGE THE ORDER OF THESE THREE OBJECTS
-        // The quic Network must be created prior to the GNUTLS credentials, which are necessary for the creation of the
-        // quic endpoint. These are delegate initialized in the LinkManager constructor sequentially
-        std::unique_ptr<oxen::quic::Network> quic;
+        std::unique_ptr<oxen::quic::Loop> quic_loop;
         std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
-        std::shared_ptr<link::Endpoint> ep;
+        std::unique_ptr<link::Endpoint> ep;
 
         std::atomic<bool> is_stopping;
 

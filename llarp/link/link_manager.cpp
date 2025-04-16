@@ -19,7 +19,7 @@
 
 namespace llarp
 {
-    static auto logcat = llarp::log::Cat("lquic");
+    static auto logcat = llarp::log::Cat("link_manager");
 
     static constexpr auto static_shared_key = "Lokinet static shared secret key"sv;
 
@@ -347,11 +347,11 @@ namespace llarp
         : _router{r},
           node_db{_router.node_db()},
           _is_service_node{_router.is_service_node()},
-          quic{std::make_unique<oxen::quic::Network>()},
+          quic_loop{std::make_unique<oxen::quic::Loop>()},
           tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
               {reinterpret_cast<const char*>(_router.identity().data()), 32},
               {reinterpret_cast<const char*>(_router.local_rid().data()), 32})},
-          ep{_router.loop()->template make_shared<link::Endpoint>(startup_endpoint(), *this)},
+          ep{std::make_unique<link::Endpoint>(startup_endpoint(), *this)},
           is_stopping{false}
     {}
 
@@ -372,7 +372,8 @@ namespace llarp
                 - bt stream construction contains a stream close callback that shuts down the
                     connection if the btstream closes unexpectedly
         */
-        auto e = quic->endpoint(
+        auto e = oxen::quic::Endpoint::endpoint(
+            *quic_loop,
             _router.listen_addr(),
             make_static_secret(_router.identity()),
             [this](oxen::quic::Connection& conn) { return on_conn_open(conn); },
@@ -748,8 +749,8 @@ namespace llarp
 
         log::info(logcat, "stopping loop");
         is_stopping = true;
-        quic->set_shutdown_immediate();
-        quic.reset();
+        quic_loop->call([this] { ep.reset(); });
+        quic_loop.reset();
     }
 
     void LinkManager::set_conn_persist(const RouterID& remote, std::chrono::milliseconds until)
