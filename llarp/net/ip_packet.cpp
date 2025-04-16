@@ -81,11 +81,11 @@ namespace llarp
         auto keep_port = _proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP;
 
         uint16_t src_port = (keep_port) ? oxenc::big_to_host(*reinterpret_cast<uint16_t*>(
-                                data() + (static_cast<ptrdiff_t>(_header->header_len) * 4)))
+                                              data() + (static_cast<ptrdiff_t>(_header->header_len) * 4)))
                                         : 0;
 
         uint16_t dest_port = (keep_port) ? oxenc::big_to_host(*reinterpret_cast<uint16_t*>(
-                                 data() + (static_cast<ptrdiff_t>(_header->header_len) * 4) + 2))
+                                               data() + (static_cast<ptrdiff_t>(_header->header_len) * 4) + 2))
                                          : 0;
 
         if (_is_v4)

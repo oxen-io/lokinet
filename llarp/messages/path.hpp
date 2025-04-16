@@ -359,5 +359,5 @@ namespace llarp
                 }
             }
         }  // namespace DATA
-    }      // namespace PATH
+    }  // namespace PATH
 }  // namespace llarp

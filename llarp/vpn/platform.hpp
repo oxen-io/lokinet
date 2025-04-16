@@ -87,9 +87,9 @@ namespace llarp::vpn
 
         virtual std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface& vpn) = 0;
 
-        virtual void add_blackhole(){};
+        virtual void add_blackhole() {};
 
-        virtual void delete_blackhole(){};
+        virtual void delete_blackhole() {};
     };
 
     /// a vpn platform

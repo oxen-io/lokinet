@@ -12,10 +12,10 @@ namespace llarp::vpn
         virtual ~PacketIO() = default;
 
         /// start any platform specific operations before running
-        virtual void Start(){};
+        virtual void Start() {};
 
         /// stop operation and tear down anything that Start() set up.
-        virtual void Stop(){};
+        virtual void Stop() {};
 
         /// read next ip packet, return an empty packet if there are none ready.
         virtual IPPacket read_next_packet() = 0;

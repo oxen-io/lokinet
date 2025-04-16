@@ -62,7 +62,7 @@ namespace llarp::handlers
             // _hook(data.make_udp(to, from));
         }
 
-        void stop() override{};
+        void stop() override {};
 
         std::optional<oxen::quic::Address> bound_on() const override { return std::nullopt; }
 

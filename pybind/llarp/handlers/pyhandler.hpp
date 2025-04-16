@@ -73,7 +73,7 @@ namespace llarp
                 });
             }
 
-            void SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
+            void SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override {};
 
             std::string GetOurAddress() const { return m_Identity.pub.Addr().ToString(); }
         };

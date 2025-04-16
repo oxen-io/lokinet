@@ -37,8 +37,7 @@ namespace llarp
         _router.loop()->call_later(approximate_time(5s, 5), [&]() {
             purge_ccs();
             log::trace(logcat, "ContactDB starting purge ticker..");
-            _purge_ticker = _router.loop()->call_every(
-                5min, [this]() mutable { purge_ccs(); }, true);
+            _purge_ticker = _router.loop()->call_every(5min, [this]() mutable { purge_ccs(); }, true);
         });
     }
 

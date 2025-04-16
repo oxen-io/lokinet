@@ -54,13 +54,13 @@ namespace llarp::vpn
 
         void delete_route(oxen::quic::Address, oxen::quic::Address) override{};
 
-        void add_default_route_via_interface(NetworkInterface&) override{};
+        void add_default_route_via_interface(NetworkInterface&) override {};
 
-        void delete_default_route_via_interface(NetworkInterface&) override{};
+        void delete_default_route_via_interface(NetworkInterface&) override {};
 
-        void add_route_via_interface(NetworkInterface&, IPRange) override{};
+        void add_route_via_interface(NetworkInterface&, IPRange) override {};
 
-        void delete_route_via_interface(NetworkInterface&, IPRange) override{};
+        void delete_route_via_interface(NetworkInterface&, IPRange) override {};
 
         std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface&) override
         {

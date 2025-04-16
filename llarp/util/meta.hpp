@@ -100,6 +100,6 @@ namespace llarp
                 return ret;
             }
         }  // namespace sampling
-    }      // namespace meta
+    }  // namespace meta
 
 }  // namespace llarp

@@ -12,11 +12,7 @@ namespace llarp
     {
         using Context_ptr = std::shared_ptr<Context>;
         py::class_<Context, Context_ptr>(mod, "Context")
-            .def(
-                "Setup",
-                [](Context_ptr self, bool isRouter) {
-                    self->Setup({false, false, isRouter});
-                })
+            .def("Setup", [](Context_ptr self, bool isRouter) { self->Setup({false, false, isRouter}); })
             .def("Run", [](Context_ptr self) -> int { return self->Run(RuntimeOptions{}); })
             .def("Stop", [](Context_ptr self) { self->CloseAsync(); })
             .def("IsUp", &Context::IsUp)

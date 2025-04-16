@@ -50,7 +50,7 @@ namespace llarp::rpc
         }
 
         /// stop reading packets and end operation
-        void stop() override{};
+        void stop() override {};
 
         /// returns the sockaddr we are bound on if applicable
         std::optional<oxen::quic::Address> bound_on() const override { return std::nullopt; }

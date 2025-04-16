@@ -616,8 +616,7 @@ extern "C"
                     }
                     try
                     {
-                        auto [addr, id] = quic->open(
-                            remotehost, remoteport, [](auto) {}, localAddr);
+                        auto [addr, id] = quic->open(remotehost, remoteport, [](auto) {}, localAddr);
                         auto [host, port] = split_host_port(addr.to_string());
                         ctx->outbound_stream(id);
                         stream_okay(result, host, port, id);
@@ -920,8 +919,8 @@ extern "C"
                 if (auto* addr = std::get_if<llarp::service::Address>(&maybe_addr))
                 {
                     ep->MarkAddressOutbound(*addr);
-                    auto res = ep->EnsurePathTo(
-                        *addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
+                    auto res =
+                        ep->EnsurePathTo(*addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
                     if (not res)
                     {
                         gotten.set_value(false);

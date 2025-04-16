@@ -38,7 +38,7 @@ namespace llarp::vpn
 
         virtual void handle_ip_packet(IPPacket pkt) = 0;
 
-        virtual void add_sub_handler(uint16_t, ip_pkt_hook){};
+        virtual void add_sub_handler(uint16_t, ip_pkt_hook) {};
     };
 
 }  // namespace llarp::vpn

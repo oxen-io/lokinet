@@ -16,8 +16,8 @@ namespace llarp::vpn
 
         virtual void HandleIPPacketFrom(NetworkAddress from, IPPacket pkt) = 0;
 
-        virtual void AddSubHandler(uint16_t, EgresPacketHandlerFunc){};
-        virtual void RemoveSubHandler(uint16_t){};
+        virtual void AddSubHandler(uint16_t, EgresPacketHandlerFunc) {};
+        virtual void RemoveSubHandler(uint16_t) {};
     };
 
     class EgresPacketRouter

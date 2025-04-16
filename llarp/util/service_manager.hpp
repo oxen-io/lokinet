@@ -46,7 +46,7 @@ namespace llarp::sys
         virtual void report_changed_state() = 0;
 
         /// report our stats on each timer tick
-        virtual void report_periodic_stats(){};
+        virtual void report_periodic_stats() {};
 
         void starting()
         {
@@ -92,7 +92,7 @@ namespace llarp::sys
         void we_changed_our_state(ServiceState) override {}
 
       public:
-        void report_changed_state() override{};
+        void report_changed_state() override {};
         void system_changed_our_state(ServiceState) override{};
     };
 }  // namespace llarp::sys
