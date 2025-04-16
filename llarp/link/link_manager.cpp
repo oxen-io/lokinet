@@ -565,15 +565,16 @@ namespace llarp
 
     void LinkManager::on_conn_closed(oxen::quic::Connection& conn, uint64_t ec)
     {
+        if (!conn.remote_key().size()) {
+            log::debug(logcat, "on_conn_closed on rejected connection, nothing to do");
+            return;
+        }
+
         _router.loop()->call([this,
                               ref_id = conn.reference_id(),
                               rid = RouterID{conn.remote_key()},
                               error_code = ec,
                               path = conn.path()]() {
-            if (!ep) {
-                log::debug(logcat, "LinkManager::on_conn_closed hit, but link::Endpoint already shut down.");
-                return;
-            }
             log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
 
             if (auto s_itr = ep->service_conns.find(rid); s_itr != ep->service_conns.end())
