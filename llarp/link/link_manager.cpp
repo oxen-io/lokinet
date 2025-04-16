@@ -570,6 +570,10 @@ namespace llarp
                               rid = RouterID{conn.remote_key()},
                               error_code = ec,
                               path = conn.path()]() {
+            if (!ep) {
+                log::debug(logcat, "LinkManager::on_conn_closed hit, but link::Endpoint already shut down.");
+                return;
+            }
             log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
 
             if (auto s_itr = ep->service_conns.find(rid); s_itr != ep->service_conns.end())
