@@ -44,12 +44,12 @@ namespace llarp
     }
 
     Router::Router(std::shared_ptr<EventLoop> loop, std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
-        : _route_poker{std::make_shared<RoutePoker>(*this)},
-          _next_explore_at{std::chrono::steady_clock::now()},
+        : _next_explore_at{std::chrono::steady_clock::now()},
           _omq{std::make_shared<oxenmq::OxenMQ>()},
           _loop{std::move(loop)},
           _close_promise{std::make_unique<std::promise<void>>(std::move(p))},
           _vpn{std::move(vpnPlatform)},
+          _route_poker{std::make_shared<RoutePoker>(*this)},
           _disk_thread{_omq->add_tagged_thread("disk")},
           _last_tick{llarp::time_now_ms()}
     {

@@ -85,7 +85,6 @@ namespace llarp
         ~Router() = default;
 
       private:
-        std::shared_ptr<RoutePoker> _route_poker;
         std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
@@ -130,6 +129,7 @@ namespace llarp
         std::unique_ptr<std::promise<void>> _close_promise;
 
         std::shared_ptr<vpn::Platform> _vpn;
+        std::shared_ptr<RoutePoker> _route_poker;
 
         std::shared_ptr<path::PathContext> _path_context;
         std::shared_ptr<ContactDB> _contact_db;
