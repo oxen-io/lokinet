@@ -565,7 +565,8 @@ namespace llarp
 
     void LinkManager::on_conn_closed(oxen::quic::Connection& conn, uint64_t ec)
     {
-        if (!conn.remote_key().size()) {
+        if (!conn.remote_key().size())
+        {
             log::debug(logcat, "on_conn_closed on rejected connection, nothing to do");
             return;
         }

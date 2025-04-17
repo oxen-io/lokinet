@@ -639,6 +639,20 @@ namespace llarp::handlers
         */
         /*else*/ if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype == dns::qTypeAAAA)
         {
+            auto reply_with_mapped_address = [this, reply, msg](auto maybe_ip) mutable {
+                if (maybe_ip)
+                {
+                    auto& ip = *maybe_ip;
+                    if (!std::holds_alternative<ipv4>(ip))
+                        throw std::runtime_error{"Shouldn't be able to map to non-ipv4 yet!"};
+                    msg.add_IN_reply(std::get<ipv4>(ip).addr);
+                    reply(msg);
+                    return;
+                }
+                msg.add_nx_reply();
+                reply(msg);
+            };
+
             const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
             const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
             (void)isV6;
@@ -705,30 +719,8 @@ namespace llarp::handlers
             {
                 // TODO: handle .snode (if we want, or explicitly don't allow)
 
-                auto& netaddr = *maybe_netaddr;
-                _router.session_endpoint()->lookup_client_intro(
-                    netaddr.router_id(),
-                    [this, netaddr, hostname, tld, msg = std::move(msg), reply = std::move(reply)](
-                        std::optional<llarp::ClientContact> cc) mutable {
-                        if (cc)
-                        {
-                            log::debug(logcat, "client intro for {}.{} found:\n{}", hostname, tld, *cc);
-                            _router.session_endpoint()->initiate_remote_session(
-                                netaddr, [reply = std::move(reply), msg = std::move(msg)](ip_v ip) mutable {
-                                    auto& a = std::get<ipv4>(ip);
-                                    msg.add_IN_reply(a.addr);
-                                    reply(msg);
-                                });
-                            return;
-                        }
-                        else
-                        {
-                            log::debug(logcat, "It appears {}.{} has no contact information available.", hostname, tld);
-                        }
-                        msg.add_nx_reply();
-                        reply(msg);
-                    });
-                return true;  // attempting to handle, don't reply NX
+                reply_with_mapped_address(map_session_to_local_ip(*maybe_netaddr));
+                return true;
             }
             /*
             else if (addr.FromString(qname, ".loki"))
@@ -1031,7 +1023,38 @@ namespace llarp::handlers
                 session->send_path_data_message(std::move(pkt).steal_payload());
             }
             else
-                log::debug(logcat, "Could not find session (remote: {}) for outbound packet!", remote);
+            {
+                _router.session_endpoint()->lookup_client_intro(
+                    remote.router_id(),
+                    [this, remote, src = std::move(src), dest = std::move(dest), pkt = std::move(pkt)](
+                        std::optional<llarp::ClientContact> cc) mutable {
+                        if (cc)
+                        {
+                            log::debug(logcat, "client intro for {} found:\n{}", remote, *cc);
+                            _router.session_endpoint()->initiate_remote_session(
+                                remote, [this, remote, pkt = std::move(pkt)](ip_v) mutable {
+                                    if (auto session = _router.session_endpoint()->get_session(remote))
+                                    {
+                                        log::debug(
+                                            logcat,
+                                            "Dispatching outbound {}B packet for session (remote: {}): {}",
+                                            pkt.size(),
+                                            remote,
+                                            pkt.info_line());
+                                        session->send_path_data_message(std::move(pkt).steal_payload());
+                                    }
+                                });
+                            return;
+                        }
+                        else
+                        {
+                            log::debug(logcat, "It appears {} has no contact information available.", remote);
+                            if (auto icmp = pkt.make_icmp_unreachable())
+                                rewrite_and_send_packet(std::move(*icmp), std::move(src), std::move(dest));
+                        }
+                    });
+                log::debug(logcat, "No session for remote: {} for outbound packet, attempting to create one!", remote);
+            }
         }
         else
         {
