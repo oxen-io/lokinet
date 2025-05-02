@@ -31,6 +31,7 @@ namespace llarp
             throw std::invalid_argument{"Buffer size is too small for an IP packet!"};
         _buf.resize(sz);
         std::fill(_buf.begin(), _buf.end(), 0);
+        _init_internals();
     }
 
     IPPacket::IPPacket(bstring_view data) : IPPacket{reinterpret_cast<const unsigned char*>(data.data()), data.size()}
@@ -69,13 +70,13 @@ namespace llarp
 
     void IPPacket::_init_internals()
     {
-        _header = reinterpret_cast<ip_header*>(data());
-        _v6_header = reinterpret_cast<ipv6_header*>(data());
-
-        _proto = net::IPProtocol{_header->protocol};
-
         if (_buf.empty())
             return;
+
+        auto _header = reinterpret_cast<ip_header*>(data());
+        auto _v6_header = reinterpret_cast<ipv6_header*>(data());
+
+        _proto = net::IPProtocol{_header->protocol};
 
         _is_v4 = _header->version == v4_header_version;
         auto keep_port = _proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP;
@@ -114,6 +115,8 @@ namespace llarp
     {
         size_t hdr_sz = 0;
 
+        auto _header = reinterpret_cast<const ip_header*>(data());
+
         if (_header->protocol == 0x11)
             hdr_sz = 8;
         else
@@ -132,6 +135,7 @@ namespace llarp
     {
         log::trace(logcat, "Setting new source ({}) and destination ({}) IPs", src, dst);
 
+        auto _header = reinterpret_cast<ip_header*>(data());
         if (auto ihs = size_t(_header->header_len * 4), sz = size(); ihs <= sz)
         {
             auto* payload = data() + ihs;
@@ -289,24 +293,25 @@ namespace llarp
     {
         if (is_ipv4())
         {
+            auto _header = reinterpret_cast<const ip_header*>(data());
             auto ip_hdr_sz = _header->header_len * 4;
             size_t pkt_size = (ICMP_HEADER_SIZE + ip_hdr_sz) * 2;
 
             if (pkt_size < MIN_PACKET_SIZE)
                 return std::nullopt;
 
-            IPPacket pkt{pkt_size};
+            IPPacket pkt{*this};
 
-            pkt._header->version = 0x04;
-            pkt._header->header_len = 0x05;
-            pkt._header->service_type = 0;
-            pkt._header->checksum = 0;
-            pkt._header->total_len = ntohs(pkt_size);
-            pkt._header->src = _header->dest;
-            pkt._header->dest = _header->src;
-            pkt._header->protocol = 1;  // ICMP
-            pkt._header->ttl = pkt._header->ttl;
-            pkt._header->frag_off = oxenc::host_to_big<uint16_t>(0b0100000000000000);
+            pkt.header()->version = 0x04;
+            pkt.header()->header_len = 0x05;
+            pkt.header()->service_type = 0;
+            pkt.header()->checksum = 0;
+            pkt.header()->total_len = ntohs(pkt_size);
+            pkt.header()->src = _header->dest;
+            pkt.header()->dest = _header->src;
+            pkt.header()->protocol = 1;  // ICMP
+            pkt.header()->ttl = _header->ttl;
+            pkt.header()->frag_off = oxenc::host_to_big<uint16_t>(0b0100000000000000);
 
             uint8_t* itr = pkt.data() + ip_hdr_sz;
             uint8_t* icmp_begin = itr;  // type 'destination unreachable'
@@ -329,7 +334,7 @@ namespace llarp
             itr += ip_hdr_sz + ICMP_HEADER_SIZE;
 
             // calculate checksum of ip header
-            pkt._header->checksum = utils::ip_checksum(_buf.data(), ip_hdr_sz);
+            pkt.header()->checksum = utils::ip_checksum(pkt.data(), ip_hdr_sz);
 
             // calculate icmp checksum
             *checksum = utils::ip_checksum(icmp_begin, std::distance(icmp_begin, itr));

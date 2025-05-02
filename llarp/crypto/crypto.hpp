@@ -41,6 +41,7 @@ namespace llarp
 
         /// blake2b 256 bit
         bool shorthash(ShortHash&, uint8_t*, size_t size);
+        std::string shorthash(const std::string& to_hash);
 
         /// blake2s 256 bit hmac
         bool hmac(uint8_t*, const uint8_t*, size_t, const SharedSecret&);

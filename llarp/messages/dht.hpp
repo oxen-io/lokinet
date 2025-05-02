@@ -129,7 +129,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        inline static std::string serialize(std::string_view name_hash)
+        inline static std::string serialize(const std::string& name_hash)
         {
             oxenc::bt_dict_producer btdp;
 

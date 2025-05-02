@@ -722,6 +722,18 @@ namespace llarp::handlers
                 reply_with_mapped_address(map_session_to_local_ip(*maybe_netaddr));
                 return true;
             }
+            else if (tld == "loki"sv) {
+                auto lookup_name = hostname + "." + tld;
+                auto ons_reply = [this, reply, reply_with_mapped_address, lookup_name, msg](std::optional<NetworkAddress> maybe_netaddr) mutable {
+                    if (maybe_netaddr) {
+                        reply_with_mapped_address(map_session_to_local_ip(*maybe_netaddr));
+                        return;
+                    }
+                    msg.add_nx_reply();
+                    reply(msg);
+                };
+                _router.session_endpoint()->resolve_ons(lookup_name, nullptr);
+            }
             /*
             else if (addr.FromString(qname, ".loki"))
             {
@@ -1024,36 +1036,55 @@ namespace llarp::handlers
             }
             else
             {
-                _router.session_endpoint()->lookup_client_intro(
-                    remote.router_id(),
-                    [this, remote, src = std::move(src), dest = std::move(dest), pkt = std::move(pkt)](
-                        std::optional<llarp::ClientContact> cc) mutable {
-                        if (cc)
-                        {
-                            log::debug(logcat, "client intro for {} found:\n{}", remote, *cc);
-                            _router.session_endpoint()->initiate_remote_session(
-                                remote, [this, remote, pkt = std::move(pkt)](ip_v) mutable {
-                                    if (auto session = _router.session_endpoint()->get_session(remote))
-                                    {
-                                        log::debug(
-                                            logcat,
-                                            "Dispatching outbound {}B packet for session (remote: {}): {}",
-                                            pkt.size(),
-                                            remote,
-                                            pkt.info_line());
-                                        session->send_path_data_message(std::move(pkt).steal_payload());
-                                    }
-                                });
-                            return;
-                        }
-                        else
-                        {
-                            log::debug(logcat, "It appears {} has no contact information available.", remote);
-                            if (auto icmp = pkt.make_icmp_unreachable())
-                                rewrite_and_send_packet(std::move(*icmp), std::move(src), std::move(dest));
-                        }
-                    });
+                if (_router.session_endpoint()->have_pending_session(remote)) {
+                    _router.session_endpoint()->queue_session_packet(remote, std::move(pkt));
+                    return;
+                }
+
                 log::debug(logcat, "No session for remote: {} for outbound packet, attempting to create one!", remote);
+
+                if (remote.is_client()) {
+                    _router.session_endpoint()->lookup_client_intro(
+                        remote.router_id(),
+                        [this, remote, src = std::move(src), dest = std::move(dest), pkt = std::move(pkt)](
+                            std::optional<llarp::ClientContact> cc) mutable {
+                            if (cc)
+                            {
+                                log::debug(logcat, "client intro for {} found:\n{}", remote, *cc);
+                                _router.session_endpoint()->initiate_remote_session(
+                                    remote, nullptr);
+                                _router.session_endpoint()->queue_session_packet(remote, std::move(pkt));
+                                return;
+                            }
+                            else
+                            {
+                                log::debug(logcat, "It appears {} has no contact information available.", remote);
+                                if (auto icmp = pkt.make_icmp_unreachable())
+                                    send_packet_to_net_if(std::move(*icmp));
+                            }
+                        });
+                }
+                else {
+                    _router.session_endpoint()->lookup_relay_contact(
+                        remote.router_id(),
+                        [this, remote, src = std::move(src), dest = std::move(dest), pkt = std::move(pkt)](
+                            std::optional<llarp::RemoteRC> rc) mutable {
+                            if (rc)
+                            {
+                                log::debug(logcat, "Relay contact for {} found:\n{}", remote, *rc);
+                                _router.session_endpoint()->initiate_remote_session(
+                                    remote, nullptr);
+                                _router.session_endpoint()->queue_session_packet(remote, std::move(pkt));
+                                return;
+                            }
+                            else
+                            {
+                                log::debug(logcat, "It appears {} has no contact information available.", remote);
+                                if (auto icmp = pkt.make_icmp_unreachable())
+                                    send_packet_to_net_if(std::move(*icmp));
+                            }
+                        });
+                }
             }
         }
         else
@@ -1062,7 +1093,7 @@ namespace llarp::handlers
 
             // make ICMP unreachable
             if (auto icmp = pkt.make_icmp_unreachable())
-                rewrite_and_send_packet(std::move(*icmp), std::move(src), std::move(dest));
+                send_packet_to_net_if(std::move(*icmp));
         }
     }
 

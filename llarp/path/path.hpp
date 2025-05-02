@@ -72,7 +72,7 @@ namespace llarp
 
             void Tick(std::chrono::milliseconds now);
 
-            bool resolve_sns(std::string_view name, bt_control_response_hook func);
+            bool resolve_sns(const std::string& name_hash, bt_control_response_hook func);
 
             bool fetch_relay_contact(const RouterID& needed, bt_control_response_hook func);
 

@@ -133,9 +133,9 @@ namespace llarp::path
         return send_path_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
     }
 
-    bool Path::resolve_sns(std::string_view name, bt_control_response_hook func)
+    bool Path::resolve_sns(const std::string& name_hash, bt_control_response_hook func)
     {
-        return send_path_control_message("resolve_sns", ResolveSNS::serialize(name), std::move(func));
+        return send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
 
     std::string Path::make_path_message(std::string inner_payload)

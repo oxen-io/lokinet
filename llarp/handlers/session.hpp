@@ -35,6 +35,8 @@ namespace llarp
 
             address_map<oxen::quic::Address, NetworkAddress> _address_map;
 
+            std::unordered_map<NetworkAddress, std::vector<IPPacket>> pending_sessions;
+
             // Remote client exit-node addresses mapped to local IP ranges
             //  - Directly pre-loaded from config
             address_map<IPRange, NetworkAddress> _range_map;
@@ -195,6 +197,10 @@ namespace llarp
             void unmap_local_range_by_remote(const NetworkAddress& remote);
 
             void unmap_range_by_name(const std::string& name);
+
+            bool have_pending_session(const NetworkAddress& remote);
+
+            void queue_session_packet(const NetworkAddress& remote, IPPacket pkt);
 
           private:
             void _localcc_update_fail();

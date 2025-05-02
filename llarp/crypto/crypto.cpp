@@ -148,6 +148,15 @@ namespace llarp
         return dh_server_priv(shared, pk, sk, n);
     }
 
+    std::string crypto::shorthash(const std::string& to_hash)
+    {
+        std::string result;
+        result.resize(ShortHash::SIZE);
+        if (crypto_generichash_blake2b(reinterpret_cast<uint8_t*>(result.data()), ShortHash::SIZE, reinterpret_cast<const uint8_t*>(to_hash.data()), to_hash.size(), nullptr, 0) == -1)
+            throw std::runtime_error{"blake2b failed for some reason"};
+        return result;
+    }
+
     bool crypto::shorthash(ShortHash& result, uint8_t* buf, size_t size)
     {
         return crypto_generichash_blake2b(result.data(), ShortHash::SIZE, buf, size, nullptr, 0) != -1;

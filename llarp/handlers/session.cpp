@@ -439,6 +439,7 @@ namespace llarp::handlers
             hook(std::nullopt);
         };
 
+        auto name_hash = crypto::shorthash(sns);
         {
             Lock_t l{paths_mutex};
 
@@ -446,7 +447,7 @@ namespace llarp::handlers
             {
                 log::info(
                     logcat, "Querying pivot:{} for name lookup (target: {})", path->pivot_rid().short_string(), sns);
-                path->resolve_sns(sns, response_handler);
+                path->resolve_sns(name_hash, response_handler);
             }
         }
     }
@@ -881,6 +882,10 @@ namespace llarp::handlers
              remote_intros = std::move(intros),
              hook = std::move(cb),
              session_keys = std::move(kx_data)](oxen::quic::message m) mutable {
+
+                auto pending_packets = std::move(pending_sessions[remote]);
+log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
+                pending_sessions.erase(remote);
                 if (m)
                 {
                     log::debug(logcat, "Call to initiate OutboundClientSession succeeded!");
@@ -914,6 +919,8 @@ namespace llarp::handlers
                     log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
 
                     // TESTNET: use new ::map_session(...) function after finishing embedded hooks
+                    /* FIXME: IP Mapping is now done via DNS
+                     * FIXME: if not using tun, should still be handled before session establishment
                     if (session->using_tun())
                     {
                         log::trace(logcat, "Instructing lokinet TUN device to create mapped route...");
@@ -926,13 +933,16 @@ namespace llarp::handlers
                                 std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
                                                                         : std::get<ipv6>(*maybe_ip).to_string());
 
-                            return hook(*maybe_ip);
+                            if (hook)
+                                hook(*maybe_ip);
+                            return;
                         }
 
                         log::critical(
                             logcat,
                             "Lokinet TUN failed to map route for session traffic to remote: {}",
                             session->remote());
+                        return;
                         // TESTNET: TODO: CLOSE THIS HERE
                     }
                     else
@@ -940,6 +950,13 @@ namespace llarp::handlers
                         log::info(logcat, "Starting TCP listener to route session traffic to backend...");
                         session->tcp_backend_listen(std::move(hook));
                     }
+                    */
+                    if (pending_packets.size()) {
+                        log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
+                        for (auto& pkt : pending_packets)
+                            session->send_path_data_message(std::move(pkt).steal_payload());
+                    }
+                    return;
                 }
                 else
                 {
@@ -985,6 +1002,10 @@ namespace llarp::handlers
              pivot_txid,
              hook = std::move(cb),
              session_keys = path->hops.back().kx](oxen::quic::message m) mutable {
+
+                auto pending_packets = std::move(pending_sessions[remote]);
+                pending_sessions.erase(remote);
+
                 if (m)
                 {
                     log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
@@ -1023,7 +1044,9 @@ namespace llarp::handlers
                                 std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
                                                                         : std::get<ipv6>(*maybe_ip).to_string());
 
-                            return hook(*maybe_ip);
+                            if (hook)
+                                hook(*maybe_ip);
+                            return;
                         }
 
                         log::critical(
@@ -1035,6 +1058,11 @@ namespace llarp::handlers
                     {
                         log::info(logcat, "Starting TCP listener to route session traffic to backend...");
                         session->tcp_backend_listen(std::move(hook));
+                    }
+                    if (pending_packets.size()) {
+                        log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
+                        for (auto& pkt : pending_packets)
+                            session->send_path_data_message(std::move(pkt).steal_payload());
                     }
                 }
                 else
@@ -1094,6 +1122,13 @@ namespace llarp::handlers
 
     void SessionEndpoint::initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
     {
+        if (pending_sessions.contains(remote)) {
+            log::debug(logcat, "Session init to remote {} already in progress.", remote);
+            return;
+        }
+
+        pending_sessions[remote];
+
         if (remote.is_client())
             _initiate_client_session(remote, std::move(cb));
         else
@@ -1163,5 +1198,20 @@ namespace llarp::handlers
     void SessionEndpoint::unmap_local_range_by_remote(const NetworkAddress& remote) { _range_map.unmap(remote); }
 
     void SessionEndpoint::unmap_range_by_name(const std::string& name) { _range_map.unmap(name); }
+
+    bool SessionEndpoint::have_pending_session(const NetworkAddress& remote)
+    {
+        return pending_sessions.contains(remote);
+    }
+
+    void SessionEndpoint::queue_session_packet(const NetworkAddress& remote, IPPacket pkt)
+    {
+        log::error(logcat, "QUEUE_SESSION_PACKET");
+        if (pending_sessions.contains(remote)) {
+        log::error(logcat, "QUEUED THE PACKET");
+            if (pending_sessions[remote].size() < 100) // FIXME: constant
+                pending_sessions[remote].push_back(std::move(pkt));
+        }
+    }
 
 }  //  namespace llarp::handlers

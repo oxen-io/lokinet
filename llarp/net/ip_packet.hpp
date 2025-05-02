@@ -35,9 +35,6 @@ namespace llarp
       private:
         std::vector<uint8_t> _buf{};
 
-        ip_header* _header{};
-        ipv6_header* _v6_header{};
-
         oxen::quic::Address _src_addr{};
         oxen::quic::Address _dst_addr{};
 
@@ -84,13 +81,11 @@ namespace llarp
 
         ipv6 dest_ipv6() const { return _dst_addr.to_ipv6(); }
 
-        ip_header* header() { return _header; }
+        ip_header* header() { return reinterpret_cast<ip_header*>(data()); }
+        const ip_header* header() const { return header(); }
 
-        const ip_header* header() const { return reinterpret_cast<const ip_header*>(_header); }
-
-        ipv6_header* v6_header() { return _v6_header; }
-
-        const ipv6_header* v6_header() const { return reinterpret_cast<const ipv6_header*>(_v6_header); }
+        ipv6_header* v6_header() { return reinterpret_cast<ipv6_header*>(data()); }
+        const ipv6_header* v6_header() const { return v6_header(); }
 
         std::optional<std::pair<const char*, size_t>> l4_data() const;
 

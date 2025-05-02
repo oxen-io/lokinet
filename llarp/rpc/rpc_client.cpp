@@ -314,7 +314,7 @@ namespace llarp::rpc
         log::debug(logcat, "Looking Up ONS NameHash {}", namehash);
         const nlohmann::json req{{"type", 2}, {"name_hash", oxenc::to_hex(namehash)}};
         request(
-            "rpc.lns_resolve",
+            "rpc.ons_resolve",
             [this, resultHandler](bool success, std::vector<std::string> data) {
                 std::optional<EncryptedSNSRecord> maybe = std::nullopt;
                 if (success)
