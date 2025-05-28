@@ -372,11 +372,15 @@ namespace llarp
         (void)params;
 
         static constexpr Default ProfilingValueDefault{true};
+        static constexpr Default InitTunDefault{true};
         static constexpr Default SaveProfilesDefault{true};
         static constexpr Default ReachableDefault{true};
         static constexpr Default HopsDefault{4};
         static constexpr Default PathsDefault{4};
         static constexpr Default IP6RangeDefault{"[fd00::]/16"};
+
+        conf.define_option<bool>(
+            "network", "init-tun", InitTunDefault, Hidden, assignment_acceptor(init_tun));
 
         conf.define_option<bool>(
             "network", "save-profiles", SaveProfilesDefault, Hidden, assignment_acceptor(save_profiles));
@@ -1869,7 +1873,7 @@ namespace llarp
     {
         auto config = std::make_shared<Config>();
         config->load();
-        config->logging.level = log::Level::off;
+        config->logging.level = log::Level::warning;
         config->api.enable_rpc_server = false;
         config->network.init_tun = false;
         config->network.save_profiles = false;

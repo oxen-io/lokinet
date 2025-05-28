@@ -701,6 +701,8 @@ DISABLE_WARNING_POP
                 log::debug(logcat, "Initializing virtual TUN device...");
                 init_tun();
             }
+            else
+                log::debug(logcat, "Not initializing TUN device; disabled in config.");
 
             return true;
         });
