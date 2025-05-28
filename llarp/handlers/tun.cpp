@@ -1026,7 +1026,7 @@ namespace llarp::handlers
 
             if (auto session = _router.session_endpoint()->get_session(remote))
             {
-                log::debug(
+                log::trace(
                     logcat,
                     "Dispatching outbound {}B packet for session (remote: {}): {}",
                     pkt.size(),
@@ -1185,7 +1185,7 @@ namespace llarp::handlers
         }
         else
         {
-            log::debug(logcat, "inbound session pkt: {}", pkt.info_line());
+            log::trace(logcat, "inbound session pkt: {}", pkt.info_line());
 
             if (pkt_is_ipv4)
                 dest = _local_addr.to_ipv4();

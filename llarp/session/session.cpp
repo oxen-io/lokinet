@@ -38,15 +38,22 @@ namespace llarp::session
     {
         set_new_current_path_interface(std::move(_p));
 
-        if (_use_tun)
-            _recv_dgram = [this](std::vector<uint8_t> data) {
-                _r.tun_endpoint()->handle_inbound_packet(IPPacket{std::move(data)}, _tag, _remote);
-            };
-        else
-            _recv_dgram = [this](std::vector<uint8_t> data) {
-                _ep->manually_receive_packet(
-                    NetworkPacket{oxen::quic::Path{}, bstring{reinterpret_cast<std::byte*>(data.data()), data.size()}});
-            };
+
+        // FIXME: this is ugly, but maybe necessary?  either side could be
+        // tun or not tun, and that changes things, but how that needs to change things
+        // is a bit unclear at the moment.
+        _recv_dgram = [this](std::vector<uint8_t> data) {
+            IPPacket pkt{std::move(data)};
+            bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
+            if (_use_tun || (is_udp && _r.using_tun_if()))
+                _r.tun_endpoint()->handle_inbound_packet(std::move(pkt), _tag, _remote);
+            else if (is_udp)
+                handle_udp_from_remote(std::move(pkt));
+            // TODO: non-UDP non-tun?
+            /*
+            _ep->manually_receive_packet(std::move(pkt));
+            */
+        };
     }
 
     BaseSession::~BaseSession()
@@ -69,7 +76,7 @@ namespace llarp::session
 
     bool BaseSession::send_path_data_message(std::string data)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
 
         auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
@@ -151,6 +158,51 @@ namespace llarp::session
         _handles.emplace(_handle->port(), std::move(_handle));
     }
 
+    void BaseSession::handle_udp_from_remote(IPPacket&& pkt)
+    {
+        auto source_port = pkt.source_port();
+        auto itr = udp_handles.find(source_port);
+        if (itr == udp_handles.end()) {
+            log::debug(logcat, "Received udp datagram from unknown source port {}", source_port);
+            return;
+        }
+        auto& socket = itr->second;
+        auto dest_port = pkt.dest_port();
+
+        auto payload = pkt.l4_data();
+        if (payload.empty()) {
+            log::warning(logcat, "Received udp datagram with empty payload...");
+            return;
+        }
+        auto dest = socket->bind();
+        dest.set_port(dest_port);
+        socket->send(dest, payload);
+    }
+
+    uint16_t BaseSession::setup_udp_mapping(uint16_t dest_port)
+    {
+        if (auto itr = udp_handles.find(dest_port); itr != udp_handles.end()) {
+            auto mapped_port = itr->second->bind().port();
+            log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
+            return mapped_port;
+        }
+        oxen::quic::Address src{"127.0.0.1"s, 54321};
+        oxen::quic::Address dest{"127.0.0.1"s, dest_port};
+        auto udp_handle = std::make_unique<UDPHandle>(_r.loop(), src, [this, dest=std::move(dest)](auto pkt) {
+
+                // ip doesn't matter here, but give remote the source port so we receive responses
+                // as destined for that port and know where to send them
+                auto src = pkt.path.remote;
+                log::trace(logcat, "Packet received from {}", src);
+                auto payload = pkt.data();
+                send_path_data_message(IPPacket::make_udp_packet(src, dest, payload));
+                });
+        auto bound_port = udp_handle->bind().port();
+        udp_handles[dest_port] = std::move(udp_handle);
+
+        return bound_port;
+    }
+
     void BaseSession::tcp_backend_listen(on_session_init_hook cb, uint16_t port)
     {
         _init_ep();
@@ -185,6 +237,7 @@ namespace llarp::session
 
         _handles.emplace(_handle->port(), std::move(_handle));
 
+        /*
         _ci = _ep->connect(
             KeyedAddress{TUNNEL_PUBKEY},
             _r.quic_tunnel()->creds(),
@@ -192,6 +245,7 @@ namespace llarp::session
             [](oxen::quic::connection_interface&, uint64_t) {
                 // TESTNET: TODO:
             });
+        */
     }
 
     void BaseSession::activate()

@@ -87,7 +87,7 @@ namespace llarp
         ipv6_header* v6_header() { return reinterpret_cast<ipv6_header*>(data()); }
         const ipv6_header* v6_header() const { return v6_header(); }
 
-        std::optional<std::pair<const char*, size_t>> l4_data() const;
+        std::span<std::byte> l4_data();
 
         void clear_addresses()
         {
@@ -101,6 +101,8 @@ namespace llarp
         void update_ipv6_address(ipv6 src, ipv6 dst, std::optional<uint32_t> flowlabel = std::nullopt);
 
         std::optional<IPPacket> make_icmp_unreachable() const;
+
+        static std::string make_udp_packet(const oxen::quic::Address& src, const oxen::quic::Address& dest, std::span<const std::byte>& payload);
 
         uint8_t* data() { return _buf.data(); }
 

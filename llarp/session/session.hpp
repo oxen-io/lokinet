@@ -4,6 +4,7 @@
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/tag.hpp>
 #include <llarp/ev/tcp.hpp>
+#include <llarp/ev/udp.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/path.hpp>
 
@@ -14,7 +15,8 @@
 
 namespace llarp
 {
-    using on_session_init_hook = std::function<void(ip_v)>;
+    // FIXME: have this hook give an error string on failure, not just false
+    using on_session_init_hook = std::function<void(bool)>;
     using recv_session_dgram_cb = std::function<void(std::vector<uint8_t>)>;
 
     inline constexpr size_t PATHS_PER_INTRO{2};
@@ -79,6 +81,10 @@ namespace llarp
 
             void _init_ep();
 
+            // for tunneled clients, maps remote dest port to udp socket
+            // for return traffic, dest port will be the client's udp socket port
+            std::unordered_map<uint16_t, std::unique_ptr<UDPHandle>> udp_handles;
+
           public:
             BaseSession(
                 Router& r,
@@ -111,13 +117,17 @@ namespace llarp
 
             void publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
 
+            bool using_tun() const { return _use_tun; }
+
             // inbound
             void tcp_backend_connect();
 
             // outbound
             void tcp_backend_listen(on_session_init_hook cb, uint16_t port = 0);
 
-            bool using_tun() const { return _use_tun; }
+            void handle_udp_from_remote(IPPacket&& pkt);
+
+            uint16_t setup_udp_mapping(uint16_t dest_port);
 
             session_tag tag() { return _tag; }
 

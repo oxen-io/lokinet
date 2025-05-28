@@ -111,24 +111,25 @@ namespace llarp
         }
     }
 
-    std::optional<std::pair<const char*, size_t>> IPPacket::l4_data() const
+    std::span<std::byte> IPPacket::l4_data()
     {
         size_t hdr_sz = 0;
 
         auto _header = reinterpret_cast<const ip_header*>(data());
 
-        if (_header->protocol == 0x11)
+        if (_header->protocol == static_cast<uint8_t>(net::IPProtocol::UDP))
             hdr_sz = 8;
         else
-            return std::nullopt;
+            return {};
 
         // check for invalid size
         if (size() < (static_cast<size_t>(_header->header_len) * 4) + hdr_sz)
-            return std::nullopt;
+            return {};
 
-        const uint8_t* ptr = data() + ((static_cast<size_t>(_header->header_len) * 4) + hdr_sz);
+        size_t headers_len = ((static_cast<size_t>(_header->header_len) * 4) + hdr_sz);
+        std::byte* ptr = reinterpret_cast<std::byte*>(data()) + headers_len;
 
-        return std::make_pair(reinterpret_cast<const char*>(ptr), std::distance(ptr, data() + size()));
+        return {ptr, size() - headers_len};
     }
 
     void IPPacket::update_ipv4_address(ipv4 src, ipv4 dst)
@@ -344,6 +345,37 @@ namespace llarp
         }
 
         return std::nullopt;
+    }
+
+    // TODO: ipv6
+    // FIXME: return type is silly, but where it's needed wants a string atm
+    std::string IPPacket::make_udp_packet(const oxen::quic::Address& src, const oxen::quic::Address& dest, std::span< const std::byte>& payload)
+    {
+        std::string pkt{};
+        pkt.resize(sizeof(ip_header) + sizeof(udp_header) + payload.size());
+        ip_header* ip_hdr = reinterpret_cast<ip_header*>(pkt.data());
+        udp_header* udp_hdr = reinterpret_cast<udp_header*>(pkt.data() + sizeof(ip_header));
+        std::byte* data = reinterpret_cast<std::byte*>(pkt.data() + sizeof(ip_header) + sizeof(udp_header));
+        std::memcpy(data, payload.data(), payload.size());
+
+        pkt.data()[1] = 0; // DSCP and ECN
+        ip_hdr->version = 4;
+        ip_hdr->header_len = 5;
+        ip_hdr->total_len = htons(sizeof(ip_header) + sizeof(udp_header) + payload.size());
+        ip_hdr->protocol = static_cast<uint8_t>(net::IPProtocol::UDP);  // udp
+        ip_hdr->ttl = 64;
+        ip_hdr->frag_off = htons(0b0100000000000000);
+
+        ip_hdr->src = oxenc::host_to_big(src.to_ipv4().addr);
+        ip_hdr->dest = oxenc::host_to_big(dest.to_ipv4().addr);
+        ip_hdr->checksum = utils::ip_checksum(reinterpret_cast<uint8_t*>(ip_hdr), sizeof(ip_header));
+
+        udp_hdr->src = oxenc::host_to_big(src.port());
+        udp_hdr->dest = oxenc::host_to_big(dest.port());
+        udp_hdr->len = oxenc::host_to_big<uint16_t>(payload.size() + sizeof(udp_header));
+        udp_hdr->checksum = 0; // FIXME: does this matter?  old lokinet set 0
+
+        return pkt;
     }
 
     NetworkPacket IPPacket::make_netpkt() &&

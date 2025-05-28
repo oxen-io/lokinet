@@ -35,7 +35,10 @@ namespace llarp
 
             address_map<oxen::quic::Address, NetworkAddress> _address_map;
 
+            // this could probably map to a pair of vectors, or pending packets could
+            // be wrapped in callbacks, but for now this works
             std::unordered_map<NetworkAddress, std::vector<IPPacket>> pending_sessions;
+            std::unordered_map<NetworkAddress, std::vector<std::function<void(bool)>>> pending_session_hooks;
 
             // Remote client exit-node addresses mapped to local IP ranges
             //  - Directly pre-loaded from config

@@ -372,7 +372,9 @@ namespace llarp::rpc
             {
                 log::debug(logcat, "Beginning session init to remote instance: {}", netaddr);
                 _router.session_endpoint()->initiate_remote_session(
-                    netaddr, [&, replier = sessioninit.move()](ip_v ip) mutable {
+                    netaddr, nullptr);
+                    /*[&, replier = sessioninit.move()](auto success) mutable {
+                        // FIXME: needs redone, initiate remote session no longer returns an ip
                         nlohmann::json result;
                         std::string a = std::holds_alternative<ipv4>(ip) ? std::get<ipv4>(ip).to_string()
                                                                          : std::get<ipv6>(ip).to_string();
@@ -380,6 +382,7 @@ namespace llarp::rpc
                         log::info(logcat, "RPC call to `session_init` succeeded: {}", a);
                         replier.reply(result.dump());
                     });
+                    */
                 log::info(logcat, "RPC Server dispatched `session_init` to remote:{}", netaddr);
             }
             catch (const std::exception& e)

@@ -688,7 +688,7 @@ namespace llarp::handlers
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (s->using_tun())
+        if (_router.using_tun_if())
         {
             log::trace(logcat, "{} Instructing lokinet TUN device to create mapped route...", success_msg);
 
@@ -708,10 +708,7 @@ namespace llarp::handlers
             return std::nullopt;
         }
 
-        // TESTNET:
-        log::warning(logcat, "INCOMPLETE EMBEDDED ROUTE");
-        // log::info(logcat, "{} Connecting to TCP backend to route session traffic...", success_msg);
-        // session->tcp_backend_connect();
+        //TODO: if we're not tun-based -- currently not allowing inbound sessions for non-tun
 
         return std::nullopt;
     }
@@ -884,8 +881,9 @@ namespace llarp::handlers
              session_keys = std::move(kx_data)](oxen::quic::message m) mutable {
 
                 auto pending_packets = std::move(pending_sessions[remote]);
-log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
+                auto pending_hooks = std::move(pending_session_hooks[remote]);
                 pending_sessions.erase(remote);
+                pending_session_hooks.erase(remote);
                 if (m)
                 {
                     log::debug(logcat, "Call to initiate OutboundClientSession succeeded!");
@@ -918,44 +916,15 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
 
                     log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
 
-                    // TESTNET: use new ::map_session(...) function after finishing embedded hooks
-                    /* FIXME: IP Mapping is now done via DNS
-                     * FIXME: if not using tun, should still be handled before session establishment
-                    if (session->using_tun())
-                    {
-                        log::trace(logcat, "Instructing lokinet TUN device to create mapped route...");
-                        if (auto maybe_ip = _router.tun_endpoint()->map_session_to_local_ip(session->remote()))
-                        {
-                            log::info(
-                                logcat,
-                                "TUN device successfully routing session (remote: {}) via local ip: {}",
-                                session->remote(),
-                                std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
-                                                                        : std::get<ipv6>(*maybe_ip).to_string());
-
-                            if (hook)
-                                hook(*maybe_ip);
-                            return;
-                        }
-
-                        log::critical(
-                            logcat,
-                            "Lokinet TUN failed to map route for session traffic to remote: {}",
-                            session->remote());
-                        return;
-                        // TESTNET: TODO: CLOSE THIS HERE
-                    }
-                    else
-                    {
-                        log::info(logcat, "Starting TCP listener to route session traffic to backend...");
-                        session->tcp_backend_listen(std::move(hook));
-                    }
-                    */
                     if (pending_packets.size()) {
                         log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
                         for (auto& pkt : pending_packets)
                             session->send_path_data_message(std::move(pkt).steal_payload());
                     }
+                    if (hook)
+                        hook(true);
+                    for (auto& h : pending_hooks)
+                        h(true);
                     return;
                 }
                 else
@@ -977,6 +946,10 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
                         logcat,
                         "Call to initiate OutboundClientSession FAILED; reason: {}",
                         status.value_or("<none given>"));
+                    if (hook)
+                        hook(false);
+                    for (auto& h : pending_hooks)
+                        h(true);
                 }
             });
 
@@ -1004,7 +977,9 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
              session_keys = path->hops.back().kx](oxen::quic::message m) mutable {
 
                 auto pending_packets = std::move(pending_sessions[remote]);
+                auto pending_hooks = std::move(pending_session_hooks[remote]);
                 pending_sessions.erase(remote);
+                pending_session_hooks.erase(remote);
 
                 if (m)
                 {
@@ -1032,38 +1007,13 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
 
                     log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
 
-                    if (session->using_tun())
-                    {
-                        log::trace(logcat, "Instructing lokinet TUN device to create mapped route...");
-                        if (auto maybe_ip = _router.tun_endpoint()->map_session_to_local_ip(session->remote()))
-                        {
-                            log::info(
-                                logcat,
-                                "TUN device successfully routing session (remote: {}) via local ip: {}",
-                                session->remote(),
-                                std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
-                                                                        : std::get<ipv6>(*maybe_ip).to_string());
-
-                            if (hook)
-                                hook(*maybe_ip);
-                            return;
-                        }
-
-                        log::critical(
-                            logcat,
-                            "Lokinet TUN failed to map route for session traffic to remote: {}",
-                            session->remote());
-                    }
-                    else
-                    {
-                        log::info(logcat, "Starting TCP listener to route session traffic to backend...");
-                        session->tcp_backend_listen(std::move(hook));
-                    }
                     if (pending_packets.size()) {
                         log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
                         for (auto& pkt : pending_packets)
                             session->send_path_data_message(std::move(pkt).steal_payload());
                     }
+                    for (auto& h : pending_hooks)
+                        h(true);
                 }
                 else
                 {
@@ -1084,6 +1034,10 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
                         logcat,
                         "Call to initiate OutboundRelaySession FAILED; reason: {}",
                         status.value_or("<none given>"));
+                    if (hook)
+                        hook(false);
+                    for (auto& h : pending_hooks)
+                        h(false);
                 }
             });
 
@@ -1123,11 +1077,14 @@ log::error(logcat, "SESSION HAS {} PENDING PACKETS", pending_packets.size());
     void SessionEndpoint::initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
     {
         if (pending_sessions.contains(remote)) {
+            if (cb)
+                pending_session_hooks[remote].push_back(std::move(cb));
             log::debug(logcat, "Session init to remote {} already in progress.", remote);
             return;
         }
 
         pending_sessions[remote];
+        pending_session_hooks[remote];
 
         if (remote.is_client())
             _initiate_client_session(remote, std::move(cb));
