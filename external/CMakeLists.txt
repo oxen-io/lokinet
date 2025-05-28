@@ -87,7 +87,7 @@ endif()
 
 
 set(LIBQUIC_BUILD_TESTS OFF CACHE BOOL "")
-system_or_submodule(OXENQUIC quic liboxenquic>=1.2.0 oxen-libquic)
+system_or_submodule(OXENQUIC quic liboxenquic>=1.4.1 oxen-libquic)
 
 
 # cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires

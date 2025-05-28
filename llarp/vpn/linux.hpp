@@ -204,7 +204,7 @@ namespace llarp::vpn
             {
                 family = AF_INET6;
                 bitlen = 128;
-                auto in6 = v6.to_in6();
+                auto in6 = in6_addr(v6);
                 std::memcpy(&data, &in6, sizeof(in6_addr));
             }
 

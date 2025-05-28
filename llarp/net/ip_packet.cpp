@@ -101,8 +101,8 @@ namespace llarp
         }
         else
         {
-            auto srcv6 = ipv6{&_v6_header->src};
-            auto dstv6 = ipv6{&_v6_header->dest};
+            auto srcv6 = ipv6{_v6_header->src};
+            auto dstv6 = ipv6{_v6_header->dest};
 
             log::trace(logcat, "srcv6:{}:{}, dstv6:{}:{}", srcv6, src_port, dstv6, dest_port);
 
@@ -202,8 +202,8 @@ namespace llarp
         }
 
         // IPv6 address
-        hdr->src = src.to_in6();
-        hdr->dest = dst.to_in6();
+        hdr->src = in6_addr(src);
+        hdr->dest = in6_addr(dst);
 
         // TODO IPv6 header options
         auto* pld = data() + ihs;

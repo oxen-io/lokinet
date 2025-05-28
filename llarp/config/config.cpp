@@ -1873,7 +1873,7 @@ namespace llarp
     {
         auto config = std::make_shared<Config>();
         config->load();
-        config->logging.level = log::Level::warning;
+        config->logging.level = log::Level::warn;
         config->api.enable_rpc_server = false;
         config->network.init_tun = false;
         config->network.save_profiles = false;
