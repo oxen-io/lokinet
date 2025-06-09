@@ -118,7 +118,7 @@ Lokinet - реализация LLARP (протокол анонимной мар
     $ cd lokinet
     $ mkdir build-windows
     $ cd build-windows
-    $ cmake -DBUILD_STATIC_DEPS=ON -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
+    $ cmake -DBUILD_STATIC_DEPS=ON -DLOKINET_NATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DLOKINET_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DLOKINET_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
     $ cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
 
 ### Solaris 2.10+

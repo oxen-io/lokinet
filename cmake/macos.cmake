@@ -130,7 +130,7 @@ add_custom_command(OUTPUT "${mac_icon}"
   DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet-mac.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
 add_custom_target(icon DEPENDS "${mac_icon}")
 
-if(BUILD_PACKAGE)
+if(LOKINET_PACKAGE)
   add_executable(seticon "${PROJECT_SOURCE_DIR}/contrib/macos/seticon.swift")
   add_custom_command(OUTPUT "${lokinet_installer}.dmg"
     DEPENDS notarize seticon

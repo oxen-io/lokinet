@@ -13,14 +13,14 @@ cd build-mac
 cmake \
       -G Ninja \
       -DBUILD_STATIC_DEPS=ON \
-      -DWITH_TESTS=OFF \
-      -DWITH_BOOTSTRAP=OFF \
-      -DNATIVE_BUILD=OFF \
+      -DLOKINET_TESTS=OFF \
+      -DLOKINET_BOOTSTRAP=OFF \
+      -DLOKINET_NATIVE_BUILD=OFF \
       -DWITH_LTO=ON \
       -DCMAKE_BUILD_TYPE=Release \
       -DMACOS_SYSTEM_EXTENSION=ON \
       -DCODESIGN=ON \
-      -DBUILD_PACKAGE=ON \
+      -DLOKINET_PACKAGE=ON \
       "$@" \
       ..
 

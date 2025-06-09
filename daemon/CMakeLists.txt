@@ -14,7 +14,7 @@ add_executable(lokinet-cntrl lokinet-cntrl.cpp)
 enable_lto(lokinet lokinet-cntrl)
 list(APPEND exetargets lokinet-cntrl)
 
-if(WITH_BOOTSTRAP)
+if(LOKINET_BOOTSTRAP)
   add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
   list(APPEND exetargets lokinet-bootstrap)
   enable_lto(lokinet-bootstrap)
@@ -37,7 +37,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-if(WITH_BOOTSTRAP)
+if(LOKINET_BOOTSTRAP)
   target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
   if(NOT WIN32)
     find_package(OpenSSL REQUIRED)
@@ -60,7 +60,7 @@ foreach(exe ${exetargets})
     target_link_directories(${exe} PRIVATE /usr/local/lib)
   endif()
   target_link_libraries(${exe} PRIVATE lokinet_daemon)
-  if(STRIP_SYMBOLS)
+  if(LOKINET_STRIP)
     add_custom_command(TARGET ${exe}
       POST_BUILD
       COMMAND ${CMAKE_OBJCOPY} ARGS --only-keep-debug $<TARGET_FILE:${exe}> $<TARGET_FILE:${exe}>.debug
@@ -86,7 +86,7 @@ if(WITH_SETCAP)
   install(CODE "execute_process(COMMAND ${SETCAP} cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
 endif()
 
-if(STRIP_SYMBOLS)
+if(LOKINET_STRIP)
   add_custom_target(symbols ALL
     COMMAND ${CMAKE_COMMAND} -E tar cJf ${CMAKE_CURRENT_BINARY_DIR}/debug-symbols.tar.xz $<TARGET_FILE:lokinet>.debug
     DEPENDS lokinet)

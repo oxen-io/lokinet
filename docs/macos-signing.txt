@@ -118,6 +118,6 @@ here's how you make a signed lokinet app:
    build directory (or alternatively `ninja notarize`, but the former gives you status output while
    it runs).
 
-5) Packaging the app: you want to use `-DBUILD_PACKAGE=ON` when configuring with cmake and then,
+5) Packaging the app: you want to use `-DLOKINET_PACKAGE=ON` when configuring with cmake and then,
    once all signing and notarization is complete, run `cpack` which will give you a .dmg and a .zip
    containing the release.

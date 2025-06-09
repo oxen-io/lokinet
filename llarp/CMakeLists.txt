@@ -175,9 +175,9 @@ lokinet_add_library(lokinet-nodedb
 
 set(BOOTSTRAP_FALLBACKS)
 foreach(bs IN ITEMS MAINNET TESTNET)
-  if(BOOTSTRAP_FALLBACK_${bs})
-    message(STATUS "Building with ${bs} fallback bootstrap path \"${BOOTSTRAP_FALLBACK_${bs}}\"")
-    file(READ "${BOOTSTRAP_FALLBACK_${bs}}" bs_data HEX)
+  if(LOKINET_BOOTSTRAP_FALLBACK_${bs})
+    message(STATUS "Building with ${bs} fallback bootstrap path \"${LOKINET_BOOTSTRAP_FALLBACK_${bs}}\"")
+    file(READ "${LOKINET_BOOTSTRAP_FALLBACK_${bs}}" bs_data HEX)
     if(bs STREQUAL TESTNET)
       set(network "testnet")
     elseif(bs STREQUAL MAINNET)
@@ -275,7 +275,7 @@ target_link_libraries(lokinet-base
 )
 
 
-if(WITH_EMBEDDED_LOKINET)
+if(LOKINET_EMBEDDED)
   include(GNUInstallDirs)
   add_library(lokinet-shared SHARED lokinet.cpp)
   target_link_libraries(lokinet-shared PUBLIC lokinet-core)

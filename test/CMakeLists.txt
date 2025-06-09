@@ -1,4 +1,4 @@
-if (WITH_HIVE)
+if (LOKINET_HIVE)
   add_custom_target(hive_build DEPENDS lokinet-amalgum pyllarp)
   add_custom_target(hive ${CMAKE_COMMAND} -E
       env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pybind"
@@ -8,7 +8,10 @@ if (WITH_HIVE)
       hive_build)
 endif()
 
-add_subdirectory(Catch2)
+if(NOT TARGET Catch2::Catch2)
+  add_subdirectory(Catch2)
+endif()
+
 add_executable(testAll
   # helpers
   check_main.cpp
@@ -46,7 +49,7 @@ add_executable(testAll
   test_llarp_router_contact.cpp)
 
 
-if(WITH_PEERSTATS_BACKEND)
+if(LOKINET_PEERSTATS)
   target_sources(testAll PRIVATE
     peerstats/test_peer_db.cpp
     peerstats/test_peer_types.cpp)

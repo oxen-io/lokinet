@@ -25,7 +25,7 @@ echo "remove old test build directory..."
 rm -rf build-git-hook
 mkdir build-git-hook
 echo "configuring test build jizz..."
-cmake -S . -B build-git-hook -DWITH_LTO=OFF -DWITH_HIVE=ON -G Ninja
+cmake -S . -B build-git-hook -DWITH_LTO=OFF -DLOKINET_HIVE=ON -G Ninja
 echo "ensure this shit compiles..."
 ninja -C build-git-hook all
 echo "ensure unit tests aren't fucked..."

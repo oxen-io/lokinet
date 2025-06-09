@@ -327,7 +327,7 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
 add_static_target(sodium sodium_external libsodium.a)
 
 
-if(WITH_PEERSTATS_BACKEND)
+if(LOKINET_PEERSTATS)
   build_external(sqlite3)
   add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 endif()
@@ -366,7 +366,7 @@ set_target_properties(libzmq PROPERTIES
 # Everything that follows is *only* for lokinet-bootstrap (i.e. if adding new deps put them *above* this).
 #
 
-if(NOT WITH_BOOTSTRAP)
+if(NOT LOKINET_BOOTSTRAP)
   return()
 endif()
 

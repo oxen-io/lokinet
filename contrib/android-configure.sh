@@ -30,12 +30,12 @@ for abi in $build_abis; do
         -DANDROID_STL=c++_static \
         -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
         -DBUILD_STATIC_DEPS=ON \
-        -DBUILD_PACKAGE=ON \
+        -DLOKINET_PACKAGE=ON \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTING=OFF \
-        -DWITH_TESTS=OFF \
-        -DWITH_BOOTSTRAP=OFF \
-        -DNATIVE_BUILD=OFF \
+        -DLOKINET_TESTS=OFF \
+        -DLOKINET_BOOTSTRAP=OFF \
+        -DLOKINET_NATIVE_BUILD=OFF \
         -DSTATIC_LINK=ON \
         -DWITH_SYSTEMD=OFF \
         -DFORCE_OXENMQ_SUBMODULE=ON \
