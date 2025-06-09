@@ -211,7 +211,7 @@ lokinet_add_library(lokinet-path
 target_link_libraries(lokinet-wire PUBLIC lokinet-addressing)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
-target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact)
+target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
 target_link_libraries(lokinet-addressing PUBLIC lokinet-utils lokinet-cryptography lokinet-contact lokinet-ip)
 target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
 target_link_libraries(lokinet-config PUBLIC lokinet-cryptography)
@@ -277,8 +277,7 @@ target_link_libraries(lokinet-base
 
 if(WITH_EMBEDDED_LOKINET)
   include(GNUInstallDirs)
-  add_library(lokinet-shared SHARED lokinet_shared.cpp)
-  # target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
+  add_library(lokinet-shared SHARED lokinet.cpp)
   target_link_libraries(lokinet-shared PUBLIC lokinet-core)
   if(WIN32)
     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
