@@ -436,6 +436,7 @@ namespace llarp
                     }
 
                     unconfirmed.erase(found);
+                    continue;
                 }
 
                 itr = (++count >= MAX_CONFIRMATION_ATTEMPTS) ? container.erase(itr) : ++itr;
