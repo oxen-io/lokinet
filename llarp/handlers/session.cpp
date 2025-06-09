@@ -779,10 +779,12 @@ namespace llarp::handlers
         log::trace(logcat, "Publishing new EncryptedClientContact: {}", ecc.bt_payload());
 
         _sessions.for_each([ecc](std::shared_ptr<session::BaseSession>& s) mutable {
+            // don't publish client contact to other end of outbound session
+            if (s->is_outbound())
+                return;
             log::debug(
                 logcat,
-                "Publishing ClientContact on {}bound session (remote:{})",
-                detail::bool_alpha(s->is_outbound(), "Out", "In"),
+                "Publishing ClientContact to remote on inbound session (remote:{})",
                 s->remote());
 
             s->publish_client_contact(ecc, publish_cc_cb);
