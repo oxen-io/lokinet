@@ -265,10 +265,6 @@ namespace llarp::path
 
         if (is_expired(now))
             return;
-
-        // if (_is_linked)
-        // {
-        // }
     }
 
     void Path::set_established()

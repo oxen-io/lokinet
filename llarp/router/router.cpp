@@ -425,7 +425,7 @@ DISABLE_WARNING_POP
             log::info(logcat, "Assigning addressible listen address {} as public addr", _listen_address);
             _public_address = _listen_address;
         }
-        else
+        else if (_is_service_node) // TODO: check if this if is correct
         {
             log::critical(logcat, "Listen address is non-public, querying net-if for public address...");
             auto _port = !_listen_address.is_any_port() and conf.links.only_user_port ? _listen_address.port()
@@ -939,10 +939,9 @@ DISABLE_WARNING_POP
 
         if (const auto delta = now - _last_tick; _last_tick != 0s and delta > NETWORK_RESET_SKIP_INTERVAL)
         {
+            // TODO: this, if needed?
             // we detected a time skip into the futre, thaw the network
             log::error(logcat, "Timeskip of {} detected, resetting network state!", delta.count());
-            // TODO: implement a better way to reset the network
-            return;
         }
 
         _is_service_node ? _relay_tick(now) : _client_tick(now);

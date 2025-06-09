@@ -117,8 +117,11 @@ namespace llarp
         if (is_stopping())
             return;
 
-        _loop->call([this]() { handle_signal(SIGTERM); });
-        close_waiter = std::make_unique<std::promise<void>>();
+        _loop->call([this]() {
+                close_waiter = std::make_unique<std::promise<void>>();
+                handle_signal(SIGTERM);
+                });
+
     }
 
     bool Context::is_stopping() const { return close_waiter.operator bool(); }
