@@ -886,6 +886,12 @@ DISABLE_WARNING_POP
         _pathbuild_limiter.Decay(now);
         _router_profiling.tick();
 
+        if (now > _last_path_ping + 1s)
+        {
+            _last_path_ping = now;
+            _session_endpoint->ping_paths(now);
+        }
+
         if (should_report_stats(now))
             report_stats();
 

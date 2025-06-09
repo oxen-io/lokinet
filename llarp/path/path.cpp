@@ -87,6 +87,33 @@ namespace llarp::path
             logcat, "Path client intro holding pivot_rid ({}) and pivot_txid ({})", intro.pivot_rid, intro.pivot_txid);
     }
 
+    void Path::do_ping(std::chrono::milliseconds start_time)
+    {
+        if (!is_active()) return;
+
+        log::warning(logcat, "Pinging path TXID={}", upstream_txid());
+        send_path_control_message("path_ping"s, ""s, [self=get_weak(), start_time](oxen::quic::message m) {
+                auto shared_self = self.lock();
+                if (!shared_self) return;
+                std::chrono::milliseconds now = llarp::time_now_ms();
+                auto time_taken = now - start_time;
+                if (m && m.body() == messages::OK_RESPONSE)
+                {
+                    shared_self->recent_ping_failures = 0;
+                    shared_self->ping_average = std::chrono::milliseconds{((shared_self->ping_average * shared_self->ping_count) + time_taken) / ++shared_self->ping_count};
+                }
+                else
+                {
+                    log::warning(logcat, "Ping response for path TXID={} timed out in {}", shared_self->upstream_txid(), time_taken);
+                    if (++shared_self->recent_ping_failures > 5)
+                    {
+                        log::warning(logcat, "Path TXID={} had too many ping timeouts, expiring.", shared_self->upstream_txid());
+                        shared_self->intro.expiry = start_time;
+                    }
+                }
+                });
+    }
+
     void Path::link_session(session_tag t)
     {
         _linked_sessions.insert(t);

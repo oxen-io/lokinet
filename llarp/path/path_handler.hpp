@@ -215,6 +215,8 @@ namespace llarp
 
             void tick_paths();
 
+            void ping_paths(std::chrono::milliseconds now);
+
             // This method should be overridden by deriving classes
             virtual void build_more(size_t n = 0) = 0;
 

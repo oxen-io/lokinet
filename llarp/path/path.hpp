@@ -60,6 +60,8 @@ namespace llarp
 
             std::chrono::milliseconds LastRemoteActivityAt() const { return last_recv_msg; }
 
+            void do_ping(std::chrono::milliseconds start_time);
+
             void link_session(session_tag t) override;
 
             bool unlink_session(session_tag t) override;
@@ -147,8 +149,7 @@ namespace llarp
             /// call obtained exit hooks
             bool InformExitResult(std::chrono::milliseconds b);
 
-            std::atomic<bool> _is_established{false};
-            std::atomic<bool> _is_linked{false};
+            bool _is_established{false};
 
             Router& _router;
 
@@ -163,6 +164,11 @@ namespace llarp
             // TESTNET: debug
             static size_t next_path_uuid;
             const size_t path_id;
+
+          private:
+            uint64_t ping_count{0};
+            uint64_t recent_ping_failures{0};
+            std::chrono::milliseconds ping_average{0s};
         };
 
         struct PathExpComp

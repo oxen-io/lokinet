@@ -248,6 +248,7 @@ namespace llarp
         void _handle_initiate_session(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_close_session(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_path_switch(oxen::quic::message, std::optional<std::string> = std::nullopt);
+        void _handle_path_ping(oxen::quic::message, std::optional<std::string> = std::nullopt);
 
         // Path messages
         void handle_path_build(oxen::quic::message, const RouterID& from);
@@ -270,7 +271,8 @@ namespace llarp
                 {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
                 {"session_init"sv, &LinkManager::_handle_initiate_session},
                 {"session_close"sv, &LinkManager::_handle_close_session},
-                {"path_switch"sv, &LinkManager::_handle_path_switch}};
+                {"path_switch"sv, &LinkManager::_handle_path_switch},
+                {"path_ping"sv, &LinkManager::_handle_path_ping}};
 
         // Path relaying
         void handle_path_data_message(oxen::quic::datagram dgram);

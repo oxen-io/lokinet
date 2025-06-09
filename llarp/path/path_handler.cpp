@@ -205,6 +205,12 @@ namespace llarp::path
         }
     }
 
+    void PathHandler::ping_paths(std::chrono::milliseconds now)
+    {
+        for (auto& [pid, path] : _paths)
+            path->do_ping(now);
+    }
+
     std::chrono::milliseconds PathHandler::now() const { return _router.now(); }
 
     // called within the scope of locked mutex

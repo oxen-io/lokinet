@@ -1988,6 +1988,12 @@ namespace llarp
 
     void LinkManager::handle_path_switch(oxen::quic::message m) { return _handle_path_switch(std::move(m)); }
 
+    void LinkManager::_handle_path_ping(oxen::quic::message m, std::optional<std::string>)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        m.respond(messages::OK_RESPONSE);
+    }
+
     void LinkManager::_handle_close_session(oxen::quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
