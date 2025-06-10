@@ -186,7 +186,7 @@ namespace llarp::session
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
-        oxen::quic::Address src{"127.0.0.1"s, 54321};
+        oxen::quic::Address src{"127.0.0.1"s, 0};
         oxen::quic::Address dest{"127.0.0.1"s, dest_port};
         auto udp_handle = std::make_unique<UDPHandle>(_r.loop(), src, [this, dest=std::move(dest)](auto pkt) {
 
