@@ -91,7 +91,7 @@ namespace llarp::path
     {
         if (!is_active()) return;
 
-        log::warning(logcat, "Pinging path TXID={}", upstream_txid());
+        log::trace(logcat, "Pinging path TXID={}", upstream_txid());
         send_path_control_message("path_ping"s, ""s, [self=get_weak(), start_time](oxen::quic::message m) {
                 auto shared_self = self.lock();
                 if (!shared_self) return;
@@ -99,15 +99,16 @@ namespace llarp::path
                 auto time_taken = now - start_time;
                 if (m && m.body() == messages::OK_RESPONSE)
                 {
+                    log::trace(logcat, "Ping response for path TXID={} response received in {}", shared_self->upstream_txid(), time_taken);
                     shared_self->recent_ping_failures = 0;
                     shared_self->ping_average = std::chrono::milliseconds{((shared_self->ping_average * shared_self->ping_count) + time_taken) / ++shared_self->ping_count};
                 }
                 else
                 {
-                    log::warning(logcat, "Ping response for path TXID={} timed out in {}", shared_self->upstream_txid(), time_taken);
+                    log::debug(logcat, "Ping response for path TXID={} timed out in {}", shared_self->upstream_txid(), time_taken);
                     if (++shared_self->recent_ping_failures > 5)
                     {
-                        log::warning(logcat, "Path TXID={} had too many ping timeouts, expiring.", shared_self->upstream_txid());
+                        log::debug(logcat, "Path TXID={} had too many ping timeouts, expiring.", shared_self->upstream_txid());
                         shared_self->intro.expiry = start_time;
                     }
                 }
