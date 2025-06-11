@@ -85,6 +85,16 @@ namespace llarp
             // for return traffic, dest port will be the client's udp socket port
             std::unordered_map<uint16_t, std::unique_ptr<UDPHandle>> udp_handles;
 
+            // bidirectional map, obfuscating the randomized source port from the user and
+            // mapping that obfuscated port back to that obfuscated port for return traffic.
+            // This is both to track used ports so we don't accept traffic to an unmapped
+            // one, as well as in case port selection is fingerprintable.
+            // udp_client_ports maps client source port -> pseudo source port
+            // udp_remote_ports maps pseudo dest port -> client dest port
+            std::unordered_map<uint16_t, uint16_t> udp_client_ports;
+            std::unordered_map<uint16_t, uint16_t> udp_remote_ports;
+            uint16_t next_udp_client_port{1024};
+
           public:
             BaseSession(
                 Router& r,
