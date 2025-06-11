@@ -105,7 +105,7 @@ namespace llarp::path
                 log::trace(
                     logcat,
                     "Ping response for path TXID={} response received in {}",
-                    shared_self->upstream_txid(),
+                    shared_self->edge().txid(),
                     time_taken);
                 shared_self->recent_ping_failures = 0;
                 shared_self->ping_average = std::chrono::milliseconds{

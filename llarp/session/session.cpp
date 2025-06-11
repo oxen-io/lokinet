@@ -133,6 +133,11 @@ namespace llarp::session
         }
         auto& socket = itr->second;
         auto dest_port = pkt.dest_port();
+        if (!udp_remote_ports.contains(dest_port)) {
+            log::warning(logcat, "Received UDP packet destined for an unmapped port ({})", dest_port);
+            return;
+        }
+        dest_port = udp_remote_ports[dest_port];
 
         auto payload = pkt.udp_data();
         if (payload.empty())
@@ -158,13 +163,34 @@ namespace llarp::session
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
-        quic::Address src{"127.0.0.1"s, 0};
-        quic::Address dest{"127.0.0.1"s, dest_port};
+        oxen::quic::Address src{"127.0.0.1"s, 0};
+        oxen::quic::Address dest{"127.0.0.1"s, dest_port};
         auto udp_handle = std::make_unique<quic::UDPSocket>(
             _r.loop()->get_event_base(), src, [this, dest = std::move(dest)](quic::Packet&& pkt) {
+                auto client_port = pkt.path.remote.port();
+                if (!udp_client_ports.contains(client_port))
+                {
+                    log::debug(logcat, "Adding client port {} to mapping for remote port {}", client_port, dest.port());
+                    uint16_t new_port = next_udp_client_port;
+                    auto start_port = new_port;
+                    while (udp_remote_ports.contains(new_port))
+                    {
+                        new_port++;
+                        if (new_port < 1024)
+                            new_port = 1024;
+                        if (start_port == new_port)
+                            throw std::runtime_error{"Ran out of pseudo-udp ports to use"};
+                    }
+                    udp_client_ports[client_port] = new_port;
+                    udp_remote_ports[new_port] = client_port;
+                    client_port = new_port;
+                }
+                else client_port = udp_client_ports[client_port];
+
                 // ip doesn't matter here, but give remote the source port so we receive responses
                 // as destined for that port and know where to send them
                 auto src = pkt.path.remote;
+                src.set_port(client_port);
                 log::trace(logcat, "Packet received from {}", src);
                 auto payload = pkt.data();
                 auto packet = IPPacket::make_udp_packet(src, dest, payload);
