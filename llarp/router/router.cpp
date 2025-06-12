@@ -311,30 +311,25 @@ namespace llarp
     void Router::init_logging()
     {
         auto& conf = *_config;
+        if (conf.logging.type) {
+            auto log_type = *conf.logging.type;
 
-        // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
-        auto log_type = conf.logging.type;
+            // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
+            if (log_type == log::Type::File
+                && (conf.logging.file == "stdout" || conf.logging.file == "-" || conf.logging.file.empty()))
+                log_type = log::Type::Print;
 
-        if (log_type == log::Type::File
-            && (conf.logging.file == "stdout" || conf.logging.file == "-" || conf.logging.file.empty()))
-            log_type = log::Type::Print;
+            log::clear_sinks();
+            log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.file);
+        }
 
-        if (log::get_level_default() != log::Level::off)
-            log::reset_level(conf.logging.level);
-
-        log::clear_sinks();
-        log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.file);
+        log::apply_categories(conf.logging.levels);
 
         // re-add rpc log sink if rpc enabled, else free it
         if (_config->api.enable_rpc_server and llarp::logRingBuffer)
             log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
         else
-            llarp::logRingBuffer = nullptr;
-
-        // TESTNET:
-        // oxen::log::reset_level(oxen::log::Level::debug);
-        oxen::log::set_level("quic", oxen::log::Level::info);
-        // oxen::log::set_level("quic", oxen::log::Level::debug);
+            llarp::logRingBuffer.reset();
     }
 
     void Router::init_rpc()

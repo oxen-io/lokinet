@@ -264,8 +264,15 @@ namespace llarp
 
     struct LoggingConfig
     {
-        log::Type type = log::Type::Print;
-        log::Level level = log::Level::off;
+        // Log type.  If nullopt then lokinet will not set up logging sinks at all (this is
+        // primarily aimed at embedded clients that have already set up logging).
+        std::optional<log::Type> type = log::Type::Print;
+
+        // levels can either be just a level ("warn"), or a list of cat levels such as:
+        // "*=warning, cat1=debug, cat2*=trace".  See oxen-logging for more details.  If empty then
+        // logging levels will not be set at all (and, again, is most useful for embedded clients).
+        std::string levels;
+
         std::string file;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);

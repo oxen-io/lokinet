@@ -1521,17 +1521,14 @@ namespace llarp
             "logging",
             "level",
             DefaultLogLevel,
-            [this](std::string arg) { level = log::level_from_string(arg); },
+            [this](std::string arg) { levels = std::move(arg); },
             Comment{
-                "Minimum log level to print. Logging below this level will be ignored.",
+                "Minimum log severity level to print. Logging below this level will be ignored.",
+                "Can also be set to a comma-separated list of individual categories, such as:",
+                "    *=warn, logcat123=debug",
+                "",
                 "Valid log levels, in ascending order, are:",
-                "  trace",
-                "  debug",
-                "  info",
-                "  warn",
-                "  error",
-                "  critical",
-                "  none",
+                "  trace, debug, info, warn, error, critical, off",
             });
 
         conf.define_option<std::string>(
@@ -1873,7 +1870,8 @@ namespace llarp
     {
         auto config = std::make_shared<Config>();
         config->load();
-        config->logging.level = log::Level::warn;
+        config->logging.type = std::nullopt;
+        config->logging.levels = "";
         config->api.enable_rpc_server = false;
         config->network.init_tun = false;
         config->network.save_profiles = false;
