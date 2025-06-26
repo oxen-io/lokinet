@@ -18,11 +18,8 @@
 
 namespace llarp
 {
-    struct Router;
-}  // namespace llarp
+    class Router;
 
-namespace llarp
-{
     namespace auth
     {
         struct AuthPolicy
@@ -35,16 +32,12 @@ namespace llarp
 
             virtual ~AuthPolicy() = default;
 
-            virtual std::weak_ptr<AuthPolicy> get_weak() = 0;
-
-            virtual std::shared_ptr<AuthPolicy> get_self() = 0;
-
             const Router& router() const { return _router; }
 
             Router& router() { return _router; }
         };
 
-        struct SessionAuthPolicy final : public AuthPolicy, public std::enable_shared_from_this<SessionAuthPolicy>
+        struct SessionAuthPolicy final : public AuthPolicy
         {
           private:
             const bool _is_snode_service{false};
@@ -65,24 +58,16 @@ namespace llarp
             bool is_snode_service() const { return _is_snode_service; }
 
             bool is_exit_service() const { return _is_exit_service; }
-
-            std::weak_ptr<AuthPolicy> get_weak() override { return weak_from_this(); }
-
-            std::shared_ptr<AuthPolicy> get_self() override { return shared_from_this(); }
         };
 
-        struct FileAuthPolicy final : public AuthPolicy, public std::enable_shared_from_this<FileAuthPolicy>
+        struct FileAuthPolicy final : public AuthPolicy
         {
-            FileAuthPolicy(Router& r, std::set<fs::path> files, AuthFileType filetype)
+            FileAuthPolicy(Router& r, std::unordered_set<fs::path> files, AuthFileType filetype)
                 : AuthPolicy{r}, _files{std::move(files)}, _type{filetype}
             {}
 
-            std::weak_ptr<AuthPolicy> get_weak() override { return weak_from_this(); }
-
-            std::shared_ptr<AuthPolicy> get_self() override { return shared_from_this(); }
-
           private:
-            const std::set<fs::path> _files;
+            const std::unordered_set<fs::path> _files;
             const AuthFileType _type;
             mutable util::Mutex _m;
             std::unordered_set<session_tag> _pending;
@@ -93,15 +78,11 @@ namespace llarp
             bool check_passwd(std::string hash, std::string challenge) const;
         };
 
-        struct RPCAuthPolicy final : public AuthPolicy, public std::enable_shared_from_this<RPCAuthPolicy>
+        struct RPCAuthPolicy final : public AuthPolicy
         {
-            explicit RPCAuthPolicy(Router& r, std::string url, std::string method, std::shared_ptr<oxenmq::OxenMQ> lmq);
+            explicit RPCAuthPolicy(Router& r, std::string url, std::string method, oxenmq::OxenMQ& omq);
 
             ~RPCAuthPolicy() override = default;
-
-            std::weak_ptr<AuthPolicy> get_weak() override { return weak_from_this(); }
-
-            std::shared_ptr<AuthPolicy> get_self() override { return shared_from_this(); }
 
             void start();
 
@@ -111,70 +92,21 @@ namespace llarp
             // const std::unordered_set<NetworkAddress> _whitelist;
             // const std::unordered_set<std::string> _static_tokens;
 
-            std::shared_ptr<oxenmq::OxenMQ> _omq;
+            oxenmq::OxenMQ& _omq;
             std::optional<oxenmq::ConnectionID> _omq_conn;
             std::unordered_set<session_tag> _pending_sessions;
         };
     }  // namespace auth
 
-    namespace concepts
-    {
-        template <typename auth_t>
-        concept AuthPolicyType = std::is_base_of_v<auth::AuthPolicy, auth_t>;
-    }  // namespace concepts
-
-    template <concepts::AuthPolicyType auth_t, typename... Opt>
-    inline static std::shared_ptr<auth_t> make_auth_policy(Router& r, Opt&&... opts)
-    {
-        return std::make_shared<auth_t>(r, std::forward<Opt>(opts)...);
-    }
-
     /// maybe get auth result from string
-    inline std::optional<auth::AuthCode> parse_auth_code(std::string data)
-    {
-        std::unordered_map<std::string, auth::AuthCode> values = {
-            {"OKAY", auth::AuthCode::ACCEPTED},
-            {"REJECT", auth::AuthCode::REJECTED},
-            {"PAYME", auth::AuthCode::PAYMENT_REQUIRED},
-            {"LIMITED", auth::AuthCode::RATE_LIMIT}};
-        auto itr = values.find(data);
-        if (itr == values.end())
-            return std::nullopt;
-        return itr->second;
-    }
+    std::optional<auth::AuthCode> parse_auth_code(std::string data);
 
     /// get an auth type from a string
     /// throws std::invalid_argument if arg is invalid
-    inline auth::AuthType parse_auth_type(std::string data)
-    {
-        std::unordered_map<std::string, auth::AuthType> values = {
-            {"file", auth::AuthType::FILE},
-            {"lmq", auth::AuthType::OMQ},
-            {"whitelist", auth::AuthType::WHITELIST},
-            {"none", auth::AuthType::NONE}};
-        const auto itr = values.find(data);
-        if (itr == values.end())
-            throw std::invalid_argument("no such auth type: " + data);
-        return itr->second;
-    }
+    auth::AuthType parse_auth_type(std::string data);
 
     /// get an auth file type from a string
     /// throws std::invalid_argument if arg is invalid
-    inline auth::AuthFileType parse_auth_file_type(std::string data)
-    {
-        std::unordered_map<std::string, auth::AuthFileType> values = {
-            {"plain", auth::AuthFileType::PLAIN},
-            {"plaintext", auth::AuthFileType::PLAIN},
-            {"hashed", auth::AuthFileType::HASHES},
-            {"hashes", auth::AuthFileType::HASHES},
-            {"hash", auth::AuthFileType::HASHES}};
-        const auto itr = values.find(data);
-        if (itr == values.end())
-            throw std::invalid_argument("no such auth file type: " + data);
-#ifndef HAVE_CRYPT
-        if (itr->second == auth::AuthFileType::HASHES)
-            throw std::invalid_argument("unsupported auth file type: " + data);
-#endif
-        return itr->second;
-    }
+    auth::AuthFileType parse_auth_file_type(std::string data);
+
 }  // namespace llarp

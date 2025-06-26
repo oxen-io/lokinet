@@ -8,14 +8,6 @@ namespace llarp
 
     inline constexpr size_t ICMP_HEADER_SIZE{8};
 
-    // Compares the given ip variant against a quic address
-    // Returns:
-    //  - true : ip == address
-    //  - false :
-    //      - ip != address
-    //      - ip and address are mismatched ipv4 vs ipv6
-    bool ip_equals_address(const ip_v &ip, const oxen::quic::Address &addr, bool compare_v4);
-
     namespace utils
     {
         uint16_t ip_checksum(const uint8_t *buf, size_t sz);

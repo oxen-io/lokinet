@@ -4,7 +4,7 @@
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 }
 
 namespace llarp::vpn

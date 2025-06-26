@@ -1,23 +1,26 @@
 #pragma once
 
-#include "types.hpp"
+#include <oxen/quic/btstream.hpp>
+#include <oxen/quic/connection.hpp>
+#include <oxen/quic/datagram.hpp>
 
-#include <llarp/contact/relay_contact.hpp>
-#include <llarp/contact/router_id.hpp>
-
+namespace llarp
+{
+    namespace quic = oxen::quic;
+}
 namespace llarp::link
 {
     struct Connection
     {
         Connection(
-            std::shared_ptr<oxen::quic::Connection> c,
-            bt_control_stream s,
+            std::shared_ptr<quic::Connection> c,
+            std::shared_ptr<quic::BTRequestStream> s,
             bool _is_relay = true,
             bool _is_active = false);
 
-        std::shared_ptr<oxen::quic::Connection> conn;
-        std::shared_ptr<oxen::quic::Datagrams> datagrams;
-        bt_control_stream control_stream;
+        std::shared_ptr<quic::Connection> conn;
+        std::shared_ptr<quic::Datagrams> datagrams;
+        std::shared_ptr<quic::BTRequestStream> control_stream;
 
         std::atomic<bool> is_active{false};
 

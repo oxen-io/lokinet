@@ -28,11 +28,6 @@ namespace llarp
             std::chrono::steady_clock::now() - started_at_steady);
     }
 
-    rc_time time_point_now()
-    {
-        return std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-    }
-
     std::chrono::milliseconds time_now_ms()
     {
         return uptime() + time_since_epoch<std::chrono::milliseconds, std::chrono::system_clock>(started_at_system);

@@ -5,10 +5,7 @@
 namespace llarp::auth
 {
     SessionAuthPolicy::SessionAuthPolicy(Router& r, RouterID& remote, bool is_snode, bool is_exit)
-        : AuthPolicy{r},
-          _is_snode_service{is_snode},
-          _is_exit_service{is_exit},
-          _remote{NetworkAddress::from_pubkey(remote, not _is_snode_service)}
+        : AuthPolicy{r}, _is_snode_service{is_snode}, _is_exit_service{is_exit}, _remote{remote, not _is_snode_service}
     {
         // These can both be false but CANNOT both be true
         if (_is_exit_service & _is_snode_service)
@@ -23,7 +20,7 @@ namespace llarp::auth
     std::optional<std::string_view> SessionAuthPolicy::fetch_auth_token()
     {
         std::optional<std::string_view> ret = std::nullopt;
-        auto& exit_auths = _router.config()->network.exit_auths;
+        auto& exit_auths = _router.config().network.exit_auths;
 
         if (auto itr = exit_auths.find(_remote); itr != exit_auths.end())
             ret = itr->second;

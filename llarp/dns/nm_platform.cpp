@@ -10,7 +10,7 @@ extern "C"
 
 namespace llarp::dns::nm
 {
-    void Platform::set_resolver(unsigned int, oxen::quic::Address, bool)
+    void Platform::set_resolver(unsigned int, quic::Address, bool)
     {
         // todo: implement me eventually
     }

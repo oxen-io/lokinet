@@ -15,7 +15,7 @@ namespace oxenc
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 
     namespace path
     {
@@ -61,7 +61,7 @@ namespace llarp
     {
         static constexpr std::chrono::milliseconds SAVE_INTERVAL{10min};
 
-        friend struct Router;
+        friend class Router;
 
         Profiling() = default;
 
@@ -113,7 +113,7 @@ namespace llarp
 
         void BDecode(oxenc::bt_dict_consumer dict);
 
-        std::shared_ptr<EventTicker> _disk_saver;
+        std::shared_ptr<quic::Ticker> _disk_saver;
 
         mutable util::Mutex _m;
         fs::path _profile_file;

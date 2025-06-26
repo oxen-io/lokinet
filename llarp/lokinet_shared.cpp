@@ -1,7 +1,6 @@
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/link/tunnel.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
@@ -885,7 +884,7 @@ extern "C"
         std::shared_ptr<llarp::EndpointBase> ep;
         {
             auto lock = ctx->acquire();
-            if (ctx->impl->router->loop()->inEventLoop())
+            if (ctx->impl->router->loop()->inside())
             {
                 oxen::log::error(logcat, "Cannot call udp_establish from internal event loop");
                 return EINVAL;

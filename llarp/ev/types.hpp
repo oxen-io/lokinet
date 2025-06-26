@@ -1,21 +1,15 @@
 #pragma once
 
-#include <oxen/quic.hpp>
+#include <oxen/quic/loop.hpp>
 
 namespace llarp
 {
-    using namespace std::chrono_literals;
+    using namespace std::literals;
 
-    class EventLoop;
-
-    using event_ptr = oxen::quic::event_ptr;
-    using EventTicker = oxen::quic::Ticker;
-
-    // shared_ptr containing the actual libev loop
-    using loop_ptr = ::event_base*;
+    namespace quic = oxen::quic;
 
     /** EventTrigger
-            This class is a parallel implementation of libquic Ticker (typedef'ed as 'EventTicker' above). Rather than
+            This class is a parallel implementation of libquic Ticker. Rather than
         invoking at regular intervals, it is manually invoked with an optional time delay. This is a useful
         functionality that allows us to manage events that are repeated, but not necessarily at fixed intervals; one
         example is lokinet instance bootstrapping (both client and relay), initial RouterID fetching, etc
@@ -25,23 +19,11 @@ namespace llarp
         `::_proceed = false`, indicating that the EventTrigger should stop. If the local instane requires re-starting
         its bootstrap process for some reason, it can invoke `::resume()` to restart the logic.
     */
-    struct EventTrigger
+    class EventTrigger
     {
-        // Allows the libquic loop object to call the private constructor when constructing the shared pointer with
-        // the loop deleter
-        friend class oxen::quic::Loop;
-
-      private:
-        EventTrigger(
-            const loop_ptr& _loop,
-            std::chrono::microseconds _cooldown,
-            std::function<void()> task,
-            int _n,
-            bool start_immediately);
-
       public:
-        static std::shared_ptr<EventTrigger> make(
-            const std::shared_ptr<EventLoop>& _loop,
+        EventTrigger(
+            const std::shared_ptr<quic::Loop>& _loop,
             std::chrono::microseconds _cooldown,
             std::function<void()> task,
             int _n,
@@ -72,8 +54,8 @@ namespace llarp
         const int n;
         std::atomic<int> _current{0};
 
-        event_ptr ev;
-        event_ptr cv;
+        quic::event_ptr ev;
+        quic::event_ptr cv;
         const timeval _cooldown;
         const timeval _null_tv{};
         std::function<void()> f;
@@ -98,10 +80,9 @@ namespace llarp
             This class is the base for the platform-specific Pollers that watch for IO on the virtual TUN network
         interface.
      */
-    struct FDPoller
+    class FDPoller
     {
-        friend class oxen::quic::Loop;
-
+      public:
         // No move/copy/etc
         FDPoller() = delete;
         FDPoller(const FDPoller&) = delete;
@@ -119,7 +100,7 @@ namespace llarp
         FDPoller(int _fd, std::function<void()> task) : fd{_fd}, f{std::move(task)} {}
 
         int fd;
-        event_ptr ev;
+        quic::event_ptr ev;
         std::function<void()> f;
 
       public:
@@ -131,17 +112,12 @@ namespace llarp
     /** LinuxPoller
             This class is a linux-specific extension of the Base poller type.
      */
-    struct LinuxPoller final : public FDPoller
+    class LinuxPoller final : public FDPoller
     {
-        friend class EventLoop;
-        friend class oxen::quic::Loop;
-
-      private:
-        LinuxPoller(int _fd, const loop_ptr& _loop, std::function<void()> task);
-
       public:
-        bool start() override;
+        LinuxPoller(int _fd, ::event_base* _loop, std::function<void()> task);
 
+        bool start() override;
         bool stop() override;
     };
 

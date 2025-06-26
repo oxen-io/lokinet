@@ -2,6 +2,7 @@
 
 #include <llarp/address/address.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp
 {
@@ -38,18 +39,14 @@ namespace llarp
         return std::move(btdp).str();
     }
 
-    std::optional<NetworkAddress> EncryptedSNSRecord::decrypt(std::string_view ons_name) const
+    std::optional<NetworkAddress> EncryptedSNSRecord::decrypt(std::string_view sns_name) const
     {
-        std::optional<NetworkAddress> ret = std::nullopt;
-
+        std::optional<NetworkAddress> ret;
         if (ciphertext.empty())
             return ret;
 
-        if (auto maybe = crypto::maybe_decrypt_name(ciphertext, nonce, ons_name))
-        {
-            auto _name = "{}.loki"_format(maybe->to_view());
-            ret = NetworkAddress::from_network_addr(std::move(_name));
-        }
+        if (auto maybe = crypto::maybe_decrypt_name(ciphertext, nonce, sns_name))
+            ret.emplace(*maybe, /*is_client=*/true);
 
         return ret;
     }

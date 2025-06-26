@@ -60,7 +60,7 @@ namespace llarp::dns
         return true;
     }
 
-    std::optional<ip_v> DecodePTR(std::string_view name)
+    std::optional<std::variant<ipv4, ipv6>> DecodePTR(std::string_view name)
     {
         bool isV6 = false;
         auto pos = name.find(".in-addr.arpa");

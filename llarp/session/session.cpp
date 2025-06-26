@@ -2,7 +2,6 @@
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/handlers/session.hpp>
-#include <llarp/link/tunnel.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
@@ -34,10 +33,9 @@ namespace llarp::session
           _use_tun{use_tun},
           _is_outbound{is_outbound},
           _is_snode_session{_is_outbound ? !_remote.is_client() : _r.is_service_node()},
-          _is_exit_session{_tag.proto_bits().first}
+          _is_exit_session{has_flag(_tag.protocols(), protocol_flag::EXIT)}
     {
         set_new_current_path_interface(std::move(_p));
-
 
         // FIXME: this is ugly, but maybe necessary?  either side could be
         // tun or not tun, and that changes things, but how that needs to change things
@@ -65,7 +63,8 @@ namespace llarp::session
             _current_path->unlink_session(_tag);
     }
 
-    bool BaseSession::send_path_control_message(std::string method, std::string body, bt_control_response_hook func)
+    bool BaseSession::send_path_control_message(
+        std::string method, std::string body, std::function<void(quic::message)> func)
     {
         auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
         auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), _remote_pivot_txid);
@@ -115,54 +114,18 @@ namespace llarp::session
         _remote_pivot_txid = std::move(new_remote_txid);
     }
 
-    void BaseSession::publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func)
+    void BaseSession::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
         send_path_control_message(
             "publish_cc", PublishClientContact::serialize(std::move(ecc), _r.local_rid()), std::move(func));
-    }
-
-    void BaseSession::_init_ep()
-    {
-        _ep = _r.quic_tunnel()->net()->endpoint(
-            LOCALHOST_BLANK,
-            oxen::quic::opt::manual_routing{[this](const oxen::quic::Path&, std::span<const std::byte> data) {
-                send_path_data_message(std::string{reinterpret_cast<const char*>(data.data()), data.size()});
-            }});
-    }
-
-    void BaseSession::tcp_backend_connect()
-    {
-        _init_ep();
-
-        // TODO: change the libquic address to the lokinet-primary-ip:port (or just the ip)
-        auto _handle = TCPHandle::make_client(_r.loop(), oxen::quic::Address{});
-
-        _ep->listen(
-            _r.quic_tunnel()->creds(),
-            [this](oxen::quic::connection_interface& ci) mutable {
-                if (not _ci)
-                    _ci = ci.shared_from_this();
-                else
-                    log::warning(logcat, "Tunneled QUIC endpoint can only have one connection per remote!");
-            },
-            [this, h = _handle](oxen::quic::Stream& s) mutable {
-                // On stream creation, the call to ::connect(...) will:
-                //  - create a bufferevent
-                //  - set the recv_data_cb in the Stream to write to that bufferevent
-                //  - make a TCP connection over the bufferevent to lokinet-primary-ip:port
-                auto tcp_conn = h->connect(s.shared_from_this());
-                _tcp_conns.insert(std::move(tcp_conn));
-                return 0;
-            });
-
-        _handles.emplace(_handle->port(), std::move(_handle));
     }
 
     void BaseSession::handle_udp_from_remote(IPPacket&& pkt)
     {
         auto source_port = pkt.source_port();
         auto itr = udp_handles.find(source_port);
-        if (itr == udp_handles.end()) {
+        if (itr == udp_handles.end())
+        {
             log::debug(logcat, "Received udp datagram from unknown source port {}", source_port);
             return;
         }
@@ -170,7 +133,8 @@ namespace llarp::session
         auto dest_port = pkt.dest_port();
 
         auto payload = pkt.l4_data();
-        if (payload.empty()) {
+        if (payload.empty())
+        {
             log::warning(logcat, "Received udp datagram with empty payload...");
             return;
         }
@@ -181,71 +145,26 @@ namespace llarp::session
 
     uint16_t BaseSession::setup_udp_mapping(uint16_t dest_port)
     {
-        if (auto itr = udp_handles.find(dest_port); itr != udp_handles.end()) {
+        if (auto itr = udp_handles.find(dest_port); itr != udp_handles.end())
+        {
             auto mapped_port = itr->second->bind().port();
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
-        oxen::quic::Address src{"127.0.0.1"s, 54321};
-        oxen::quic::Address dest{"127.0.0.1"s, dest_port};
-        auto udp_handle = std::make_unique<UDPHandle>(_r.loop(), src, [this, dest=std::move(dest)](auto pkt) {
-
-                // ip doesn't matter here, but give remote the source port so we receive responses
-                // as destined for that port and know where to send them
-                auto src = pkt.path.remote;
-                log::trace(logcat, "Packet received from {}", src);
-                auto payload = pkt.data();
-                send_path_data_message(IPPacket::make_udp_packet(src, dest, payload));
-                });
+        quic::Address src{"127.0.0.1"s, 54321};
+        quic::Address dest{"127.0.0.1"s, dest_port};
+        auto udp_handle = std::make_unique<UDPHandle>(_r.loop(), src, [this, dest = std::move(dest)](auto pkt) {
+            // ip doesn't matter here, but give remote the source port so we receive responses
+            // as destined for that port and know where to send them
+            auto src = pkt.path.remote;
+            log::trace(logcat, "Packet received from {}", src);
+            auto payload = pkt.data();
+            send_path_data_message(IPPacket::make_udp_packet(src, dest, payload));
+        });
         auto bound_port = udp_handle->bind().port();
         udp_handles[dest_port] = std::move(udp_handle);
 
         return bound_port;
-    }
-
-    void BaseSession::tcp_backend_listen(on_session_init_hook cb, uint16_t port)
-    {
-        _init_ep();
-
-        auto _handle = TCPHandle::make_server(
-            _r.loop(),
-            [this](struct bufferevent* _bev, evutil_socket_t _fd) mutable {
-                auto s = _ci->open_stream<oxen::quic::Stream>(
-                    [_bev](oxen::quic::Stream& s, std::span<const std::byte> data) {
-                        auto rv = bufferevent_write(_bev, data.data(), data.size());
-
-                        log::info(
-                            logcat,
-                            "Stream (id:{}) {} {}B to TCP buffer",
-                            s.stream_id(),
-                            rv < 0 ? "failed to write" : "successfully wrote",
-                            data.size());
-                    });
-
-                auto tcp_conn = std::make_shared<TCPConnection>(_bev, _fd, std::move(s));
-
-                auto [itr, b] = _tcp_conns.insert(std::move(tcp_conn));
-
-                return itr->get();
-            },
-            port);
-
-        auto bind = _handle->bind();
-
-        if (not bind.has_value())
-            throw std::runtime_error{"Failed to bind TCP listener!"};
-
-        _handles.emplace(_handle->port(), std::move(_handle));
-
-        /*
-        _ci = _ep->connect(
-            KeyedAddress{TUNNEL_PUBKEY},
-            _r.quic_tunnel()->creds(),
-            [addr = *bind, hook = std::move(cb)](oxen::quic::connection_interface&) { hook(addr.to_ipv4()); },
-            [](oxen::quic::connection_interface&, uint64_t) {
-                // TESTNET: TODO:
-            });
-        */
     }
 
     void BaseSession::activate()
@@ -260,7 +179,7 @@ namespace llarp::session
         log::debug(logcat, "Session to remote ({}) deactivated!", _remote);
     }
 
-    void BaseSession::stop_session(bool send_close, bt_control_response_hook func)
+    void BaseSession::stop_session(bool send_close, std::function<void(quic::message)> func)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -282,12 +201,12 @@ namespace llarp::session
         _parent.unmap_session(_remote, _use_tun);
     }
 
-    static void session_close_cb(oxen::quic::message m)
+    static void session_close_cb(quic::message m)
     {
         log::debug(logcat, "Remote {} session", m ? "successfully closed" : "failed to close");
     }
 
-    void BaseSession::send_path_close(bt_control_response_hook func)
+    void BaseSession::send_path_close(std::function<void(quic::message)> func)
     {
         log::debug(logcat, "Dispatching close session message...");
         send_path_control_message(
@@ -333,17 +252,12 @@ namespace llarp::session
         return std::dynamic_pointer_cast<path::Path>(_current_path);
     }
 
-    std::shared_ptr<OutboundRelaySession> OutboundRelaySession::downcast(const std::shared_ptr<BaseSession>& b)
-    {
-        return std::dynamic_pointer_cast<OutboundRelaySession>(b);
-    }
-
     std::shared_ptr<path::PathHandler> OutboundRelaySession::get_self() { return shared_from_this(); }
 
     std::weak_ptr<path::PathHandler> OutboundRelaySession::get_weak() { return weak_from_this(); }
 
     bool OutboundRelaySession::send_path_control_message(
-        std::string method, std::string body, bt_control_response_hook func)
+        std::string method, std::string body, std::function<void(quic::message)> func)
     {
         return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
     }
@@ -371,9 +285,11 @@ namespace llarp::session
 
         auto rid = _current_path->terminal_rid();
 
+        // TODO FIXME: looping here makes no sense; if selecting aligned hops fail calling it again
+        // right away isn't going to change anything.
         for (int i = 0; i < SESSION_PATH_BUILD_ATTEMPTS; ++i)
         {
-            auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+            auto maybe_hops = aligned_hops_to_remote(rid);
 
             if (maybe_hops)
                 return path::PathHandler::rotate_paths(std::move(*maybe_hops));
@@ -392,7 +308,7 @@ namespace llarp::session
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        set_remote_pivot_tx(p->pivot_txid());
+        set_remote_pivot_tx(p->pivot().txid());
         set_new_current_path_interface(std::move(p));
         send_path_switch();
     }
@@ -436,7 +352,7 @@ namespace llarp::session
         send_path_control_message(
             "path_switch",
             SessionPathSwitch::serialize(_tag, _current_path->terminal_txid(), _remote_pivot_txid),
-            [](oxen::quic::message m) {
+            [](quic::message m) {
                 if (m)
                     log::info(logcat, "Session path switch was successful!");
                 else
@@ -465,7 +381,7 @@ namespace llarp::session
         stop_session(send_close);
     }
 
-    void OutboundRelaySession::stop_session(bool send_close, bt_control_response_hook func)
+    void OutboundRelaySession::stop_session(bool send_close, std::function<void(quic::message)> func)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -484,15 +400,15 @@ namespace llarp::session
         {
             Lock_t l{paths_mutex};
             std::ranges::for_each(_paths, [&droplist](auto p) {
-                droplist.emplace_back(p.second->upstream_rxid());
-                droplist.emplace_back(p.second->pivot_txid());
+                droplist.emplace_back(p.second->edge().rxid());
+                droplist.emplace_back(p.second->pivot().txid());
             });
             log::debug(logcat, "Session droplist holds {} paths", droplist.size());
         }
 
         _router.loop()->call_soon([wparent = _parent.get_weak(), droplist = std::move(droplist)]() mutable {
             if (auto parent = wparent.lock())
-                parent->router().path_context()->drop_paths(std::move(droplist));
+                parent->router().path_context.drop_paths(std::move(droplist));
             else
                 log::warning(logcat, "SessionEndpoint died before dropping session paths");
         });
@@ -507,7 +423,7 @@ namespace llarp::session
         std::shared_ptr<path::Path> path,
         HopID remote_pivot_txid,
         session_tag _t,
-        intro_set _remote_intros,
+        sorted_intro_set _remote_intros,
         shared_kx_data kx_data)
         : OutboundRelaySession{
               std::move(remote),
@@ -533,17 +449,12 @@ namespace llarp::session
             _is_exit_session ? "exit" : "service");
     }
 
-    std::shared_ptr<OutboundClientSession> OutboundClientSession::downcast(const std::shared_ptr<BaseSession>& b)
-    {
-        return std::dynamic_pointer_cast<OutboundClientSession>(b);
-    }
-
     std::shared_ptr<path::PathHandler> OutboundClientSession::get_self() { return shared_from_this(); }
 
     std::weak_ptr<path::PathHandler> OutboundClientSession::get_weak() { return weak_from_this(); }
 
     bool OutboundClientSession::send_path_control_message(
-        std::string method, std::string body, bt_control_response_hook func)
+        std::string method, std::string body, std::function<void(quic::message)> func)
     {
         return BaseSession::send_path_control_message(std::move(method), std::move(body), std::move(func));
     }
@@ -553,7 +464,7 @@ namespace llarp::session
         return BaseSession::send_path_data_message(std::move(data));
     }
 
-    void OutboundClientSession::populate_intro_map(const intro_set& _remote_intros)
+    void OutboundClientSession::populate_intro_map(const sorted_intro_set& _remote_intros)
     {
         log::trace(logcat, "Populating intro map for {} intros!", _remote_intros.size());
         Lock_t l(paths_mutex);
@@ -570,7 +481,7 @@ namespace llarp::session
         }
     }
 
-    void OutboundClientSession::update_remote_intros(intro_set&& intros)
+    void OutboundClientSession::update_outbound_remote_intros(sorted_intro_set intros)
     {
         log::debug(logcat, "Updating ClientIntros for OutboundSession to remote: {}", _remote);
         /**
@@ -601,7 +512,7 @@ namespace llarp::session
         for (auto it = _paths.begin(); it != _paths.end();)
         {
             bool keep_path = false;
-            const auto& remote_pivot = it->second->pivot_rid();
+            const auto& remote_pivot = it->second->pivot().router_id();
 
             for (auto& [intro, pathset] : intro_path_mapping)
             {
@@ -620,7 +531,7 @@ namespace llarp::session
                 // log::debug(logcat, "Unlinking and dropping path {}", *it->second);
                 log::debug(logcat, "Unlinking and dropping path {}", it->second->to_string());
                 // it->second->unlink_session(_tag);
-                _router.path_context()->drop_path(it->second);
+                _router.path_context.drop_path(*it->second);
 
                 if (it->second == _current_path)
                 {
@@ -686,7 +597,7 @@ namespace llarp::session
 
         for (auto& [intro, pathset] : intro_path_mapping)
         {
-            if (intro.pivot_rid == p->pivot_rid())
+            if (intro.pivot_rid == p->pivot().router_id())
             {
                 pathset.emplace(p);
                 log::debug(logcat, "Client intro {} has {} paths to remote pivot", intro, pathset.size());
@@ -694,7 +605,7 @@ namespace llarp::session
             }
         }
 
-        log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot_rid());
+        log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot().router_id());
     }
 
     bool OutboundClientSession::unmap_path(const std::shared_ptr<path::Path>& p)
@@ -703,7 +614,7 @@ namespace llarp::session
 
         for (auto& [intro, pathset] : intro_path_mapping)
         {
-            if (intro.pivot_rid == p->pivot_rid())
+            if (intro.pivot_rid == p->pivot().router_id())
             {
                 // p->unlink_session(_tag);
                 pathset.erase(p);
@@ -712,11 +623,11 @@ namespace llarp::session
             }
         }
 
-        log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot_rid());
+        log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot().router_id());
         return false;
     }
 
-    void OutboundClientSession::path_build_succeeded(std::shared_ptr<path::Path> p)
+    void OutboundClientSession::path_build_succeeded(const std::shared_ptr<path::Path>& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l(paths_mutex);
@@ -725,7 +636,7 @@ namespace llarp::session
         path::PathHandler::path_build_succeeded(p);
     }
 
-    void OutboundClientSession::path_build_failed(std::shared_ptr<path::Path> p, bool timeout)
+    void OutboundClientSession::path_build_failed(const std::shared_ptr<path::Path>& p, bool timeout)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l(paths_mutex);
@@ -734,7 +645,7 @@ namespace llarp::session
         path::PathHandler::path_build_failed(p, timeout);
     }
 
-    void OutboundClientSession::stop_session(bool send_close, bt_control_response_hook func)
+    void OutboundClientSession::stop_session(bool send_close, std::function<void(quic::message)> func)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -794,7 +705,7 @@ namespace llarp::session
         return build_and_switch_paths(std::move(intros));
     }
 
-    void OutboundClientSession::build_and_switch_paths(intro_set intros)
+    void OutboundClientSession::build_and_switch_paths(sorted_intro_set intros)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -843,9 +754,11 @@ namespace llarp::session
         // use the newest intro we have for the remote, and build a path to that pivot
         const auto& rid = intro_path_mapping.begin()->first.pivot_rid;
 
+        // TODO FIXME: looping here makes no sense; if selecting aligned hops fail calling it again
+        // right away isn't going to change anything.
         for (int i = 0; i < SESSION_PATH_BUILD_ATTEMPTS; ++i)
         {
-            auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+            auto maybe_hops = aligned_hops_to_remote(rid);
 
             if (maybe_hops)
                 return path::PathHandler::rotate_paths(std::move(*maybe_hops));
@@ -894,11 +807,6 @@ namespace llarp::session
             _is_exit_session ? "exit" : "service");
     }
 
-    std::shared_ptr<InboundClientSession> InboundClientSession::downcast(const std::shared_ptr<BaseSession>& b)
-    {
-        return std::dynamic_pointer_cast<InboundClientSession>(b);
-    }
-
     void InboundClientSession::recv_path_switch(HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_pi)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -926,13 +834,8 @@ namespace llarp::session
         log::debug(logcat, "InboundSession from remote client to local relay service created");
     }
 
-    std::shared_ptr<InboundRelaySession> InboundRelaySession::downcast(const std::shared_ptr<BaseSession>& b)
-    {
-        return std::dynamic_pointer_cast<InboundRelaySession>(b);
-    }
-
     bool InboundRelaySession::send_path_control_message(
-        std::string method, std::string body, bt_control_response_hook func)
+        std::string method, std::string body, std::function<void(quic::message)> func)
     {
         return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
     }

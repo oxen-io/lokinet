@@ -1,39 +1,37 @@
 #include "tag.hpp"
 
 #include <llarp/net/policy.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+
+#include <sodium/randombytes.h>
 
 namespace llarp
 {
     static auto logcat = log::Cat("session-tag");
 
-    session_tag::session_tag(uint8_t protocol)
+    session_tag::session_tag(protocol_flag protocols)
     {
-        randombytes(buf.data(), SIZE);
-        std::memcpy(buf.data(), &protocol, sizeof(uint8_t));
+        protocols &= proto_mask;
+        randombytes_buf(buf.data() + 1, buf.size() - 1);
+        buf[0] = static_cast<uint8_t>(protocols);
         log::trace(logcat, "new session tag generated: {}", buffer_printer{buf});
-    }
-
-    session_tag session_tag::make(uint8_t protos) { return session_tag{static_cast<uint8_t>(protos & proto_mask)}; }
-
-    std::pair<bool, bool> session_tag::proto_bits() const
-    {
-        auto& p = buf[0];
-        return {p & meta::to_underlying(protocol_flag::EXIT), p & meta::to_underlying(protocol_flag::QUICTUN)};
     }
 
     void session_tag::read(std::string_view data)
     {
-        if (data.size() != SIZE)
+        if (data.size() != buf.size())
             throw std::invalid_argument{
-                "Buffer size mismatch (received: {}, expected: {}) reading in session tag!"_format(data.size(), SIZE)};
+                "Buffer size mismatch (received: {}, expected: {}) reading in session tag!"_format(
+                    data.size(), buf.size())};
 
         std::memcpy(buf.data(), data.data(), data.size());
     }
 
     std::string_view session_tag::view() const { return {reinterpret_cast<const char*>(buf.data()), buf.size()}; }
 
-    uspan session_tag::span() const { return buf; }
+    std::span<const unsigned char> session_tag::span() const { return buf; }
 
     std::string session_tag::to_string() const { return oxenc::to_hex(buf.begin(), buf.end()); }
+
 }  // namespace llarp

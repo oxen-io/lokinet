@@ -5,7 +5,6 @@
 
 #include <oxenc/bt.h>
 
-#include <iostream>
 #include <set>
 
 namespace llarp
@@ -34,18 +33,10 @@ namespace llarp
         void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
       public:
-        auto operator<=>(const ClientIntro& other) const
+        bool operator==(const ClientIntro& other) const
         {
             return std::tie(pivot_rid, pivot_txid, expiry, version)
-                <=> std::tie(other.pivot_rid, other.pivot_txid, other.expiry, other.version);
-        }
-
-        bool operator==(const ClientIntro& other) const { return (*this <=> other) == 0; }
-
-        bool operator<(const ClientIntro& other) const
-        {
-            return std::tie(pivot_rid, pivot_txid, expiry, version)
-                < std::tie(other.pivot_rid, other.pivot_txid, other.expiry, other.version);
+                == std::tie(other.pivot_rid, other.pivot_txid, other.expiry, other.version);
         }
 
         std::string to_string() const;
@@ -57,7 +48,8 @@ namespace llarp
         bool operator()(const ClientIntro& lhs, const ClientIntro& rhs) const { return lhs.expiry > rhs.expiry; }
     };
 
-    using intro_set = std::set<ClientIntro, ClientIntroExpComp>;
+    // Sorted from newest to oldest (i.e. latest expiry first)
+    using sorted_intro_set = std::set<ClientIntro, ClientIntroExpComp>;
 
 }  //  namespace llarp
 

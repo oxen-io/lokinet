@@ -1,10 +1,8 @@
 #pragma once
 
-#include "dns.hpp"
-#include "name.hpp"
-#include "serialize.hpp"
-
+#include <nlohmann/json_fwd.hpp>
 #include <oxenc/bt_producer.h>
+#include <oxenc/bt_serialize.h>
 
 #include <string_view>
 #include <tuple>
@@ -67,19 +65,10 @@ namespace llarp::dns
         // but rather some sanity/safety checks
         bool is_valid() const;
 
-        auto operator<=>(const SRVData& other) const
+        bool operator==(const SRVData& other) const
         {
             return std::tie(service_proto, priority, weight, port, target)
-                <=> std::tie(other.service_proto, other.priority, other.weight, other.port, other.target);
-        }
-
-        bool operator==(const SRVData& other) const { return (*this <=> other) == 0; }
-
-        /// so we can put SRVData in a std::set
-        bool operator<(const SRVData& other) const
-        {
-            return std::tie(service_proto, priority, weight, port, target)
-                < std::tie(other.service_proto, other.priority, other.weight, other.port, other.target);
+                == std::tie(other.service_proto, other.priority, other.weight, other.port, other.target);
         }
 
         void bt_encode(oxenc::bt_dict_producer&& btdp) const;

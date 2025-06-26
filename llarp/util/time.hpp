@@ -8,7 +8,10 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <iostream>
+#include <random>
+#include <type_traits>
 
 using namespace std::chrono_literals;
 
@@ -16,10 +19,6 @@ namespace llarp
 {
     // Libevent uses µs precision
     using loop_time = std::chrono::microseconds;
-
-    using rc_time = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
-
-    rc_time time_point_now();
 
     /// get time right now as milliseconds, this is monotonic
     std::chrono::milliseconds time_now_ms();
@@ -53,17 +52,38 @@ namespace llarp
         return std::chrono::duration_cast<unit_t>(get_timestamp());
     }
 
-    /** Returns a time of type `unit_t` in the window of [`about`, `about` + `upper_bound`].
-
-        example:
-            - "Between 5 and 8 minutes":
-
-                auto t = approximate_time(5min, 3);
+    /** Returns a duration uniformly distributed between `a` and `b`.  E.g.
+     *
+     *     auto t = llarp::uniform_duration_distribution{5min, 8min}(llarp);
+     *
+     * yields a duration uniformly distributed in [5min, 8min], with `Time` precision.
+     *
+     * Time defaults to at least milliseconds (if given less precise types, such as minutes), but
+     * will be more precise if constructed with more precise duration types.
      */
-    template <typename unit_t>
-    auto approximate_time(unit_t about, size_t upper_bound) -> unit_t
+    template <typename Time>
+    struct uniform_duration_distribution
     {
-        return about + unit_t{csrng.boundedrand(upper_bound + 1)};
-    }
+        using underlying_rep = Time::rep;
+        std::conditional_t<
+            std::is_floating_point_v<underlying_rep>,
+            std::uniform_real_distribution<underlying_rep>,
+            std::uniform_int_distribution<underlying_rep>>
+            underlying_dist;
+
+        using result_type = Time;
+
+        constexpr uniform_duration_distribution(Time a, Time b) : underlying_dist{a.count(), b.count()} {}
+
+        template <class Generator>
+        Time operator()(Generator& g)
+        {
+            return Time{underlying_dist(g)};
+        }
+    };
+
+    template <typename TimeA, typename TimeB>
+    uniform_duration_distribution(TimeA a, TimeB b)
+        -> uniform_duration_distribution<std::common_type_t<TimeA, TimeB, std::chrono::milliseconds>>;
 
 }  // namespace llarp

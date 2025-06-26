@@ -1,11 +1,13 @@
 #include "connection.hpp"
 
+#include <llarp/util/logging.hpp>
+
 namespace llarp::link
 {
-    static auto logcat = llarp::log::Cat("link_conn");
+    static auto logcat = log::Cat("link_conn");
 
     Connection::Connection(
-        std::shared_ptr<oxen::quic::Connection> c, bt_control_stream s, bool _is_relay, bool _is_active)
+        std::shared_ptr<quic::Connection> c, std::shared_ptr<quic::BTRequestStream> s, bool _is_relay, bool _is_active)
         : conn{std::move(c)},
           datagrams{conn->datagrams()},
           control_stream{std::move(s)},

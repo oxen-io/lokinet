@@ -1,6 +1,11 @@
 #include "client_contact.hpp"
 
+#include <oxenc/bt_serialize.h>
+
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+
+#include <type_traits>
 
 namespace llarp
 {
@@ -9,124 +14,100 @@ namespace llarp
     ClientContact::ClientContact(
         Ed25519PrivateData private_data,
         PubKey pk,
-        const std::unordered_set<dns::SRVData>& srvs,
-        uint8_t proto_flags,
+        std::unordered_set<dns::SRVData> srvs,
+        protocol_flag protocols,
         std::optional<net::ExitPolicy> policy)
         : derived_privatekey{std::move(private_data)},
-          pubkey{std::move(pk)},
-          SRVs{srvs.begin(), srvs.end()},
-          protos{proto_flags},
-          exit_policy{std::move(policy)}
+          _pubkey{std::move(pk)},
+          _srv{std::move(srvs)},
+          _protos{protocols},
+          _exit_policy{std::move(policy)}
     {}
 
-    ClientContact::ClientContact(std::string&& buf) { bt_decode(oxenc::bt_dict_consumer{buf}); }
+    ClientContact::ClientContact(std::span<const unsigned char> buf) { bt_decode(oxenc::bt_dict_consumer{buf}); }
 
-    ClientContact ClientContact::generate(
-        Ed25519PrivateData&& private_data,
-        PubKey&& pk,
-        const std::unordered_set<dns::SRVData>& srvs,
-        uint8_t proto_flags,
-        std::optional<net::ExitPolicy> policy)
-    {
-        log::info(logcat, "Generating new ClientContact...");
-        return ClientContact{std::move(private_data), std::move(pk), srvs, proto_flags, std::move(policy)};
-    }
-
-    void ClientContact::handle_updated_field(intro_set iset)
+    void ClientContact::update_intros(sorted_intro_set iset)
     {
         if (iset.empty())
             throw std::invalid_argument{"Cannot publish ClientContact with no ClientIntros!"};
-        intros = std::move(iset);
-        log::debug(logcat, "ClientContact stored updated ClientIntros (n={})...", intros.size());
+        _intros = std::move(iset);
+        log::debug(logcat, "ClientContact stored updated ClientIntros (n={})...", _intros.size());
     }
 
-    void ClientContact::handle_updated_field(std::unordered_set<dns::SRVData> srvs)
+#ifdef __cpp_lib_to_underlying
+    using std::to_underlying;
+#else
+    template <class Enum>
+    constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept
     {
-        log::trace(logcat, "ClientContact storing updated SRVs...");
-        SRVs = std::move(srvs);
+        return static_cast<std::underlying_type_t<Enum>>(e);
     }
+#endif
 
-    void ClientContact::handle_updated_field(uint16_t proto)
+    std::vector<unsigned char> ClientContact::bt_encode() const
     {
-        log::trace(logcat, "ClientContact storing new protocol types...");
-        protos = proto;
-    }
+        oxenc::bt_dict_producer btdp;
+        btdp.append<uint8_t>("", VERSION);
 
-    void ClientContact::_regenerate() { log::debug(logcat, "ClientContact regenerated with updated fields!"); }
+        btdp.append("a", _pubkey.to_view());
 
-    void ClientContact::bt_encode(std::vector<unsigned char>& buf) const
-    {
-        buf.resize(bt_encode(oxenc::bt_dict_producer{reinterpret_cast<char*>(buf.data()), buf.size()}));
-    }
-
-    size_t ClientContact::bt_encode(oxenc::bt_dict_producer&& btdp) const
-    {
-        btdp.append<uint8_t>("", ClientContact::CC_VERSION);
-
-        btdp.append("a", pubkey.to_view());
-
-        if (exit_policy)
-            exit_policy->bt_encode(btdp.append_dict("e"));
+        if (_exit_policy)
+            _exit_policy->bt_encode(btdp.append_dict("e"));
 
         {
             auto sublist = btdp.append_list("i");
-
-            for (auto& i : intros)
+            for (auto& i : _intros)
                 i.bt_encode(sublist.append_dict());
         }
 
-        btdp.append<uint16_t>("p", protos);
+        btdp.append("p", to_underlying(_protos));
 
-        if (not SRVs.empty())
+        if (not _srv.empty())
         {
             auto sublist = btdp.append_list("s");
-            for (auto& s : SRVs)
+            for (auto& s : _srv)
                 s.bt_encode(sublist.append_dict());
         }
 
-        return btdp.view().size();
+        auto encoded = btdp.view();
+        std::vector<unsigned char> ret;
+        ret.resize(encoded.size());
+        std::memcpy(ret.data(), encoded.data(), encoded.size());
+        return ret;
     }
 
     void ClientContact::bt_decode(oxenc::bt_dict_consumer&& btdc)
     {
         auto version = btdc.require<uint8_t>("");
 
-        if (ClientContact::CC_VERSION != version)
+        if (version != VERSION)
             throw std::runtime_error{
-                "Deserialized ClientContact with incorrect version! (Received:{}, expected:{})"_format(
-                    version, ClientContact::CC_VERSION)};
+                "Deserialized ClientContact with unsupported version {} (expected {})!"_format(version, VERSION)};
 
-        pubkey.from_string(btdc.require<std::string_view>("a"));
+        _pubkey.from_string(btdc.require<std::string_view>("a"));
 
         if (btdc.skip_until("e"))
-            exit_policy->bt_decode(btdc.consume_dict_consumer());
+            _exit_policy.emplace().bt_decode(btdc.consume_dict_consumer());
 
-        btdc.required("i");
+        for (auto sublist = btdc.require<oxenc::bt_list_consumer>("i"); not sublist.is_finished();)
+            _intros.emplace(sublist.consume_dict_consumer());
 
-        {
-            auto sublist = btdc.consume_list_consumer();
+        _protos = static_cast<protocol_flag>(btdc.require<std::underlying_type_t<protocol_flag>>("p"));
 
-            while (not sublist.is_finished())
-                intros.emplace(sublist.consume_dict_consumer());
-        }
-
-        protos = btdc.require<uint16_t>("p");
-
-        if (btdc.skip_until("s"))
-        {
-            auto sublist = btdc.consume_list_consumer();
-
-            while (not sublist.is_finished())
-                SRVs.emplace(sublist.consume_dict_consumer());
-        }
+        if (auto sublist = btdc.maybe<oxenc::bt_list_consumer>("s"))
+            while (not sublist->is_finished())
+                _srv.emplace(sublist->consume_dict_consumer());
     }
 
-    session_tag ClientContact::generate_session_tag() const { return session_tag::make(protos); }
+    session_tag ClientContact::generate_session_tag() const { return session_tag{_protos}; }
 
     bool ClientContact::is_expired(std::chrono::milliseconds now) const
     {
-        // check the last intro to expire
-        return intros.begin()->is_expired(now);
+        // We want to check the first one, because this is sorted newest-to-oldest
+        auto it = _intros.begin();
+        if (it == _intros.end())
+            return true;
+        return it->is_expired(now);
     }
 
     EncryptedClientContact ClientContact::encrypt_and_sign() const
@@ -135,21 +116,19 @@ namespace llarp
 
         try
         {
-            enc.blinded_pubkey = derived_privatekey.to_pubkey();
-            bt_encode(enc.encrypted);
+            enc.blinded_pubkey.assign(derived_privatekey.to_pubkey().span());
+            enc.encrypted = bt_encode();
 
-            if (not crypto::xchacha20(enc.encrypted.data(), enc.encrypted.size(), pubkey.data(), enc.nonce.data()))
+            if (not crypto::xchacha20(enc.encrypted.data(), enc.encrypted.size(), _pubkey.data(), enc.nonce.data()))
                 throw std::runtime_error{"Failed to encrypt ClientContact bt-payload!"};
 
             enc.signed_at = llarp::time_now_ms();
 
-            oxenc::bt_dict_producer btdp;
-            enc.bt_encode(btdp);
-
-            btdp.append_signature("~", [&](std::span<const uint8_t> to_sign) {
+            auto btdp = enc.bt_encode_for_signing();
+            btdp.append_signature("~", [&enc, this](std::span<const uint8_t> to_sign) {
                 if (not crypto::sign(enc.sig, derived_privatekey, to_sign.data(), to_sign.size()))
                     throw std::runtime_error{"Failed to sign EncryptedClientContact payload!"};
-                return enc.sig.to_view();
+                return enc.sig.span();
             });
 
             enc._bt_payload = std::move(btdp).str();
@@ -165,40 +144,13 @@ namespace llarp
 
     std::string ClientContact::to_string() const
     {
-        return "CC:[ 'a':{} | 'e':{} | 'i':[ {{}} ] | 'p':{} | 's':{} ]"_format(
-            pubkey.short_string(),
-            exit_policy.has_value(),
-            fmt::join(intros, " | "),
-            protoflag_string(protos),
-            not SRVs.empty());
-    }
-
-    EncryptedClientContact EncryptedClientContact::deserialize(std::string_view buf)
-    {
-        log::trace(logcat, "Deserializing EncryptedClientContact...");
-        return EncryptedClientContact{buf};
+        return "CC[{}{}, {}, {} intros]"_format(
+            _pubkey.short_string(), _exit_policy ? ", exit" : "", _intros.size(), llarp::to_string(_protos));
     }
 
     EncryptedClientContact::EncryptedClientContact(std::string_view buf) : _bt_payload{buf}
     {
         bt_decode(oxenc::bt_dict_consumer{_bt_payload});
-    }
-
-    std::string EncryptedClientContact::bt_encode()
-    {
-        oxenc::bt_dict_producer btdp;
-        bt_encode(btdp);
-        btdp.append("~", sig.to_view());
-        _bt_payload = std::move(btdp).str();
-        return _bt_payload;
-    }
-
-    void EncryptedClientContact::bt_encode(oxenc::bt_dict_producer& btdp) const
-    {
-        btdp.append("i", blinded_pubkey.to_view());
-        btdp.append("n", nonce.to_view());
-        btdp.append("t", signed_at.count());
-        btdp.append("x", std::string_view{reinterpret_cast<const char*>(encrypted.data()), encrypted.size()});
     }
 
     /** EncryptedClientContact
@@ -234,16 +186,15 @@ namespace llarp
         }
     }
 
-    std::optional<ClientContact> EncryptedClientContact::decrypt(const PubKey& root)
+    std::optional<ClientContact> EncryptedClientContact::decrypt(const PubKey& root) const
     {
-        std::optional<ClientContact> cc = std::nullopt;
-        std::string payload{reinterpret_cast<char*>(encrypted.data()), encrypted.size()};
-
+        std::optional<ClientContact> cc;
+        auto plaintext = encrypted;
         if (crypto::xchacha20(
-                reinterpret_cast<unsigned char*>(payload.data()), payload.size(), root.data(), nonce.data()))
+                reinterpret_cast<unsigned char*>(plaintext.data()), plaintext.size(), root.data(), nonce.data()))
         {
             log::debug(logcat, "EncryptedClientContact decrypted successfully...");
-            cc = ClientContact{std::move(payload)};
+            cc.emplace(plaintext);
         }
         else
             log::warning(logcat, "Failed to decrypt EncryptedClientContact!");

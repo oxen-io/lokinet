@@ -4,13 +4,14 @@
 #include <llarp/contact/sns.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/ev/types.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <oxenmq/address.h>
 #include <oxenmq/oxenmq.h>
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 
     inline constexpr oxenmq::LogLevel oxenlog_to_omq_level(log::Level level)
     {
@@ -38,9 +39,9 @@ namespace llarp
         inline constexpr auto PING_INTERVAL{30s};
 
         /// The RPCClient uses oxen-mq to talk to make API requests to OMQ endpoints
-        struct RPCClient : public std::enable_shared_from_this<RPCClient>
+        struct RPCClient
         {
-            explicit RPCClient(std::shared_ptr<oxenmq::OxenMQ> lmq, std::weak_ptr<Router> r);
+            RPCClient(oxenmq::OxenMQ& omq, Router& r);
 
             /// Connect to lokid async
             void connect_async(oxenmq::address url);
@@ -73,13 +74,13 @@ namespace llarp
             template <typename HandlerFunc_t, typename Args_t>
             void request(std::string_view cmd, HandlerFunc_t func, const Args_t& args)
             {
-                _omq->request(*_conn, std::move(cmd), std::move(func), args);
+                _omq.request(*_conn, std::move(cmd), std::move(func), args);
             }
 
             template <typename HandlerFunc_t>
             void request(std::string_view cmd, HandlerFunc_t func)
             {
-                _omq->request(*_conn, std::move(cmd), std::move(func));
+                _omq.request(*_conn, std::move(cmd), std::move(func));
             }
 
             // Handles a service node list update; takes the "service_node_states" object of an
@@ -89,12 +90,12 @@ namespace llarp
             // Handles notification of a new block
             void handle_new_block(oxenmq::Message& msg);
 
-            std::shared_ptr<EventTicker> _ping_ticker;
+            std::shared_ptr<quic::Ticker> _ping_ticker;
 
             std::optional<oxenmq::ConnectionID> _conn;
-            std::shared_ptr<oxenmq::OxenMQ> _omq;
+            oxenmq::OxenMQ& _omq;
 
-            std::weak_ptr<Router> _router;
+            Router& _router;
             std::atomic<bool> _is_updating_list;
             std::string _last_hash_update;
 

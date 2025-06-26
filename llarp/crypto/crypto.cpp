@@ -1,6 +1,7 @@
 #include "crypto.hpp"
 
 #include <llarp/contact/keys.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/random.hpp>
 
 #include <oxenc/endian.h>
@@ -84,7 +85,7 @@ namespace llarp
         return false;
     }
 
-    std::optional<AlignedBuffer<32>> crypto::maybe_decrypt_name(
+    std::optional<RouterID> crypto::maybe_decrypt_name(
         std::string_view ciphertext, SymmNonce nonce, std::string_view name)
     {
         const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
@@ -99,9 +100,9 @@ namespace llarp
             return {};
         if (not hmac(derivedKey.data(), name_buf.data(), derivedKey.size(), namehash))
             return {};
-        AlignedBuffer<32> result{};
+        auto result = std::make_optional<RouterID>();
         if (crypto_aead_xchacha20poly1305_ietf_decrypt(
-                result.data(),
+                result->data(),
                 nullptr,
                 nullptr,
                 reinterpret_cast<const uint8_t*>(ciphertext.data()),
@@ -112,7 +113,7 @@ namespace llarp
                 derivedKey.data())
             == -1)
         {
-            return {};
+            result.reset();
         }
         return result;
     }
@@ -152,7 +153,14 @@ namespace llarp
     {
         std::string result;
         result.resize(ShortHash::SIZE);
-        if (crypto_generichash_blake2b(reinterpret_cast<uint8_t*>(result.data()), ShortHash::SIZE, reinterpret_cast<const uint8_t*>(to_hash.data()), to_hash.size(), nullptr, 0) == -1)
+        if (crypto_generichash_blake2b(
+                reinterpret_cast<uint8_t*>(result.data()),
+                ShortHash::SIZE,
+                reinterpret_cast<const uint8_t*>(to_hash.data()),
+                to_hash.size(),
+                nullptr,
+                0)
+            == -1)
             throw std::runtime_error{"blake2b failed for some reason"};
         return result;
     }
@@ -353,10 +361,6 @@ namespace llarp
         return 0 == crypto_scalarmult_ed25519_noclamp(derived, h.data(), root_pubkey.data());
     }
 
-    void crypto::randomize(uint8_t* buf, size_t len) { randombytes(buf, len); }
-
-    void crypto::randbytes(uint8_t* ptr, size_t sz) { randombytes((unsigned char*)ptr, sz); }
-
     Ed25519SecretKey crypto::generate_identity()
     {
         Ed25519SecretKey ret{};
@@ -396,8 +400,6 @@ namespace llarp
         return ret;
     }
 #endif
-
-    const uint8_t* seckey_to_pubkey(const Ed25519SecretKey& sec) { return sec.data() + 32; }
 
     // Called during static initialization to initialize libsodium.  (The CSRNG return is
     // not useful, but just here to get this called during static initialization of `csrng`).

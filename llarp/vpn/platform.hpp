@@ -4,43 +4,25 @@
 
 #include <llarp/address/ip_range.hpp>
 #include <llarp/net/ip_packet.hpp>
-#include <llarp/net/net.hpp>
+#include <llarp/net/platform.hpp>
 
-#include <oxen/quic.hpp>
-#include <oxenc/variant.h>
+#include <oxen/quic/address.hpp>
 
-#include <set>
+#include <variant>
 
 namespace llarp
 {
     struct Context;
-    struct Router;
+    class Router;
 }  // namespace llarp
 
 namespace llarp::vpn
 {
-    struct InterfaceAddress
+    struct InterfaceInfo
     {
-        InterfaceAddress(IPRange r) : range{std::move(r)}, fam{range.is_ipv4() ? AF_INET : AF_INET6} {}
-
-        IPRange range;
-        int fam;
-
-        bool operator<(const InterfaceAddress& other) const
-        {
-            return std::tie(range, fam) < std::tie(other.range, other.fam);
-        }
-    };
-
-    struct [[deprecated("Use net::if_info instead!")]] InterfaceInfo
-    {
-        std::string ifname;
         unsigned int index;
-        std::vector<InterfaceAddress> addrs;
-
-        net::if_info if_info;
-
-        inline IPRange operator[](size_t idx) const { return addrs[idx].range; }
+        std::string ifname;
+        std::vector<std::variant<ipv4_net, ipv6_net>> addrs;
     };
 
     /// a vpn network interface
@@ -73,23 +55,26 @@ namespace llarp::vpn
 
         inline const llarp::net::Platform& Net() const { return *net_ptr(); }
 
-        virtual void add_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
+        virtual void add_route(ipv4 ip, ipv4 gateway) = 0;
+        virtual void add_route(ipv6 ip, ipv6 gateway) = 0;
 
-        virtual void delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
+        virtual void delete_route(ipv4 ip, ipv4 gateway) = 0;
+        virtual void delete_route(ipv6 ip, ipv6 gateway) = 0;
 
         virtual void add_default_route_via_interface(NetworkInterface& vpn) = 0;
-
         virtual void delete_default_route_via_interface(NetworkInterface& vpn) = 0;
 
-        virtual void add_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
+        virtual void add_route_via_interface(NetworkInterface& vpn, ipv4_range range) = 0;
+        virtual void add_route_via_interface(NetworkInterface& vpn, ipv6_range range) = 0;
 
-        virtual void delete_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
+        virtual void delete_route_via_interface(NetworkInterface& vpn, ipv4_range range) = 0;
+        virtual void delete_route_via_interface(NetworkInterface& vpn, ipv6_range range) = 0;
 
-        virtual std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface& vpn) = 0;
+        virtual std::vector<quic::Address> get_non_interface_gateways(NetworkInterface& vpn) = 0;
 
-        virtual void add_blackhole() {};
+        virtual void add_blackhole() {}
 
-        virtual void delete_blackhole() {};
+        virtual void delete_blackhole() {}
     };
 
     /// a vpn platform
@@ -127,7 +112,7 @@ namespace llarp::vpn
         /// interfaces on the system
         virtual std::shared_ptr<PacketIO> create_packet_io(
             [[maybe_unused]] unsigned int ifindex,
-            [[maybe_unused]] const std::optional<oxen::quic::Address>& dns_upstream_src)
+            [[maybe_unused]] const std::optional<quic::Address>& dns_upstream_src)
         {
             throw std::runtime_error{"raw packet io is unimplemented"};
         }

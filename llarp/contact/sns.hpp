@@ -43,7 +43,6 @@ namespace llarp
     /// check if an sns name complies with the registration rules
     inline bool is_valid_sns(std::string_view sns_name)
     {
-        // make sure it ends with .loki because no fucking shit right?
         if (not sns_name.ends_with(".loki"))
             return false;
 

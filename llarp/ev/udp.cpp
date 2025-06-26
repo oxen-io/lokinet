@@ -11,17 +11,15 @@ namespace llarp
         1;
 #endif
 
-    UDPHandle::UDPHandle(const std::shared_ptr<EventLoop>& ev, const oxen::quic::Address& bind, net_pkt_hook cb)
-        : _loop{ev}
+    UDPHandle::UDPHandle(const std::shared_ptr<quic::Loop>& ev, const quic::Address& bind, net_pkt_hook cb) : _loop{ev}
     {
-        socket = std::make_unique<UDPSocket>(ev->loop(), bind, std::move(cb));
+        socket = std::make_unique<UDPSocket>(ev->get_event_base(), bind, std::move(cb));
         _local = socket->address();
     }
 
     UDPHandle::~UDPHandle() { socket.reset(); }
 
-    io_result UDPHandle::_send_impl(
-        const oxen::quic::Path& path, std::byte* buf, size_t size, uint8_t ecn, size_t& n_pkts)
+    io_result UDPHandle::_send_impl(const quic::Path& path, std::byte* buf, size_t size, uint8_t ecn, size_t& n_pkts)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -74,7 +72,7 @@ namespace llarp
     }
 
     void UDPHandle::_send_or_queue(
-        const oxen::quic::Path& path, std::vector<std::byte> buf, uint8_t ecn, std::function<void(io_result)> callback)
+        const quic::Path& path, std::vector<std::byte> buf, uint8_t ecn, std::function<void(io_result)> callback)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -100,23 +98,21 @@ namespace llarp
             callback({});
     }
 
-    io_result UDPHandle::send(const oxen::quic::Address& dest, bstring data)
+    io_result UDPHandle::send(const quic::Address& dest, bstring data)
     {
         size_t n_pkts = 1;
-        return _send_impl(oxen::quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
+        return _send_impl(quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
     }
 
-    io_result UDPHandle::send(const oxen::quic::Address& dest, std::vector<uint8_t> data)
+    io_result UDPHandle::send(const quic::Address& dest, std::vector<uint8_t> data)
     {
         size_t n_pkts = 1;
-        return _send_impl(
-            oxen::quic::Path{_local, dest}, reinterpret_cast<std::byte*>(data.data()), data.size(), 0, n_pkts);
+        return _send_impl(quic::Path{_local, dest}, reinterpret_cast<std::byte*>(data.data()), data.size(), 0, n_pkts);
     }
 
-    io_result UDPHandle::send(const oxen::quic::Address& dest, std::span<std::byte> data)
+    io_result UDPHandle::send(const quic::Address& dest, std::span<std::byte> data)
     {
         size_t n_pkts = 1;
-        return _send_impl(
-            oxen::quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
+        return _send_impl(quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
     }
 }  //  namespace llarp

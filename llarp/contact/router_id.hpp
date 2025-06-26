@@ -10,17 +10,7 @@ namespace llarp
 {
     struct RouterID : public PubKey
     {
-        static constexpr size_t SIZE = 32;
-
-        RouterID() = default;
-
-        RouterID(const uint8_t* buf) : PubKey(buf) {}
-
-        RouterID(ustring_view data) : PubKey(data.data()) {}
-
-        RouterID(std::span<const uint8_t> data) : PubKey(data.data()) {}
-
-        RouterID(std::string_view data) : RouterID(detail::to_usv(data)) {}
+        using PubKey::PubKey;
 
         nlohmann::json ExtractStatus() const;
 
@@ -33,9 +23,9 @@ namespace llarp
 
         bool from_relay_address(std::string_view str);
 
-        RouterID& operator=(const uint8_t* ptr)
+        RouterID& operator=(std::span<const uint8_t, 32> ptr)
         {
-            std::copy(ptr, ptr + SIZE, begin());
+            std::memcpy(data(), ptr.data(), ptr.size());
             return *this;
         }
     };
@@ -46,6 +36,6 @@ namespace llarp
 namespace std
 {
     template <>
-    struct hash<llarp::RouterID> : hash<llarp::AlignedBuffer<llarp::RouterID::SIZE>>
+    struct hash<llarp::RouterID> : hash<llarp::PubKey>
     {};
 }  // namespace std

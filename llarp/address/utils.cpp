@@ -1,5 +1,12 @@
 #include "utils.hpp"
 
+#include <llarp/crypto/constants.hpp>
+#include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/str.hpp>
+
+#include <stdexcept>
+
 namespace llarp
 {
     static auto logcat = log::Cat("address-utils");
@@ -20,7 +27,7 @@ namespace llarp
                 // verify the tld is allowed
                 auto _tld = arg.substr(pos);
 
-                if (_tld == tld and TLD::allowed.count(_tld))
+                if (_tld == tld and TLD::allowed(_tld))
                     ret = _prefix;
             }
 

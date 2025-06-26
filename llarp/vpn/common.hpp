@@ -26,7 +26,7 @@ namespace llarp::vpn
         {
             if (_fd == -1)
                 throw std::invalid_argument{strerror(errno)};
-        };
+        }
 
         ~IOCTL() { ::close(_fd); }
 

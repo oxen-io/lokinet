@@ -2,14 +2,11 @@
 
 #include <llarp/address/map.hpp>
 #include <llarp/dns/server.hpp>
+#include <llarp/ev/types.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
 #include <llarp/vpn/platform.hpp>
-
-#include <future>
-#include <type_traits>
-#include <variant>
 
 namespace llarp::handlers
 {
@@ -27,31 +24,26 @@ namespace llarp::handlers
         /// dns subsystem for this endpoint
         std::shared_ptr<dns::Server> _dns;
 
-        /// our local ip range (config-mapped as `if-addr`), address, and ip
-        IPRange _local_range;
-        oxen::quic::Address _local_addr;
-        ip_v _local_base_ip;
+        /// our local ip network
+        ipv4_net _local_net;
+        IPv4RangeIterator _local_range_iterator{_local_net};
 
-        IPRangeIterator _local_range_iterator;
+        std::optional<ipv6_net> _local_ipv6_net;
+        std::optional<IPv6RangeIterator> _local_ipv6_range_iterator;
 
         /// Our local Network Address holding our network pubkey
         NetworkAddress _local_netaddr;
-
-        /// our network interface's ipv6 address
-        oxen::quic::Address _local_ipv6;
 
         /// list of strict connect addresses for hooks
         // std::vector<IpAddress> _strict_connect_addrs;
 
         /// use v6?
-        bool ipv6_enabled{};
+        bool ipv6_enabled = false;
 
         std::string _if_name;
 
-        std::optional<IPRange> _base_ipv6_range = std::nullopt;
-
         std::shared_ptr<vpn::NetworkInterface> _net_if;
-        std::shared_ptr<FDPoller> _poller;
+        std::unique_ptr<FDPoller> _poller;
 
         std::shared_ptr<vpn::PacketRouter> _packet_router;
 
@@ -79,15 +71,20 @@ namespace llarp::handlers
         bool maybe_hook_dns(
             std::shared_ptr<dns::PacketSource_Base> source,
             const dns::Message& query,
-            const oxen::quic::Address& to,
-            const oxen::quic::Address& from) override;
+            const quic::Address& to,
+            const quic::Address& from) override;
 
         // Reconfigures DNS servers and restarts libunbound with the new servers.
-        void reconfigure_dns(std::vector<oxen::quic::Address> servers);
+        void reconfigure_dns(std::vector<quic::Address> servers);
 
         void configure();
 
         std::string get_if_name() const;
+
+        // Returns the lokinet tun IPv4 address
+        const ipv4& get_ipv4() const;
+        // Returns the lokinet tun IPv6 address by pointer, or nullptr if ipv6 is not configured.
+        const ipv6* get_ipv6() const;
 
         nlohmann::json ExtractStatus() const;
 
@@ -111,7 +108,8 @@ namespace llarp::handlers
         // Handles an outbound packet going OUT to the network
         void handle_outbound_packet(IPPacket pkt);
 
-        void rewrite_and_send_packet(IPPacket&& pkt, ip_v src, ip_v dest);
+        void rewrite_and_send_packet(IPPacket&& pkt, const ipv4& src, const ipv4& dest);
+        void rewrite_and_send_packet(IPPacket&& pkt, const ipv6& src, const ipv6& dest);
 
         // TESTNET: TODO: new inbound packet handling logic
         void handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote);
@@ -122,11 +120,11 @@ namespace llarp::handlers
 
         // Upon session creation, SessionHandler will instruct TunEndpoint to requisition a private IP through which to
         // route session traffic
-        std::optional<ip_v> map_session_to_local_ip(const NetworkAddress& remote);
+        std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote);
+        // TODO:
+        // std::optional<ipv6> map_session_to_local_ipv6(const NetworkAddress& remote);
 
         void unmap_session_to_local_ip(const NetworkAddress& remote);
-
-        oxen::quic::Address get_if_addr() const;
 
         bool has_if_addr() const { return true; }
 
@@ -139,9 +137,7 @@ namespace llarp::handlers
         /// returns true otherwise
         bool is_allowing_traffic(const IPPacket& pkt) const;
 
-        bool has_mapping_to_remote(const NetworkAddress& addr) const;
-
-        std::optional<ip_v> get_mapped_ip(const NetworkAddress& addr);
+        std::pair<std::optional<ipv4>, std::optional<ipv6>> get_mapped_ip(const NetworkAddress& addr);
 
         const Router& router() const { return _router; }
 
@@ -152,12 +148,15 @@ namespace llarp::handlers
         // Stores assigned IP's for each session in/out of this lokinet instance
         //  - Reserved local addresses are directly pre-loaded from config
         //  - Persisting address map is directly pre-loaded from config
-        address_map<ip_v, NetworkAddress> _local_ip_mapping;
+        address_map<ipv4> _local_ipv4_mapping;
+        address_map<ipv6> _local_ipv6_mapping;
 
       private:
-        std::optional<ip_v> get_next_local_ip();
+        std::optional<ipv4> get_next_local_ipv4();
+        std::optional<ipv6> get_next_local_ipv6();
 
-        std::optional<ip_v> obtain_src_for_remote(const NetworkAddress& remote, bool use_ipv4);
+        std::optional<ipv4> obtain_src_for_ipv4_remote(const NetworkAddress& remote);
+        std::optional<ipv6> obtain_src_for_ipv6_remote(const NetworkAddress& remote);
 
         void send_packet_to_net_if(IPPacket pkt);
     };

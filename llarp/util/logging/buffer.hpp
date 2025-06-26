@@ -4,5 +4,5 @@
 
 namespace llarp
 {
-    using oxen::quic::buffer_printer;
+    using quic::buffer_printer;
 }  // namespace llarp

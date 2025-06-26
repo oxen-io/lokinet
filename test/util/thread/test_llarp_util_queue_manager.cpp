@@ -54,8 +54,6 @@ class IntQueue
   explicit IntQueue(size_t capacity) : manager(capacity), data(capacity, 0)
   {}
 
-  ~IntQueue() = default;
-
   bool
   tryPushBack(int value)
   {

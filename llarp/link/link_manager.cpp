@@ -10,8 +10,10 @@
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
 
+#include <oxen/quic/context.hpp>
 #include <oxenc/bt_producer.h>
 #include <sodium/crypto_generichash_blake2b.h>
+#include <sodium/randombytes.h>
 
 #include <algorithm>
 #include <exception>
@@ -21,25 +23,24 @@ namespace llarp
 {
     static auto logcat = llarp::log::Cat("link_manager");
 
-    static constexpr auto static_shared_key = "Lokinet static shared secret key"sv;
-
-    static static_secret make_static_secret(const Ed25519SecretKey& sk)
+    static std::vector<uint8_t> make_static_secret(
+        const Ed25519SecretKey& sk, std::string_view static_secret_key = "Lokinet static shared secret key"sv)
     {
         std::vector<uint8_t> secret;
         secret.resize(32);
 
         crypto_generichash_blake2b_state st;
         crypto_generichash_blake2b_init(
-            &st, reinterpret_cast<const uint8_t*>(static_shared_key.data()), static_shared_key.size(), secret.size());
+            &st, reinterpret_cast<const uint8_t*>(static_secret_key.data()), static_secret_key.size(), secret.size());
         crypto_generichash_blake2b_update(&st, sk.data(), sk.size());
         crypto_generichash_blake2b_final(&st, secret.data(), secret.size());
 
-        return static_secret{std::move(secret)};
+        return secret;
     }
 
     namespace link
     {
-        Endpoint::Endpoint(std::shared_ptr<oxen::quic::Endpoint> ep, LinkManager& lm)
+        Endpoint::Endpoint(std::shared_ptr<quic::Endpoint> ep, LinkManager& lm)
             : endpoint{std::move(ep)}, link_manager{lm}, _is_service_node{link_manager.is_service_node()}
         {}
 
@@ -85,7 +86,7 @@ namespace llarp
         void Endpoint::for_each_service_conn(
             std::function<void(RouterID, std::shared_ptr<link::Connection>)> func, bool active_only)
         {
-            assert(link_manager.router().loop()->in_event_loop());
+            assert(link_manager.router().loop()->inside());
 
             std::ranges::for_each(service_conns.begin(), service_conns.end(), [&](auto c) mutable {
                 if (c.second and (active_only ? c.second->is_active.load() : true))
@@ -194,7 +195,7 @@ namespace llarp
             });
         }
 
-        bool Endpoint::establish_and_send_control(RemoteRC rc, bt_control_send_hook send_hook)
+        bool Endpoint::establish_and_send_control(RemoteRC rc, std::function<void(quic::BTRequestStream&)> send_hook)
         {
             return link_manager.router().loop()->call_get([&]() {
                 auto rid = rc.router_id();
@@ -206,26 +207,26 @@ namespace llarp
                     if (not b)
                     {
                         log::debug(logcat, "Attempting to establish an already existing connection!");
-                        send_hook(itr->second->control_stream);
+                        send_hook(*itr->second->control_stream);
                         return true;
                     }
 
                     auto conn = endpoint->connect(
-                        KeyedAddress{rid.to_view(), rc.addr()},
+                        quic::RemoteAddress{rid.to_view(), rc.addr()},
                         link_manager.tls_creds,
-                        _is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
+                        quic::opt::keep_alive{_is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
                         [this, itr = std::move(itr), rid, send_hook = std::move(send_hook)](
-                            oxen::quic::Connection& conn) mutable {
+                            quic::Connection& conn) mutable {
                             log::debug(
                                 logcat,
                                 "{} batch dispatching to remote (rid:{})",
                                 _is_service_node ? "Relay" : "Client",
                                 rid.short_string());
-                            send_hook(itr->second->control_stream);
+                            send_hook(*itr->second->control_stream);
                             link_manager.on_conn_open(conn);
                         });
 
-                    auto control_stream = link_manager.make_control(conn, rid);
+                    auto control_stream = link_manager.make_control(*conn, rid);
 
                     itr->second = std::make_shared<link::Connection>(std::move(conn), std::move(control_stream));
 
@@ -249,12 +250,10 @@ namespace llarp
 
     size_t LinkManager::get_num_connected_clients() const { return ep->num_client_conns(); }
 
-    using messages::serialize_response;
-
-    std::set<RouterID> LinkManager::get_current_remotes() const
+    std::unordered_set<RouterID> LinkManager::get_current_remotes() const
     {
         // invoke using Router method to wrap in call_get
-        std::set<RouterID> ret{};
+        std::unordered_set<RouterID> ret;
 
         for (auto& [rid, conn] : ep->service_conns)
             if (conn and conn->is_active)
@@ -271,11 +270,14 @@ namespace llarp
         return ep->for_each_connection(std::move(func));
     }
 
-    void LinkManager::register_commands(const bt_control_stream& s, const RouterID& remote_rid, bool client_only)
+    void LinkManager::register_commands(quic::BTRequestStream& s, const RouterID& remote_rid, bool client_only)
     {
+        // TODO FIXME: registering all these commands on every stream feels icky; a quic fallback
+        // handler could do this better.
+
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        s->register_handler("path_control"s, [this](oxen::quic::message m) mutable {
+        s.register_handler("path_control"s, [this](quic::message m) mutable {
             _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_control(std::move(msg)); });
         });
 
@@ -285,48 +287,49 @@ namespace llarp
             return;
         }
 
-        s->register_handler("path_switch"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
+        s.register_handler("path_switch"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
         });
 
-        s->register_handler("session_init"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
+        s.register_handler("session_init"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
         });
 
-        s->register_handler("session_close"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
+        s.register_handler("session_close"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
         });
 
-        s->register_handler("path_build"s, [this, rid = remote_rid](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
+        s.register_handler("path_build"s, [this, remote_rid](quic::message m) {
+            _router.loop()->call(
+                [this, remote_rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote_rid); });
         });
 
-        s->register_handler("bfetch_rcs"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
+        s.register_handler("bfetch_rcs"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
         });
 
-        s->register_handler("fetch_rcs"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
+        s.register_handler("fetch_rcs"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { _handle_fetch_rcs(std::move(msg)); });
         });
 
-        s->register_handler("fetch_rids"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
+        s.register_handler("fetch_rids"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
         });
 
-        s->register_handler("gossip_rc"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
+        s.register_handler("gossip_rc"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
         });
 
-        s->register_handler("publish_cc"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_publish_cc(std::move(msg)); });
+        s.register_handler("publish_cc"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { _handle_publish_cc(std::move(msg)); });
         });
 
-        s->register_handler("find_cc"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_find_cc(std::move(msg)); });
+        s.register_handler("find_cc"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { _handle_find_cc(std::move(msg)); });
         });
 
-        s->register_handler("resolve_sns"s, [this](oxen::quic::message m) mutable {
-            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_resolve_sns(std::move(msg)); });
+        s.register_handler("resolve_sns"s, [this](quic::message m) {
+            _router.loop()->call([this, msg = std::move(m)]() mutable { _handle_resolve_sns(std::move(msg)); });
         });
 
         log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
@@ -336,32 +339,25 @@ namespace llarp
     {
         log::debug(logcat, "Starting gossip ticker...");
 
-        _router.loop()->call_later(approximate_time(5s, 5), [&]() {
+        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
             regenerate_and_gossip_rc();
             _gossip_ticker =
-                _router.loop()->call_every(_router._gossip_interval, [this]() mutable { regenerate_and_gossip_rc(); });
+                _router.loop()->call_every(_router.gossip_interval(), [this] { regenerate_and_gossip_rc(); });
         });
     }
 
     LinkManager::LinkManager(Router& r)
         : _router{r},
-          node_db{_router.node_db()},
           _is_service_node{_router.is_service_node()},
-          quic_loop{std::make_unique<oxen::quic::Loop>()},
-          tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
+          quic_loop{std::make_unique<quic::Loop>()},
+          tls_creds{quic::GNUTLSCreds::make_from_ed_keys(
               {reinterpret_cast<const char*>(_router.identity().data()), 32},
               {reinterpret_cast<const char*>(_router.local_rid().data()), 32})},
           ep{std::make_unique<link::Endpoint>(startup_endpoint(), *this)},
           is_stopping{false}
     {}
 
-    std::unique_ptr<LinkManager> LinkManager::make(Router& r)
-    {
-        std::unique_ptr<LinkManager> ptr{new LinkManager(r)};
-        return ptr;
-    }
-
-    std::shared_ptr<oxen::quic::Endpoint> LinkManager::startup_endpoint()
+    std::shared_ptr<quic::Endpoint> LinkManager::startup_endpoint()
     {
         /** Parameters:
               - local bind address
@@ -372,108 +368,104 @@ namespace llarp
                 - bt stream construction contains a stream close callback that shuts down the
                     connection if the btstream closes unexpectedly
         */
-        auto e = oxen::quic::Endpoint::endpoint(
+
+        std::optional<quic::opt::inbound_alpns> inbound_alpn;
+        if (is_service_node())
+            inbound_alpn.emplace({RELAY_ALPN, CLIENT_ALPN});
+
+        auto e = quic::Endpoint::endpoint(
             *quic_loop,
             _router.listen_addr(),
-            make_static_secret(_router.identity()),
-            [this](oxen::quic::Connection& conn) { return on_conn_open(conn); },
-            [this](oxen::quic::Connection& conn, uint64_t ec) { return on_conn_closed(conn, ec); },
-            [this](oxen::quic::datagram dgram) { return handle_path_data_message(std::move(dgram)); },
-            is_service_node() ? alpns::SERVICE_INBOUND : alpns::CLIENT_INBOUND,
-            is_service_node() ? alpns::SERVICE_OUTBOUND : alpns::CLIENT_OUTBOUND,
-            oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
+            quic::opt::static_secret{make_static_secret(_router.identity())},
+            [this](quic::Connection& conn) { return on_conn_open(conn); },
+            [this](quic::Connection& conn, uint64_t ec) { return on_conn_closed(conn, ec); },
+            [this](quic::datagram dgram) { return handle_path_data_message(std::move(dgram)); },
+            inbound_alpn,
+            quic::opt::outbound_alpns{{is_service_node() ? RELAY_ALPN : CLIENT_ALPN}},
+            quic::opt::enable_datagrams{quic::Splitting::ACTIVE});
 
-        // While only service nodes accept inbound connections, clients must have this key verify
-        // callback set. It will reject any attempted inbound connection to a lokinet client prior
-        // to handshake completion
-        tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
-            return _router.loop()->call_get([&]() {
-                RouterID other{key.data()};
-                auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
-                auto is_snode = is_service_node();
+        if (_router.is_service_node())
+            tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
+                assert(is_service_node());
 
-                if (is_snode)
+                bool incoming_client = alpn == CLIENT_ALPN;
+                if (!incoming_client && alpn != RELAY_ALPN)
                 {
-                    if (alpn == alpns::C_ALPNS)
+                    log::warning(logcat, "Rejecting incoming connection with unknown ALPN {}", alpn);
+                    return false;
+                }
+
+                if (key.size() != RouterID::SIZE)
+                {
+                    log::warning(
+                        logcat,
+                        "Rejecting incoming connection with invalid/unsupported pubkey ({} bytes, expected {})",
+                        key.size(),
+                        RouterID::SIZE);
+                    return false;
+                }
+
+                return _router.loop()->call_get([this, incoming_client, other = RouterID{key.first<32>()}] {
+                    if (incoming_client)
                     {
-                        log::trace(logcat, "{} accepting client connection (remote:{})!", us, other);
+                        // FIXME: what if the client is reconnecting but we already have something
+                        // in ep->client_conns?
+                        log::debug(logcat, "Accepting client connection from {}!", other);
                         ep->client_conns.emplace(other, nullptr);
                         return true;
                     }
 
-                    if (alpn == alpns::SN_ALPNS)
+                    // verify incoming service node
+                    if (not _router.node_db().registered_routers().contains(other))
                     {
-                        // verify as service node!
-                        bool result = node_db->registered_routers().count(other);
-
-                        if (result)
-                        {
-                            auto [itr, b] = ep->service_conns.try_emplace(other, nullptr);
-
-                            if (not b)
-                            {
-                                // If we fail to try_emplace a connection to the incoming RID, then
-                                // we are simultaneously dealing with an outbound and inbound from
-                                // the same connection. To resolve this, both endpoints will defer
-                                // to the connection initiated by the RID that appears first in
-                                // lexicographical order
-                                auto defer_to_incoming = other < router().local_rid();
-
-                                if (defer_to_incoming)
-                                {
-                                    itr->second->conn->set_close_quietly();
-                                    itr->second = nullptr;
-                                }
-
-                                log::trace(
-                                    logcat,
-                                    "{} received inbound with ongoing outbound to remote "
-                                    "(RID:{}); {}!",
-                                    us,
-                                    other,
-                                    defer_to_incoming ? "deferring to inbound" : "rejecting in favor of outbound");
-
-                                return defer_to_incoming;
-                            }
-
-                            log::trace(logcat, "{} accepting inbound from registered remote (RID:{})", us, other);
-                        }
-                        else
-                            log::info(
-                                logcat,
-                                "{} was unable to confirm remote (RID:{}) is registered; "
-                                "rejecting "
-                                "connection!",
-                                us,
-                                other);
-
-                        return result;
+                        log::warning(
+                            logcat, "Rejecting incoming relay connection from unregistered relay (RID:{})", other);
+                        return false;
                     }
 
-                    log::critical(logcat, "{} received unknown ALPN; rejecting connection!", us);
-                }
-                else
-                    log::critical(logcat, "Clients should not be validating inbound connections!");
+                    auto [itr, b] = ep->service_conns.emplace(other, nullptr);
+                    if (b)
+                    {
+                        log::debug(logcat, "Accepting inbound from registered relay (RID:{})", other);
+                        return true;
+                    }
 
-                return false;
+                    // If we fail to emplace a connection to the incoming RID, then we are
+                    // simultaneously dealing with an outbound and inbound with the same remote.  To
+                    // resolve this consistently on both ends, both relays will defer to the
+                    // connection initiated by the RID that appears first in lexicographical order.
+                    auto defer_to_incoming = other < router().local_rid();
+
+                    if (defer_to_incoming)
+                    {
+                        if (itr->second)
+                            itr->second->conn->set_close_quietly();
+                        itr->second = nullptr;
+                    }
+
+                    log::debug(
+                        logcat,
+                        "Received inbound with ongoing outbound to relay (RID:{}); {}!",
+                        other,
+                        defer_to_incoming ? "deferring to inbound" : "rejecting in favor of outbound");
+
+                    return defer_to_incoming;
+                });
             });
-        });
 
-        if (_router.is_service_node())
-            e->listen(tls_creds);
+        e->listen(tls_creds);
 
         return e;
     }
 
-    bt_control_stream LinkManager::make_control(
-        const std::shared_ptr<oxen::quic::Connection>& conn, const RouterID& remote)
+    std::shared_ptr<quic::BTRequestStream> LinkManager::make_control(quic::Connection& conn, const RouterID& remote)
     {
-        bt_control_stream control_stream;
+        std::shared_ptr<quic::BTRequestStream> control_stream;
 
-        if (conn->is_inbound())
+        if (conn.is_inbound())
         {
-            control_stream = conn->template queue_incoming_stream<oxen::quic::BTRequestStream>(
-                [](oxen::quic::Stream&, uint64_t error_code) {
+            control_stream =
+                conn.template queue_incoming_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
                     log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                 });
 
@@ -482,24 +474,24 @@ namespace llarp
         }
         else
         {
-            control_stream =
-                conn->template open_stream<oxen::quic::BTRequestStream>([](oxen::quic::Stream&, uint64_t error_code) {
-                    log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
-                });
+            control_stream = conn.open_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
+                log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
+            });
 
             log::trace(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
         }
 
-        register_commands(control_stream, remote, not _is_service_node);
+        register_commands(*control_stream, remote, not _is_service_node);
         return control_stream;
     }
 
-    void LinkManager::on_inbound_conn(std::shared_ptr<oxen::quic::Connection> conn)
+    void LinkManager::on_inbound_conn(std::shared_ptr<quic::Connection> conn)
     {
         assert(_is_service_node);
-        RouterID rid{conn->remote_key()};
+        assert(conn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
+        RouterID rid{conn->remote_key().first<RouterID::SIZE>()};
 
-        auto control = make_control(conn, rid);
+        auto control = make_control(*conn, rid);
         bool is_client_conn = false;
 
         if (auto it = ep->service_conns.find(rid); it != ep->service_conns.end())
@@ -533,17 +525,19 @@ namespace llarp
             log::trace(logcat, "Fetched configured outbound connection to relay RID: {}", rid);
         }
         else
+        {
             log::warning(logcat, "Could not find outbound connection corresponding to RID: {}", rid);
 
-        log::critical(
-            logcat,
-            "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-            _is_service_node ? "SERVICE NODE" : "CLIENT",
-            _router.local_rid().to_network_address(_is_service_node),
-            rid.to_network_address(/*is_relay=*/true));
+            log::critical(
+                logcat,
+                "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
+                _is_service_node ? "SERVICE NODE" : "CLIENT",
+                _router.local_rid().to_network_address(_is_service_node),
+                rid.to_network_address(/*is_relay=*/true));
+        }
     }
 
-    void LinkManager::on_conn_open(oxen::quic::Connection& conn)
+    void LinkManager::on_conn_open(quic::Connection& conn)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -559,21 +553,26 @@ namespace llarp
             if (conn->is_inbound())
                 on_inbound_conn(std::move(conn));
             else
-                on_outbound_conn(RouterID{conn->remote_key()});
+            {
+                auto key = conn->remote_key();
+                assert(key.size() == RouterID::SIZE);
+                on_outbound_conn(RouterID{key.first<RouterID::SIZE>()});
+            }
         });
     }
 
-    void LinkManager::on_conn_closed(oxen::quic::Connection& conn, uint64_t ec)
+    void LinkManager::on_conn_closed(quic::Connection& conn, uint64_t ec)
     {
         if (!conn.remote_key().size())
         {
             log::debug(logcat, "on_conn_closed on rejected connection, nothing to do");
             return;
         }
+        assert(conn.remote_key().size() == 32);
 
         _router.loop()->call([this,
                               ref_id = conn.reference_id(),
-                              rid = RouterID{conn.remote_key()},
+                              rid = RouterID{conn.remote_key().first<32>()},
                               error_code = ec,
                               path = conn.path()]() {
             log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
@@ -594,14 +593,14 @@ namespace llarp
     }
 
     bool LinkManager::send_control_message(
-        const RouterID& remote, std::string endpoint, std::string body, bt_control_response_hook func)
+        const RouterID& remote, std::string endpoint, std::string body, std::function<void(quic::message)> func)
     {
         if (is_stopping)
             return false;
 
         if (func)
         {
-            func = [this, f = std::move(func)](oxen::quic::message m) mutable {
+            func = [this, f = std::move(func)](quic::message m) mutable {
                 _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
             };
         }
@@ -647,9 +646,10 @@ namespace llarp
 
     void LinkManager::close_connection(RouterID rid) { return ep->close_connection(rid); }
 
-    void LinkManager::test_reachability(const RouterID& rid, conn_open_hook on_open, conn_closed_hook on_close)
+    void LinkManager::test_reachability(
+        const RouterID& rid, connection_established_callback on_open, connection_closed_callback on_close)
     {
-        if (auto rc = node_db->get_rc(rid))
+        if (auto rc = _router.node_db().get_rc(rid))
         {
             connect_to(*rc, std::move(on_open), std::move(on_close));
         }
@@ -657,11 +657,11 @@ namespace llarp
             log::warning(logcat, "Could not find RelayContact for connection to rid:{}", rid);
     }
 
-    void LinkManager::connect_and_send(const RouterID& router, bt_control_send_hook send_hook)
+    void LinkManager::connect_and_send(const RouterID& router, std::function<void(quic::BTRequestStream&)> send_hook)
     {
-        if (auto rc = node_db->get_rc(router))
+        if (auto rc = _router.node_db().get_rc(router))
         {
-            if (ep->establish_and_send_control(std::move(*rc), std::move(send_hook)))
+            if (ep->establish_and_send_control(*rc, std::move(send_hook)))
                 log::info(logcat, "Begun establishing connection to {}", router);
             else
                 log::warning(logcat, "Failed to begin establishing connection to {}", router);
@@ -670,17 +670,80 @@ namespace llarp
             log::error(logcat, "Error: Could not find RC for connection to rid:{}, message not sent!", router);
     }
 
+    bool link::Endpoint::establish_and_send(
+        quic::RemoteAddress remote,
+        RouterID rid,
+        std::optional<std::string> ep,
+        std::string body,
+        std::function<void(quic::message)> func)
+    {
+        return link_manager.router().loop()->call_get([&]() {
+            try
+            {
+                const auto& is_control = ep.has_value();
+
+                log::debug(logcat, "Establishing connection to RID:{}", rid);
+
+                // add to service conns
+                auto [itr, b] = service_conns.try_emplace(rid, nullptr);
+
+                if (not b)
+                {
+                    log::debug(logcat, "ERROR: attempting to establish an already-existing connection");
+                    (is_control)
+                        ? itr->second->control_stream->command(std::move(*ep), std::move(body), std::move(func))
+                        : itr->second->conn->datagrams()->send(std::move(body));
+                    return true;
+                }
+
+                auto conn_ = endpoint->connect(
+                    remote,
+                    link_manager.tls_creds,
+                    quic::opt::keep_alive{_is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
+                    [this, itr, rid, ep = std::move(ep), body = std::move(body), func = std::move(func)](
+                        quic::Connection& conn) mutable {
+                        auto& control_stream = itr->second->control_stream;
+                        log::trace(
+                            logcat,
+                            "{} dispatching {} on outbound connection to remote (rid:{})",
+                            _is_service_node ? "Relay" : "Client",
+                            ep.has_value() ? "control message (ep:{})"_format(*ep) : "data message",
+                            rid);
+
+                        (ep.has_value()) ? control_stream->command(std::move(*ep), std::move(body), std::move(func))
+                                         : conn.datagrams()->send(std::move(body));
+                        link_manager.on_conn_open(conn);
+                    });
+
+                auto control_stream = link_manager.make_control(*conn_, rid);
+
+                itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
+
+                log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid);
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Exception caught establishing connection to {}: {}", remote, e.what());
+                return false;
+            }
+        });
+    }
+
     void LinkManager::connect_and_send(
-        const RouterID& router, std::optional<std::string> endpoint, std::string body, bt_control_response_hook func)
+        const RouterID& router,
+        std::optional<std::string> endpoint,
+        std::string body,
+        std::function<void(quic::message)> func)
     {
         // by the time we have called this, we have already checked if we have a connection to this
         // RID in ::send_control_message, at which point we will dispatch on that stream
-        if (auto rc = node_db->get_rc(router))
+        if (auto rc = _router.node_db().get_rc(router))
         {
             const auto& remote_addr = rc->addr();
 
             if (auto rv = ep->establish_and_send(
-                    KeyedAddress{router.to_view(), remote_addr},
+                    quic::RemoteAddress{router.to_view(), remote_addr},
                     router,
                     std::move(endpoint),
                     std::move(body),
@@ -697,7 +760,56 @@ namespace llarp
             log::error(logcat, "Error: Could not find RC for connection to rid:{}, message not sent!", router);
     }
 
-    void LinkManager::connect_to(const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
+    bool link::Endpoint::establish_connection(
+        quic::RemoteAddress remote,
+        RouterID rid,
+        connection_established_callback on_open,
+        connection_closed_callback on_close)
+    {
+        return link_manager.router().loop()->call_get([&]() {
+            try
+            {
+                log::debug(logcat, "Establishing connection to RID:{}", rid.short_string());
+                // add to service conns
+                auto [itr, b] = service_conns.try_emplace(rid, nullptr);
+
+                if (not b)
+                {
+                    log::debug(logcat, "ERROR: attempting to establish an already-existing connection");
+                    return b;
+                }
+
+                auto conn_ = endpoint->connect(
+                    remote,
+                    link_manager.tls_creds,
+                    quic::opt::keep_alive{_is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
+                    std::move(on_open),
+                    std::move(on_close));
+
+                log::trace(logcat, "Created outbound connection with path: {}", conn_->path());
+
+                auto control_stream =
+                    conn_->template open_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
+                        log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
+                    });
+
+                link_manager.register_commands(*control_stream, rid, not _is_service_node);
+
+                itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
+
+                log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
+                return true;
+            }
+            catch (...)
+            {
+                log::error(logcat, "Error: failed to establish connection to {}", remote);
+                return false;
+            }
+        });
+    }
+
+    void LinkManager::connect_to(
+        const RemoteRC& rc, connection_established_callback on_open, connection_closed_callback on_close)
     {
         auto rid = rc.router_id();
 
@@ -712,7 +824,7 @@ namespace llarp
         auto remote_addr = rc.addr();
 
         if (auto rv = ep->establish_connection(
-                KeyedAddress{rid.to_view(), remote_addr}, rid, std::move(on_open), std::move(on_close));
+                quic::RemoteAddress{rid.to_view(), remote_addr}, rid, std::move(on_open), std::move(on_close));
             rv)
         {
             log::debug(logcat, "Begun establishing connection to {}", remote_addr);
@@ -785,20 +897,9 @@ namespace llarp
     // TODO: this
     nlohmann::json LinkManager::extract_status() const { return {}; }
 
-    void LinkManager::connect_to_keep_alive(size_t num_conns)
+    void LinkManager::connect_to_keep_alive(int num_conns)
     {
-        auto filter = [this](const RemoteRC& rc) -> bool {
-            const auto& rid = rc.router_id();
-            auto res = not ep->have_service_conn(rid);
-
-            log::trace(logcat, "RID:{} {}", rid, res ? "ACCEPTED" : "REJECTED");
-
-            return res;
-        };
-
-        std::optional<std::vector<RemoteRC>> rcs = std::nullopt;
-
-        if (node_db->strict_connect_enabled())
+        if (_router.node_db().strict_connect_enabled())
         {
             assert(not _is_service_node);
 
@@ -806,10 +907,10 @@ namespace llarp
             log::warning(logcat, "FINISH STRICT CONNECT (SEE COMMENT)");
         }
 
-        if (auto maybe = node_db->get_n_random_rcs_conditional(num_conns, filter))
+        if (auto rcs = _router.node_db().get_n_random_rcs(
+                num_conns, true, [this](const RemoteRC& rc) { return !ep->have_service_conn(rc.router_id()); });
+            !rcs.empty())
         {
-            std::vector<RemoteRC>& rcs = *maybe;
-
             for (const auto& rc : rcs)
                 connect_to(rc);
         }
@@ -820,8 +921,7 @@ namespace llarp
     void LinkManager::regenerate_and_gossip_rc()
     {
         log::info(logcat, "Regenerating and gossiping RC...");
-        gossip_rc(_router.local_rid(), _router.relay_contact.to_remote());
-        _router.save_rc();
+        gossip_rc(_router.local_rid(), _router.update_rc_for_gossiping());
     }
 
     void LinkManager::gossip_rc(const RouterID& last_sender, const RemoteRC& rc)
@@ -836,7 +936,7 @@ namespace llarp
             });
     }
 
-    void LinkManager::handle_gossip_rc(oxen::quic::message m)
+    void LinkManager::handle_gossip_rc(quic::message m)
     {
         // RemoteRC constructor wraps deserialization in a try/catch
         RemoteRC rc;
@@ -847,7 +947,7 @@ namespace llarp
             oxenc::bt_dict_consumer btdc{m.body()};
 
             btdc.required("r");
-            rc = RemoteRC{btdc.consume_dict_data()};
+            rc = RemoteRC{btdc.consume_dict_data(), _router.netid()};
             src.from_relay_address(btdc.require<std::string>("s"));
         }
         catch (const std::exception& e)
@@ -858,7 +958,7 @@ namespace llarp
 
         log::trace(logcat, "Handling GossipRC request (sender:{}, rc:{})...", src, rc);
 
-        if (node_db->verify_store_gossip_rc(rc))
+        if (_router.node_db().verify_store_gossip_rc(rc))
         {
             log::info(logcat, "Received updated RC (rid:{}), forwarding to peers", rc.router_id().short_string());
             gossip_rc(_router.local_rid(), rc);
@@ -869,9 +969,10 @@ namespace llarp
 
     // TODO: can probably use ::send_control_message instead. Need to discuss the potential
     // difference in calling Endpoint::get_service_conn vs Endpoint::get_conn
-    void LinkManager::fetch_bootstrap_rcs(const RemoteRC& source, std::string payload, bt_control_response_hook func)
+    void LinkManager::fetch_bootstrap_rcs(
+        const RemoteRC& source, std::string payload, std::function<void(quic::message)> func)
     {
-        func = [this, f = std::move(func)](oxen::quic::message m) mutable {
+        func = [this, f = std::move(func)](quic::message m) mutable {
             _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
         };
 
@@ -889,7 +990,7 @@ namespace llarp
         });
     }
 
-    void LinkManager::handle_fetch_bootstrap_rcs(oxen::quic::message m)
+    void LinkManager::handle_fetch_bootstrap_rcs(quic::message m)
     {
         // this handler should not be registered for clients
         assert(_router.is_service_node());
@@ -902,7 +1003,7 @@ namespace llarp
         {
             oxenc::bt_dict_consumer btdc{m.body()};
             if (btdc.skip_until("l"))
-                remote.emplace(btdc.consume_dict_data());
+                remote.emplace(btdc.consume_dict_data(), _router.netid());
 
             quantity = btdc.require<size_t>("q");
         }
@@ -915,64 +1016,55 @@ namespace llarp
 
         if (remote)
         {
-            auto is_snode = _router.is_service_node();
-            auto rid = remote->router_id();
-
-            if (is_snode)
+            auto& remote_rc = *remote;
+            if (_router.node_db().registered_routers().contains(remote_rc.router_id()))
             {
-                auto remote_rc = *remote;
-
-                if (node_db->registered_routers().count(remote_rc.router_id()))
-                {
-                    node_db->put_rc_if_newer(remote_rc);
-                    log::critical(
-                        logcat,
-                        "Bootstrap node confirmed RID:{} is registered; approving fetch request and saving RC!",
-                        remote_rc.router_id());
-                    _router.loop()->call_soon([&, remote_rc]() mutable { gossip_rc(_router.local_rid(), remote_rc); });
-                }
-                else
-                    log::critical(
-                        logcat,
-                        "Bootstrap node failed to confirm RID:{} is registered; something is wrong",
-                        remote_rc.router_id());
+                _router.node_db().put_rc(remote_rc);
+                log::debug(
+                    logcat,
+                    "Bootstrap node confirmed RID:{} is registered; approving fetch request and saving RC!",
+                    remote_rc.router_id());
             }
+            else
+                log::warning(
+                    logcat,
+                    "Bootstrap node failed to confirm RID:{} is registered; something is wrong",
+                    remote_rc.router_id());
         }
 
-        auto& src = node_db->get_known_rcs();
+        auto& src = _router.node_db().get_known_rcs();
         auto count = src.size();
 
         // if quantity is 0, then the service node requesting this wants all the RC's; otherwise,
         // send the amount requested in the message
-        quantity = quantity == 0 ? count : quantity;
+        quantity = quantity == 0 || quantity > count ? count : quantity;
 
         auto now = llarp::time_now_ms();
-        size_t i = 0;
 
-        oxenc::bt_dict_producer btdp;
-
+        std::vector<std::string_view> rcs;
+        rcs.reserve(quantity);
+        for (const auto& [rid, rc] : src)
         {
-            auto sublist = btdp.append_list("r");
-
-            if (count == 0)
-                log::error(logcat, "No known RCs locally to send!");
-            else
+            if (not rc.is_expired(now))
             {
-                for (const auto& rc : src)
-                {
-                    if (not rc.is_expired(now))
-                        sublist.append_encoded(rc.view());
-
-                    if (++i >= quantity)
-                        break;
-                }
+                rcs.push_back(rc.view());
+                if (rcs.size() > quantity)
+                    break;
             }
         }
+        if (rcs.empty())
+        {
+            m.respond("No RCs", true);
+            return;
+        }
 
-        m.respond(std::move(btdp).str(), count == 0);
+        std::ranges::shuffle(rcs, llarp::csrng);
+        oxenc::bt_dict_producer btdp;
+        btdp.append_list("r", rcs);
+        m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::fetch_rcs(const RouterID& source, std::string payload, bt_control_response_hook func)
+    void LinkManager::fetch_rcs(const RouterID& source, std::string payload, std::function<void(quic::message)> func)
     {
         // this handler should not be registered for service nodes
         assert(not _router.is_service_node());
@@ -980,7 +1072,7 @@ namespace llarp
         send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
     }
 
-    void LinkManager::_handle_fetch_rcs(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)
     {
         log::debug(logcat, "Handling FetchRC request...");
         // this handler should not be registered for clients
@@ -991,99 +1083,41 @@ namespace llarp
         try
         {
             auto btdc = inner_body ? oxenc::bt_dict_consumer{*inner_body} : oxenc::bt_dict_consumer{m.body()};
-
-            btdc.required("x");
-
-            {
-                auto sublist = btdc.consume_list_consumer();
-
-                while (not sublist.is_finished())
-                    explicit_ids.emplace(sublist.consume_string_view());
-            }
+            for (auto sublist = btdc.require<oxenc::bt_list_consumer>("x"); !sublist.is_finished();)
+                explicit_ids.emplace(sublist.consume_span<uint8_t, 32>());
         }
         catch (const std::exception& e)
         {
-            log::critical(logcat, "Exception handling RC Fetch request: {}", e.what());
+            log::warning(logcat, "Exception handling RC Fetch request: {}", e.what());
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }
 
         oxenc::bt_dict_producer btdp;
-
         {
             auto sublist = btdp.append_list("r");
 
             int count = 0;
             for (const auto& rid : explicit_ids)
             {
-                if (auto maybe_rc = node_db->get_rc_by_rid(rid))
+                if (auto* maybe_rc = _router.node_db().get_rc(rid))
                 {
                     sublist.append_encoded(maybe_rc->view());
                     ++count;
                 }
             }
-
             log::info(logcat, "Returning {} RCs for FetchRC request...", count);
         }
 
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::handle_fetch_rcs(oxen::quic::message m)
-    {
-        log::debug(logcat, "Handling FetchRC request...");
-        // this handler should not be registered for clients
-        assert(_router.is_service_node());
-
-        std::set<RouterID> explicit_ids;
-
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-
-            btdc.required("x");
-
-            {
-                auto sublist = btdc.consume_list_consumer();
-
-                while (not sublist.is_finished())
-                    explicit_ids.emplace(sublist.consume_string_view());
-            }
-        }
-        catch (const std::exception& e)
-        {
-            log::critical(logcat, "Exception handling RC Fetch request: {}", e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-
-        oxenc::bt_dict_producer btdp;
-
-        {
-            auto sublist = btdp.append_list("r");
-
-            int count = 0;
-            for (const auto& rid : explicit_ids)
-            {
-                if (auto maybe_rc = node_db->get_rc_by_rid(rid))
-                {
-                    sublist.append_encoded(maybe_rc->view());
-                    ++count;
-                }
-            }
-
-            log::info(logcat, "Returning {} RCs for FetchRC request...", count);
-        }
-
-        m.respond(std::move(btdp).str());
-    }
-
-    void LinkManager::fetch_router_ids(const RouterID& via, bt_control_send_hook send_hook)
+    void LinkManager::fetch_router_ids(const RouterID& via, std::function<void(quic::BTRequestStream&)> send_hook)
     {
         if (auto conn = ep->get_conn(via); conn)
         {
             log::debug(logcat, "Batch dispatching FetchRID requests to {}", via);
-            return send_hook(conn->control_stream);
+            return send_hook(*conn->control_stream);
         }
 
         log::debug(logcat, "Queueing FetchRID batch send to {}...", via);
@@ -1093,7 +1127,7 @@ namespace llarp
         });
     }
 
-    void LinkManager::handle_fetch_router_ids(oxen::quic::message m)
+    void LinkManager::handle_fetch_router_ids(quic::message m)
     {
         log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
@@ -1120,13 +1154,13 @@ namespace llarp
 
             auto payload = FetchRID::serialize(source);
             send_control_message(
-                source, "fetch_rids", std::move(payload), [original = std::move(m)](oxen::quic::message msg) mutable {
+                source, "fetch_rids", std::move(payload), [original = std::move(m)](quic::message msg) mutable {
                     original.respond(msg.body(), msg.is_error());
                 });
             return;
         }
 
-        const auto& known_rids = node_db->get_known_rids();
+        const auto& known_rids = _router.node_db().get_known_rids();
         oxenc::bt_dict_producer btdp;
 
         {
@@ -1149,7 +1183,7 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::_handle_resolve_sns(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_resolve_sns(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "Received request to publish client contact!");
 
@@ -1183,9 +1217,7 @@ namespace llarp
             });
     }
 
-    void LinkManager::handle_resolve_sns(oxen::quic::message m) { return _handle_resolve_sns(std::move(m)); }
-
-    void LinkManager::_handle_publish_cc(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_publish_cc(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "Received request to publish client contact!");
 
@@ -1231,14 +1263,12 @@ namespace llarp
             if (not intro)
                 return m.respond(messages::ERROR_RESPONSE, true);
 
-            if (auto session = _router.session_endpoint()->get_session(NetworkAddress::from_pubkey(*sender, true)))
+            if (auto session = _router.session_endpoint().get_session(NetworkAddress{*sender, true}))
             {
                 log::debug(logcat, "Storing ClientContact for remote rid:{}", *sender);
                 _router.contact_db().put_cc(std::move(enc));
 
-                if (session->is_outbound())
-                    session::OutboundClientSession::downcast(session)->update_remote_intros(
-                        std::move(*intro).take_intros());
+                session->update_outbound_remote_intros(std::move(*intro).take_intros());
 
                 return m.respond(messages::OK_RESPONSE);
             }
@@ -1254,22 +1284,31 @@ namespace llarp
         if (not inner_body)
         {
             log::debug(logcat, "Received relayed PublishClientContact request (key: {}); accepting...", dht_key);
+            // TODO FIXME: This is wrong: we should only be storing in our cc *if* we are one of the
+            // 4 closest.
             _router.contact_db().put_cc(std::move(enc));
             return m.respond(messages::OK_RESPONSE);
         }
 
         auto local_rid = _router.local_rid();
 
-        auto closest_rcs = _router.node_db()->find_many_closest_to(dht_key, path::DEFAULT_PATHS_HELD);
-        const auto& closest_peer = closest_rcs.begin()->router_id();
-
-        for (const auto& rc : closest_rcs)
+        auto closest_rcs = _router.node_db().find_many_closest_to(dht_key, path::DEFAULT_PATHS_HELD);
+        if (closest_rcs.empty())
         {
-            auto& _rid = rc.router_id();
+            return m.respond("No RCs available!", true);
+        }
 
-            log::trace(logcat, "Closest RCs to received ClientContact: {}", _rid);
+        // TODO FIXME: why is there just one closest that we propagate to?  This CC needs to end up
+        // at all 4 closest positions, not just the one closest.
+        const auto& closest_peer = closest_rcs.front()->router_id();
 
-            if (_rid == local_rid)
+        for (const auto* rc : closest_rcs)
+        {
+            auto& rid = rc->router_id();
+
+            log::debug(logcat, "Closest RCs to received ClientContact: {}", rid);
+
+            if (rid == local_rid)
             {
                 log::info(
                     logcat,
@@ -1280,6 +1319,7 @@ namespace llarp
             }
         }
 
+        // TODO FIXME: these should go to the *four* closest, not the single closest.
         log::info(
             logcat,
             "Received PublishClientContact (key: {}); propagating to closest peer (rid: {})...",
@@ -1290,7 +1330,7 @@ namespace llarp
             closest_peer,
             "publish_cc",
             PublishClientContact::serialize(std::move(enc), std::move(sender)),
-            [prev_msg = std::move(m)](oxen::quic::message msg) mutable {
+            [prev_msg = std::move(m)](quic::message msg) mutable {
                 log::info(
                     logcat,
                     "Relayed PublishClientContact {}! Relaying response...",
@@ -1302,9 +1342,7 @@ namespace llarp
             });
     }
 
-    void LinkManager::handle_publish_cc(oxen::quic::message m) { return _handle_publish_cc(std::move(m)); }
-
-    void LinkManager::_handle_find_cc(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_find_cc(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "Received request to find client contact!");
 
@@ -1329,7 +1367,7 @@ namespace llarp
                 logcat,
                 "Received FindClientContact request (key: {}); returning local EncryptedClientContact...",
                 dht_key);
-            return m.respond(FindClientContact::serialize_response(std::move(*maybe_cc)));
+            return m.respond(FindClientContact::serialize_response(*maybe_cc));
         }
 
         // If the optional was nullopt, then this was a relay <-> relay request. As a result, we should NOT
@@ -1338,26 +1376,30 @@ namespace llarp
         {
             log::critical(
                 logcat,
-                "Received relayed FindClientContact request (key: {}); could not find locally, relaying error...",
+                "Received relayed FindClientContact request (key: {}); could not find locally, relaying "
+                "error...",
                 dht_key);
             return m.respond(FindClientContact::NOT_FOUND, true);
         }
 
         auto local_rid = _router.local_rid();
 
-        auto closest_rcs = _router.node_db()->find_many_closest_to(dht_key, path::DEFAULT_PATHS_HELD);
+        auto closest_rcs = _router.node_db().find_many_closest_to(dht_key, path::DEFAULT_PATHS_HELD);
+        if (closest_rcs.empty())
+            return m.respond("No RCs!", true);
+
         auto n_closest = closest_rcs.size();
 
-        for (const auto& rc : closest_rcs)
+        for (const auto* rc : closest_rcs)
         {
-            auto& _rid = rc.router_id();
+            auto& rid = rc->router_id();
 
-            if (_rid == local_rid)
+            if (rid == local_rid)
             {
                 log::warning(
                     logcat,
-                    "We are closest peer for FindClientContact request (key: {}); no EncryptedClientContact found"
-                    "locally!",
+                    "We are closest peer for FindClientContact request (key: {}); no EncryptedClientContact "
+                    "found locally!",
                     dht_key);
                 return m.respond(FindClientContact::NOT_FOUND, true);
             }
@@ -1365,7 +1407,7 @@ namespace llarp
 
         auto counter = std::make_shared<size_t>(n_closest);
 
-        auto hook = [prev_msg = std::move(m), counter](oxen::quic::message msg) mutable {
+        auto hook = [prev_msg = std::move(m), counter](quic::message msg) mutable {
             if (*counter == 0)
                 return;
 
@@ -1389,15 +1431,13 @@ namespace llarp
 
         for (const auto& rc : closest_rcs)
         {
-            send_control_message(rc.router_id(), "find_cc", FindClientContact::serialize(dht_key), hook);
+            send_control_message(rc->router_id(), "find_cc", FindClientContact::serialize(dht_key), hook);
         }
     }
 
-    void LinkManager::handle_find_cc(oxen::quic::message m) { return _handle_find_cc(std::move(m)); }
-
-    void LinkManager::handle_path_build(oxen::quic::message m, const RouterID& from)
+    void LinkManager::handle_path_build(quic::message m, const RouterID& from)
     {
-        if (!_router.path_context()->is_transit_allowed())
+        if (!_router.path_context.is_transit_allowed())
         {
             log::warning(logcat, "got path build request when not permitting transit");
             return m.respond(PATH::BUILD::NO_TRANSIT, true);
@@ -1430,7 +1470,7 @@ namespace llarp
                     hop->terminal_hop = true;
                 }
 
-                _router.path_context()->put_transit_hop(std::move(hop));
+                _router.path_context.put_transit_hop(std::move(hop));
                 return m.respond(messages::OK_RESPONSE);
             }
 
@@ -1458,7 +1498,7 @@ namespace llarp
             }
 
             // randomize final frame
-            randombytes(reinterpret_cast<unsigned char*>(frames.back().data()), frames.back().size());
+            randombytes_buf(reinterpret_cast<unsigned char*>(frames.back().data()), frames.back().size());
 
             auto upstream = hop->upstream();
 
@@ -1466,14 +1506,15 @@ namespace llarp
                 std::move(upstream),
                 "path_build",
                 ONION::serialize_frames(std::move(frames)),
-                [this, transit_hop = std::move(hop), prev_message = std::move(m)](oxen::quic::message m) mutable {
+                [this, transit_hop = std::move(hop), prev_message = std::move(m)](quic::message m) mutable {
                     if (m)
                     {
                         log::info(
                             logcat,
-                            "Upstream returned successful path build response; locally storing Hop ({}) and relaying",
+                            "Upstream returned successful path build response; locally storing Hop ({}) and "
+                            "relaying",
                             transit_hop->to_string());
-                        _router.path_context()->put_transit_hop(std::move(transit_hop));
+                        _router.path_context.put_transit_hop(std::move(transit_hop));
                         return prev_message.respond(messages::OK_RESPONSE, false);
                     }
 
@@ -1495,7 +1536,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::_handle_path_control(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_path_control(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -1519,7 +1560,7 @@ namespace llarp
 
         if (not _is_service_node)
         {
-            auto path = _router.path_context()->get_path(hop_id);
+            auto path = _router.path_context.get_path(hop_id);
 
             if (not path)
             {
@@ -1544,7 +1585,7 @@ namespace llarp
             return handle_path_request(std::move(m), std::move(payload));
         }
 
-        auto hop = _router.path_context()->get_transit_hop(hop_id);
+        auto hop = _router.path_context.get_transit_hop(hop_id);
 
         if (not hop)
         {
@@ -1563,7 +1604,7 @@ namespace llarp
 
         if (not inner_body)
         {
-            // if terminal hop, payload should contain a request (e.g. "ons_resolve"); handle and respond.
+            // if terminal hop, payload should contain a request (e.g. "sns_resolve"); handle and respond.
             if (hop->terminal_hop)
             {
                 log::debug(logcat, "We are terminal hop for path request: {}", hop->to_string());
@@ -1593,10 +1634,8 @@ namespace llarp
             next_ids->first,
             "path_control",
             std::move(new_payload),
-            [hop_weak = hop->weak_from_this(), hop_id, prev_message = std::move(m)](
-                oxen::quic::message response) mutable {
+            [hop_weak = std::weak_ptr{hop}, hop_id, prev_message = std::move(m)](quic::message response) mutable {
                 auto hop = hop_weak.lock();
-
                 if (not hop)
                 {
                     log::warning(logcat, "Received response to path control message with non-existent TransitHop!");
@@ -1634,9 +1673,9 @@ namespace llarp
             });
     }
 
-    void LinkManager::handle_path_control(oxen::quic::message m) { return _handle_path_control(std::move(m)); }
+    void LinkManager::handle_path_control(quic::message m) { return _handle_path_control(std::move(m)); }
 
-    void LinkManager::handle_path_data_message(oxen::quic::datagram dgram)
+    void LinkManager::handle_path_data_message(quic::datagram dgram)
     {
         // not a registered handler, use loop-call
         auto data = std::move(dgram).extract();
@@ -1658,7 +1697,7 @@ namespace llarp
 
             if (not _is_service_node)
             {
-                auto path = _router.path_context()->get_path(hop_id);
+                auto path = _router.path_context.get_path(hop_id);
 
                 if (not path)
                 {
@@ -1681,7 +1720,7 @@ namespace llarp
                 return handle_path_session_data(std::move(payload));
             }
 
-            auto hop = _router.path_context()->get_transit_hop(hop_id);
+            auto hop = _router.path_context.get_transit_hop(hop_id);
 
             if (not hop)
             {
@@ -1725,7 +1764,7 @@ namespace llarp
 
                 log::trace(logcat, "Inbound path rxid:{}, outbound path txid:{}", hop_id, ihid);
 
-                auto next_hop = _router.path_context()->get_transit_hop(ihid);
+                auto next_hop = _router.path_context.get_transit_hop(ihid);
 
                 if (not next_hop)
                 {
@@ -1783,7 +1822,7 @@ namespace llarp
         {
             auto [tag, data] = PATH::DATA::deserialize_inner(std::move(payload));
 
-            if (auto session = _router.session_endpoint()->get_session(tag))
+            if (auto session = _router.session_endpoint().get_session(tag))
             {
                 session->recv_path_data_message(std::move(data));
             }
@@ -1798,7 +1837,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_path_request(oxen::quic::message m, std::string payload)
+    void LinkManager::handle_path_request(quic::message m, std::string payload)
     {
         std::string endpoint, body;
 
@@ -1816,7 +1855,7 @@ namespace llarp
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}; Payload: {}", e.what(), buffer_printer{payload});
-            return m.respond(messages::serialize_response({{messages::STATUS_KEY, e.what()}}), true);
+            return m.respond(messages::serialize_status_response("ERROR"), true);
         }
 
         if (auto it = path_requests.find(endpoint); it != path_requests.end())
@@ -1828,7 +1867,7 @@ namespace llarp
             log::warning(logcat, "Received path control request (`{}`), which has no local handler!", endpoint);
     }
 
-    void LinkManager::_handle_initiate_session(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_initiate_session(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -1865,7 +1904,7 @@ namespace llarp
             return m.respond(InitiateSession::BAD_ADDRESS, true);
         }
 
-        if (maybe_auth and not _router.session_endpoint()->validate(initiator, maybe_auth))
+        if (maybe_auth and not _router.session_endpoint().validate(initiator, maybe_auth))
         {
             log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", initiator);
             return m.respond(InitiateSession::AUTH_ERROR, true);
@@ -1875,7 +1914,7 @@ namespace llarp
 
         if (not _is_service_node)
         {
-            pi = _router.path_context()->get_path(local_pivot_txid);
+            pi = _router.path_context.get_path(local_pivot_txid);
 
             if (not pi)
             {
@@ -1892,7 +1931,7 @@ namespace llarp
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            auto hop = _router.path_context()->get_transit_hop(local_pivot_txid);
+            auto hop = _router.path_context.get_transit_hop(local_pivot_txid);
 
             if (not hop)
             {
@@ -1910,13 +1949,13 @@ namespace llarp
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            pi = path::SessionHop::make(hop, _router);
+            pi = std::make_shared<path::SessionHop>(*hop, _router.session_endpoint());
             kx_data = hop->kx;
         }
 
         assert(pi);
 
-        if (auto tag = _router.session_endpoint()->prefigure_session(
+        if (auto tag = _router.session_endpoint().prefigure_session(
                 std::move(initiator), std::move(remote_pivot_txid), std::move(pi), std::move(kx_data), use_tun))
         {
             log::debug(logcat, "InboundSession (tag:{}) configured successfully!", *tag);
@@ -1928,23 +1967,20 @@ namespace llarp
         m.respond(messages::ERROR_RESPONSE, true);
     }
 
-    void LinkManager::handle_initiate_session(oxen::quic::message m) { return _handle_initiate_session(std::move(m)); }
+    void LinkManager::handle_initiate_session(quic::message m) { return _handle_initiate_session(std::move(m)); }
 
-    void LinkManager::_handle_path_switch(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_path_switch(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         session_tag tag;
         HopID remote_pivot_txid, local_pivot_txid;
 
+        std::string_view body{inner_body ? *inner_body : m.body()};
         try
         {
-            if (inner_body)
-                std::tie(tag, remote_pivot_txid, local_pivot_txid) =
-                    SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                std::tie(tag, remote_pivot_txid, local_pivot_txid) =
-                    SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{m.body()});
+            std::tie(tag, remote_pivot_txid, local_pivot_txid) =
+                SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
@@ -1954,7 +1990,7 @@ namespace llarp
 
         if (!_is_service_node)
         {
-            auto path = _router.path_context()->get_path(local_pivot_txid);
+            auto path = _router.path_context.get_path(local_pivot_txid);
 
             if (not path)
             {
@@ -1963,12 +1999,12 @@ namespace llarp
                 return m.respond(SessionPathSwitch::BAD_ID, true);
             }
 
-            if (_router.session_endpoint()->recv_path_switch(tag, std::move(remote_pivot_txid), std::move(path)))
+            if (_router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), std::move(path)))
                 return m.respond(messages::OK_RESPONSE);
         }
         else
         {
-            auto hop = _router.path_context()->get_transit_hop(local_pivot_txid);
+            auto hop = _router.path_context.get_transit_hop(local_pivot_txid);
 
             if (not hop)
             {
@@ -1977,8 +2013,10 @@ namespace llarp
                 return m.respond(SessionPathSwitch::BAD_ID, true);
             }
 
-            if (_router.session_endpoint()->recv_path_switch(
-                    tag, std::move(remote_pivot_txid), path::SessionHop::make(hop, _router)))
+            if (_router.session_endpoint().recv_path_switch(
+                    tag,
+                    std::move(remote_pivot_txid),
+                    std::make_shared<path::SessionHop>(*hop, _router.session_endpoint())))
                 return m.respond(messages::OK_RESPONSE);
         }
 
@@ -1986,15 +2024,15 @@ namespace llarp
         return m.respond(SessionPathSwitch::BAD_TAG, true);
     }
 
-    void LinkManager::handle_path_switch(oxen::quic::message m) { return _handle_path_switch(std::move(m)); }
+    void LinkManager::handle_path_switch(quic::message m) { return _handle_path_switch(std::move(m)); }
 
-    void LinkManager::_handle_path_ping(oxen::quic::message m, std::optional<std::string>)
+    void LinkManager::_handle_path_ping(quic::message m, std::optional<std::string>)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         m.respond(messages::OK_RESPONSE);
     }
 
-    void LinkManager::_handle_close_session(oxen::quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_close_session(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -2007,7 +2045,7 @@ namespace llarp
             else
                 tag = CloseSession::deserialize(oxenc::bt_dict_consumer{m.body()});
 
-            if (_router.session_endpoint()->close_session(tag))
+            if (_router.session_endpoint().close_session(tag))
                 return m.respond(messages::OK_RESPONSE);
         }
         catch (const std::exception& e)
@@ -2018,9 +2056,9 @@ namespace llarp
         m.respond(messages::ERROR_RESPONSE, true);
     }
 
-    void LinkManager::handle_close_session(oxen::quic::message m) { return _handle_close_session(std::move(m)); }
+    void LinkManager::handle_close_session(quic::message m) { return _handle_close_session(std::move(m)); }
 
-    void LinkManager::handle_path_latency(oxen::quic::message m)
+    void LinkManager::handle_path_latency(quic::message m)
     {
         try
         {
@@ -2033,7 +2071,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_path_latency_response(oxen::quic::message m)
+    void LinkManager::handle_path_latency_response(quic::message m)
     {
         try
         {
@@ -2042,7 +2080,6 @@ namespace llarp
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}", e.what());
-            // m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
             return;
         }
     }

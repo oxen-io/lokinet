@@ -36,15 +36,15 @@ namespace llarp::win32
 
         ~VPNPlatform() override = default;
 
-        void add_route(oxen::quic::Address ip, oxen::quic::Address gateway) override;
+        void add_route(quic::Address ip, quic::Address gateway) override;
 
-        void delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) override;
+        void delete_route(quic::Address ip, quic::Address gateway) override;
 
         void add_route_via_interface(NetworkInterface& vpn, IPRange range) override;
 
         void delete_route_via_interface(NetworkInterface& vpn, IPRange range) override;
 
-        std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface& vpn) override;
+        std::vector<quic::Address> get_non_interface_gateways(NetworkInterface& vpn) override;
 
         void add_default_route_via_interface(NetworkInterface& vpn) override;
 
@@ -53,7 +53,7 @@ namespace llarp::win32
         std::shared_ptr<NetworkInterface> obtain_interface(InterfaceInfo info, Router* router) override;
 
         std::shared_ptr<PacketIO> create_packet_io(
-            unsigned int ifindex, const std::optional<oxen::quic::Address>& dns_upstream_src) override;
+            unsigned int ifindex, const std::optional<quic::Address>& dns_upstream_src) override;
 
         AbstractRouteManager& RouteManager() override { return *this; }
     };

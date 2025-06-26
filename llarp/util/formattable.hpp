@@ -1,26 +1,15 @@
 #pragma once
 
-#include "meta.hpp"
-
 #include <fmt/ranges.h>
 #include <fmt/std.h>
 #include <oxen/log/format.hpp>
 #include <oxen/quic/format.hpp>
 #include <oxen/quic/formattable.hpp>
 
-#include <optional>
-
 namespace llarp
 {
     using namespace std::literals;
     using namespace oxen::log::literals;
-
-    namespace concepts
-    {
-        // Types can opt-in to being fmt-formattable by ensuring they have a ::to_string() method defined
-        template <typename T>
-        concept to_string_formattable = oxen::quic::ToStringFormattable<T>;
-    }  // namespace concepts
 
 }  // namespace llarp
 
@@ -28,7 +17,7 @@ namespace fmt
 {
     // Make sure that fmt doesn't interpret our custom formattable types as range formattable, which
     // results in ambiguous overloads:
-    template <llarp::concepts::to_string_formattable T>
+    template <oxen::quic::ToStringFormattable T>
     struct is_range<T, char>
     {
         static constexpr bool value = false;
@@ -36,7 +25,10 @@ namespace fmt
 }  // namespace fmt
 
 // fmt added optional support in version 10.0.0
-#if FMT_HAS_INCLUDE(<optional>) && FMT_VERSION <= 100000
+#if FMT_VERSION < 100000
+
+#include <optional>
+
 namespace fmt
 {
     template <typename T, typename Char>
@@ -82,16 +74,3 @@ namespace fmt
 }  //  namespace fmt
 
 #endif
-
-namespace fmt
-{
-    template <llarp::concepts::scoped_enum T>
-    struct formatter<T, char> : formatter<std::string_view>
-    {
-        template <typename FormatContext>
-        auto format(const T& val, FormatContext& ctx) const
-        {
-            return formatter<std::string_view>::format(to_string(val), ctx);
-        }
-    };
-}  // namespace fmt

@@ -11,13 +11,22 @@ namespace llarp
 {
     static auto logcat = log::Cat("config.def");
 
+    static constexpr std::array true_values = {"true", "TRUE", "T", "on", "ON", "1", "yes", "enable", "enabled"};
+    static constexpr std::array false_values = {"false", "FALSE", "F", "off", "OFF", "1", "no", "disable", "disabled"};
+    std::optional<bool> parse_boolean(std::string_view input)
+    {
+        if (std::ranges::any_of(true_values, [&input](const auto& v) { return input == v; }))
+            return true;
+        if (std::ranges::any_of(false_values, [&input](const auto& v) { return input == v; }))
+            return false;
+        return std::nullopt;
+    }
+
     template <>
     bool OptionDefinition<bool>::from_string(const std::string& input)
     {
-        if (input == "false" || input == "off" || input == "0" || input == "no")
-            return false;
-        if (input == "true" || input == "on" || input == "1" || input == "yes")
-            return true;
+        if (auto b = parse_boolean)
+            return *b;
         throw std::invalid_argument{"{} is not a valid bool"_format(input)};
     }
 

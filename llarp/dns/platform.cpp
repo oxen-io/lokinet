@@ -4,7 +4,7 @@ namespace llarp::dns
 {
     void Multi_Platform::add_impl(std::unique_ptr<I_Platform> impl) { m_Impls.emplace_back(std::move(impl)); }
 
-    void Multi_Platform::set_resolver(unsigned int index, oxen::quic::Address dns, bool global)
+    void Multi_Platform::set_resolver(unsigned int index, quic::Address dns, bool global)
     {
         if (m_Impls.empty())
             return;

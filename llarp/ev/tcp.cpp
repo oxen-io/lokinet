@@ -73,7 +73,7 @@ namespace llarp
     static void tcp_listen_cb(
         struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *src, int socklen, void *user_arg)
     {
-        oxen::quic::Address source{src, static_cast<socklen_t>(socklen)};
+        quic::Address source{src, static_cast<socklen_t>(socklen)};
         log::debug(logcat, "TCP RECEIVED -- SRC:{}", source);
 
         auto *b = evconnlistener_get_base(listener);
@@ -101,7 +101,7 @@ namespace llarp
         // DISCUSS: close everything here?
     };
 
-    TCPConnection::TCPConnection(struct bufferevent *_bev, evutil_socket_t _fd, std::shared_ptr<oxen::quic::Stream> _s)
+    TCPConnection::TCPConnection(struct bufferevent *_bev, evutil_socket_t _fd, std::shared_ptr<quic::Stream> _s)
         : bev{_bev}, fd{_fd}, stream{std::move(_s)}
     {}
 
@@ -117,25 +117,25 @@ namespace llarp
     }
 
     std::shared_ptr<TCPHandle> TCPHandle::make_server(
-        const std::shared_ptr<EventLoop> &ev, tcpconn_hook cb, uint16_t port)
+        const std::shared_ptr<quic::Loop> &ev, tcpconn_hook cb, uint16_t port)
     {
         std::shared_ptr<TCPHandle> h{new TCPHandle(ev, std::move(cb), port)};
         return h;
     }
 
-    std::shared_ptr<TCPHandle> TCPHandle::make_client(const std::shared_ptr<EventLoop> &ev, oxen::quic::Address connect)
+    std::shared_ptr<TCPHandle> TCPHandle::make_client(const std::shared_ptr<quic::Loop> &ev, quic::Address connect)
     {
         std::shared_ptr<TCPHandle> h{new TCPHandle{ev, std::move(connect)}};
         return h;
     }
 
-    TCPHandle::TCPHandle(const std::shared_ptr<EventLoop> &ev_loop, oxen::quic::Address connect)
+    TCPHandle::TCPHandle(const std::shared_ptr<quic::Loop> &ev_loop, quic::Address connect)
         : _ev{ev_loop}, _connect{std::move(connect)}
     {
         assert(_ev);
     }
 
-    TCPHandle::TCPHandle(const std::shared_ptr<EventLoop> &ev_loop, tcpconn_hook cb, uint16_t p)
+    TCPHandle::TCPHandle(const std::shared_ptr<quic::Loop> &ev_loop, tcpconn_hook cb, uint16_t p)
         : _ev{ev_loop}, _conn_maker{std::move(cb)}
     {
         assert(_ev);
@@ -146,14 +146,15 @@ namespace llarp
         _init_server(p);
     }
 
-    std::shared_ptr<TCPConnection> TCPHandle::connect(std::shared_ptr<oxen::quic::Stream> s, uint16_t port)
+    std::shared_ptr<TCPConnection> TCPHandle::connect(std::shared_ptr<quic::Stream> s, uint16_t port)
     {
         sockaddr_in _addr = _connect->in4();
         _addr.sin_port = htonl(port);
 
-        struct bufferevent *_bev = bufferevent_socket_new(_ev->loop(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE);
+        struct bufferevent *_bev =
+            bufferevent_socket_new(_ev->get_event_base(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE);
 
-        s->set_stream_data_cb([&](oxen::quic::Stream &, std::span<const std::byte> data) {
+        s->set_stream_data_cb([&](quic::Stream &, std::span<const std::byte> data) {
             auto rv = bufferevent_write(_bev, data.data(), data.size());
             log::info(
                 logcat,
@@ -190,7 +191,7 @@ namespace llarp
 
         _tcp_listener = _ev->template shared_ptr<struct evconnlistener>(
             evconnlistener_new_bind(
-                _ev->loop(),
+                _ev->get_event_base(),
                 tcp_listen_cb,
                 this,
                 LEV_OPT_CLOSE_ON_FREE | LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE,

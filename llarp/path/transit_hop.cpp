@@ -1,5 +1,6 @@
 #include "transit_hop.hpp"
 
+#include <llarp/messages/common.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
@@ -24,7 +25,7 @@ namespace llarp::path
         if (_rxid.is_zero() || _txid.is_zero())
             throw std::runtime_error{PATH::BUILD::BAD_PATHID};
 
-        if (r.path_context()->has_transit_hop(_rxid) || r.path_context()->has_transit_hop(_txid))
+        if (r.path_context.has_transit_hop(_rxid) || r.path_context.has_transit_hop(_txid))
             throw std::runtime_error{PATH::BUILD::BAD_PATHID};
 
         _downstream = src;
@@ -91,14 +92,7 @@ namespace llarp::path
             expiry.count());
     }
 
-    SessionHop::SessionHop(std::shared_ptr<TransitHop>& hop, handlers::SessionEndpoint& p)
-        : TransitHop{*hop}, _parent{p}
-    {}
-
-    std::shared_ptr<SessionHop> SessionHop::make(std::shared_ptr<TransitHop> hop, Router& r)
-    {
-        return std::shared_ptr<SessionHop>{new SessionHop{hop, *r.session_endpoint().get()}};
-    }
+    SessionHop::SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p) : TransitHop{hop}, _parent{p} {}
 
     void SessionHop::link_session(session_tag t)
     {
@@ -113,7 +107,8 @@ namespace llarp::path
         return n != 0;
     }
 
-    bool SessionHop::send_path_control_message(std::string method, std::string body, bt_control_response_hook func)
+    bool SessionHop::send_path_control_message(
+        std::string method, std::string body, std::function<void(quic::message)> func)
     {
         auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
         return _parent._router.send_control_message(

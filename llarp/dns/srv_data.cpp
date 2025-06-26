@@ -1,7 +1,10 @@
 #include "srv_data.hpp"
 
+#include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 
+#include <nlohmann/json.hpp>
 #include <oxenc/bt_serialize.h>
 
 namespace llarp::dns

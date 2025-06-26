@@ -22,7 +22,7 @@
 
 namespace llarp
 {
-    struct Router;
+    class Router;
     struct Profiling;
 
     namespace service
@@ -74,16 +74,16 @@ namespace llarp
 
             void Tick(std::chrono::milliseconds now);
 
-            bool resolve_sns(const std::string& name_hash, bt_control_response_hook func);
+            bool resolve_sns(const std::string& name_hash, std::function<void(quic::message)> func);
 
-            bool fetch_relay_contact(const RouterID& needed, bt_control_response_hook func);
+            bool fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
 
-            bool find_client_contact(const hash_key& location, bt_control_response_hook func);
+            bool find_client_contact(const hash_key& location, std::function<void(quic::message)> func);
 
-            bool publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
+            bool publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
 
             bool send_path_control_message(
-                std::string method, std::string body, bt_control_response_hook func) override;
+                std::string method, std::string body, std::function<void(quic::message)> func) override;
 
             bool send_path_data_message(std::string body) override;
 
@@ -93,35 +93,12 @@ namespace llarp
 
             bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
-            std::shared_ptr<PathHandler> get_parent();
-
-            TransitHop edge() const;
-
-            RouterID upstream_rid();
-            const RouterID& upstream_rid() const;
-
-            HopID upstream_rxid();
-            const HopID& upstream_rxid() const;
-
-            HopID upstream_txid();
-            const HopID& upstream_txid() const;
-
-            RouterID pivot_rid();
-            const RouterID& pivot_rid() const;
-
-            HopID pivot_rxid();
-            const HopID& pivot_rxid() const;
-
-            HopID pivot_txid();
-            const HopID& pivot_txid() const;
+            const TransitHop& edge() const { return hops.front(); }
+            const TransitHop& pivot() const { return hops.back(); }
 
             std::string name() const;
 
-            bool operator<(const Path& other) const;
-
             bool operator==(const Path& other) const;
-
-            bool operator!=(const Path& other) const;
 
             std::string to_string() const override;
             static constexpr bool to_string_formattable = true;
@@ -129,11 +106,9 @@ namespace llarp
             // TESTNET: debug
             std::string debug_string() const;
 
-            RouterID terminal_rid() const override { return pivot_rid(); }
+            RouterID terminal_rid() const override { return pivot().router_id(); }
 
-            HopID terminal_txid() const override { return pivot_txid(); }
-
-            handlers::SessionEndpoint& parent() override;
+            HopID terminal_txid() const override { return pivot().txid(); }
 
           protected:
             // Called by SessionEndpoint to indicate the path is successfully built
@@ -191,7 +166,7 @@ namespace std
     {
         size_t operator()(const llarp::path::Path& p) const noexcept
         {
-            return hash<llarp::HopID>{}(p.pivot_txid()) ^ ((hash<llarp::HopID>{}(p.upstream_rxid()) << 13) >> 5);
+            return hash<llarp::HopID>{}(p.pivot().txid()) ^ ((hash<llarp::HopID>{}(p.edge().rxid()) << 13) >> 5);
         }
     };
 }  //  namespace std

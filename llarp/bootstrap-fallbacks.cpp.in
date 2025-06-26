@@ -1,24 +1,11 @@
-#include <initializer_list>
 #include <llarp/bootstrap.hpp>
 
 namespace llarp
 {
-  std::unordered_map<std::string, BootstrapList>
-  load_bootstrap_fallbacks()
-  {
-    std::unordered_map<std::string, BootstrapList> fallbacks;
-
-    for (const auto& [network, bootstrap] : std::initializer_list<std::pair<std::string, std::string_view>>{
-@BOOTSTRAP_FALLBACKS@
-    })
+    const std::vector<std::pair<NetID, std::string_view>> BootstrapList::bootstrap_fallbacks
     {
-      if (network != RelayContact::ACTIVE_NETID)
-        continue;
-      
-      auto& bsl = fallbacks[network];
-      bsl.bt_decode(bootstrap);
-    }
-    
-    return fallbacks;
-  }
+        // clang-format off
+@BOOTSTRAP_FALLBACKS@
+        // clang-format on
+    };
 }  // namespace llarp

@@ -11,7 +11,7 @@
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/dns/srv_data.hpp>
-#include <llarp/net/net.hpp>
+#include <llarp/net/platform.hpp>
 #include <llarp/net/policy.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
@@ -20,11 +20,9 @@
 
 #include <chrono>
 #include <cstdlib>
-#include <functional>
 #include <optional>
 #include <string>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 namespace llarp
@@ -33,9 +31,9 @@ namespace llarp
     using ConfigMap = llarp::ConfigParser::ConfigMap;
 
     inline constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
-    inline const oxen::quic::Address DEFAULT_CLIENT_LISTEN_ADDR{"0.0.0.0", DEFAULT_LISTEN_PORT};
+    inline const quic::Address DEFAULT_CLIENT_LISTEN_ADDR{"0.0.0.0", DEFAULT_LISTEN_PORT};
     inline constexpr uint16_t DEFAULT_DNS_PORT{53};
-    inline constexpr size_t CLIENT_ROUTER_CONNECTIONS{4};
+    inline constexpr int CLIENT_ROUTER_CONNECTIONS{4};
 
     // TODO: don't use these maps. they're sloppy and difficult to follow
     /// Small struct to gather all parameters needed for config generation to reduce the number of
@@ -57,9 +55,9 @@ namespace llarp
 
     struct RouterConfig
     {
-        size_t client_router_connections{CLIENT_ROUTER_CONNECTIONS};
+        int client_router_connections{CLIENT_ROUTER_CONNECTIONS};
 
-        std::string net_id;
+        NetID net_id = NetID::MAINNET;
 
         fs::path data_dir;
 
@@ -87,10 +85,10 @@ namespace llarp
         /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
         uint8_t unique_hop_netmask;
 
-        void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
+        // TODO: some day, if we ever support routers using IPv6, there would need to be a different
+        // ipv6 netmask value.
 
-        /// return true if this set of router contacts is acceptable against this config
-        bool check_rcs(const std::set<RemoteRC>& hops) const;
+        void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
     /** TODO:
@@ -104,16 +102,16 @@ namespace llarp
 
         // Used by RemoteHandler to provide auth tokens for remote exits
         std::unordered_map<NetworkAddress, std::string> auth_tokens;
-        std::unordered_map<std::string, std::string> ons_auth_tokens;
+        std::unordered_map<std::string, std::string> sns_auth_tokens;
 
         net::ExitPolicy exit_policy;
 
         // Remote client ONS exit addresses mapped to local IP ranges pending ONS address resolution
         // Reserved local IP ranges mapped to remote client ONS addresses (pending ONS resolution)
-        std::unordered_map<std::string, IPRange> ons_ranges;
+        std::unordered_map<std::string, std::vector<std::variant<ipv4_range, ipv6_range>>> sns_ranges;
 
         // Reserved local IP ranges mapped to remote client exit addresses
-        std::unordered_map<NetworkAddress, IPRange> ranges;
+        std::unordered_map<NetworkAddress, std::vector<std::variant<ipv4_range, ipv6_range>>> ranges;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
@@ -122,7 +120,7 @@ namespace llarp
     {
         bool enable_profiling;
         bool save_profiles;
-        std::set<RouterID> pinned_edges;
+        std::unordered_set<RouterID> pinned_edges;
 
         std::optional<fs::path> keyfile;
 
@@ -146,7 +144,7 @@ namespace llarp
 
         std::unordered_set<std::string> auth_static_tokens;
 
-        std::set<fs::path> auth_files;
+        std::unordered_set<fs::path> auth_files;
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
 
@@ -160,36 +158,22 @@ namespace llarp
         // the only member that refers to an actual interface
         std::optional<std::string> _if_name;
 
-        // used for in6_ifreq
-        net::if_info _if_info;
-
-        // If _local_ip_range is set, the following two optionals are also set
-
-        // config mapped as "if-addr"
-        std::optional<IPRange> _local_ip_range;
-        std::optional<oxen::quic::Address> _local_addr;
-        std::optional<ip_v> _local_base_ip;
-
-        std::optional<IPRange> _base_ipv6_range = std::nullopt;
+        std::optional<ipv4_net> _local_ip_net;    // [network]:ifaddr
+        std::optional<ipv6_net> _local_ipv6_net;  // [network]:ipv6
 
         // Remote exit or hidden service addresses mapped to fixed local IP addresses
         // TODO:
         //  - load directly into TunEndpoint mapping
         //      - when a session is created, check mapping when assigning IP's
-        std::unordered_map<NetworkAddress, ip_v> _reserved_local_ips;
+        std::unordered_map<NetworkAddress, ipv4> _reserved_local_ipv4;
+        std::unordered_map<NetworkAddress, ipv6> _reserved_local_ipv6;
 
         // TESTNET: moved into ExitConfig!
         bool allow_exit{false};
         // Used by RemoteHandler to provide auth tokens for remote exits
         std::unordered_map<NetworkAddress, std::string> exit_auths;
-        std::unordered_map<std::string, std::string> ons_exit_auths;
+        std::unordered_map<std::string, std::string> sns_exit_auths;
         std::optional<net::ExitPolicy> traffic_policy;
-        // Remote client exit addresses mapped to local IP ranges
-        std::unordered_map<NetworkAddress, IPRange> _exit_ranges;
-        // Remote client ONS exit addresses mapped to local IP ranges pending ONS address resolution
-        std::unordered_map<std::string, IPRange> _ons_ranges;
-        // Used when in exit mode; pass down to LocalEndpoint
-        // std::set<IPRange> _routed_ranges;  // moved into traffic_policy!
 
         // TESTNET: move into ExitConfig!
         bool enable_route_poker;
@@ -205,10 +189,10 @@ namespace llarp
         std::vector<fs::path> hostfiles;
 
         /* TESTNET: Under modification */
-        std::vector<oxen::quic::Address> _upstream_dns;
-        oxen::quic::Address _default_dns{"9.9.9.10", DEFAULT_DNS_PORT};
-        std::optional<oxen::quic::Address> _query_bind;
-        std::vector<oxen::quic::Address> _bind_addrs;
+        std::vector<quic::Address> _upstream_dns;
+        quic::Address _default_dns{"9.9.9.10", DEFAULT_DNS_PORT};
+        std::optional<quic::Address> _query_bind;
+        std::vector<quic::Address> _bind_addrs;
 
         // Deprecated
         // std::vector<SockAddr_deprecated> upstream_dns;
@@ -228,7 +212,7 @@ namespace llarp
         // DEPRECATED -- use [Router]:public_port
         std::optional<uint16_t> public_port;
 
-        std::optional<oxen::quic::Address> listen_addr;
+        std::optional<quic::Address> listen_addr;
 
         bool only_user_port = false;
         bool using_new_api = false;
@@ -281,6 +265,10 @@ namespace llarp
     struct Config
     {
         explicit Config(std::optional<fs::path> datadir = std::nullopt);
+        Config(Config&&) = default;
+        Config(const Config&) = default;
+        Config& operator=(Config&&) = default;
+        Config& operator=(const Config&) = default;
 
         virtual ~Config() = default;
 
@@ -325,7 +313,7 @@ namespace llarp
         void add_default(std::string section, std::string key, std::string value);
 
         /// create a config with the default parameters for an embedded lokinet
-        static std::shared_ptr<Config> make_embedded_config();
+        static Config make_embedded_config();
 
       private:
         /// Load (initialize) a default config.
@@ -347,7 +335,7 @@ namespace llarp
 
         std::vector<std::array<std::string, 3>> additional;
         ConfigParser parser;
-        const fs::path data_dir;
+        fs::path data_dir;
     };
 
     void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);

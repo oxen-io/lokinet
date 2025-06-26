@@ -6,32 +6,29 @@
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 
     /**
         ContactDB TODO:
         - Store nearest-furthest expiry, trim
     */
 
-    using cc_map_storage = std::map<hash_key, EncryptedClientContact, XorMetric>;
-
     /// This class mediates storage, retrieval, and functionality for ClientContacts
-    struct ContactDB
+    class ContactDB
     {
-        explicit ContactDB(Router& r);
-
       private:
         Router& _router;
-        const hash_key _local_key;
 
-        cc_map_storage _storage;
+        std::unordered_map<hash_key, EncryptedClientContact, AlignedHasher> _storage;
 
-        std::shared_ptr<EventTicker> _purge_ticker;
+        std::shared_ptr<quic::Ticker> _purge_ticker;
 
       public:
+        explicit ContactDB(Router& r);
+
         std::optional<ClientContact> get_decrypted_cc(RouterID remote) const;
 
-        std::optional<EncryptedClientContact> get_encrypted_cc(const hash_key& key) const;
+        const EncryptedClientContact* get_encrypted_cc(const hash_key& key) const;
 
         void put_cc(EncryptedClientContact enc);
 

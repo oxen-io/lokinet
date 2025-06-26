@@ -5,25 +5,24 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 
+#include <stdexcept>
+
+extern "C"
+{
+#include <netdb.h>
+}
+
 namespace llarp
 {
-    static constexpr auto HOST_STANDARD = "host/standard/ipv4"sv;
-    static constexpr auto HOST_TUNNEL = "host/tunnel/ipv4"sv;
-    static constexpr auto EXIT_STANDARD = "exit/standard/ipv4"sv;
-    static constexpr auto EXIT_TUNNEL = "exit/tunnel/ipv4"sv;
-
-    std::string protoflag_string(uint8_t p)
+    std::string to_string(protocol_flag p)
     {
-        std::string_view root;
-
-        if (p & meta::to_underlying(protocol_flag::EXIT))
-            root = (p & meta::to_underlying(protocol_flag::QUICTUN)) ? EXIT_TUNNEL : EXIT_STANDARD;
-        else
-            root = (p & meta::to_underlying(protocol_flag::QUICTUN)) ? HOST_TUNNEL : HOST_STANDARD;
-
-        return "<{}{}>"_format(root, p & meta::to_underlying(protocol_flag::IPV6) ? "/ipv6" : "");
+        auto has_flag = [&p](protocol_flag f) { return (p & f) == f; };
+        return "<{}{}{}{}>"_format(
+            has_flag(protocol_flag::EXIT) ? "exit" : "host",
+            has_flag(protocol_flag::QUIC_TUNNEL) ? "/quic" : "/no-quic",
+            has_flag(protocol_flag::IPV4) ? "/ipv4" : "/no-ipv4",
+            has_flag(protocol_flag::IPV6) ? "/ipv6" : "");
     }
-
     namespace net
     {
         static auto logcat = log::Cat("TrafficPolicy");
@@ -31,184 +30,107 @@ namespace llarp
         // Two functions copied over from llarp/net/ip_packet_old.hpp
         static std::string ip_proto_str(IPProtocol proto)
         {
-            if (const auto* ent = ::getprotobynumber(meta::to_underlying(proto)))
-            {
+            if (const auto* ent = getprotobynumber(static_cast<int>(proto)))
                 return ent->p_name;
-            }
 
             throw std::invalid_argument{"Cannot determine protocol name for IP Protocol: {}"_format(proto)};
         }
 
-        static IPProtocol parse_ip_proto(std::string data)
-        {
-            if (const auto* ent = ::getprotobyname(data.c_str()))
-            {
-                return static_cast<IPProtocol>(ent->p_proto);
-            }
-
-            if (data.starts_with("0x"))
-            {
-                if (const int intVal = std::stoi(data.substr(2), nullptr, 16); intVal > 0)
-                    return static_cast<IPProtocol>(intVal);
-            }
-
-            throw std::invalid_argument{"Call to ::getprotobyname failed for input: {}"_format(data)};
-        }
-
-        bool ProtocolInfo::matches_packet_proto(const IPPacket& pkt) const { return pkt.protocol() == proto; }
+        bool ProtocolInfo::matches_packet_proto(const IPPacket& pkt) const { return pkt.protocol() == protocol; }
 
         bool ExitPolicy::allow_ip_traffic(const IPPacket& pkt) const
         {
-            log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+            // ranges are always the allow list (if empty, we route nothing).  Add a 0.0.0.0/0 or
+            // ::/0 if you want to allow everything.
+            auto accept_range = pkt.is_ipv4()
+                ? std::ranges::any_of(ranges, [dest = pkt.dest_ipv4()](const auto& r) { return r.contains(dest); })
+                : std::ranges::any_of(ranges_v6, [dest = pkt.dest_ipv6()](const auto& r) { return r.contains(dest); });
+            if (!accept_range)
+                return false;
 
-            if (protocols.empty() and ranges.empty())
-                return true;
-
-            for (const auto& proto : protocols)
-            {
-                if (proto.matches_packet_proto(pkt))
-                    return true;
-            }
-
-            auto is_ipv4 = pkt.is_ipv4();
-            ip_v pkt_ip;
-
-            if (is_ipv4)
-                pkt_ip = pkt.dest_ipv4();
-            else
-                pkt_ip = pkt.dest_ipv6();
-
-            for (const auto& range : ranges)
-            {
-                if (range.contains(pkt_ip))
-                    return true;
-            }
-
-            return false;
-        }
-
-        void ProtocolInfo::bt_decode(oxenc::bt_list_consumer& btlc)
-        {
-            try
-            {
-                proto = IPProtocol{btlc.consume_integer<uint8_t>()};
-
-                if (not btlc.is_finished())
-                    port = btlc.consume_integer<uint16_t>();
-            }
-            catch (...)
-            {
-                log::critical(logcat, "ProtocolInfo parsing exception");
-                throw;
-            }
-        }
-
-        bool ProtocolInfo::bt_decode(std::string_view buf)
-        {
-            port = std::nullopt;
-
-            try
-            {
-                oxenc::bt_list_consumer btlc{buf};
-
-                bt_decode(btlc);
-            }
-            catch (const std::exception& e)
-            {
-                // DISCUSS: rethrow or print warning/return false...?
-                auto err = "ProtocolInfo parsing exception: {}"_format(e.what());
-                log::warning(logcat, "{}", err);
-                throw std::runtime_error{err};
-            }
+            // protocols only masks if non-empty:
+            if (!protocols.empty())
+                if (std::ranges::none_of(protocols, [&pkt](const auto& p) { return p.matches_packet_proto(pkt); }))
+                    return false;
 
             return true;
         }
 
-        void ProtocolInfo::bt_encode(oxenc::bt_list_producer& btlp) const
+        void ProtocolInfo::bt_encode(oxenc::bt_list_producer&& btlp) const
         {
-            try
-            {
-                btlp.append(meta::to_underlying(proto));
-
-                if (port.has_value())
-                    btlp.append(*port);
-            }
-            catch (...)
-            {
-                log::critical(logcat, "Error: ProtocolInfo failed to bt encode contents!");
-            }
+            btlp.append(static_cast<uint8_t>(protocol));
+            if (port)
+                btlp.append(*port);
         }
 
-        ProtocolInfo::ProtocolInfo(std::string_view buf)
+        ProtocolInfo ProtocolInfo::from_config(std::string_view config_input)
         {
-            try
-            {
-                oxenc::bt_list_consumer btlc{buf};
-                proto = IPProtocol{btlc.consume_integer<uint8_t>()};
+            ProtocolInfo pi;
+            auto parts = split(config_input, "/");
+            if (parts.size() > 2)
+                throw std::invalid_argument{"Unparseable IP protocol/port value '{}'"_format(config_input)};
+            if (const auto* ent = ::getprotobyname(std::string{parts[0]}.c_str()))
+                pi.protocol = static_cast<IPProtocol>(ent->p_proto);
+            else if (uint8_t p; parts[0].starts_with("0x") && parse_int(parts[0], p, 16) && p > 0)
+                pi.protocol = static_cast<IPProtocol>(p);
+            else
+                throw std::invalid_argument{"No such IP protocol '{}'"_format(parts[0])};
 
-                if (not btlc.is_finished())
-                    port = btlc.consume_integer<uint16_t>();
-            }
-            catch (...)
-            {
-                log::critical(logcat, "Error: ProtocolInfo failed to bt encode contents!");
-            }
+            if (parts.size() == 2)
+                if (!parse_int(parts[1], pi.port.emplace()))
+                    throw std::invalid_argument{"Invalid protocol port: '{}'"_format(parts[1])};
+            return pi;
+        }
+
+        ProtocolInfo::ProtocolInfo(oxenc::bt_list_consumer&& enc)
+        {
+            protocol = IPProtocol{enc.consume_integer<uint8_t>()};
+            if (not enc.is_finished())
+                port = enc.consume_integer<uint16_t>();
         }
 
         void ExitPolicy::bt_decode(oxenc::bt_dict_consumer&& btdc)
         {
             try
             {
+                if (auto protos = btdc.maybe<oxenc::bt_list_consumer>("p"))
+                    while (not protos->is_finished())
+                        protocols.emplace(protos->consume_list_consumer());
+
+                if (auto rnges = btdc.maybe<oxenc::bt_list_consumer>("r"))
                 {
-                    auto [key, sublist] = btdc.next_list_consumer();
-
-                    if (key != "p")
-                        throw std::invalid_argument{"Unexpected key (expected:'p', actual:'{}')"_format(key)};
-
-                    while (not sublist.is_finished())
+                    while (not rnges->is_finished())
                     {
-                        protocols.emplace(sublist.consume_string_view());
-                    }
-                }
-
-                {
-                    auto [key, sublist] = btdc.next_list_consumer();
-
-                    if (key != "r")
-                        throw std::invalid_argument{"Unexpected key (expected:'r', actual:'{}')"_format(key)};
-
-                    while (not sublist.is_finished())
-                    {
-                        ranges.emplace(sublist.consume_string());
+                        auto r = decode_ip_range(rnges->consume_string_view());
+                        if (auto* r4 = std::get_if<ipv4_range>(&r))
+                            ranges.push_back(std::move(*r4));
+                        else
+                            ranges_v6.push_back(std::get<ipv6_range>(r));
                     }
                 }
             }
-            catch (...)
+            catch (const std::exception& e)
             {
-                log::critical(logcat, "Error: TrafficPolicy failed to populate with bt encoded contents");
+                log::warning(logcat, "Failed to parse ExitPolicy: {}", e.what());
                 throw;
             }
         }
 
         void ExitPolicy::bt_encode(oxenc::bt_dict_producer&& btdp) const
         {
-            try
+            if (!protocols.empty())
             {
-                {
-                    auto sublist = btdp.append_list("p");
-                    for (auto& p : protocols)
-                        p.bt_encode(sublist);
-                }
-
-                {
-                    auto sublist = btdp.append_list("r");
-                    for (auto& r : ranges)
-                        r.bt_encode(sublist);
-                }
+                auto protos = btdp.append_list("p");
+                for (auto& p : protocols)
+                    p.bt_encode(protos.append_list());
             }
-            catch (...)
+            if (!ranges.empty() || !ranges_v6.empty())
             {
-                log::critical(logcat, "Error: TrafficPolicy failed to bt encode contents!");
+                auto rnges = btdp.append_list("r");
+                for (const auto& r : ranges)
+                    rnges.append(encode(r));
+                for (const auto& r : ranges_v6)
+                    rnges.append(encode(r));
             }
         }
 

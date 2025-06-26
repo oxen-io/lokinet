@@ -4,6 +4,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/file.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <oxenc/base32z.h>
 #include <oxenc/hex.h>
@@ -16,7 +17,7 @@ namespace llarp
 {
     static auto logcat = log::Cat("cryptoutils");
 
-    PubKey Ed25519SecretKey::to_pubkey() const { return PubKey(data() + 32); }
+    PubKey Ed25519SecretKey::to_pubkey() const { return PubKey{span().last<32>()}; }
 
     bool Ed25519SecretKey::load_from_file(const fs::path& fname)
     {
@@ -103,18 +104,10 @@ namespace llarp
         return true;
     }
 
-    SymmNonce SymmNonce::make(std::string nonce)
-    {
-        SymmNonce n;
-        if (!n.from_string(nonce))
-            throw std::invalid_argument{"Invalid nonce passed to static constructor function:{}"_format(nonce)};
-        return n;
-    }
-
     SymmNonce SymmNonce::make_random()
     {
         SymmNonce n;
-        n.Randomize();
+        randombytes_buf(n.data(), n.size());
         return n;
     }
 
@@ -127,7 +120,7 @@ namespace llarp
     {
         ShortHash xhash;
         crypto::shorthash(xhash, shared_secret.data(), shared_secret.size());
-        xor_nonce = xhash.data();  // truncate 32 -> 24
+        xor_nonce.assign(xhash.span().first<SymmNonce::SIZE>());
     }
 
     shared_kx_data shared_kx_data::generate() { return shared_kx_data{crypto::generate_identity()}; }

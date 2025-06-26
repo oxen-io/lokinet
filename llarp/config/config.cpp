@@ -8,6 +8,7 @@
 #include <llarp/contact/sns.hpp>
 #include <llarp/util/file.hpp>
 #include <llarp/util/formattable.hpp>
+#include <llarp/util/logging/buffer.hpp>
 
 #include <stdexcept>
 
@@ -61,19 +62,11 @@ namespace llarp
         conf.define_option<std::string>(
             "router",
             "netid",
-            Default{llarp::LOKINET_DEFAULT_NETID},
-            Comment{
-                "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID + "' for mainnet, '"s
-                    + llarp::LOKINET_TESTNET_NETID + "' for testnet."s,
-            },
-            [this](std::string arg) {
-                if (arg.size() > NETID_SIZE)
-                    throw std::invalid_argument{"netid is too long, max length is {}"_format(NETID_SIZE)};
+            Default{"{}"_format(NetID::MAINNET)},
+            Comment{"Network ID; this is '{}' for mainnet, '{}' for testnet."_format(NetID::MAINNET, NetID::TESTNET)},
+            [this](std::string arg) { net_id = netid_from_string(arg); });
 
-                net_id = std::move(arg);
-            });
-
-        conf.define_option<size_t>(
+        conf.define_option<int>(
             "router",
             "relay-connections",
             Default{CLIENT_ROUTER_CONNECTIONS},
@@ -186,26 +179,7 @@ namespace llarp
         conf.define_option<bool>(
             "router", "block-bogons", DefaultBlockBogons, Hidden, assignment_acceptor(block_bogons));
 
-        constexpr auto relative_to_datadir = "An absolute path is used as-is, otherwise relative to 'data-dir'.";
-
-        conf.define_option<std::string>(
-            "router",
-            "contact-file",
-            RelayOnly,
-            [this](std::string arg) {
-                if (arg.empty())
-                    return;
-
-                rc_file = arg;
-                if (check_path_op(rc_file))
-                    log::info(logcat, "Relay configured to try RC file path: {}", rc_file->c_str());
-                else
-                    log::warning(logcat, "Bad input for relay RC file path ({}), using default...", arg);
-            },
-            Comment{
-                "Filename in which to store the router contact file",
-                relative_to_datadir,
-            });
+        conf.define_option<std::string>("router", "contact-file", Deprecated);
 
         conf.define_option<std::string>("router", "encryption-privkey", Deprecated);
 
@@ -269,14 +243,20 @@ namespace llarp
 
                 if (is_valid_sns(addr))
                 {
-                    ons_auth_tokens.emplace(std::move(addr), std::move(auth));
+                    sns_auth_tokens.emplace(std::move(addr), std::move(auth));
+                    return;
                 }
-                else if (auto exit = NetworkAddress::from_network_addr(addr); exit->is_client())
+                try
                 {
-                    auth_tokens.emplace(std::move(*exit), std::move(auth));
+                    NetworkAddress exit{addr};
+                    if (!exit.is_client())
+                        throw std::invalid_argument{"only .loki addresses can be used for exits"};
+                    auth_tokens.emplace(std::move(exit), std::move(auth));
                 }
-                else
-                    throw std::invalid_argument("[exit]:auth invalid exit address");
+                catch (const std::exception& e)
+                {
+                    throw std::invalid_argument("[exit]:auth invalid exit address: {}"_format(e.what()));
+                }
             });
 
         conf.define_option<std::string>(
@@ -298,7 +278,7 @@ namespace llarp
             },
             [this](std::string arg) {
                 // this will throw on error
-                exit_policy.protocols.emplace(arg);
+                exit_policy.protocols.insert(net::ProtocolInfo::from_config(arg));
             });
 
         conf.define_option<std::string>(
@@ -320,26 +300,43 @@ namespace llarp
                 if (arg.empty())
                     return;
 
-                std::optional<IPRange> range;
+                std::variant<ipv4_range, ipv6_range> range;
 
                 const auto pos = arg.find(":");
 
-                std::string input = (pos == std::string::npos) ? "0.0.0.0/0"s : arg.substr(pos + 1);
+                if (pos == std::string::npos)
+                    range = ipv4{0} / 0;
+                else
+                {
+                    try
+                    {
+                        std::string input = arg.substr(pos + 1);
+                        if (input.find(":") != std::string::npos)  // ipv6
+                            range = parse_ipv6_range(input, 128);
+                        else
+                            range = parse_ipv4_range(input, 32);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        throw std::invalid_argument{"[exit]:reserved-range invalid ip range: {}"_format(e.what())};
+                    }
 
-                range = IPRange::from_string(std::move(input));
-
-                if (not range.has_value())
-                    throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
-
-                if (pos != std::string::npos)
-                    arg = arg.substr(0, pos);
+                    arg.resize(pos);
+                }
 
                 if (is_valid_sns(arg))
-                    ons_ranges.emplace(std::move(arg), std::move(*range));
-                else if (auto maybe_raddr = NetworkAddress::from_network_addr(arg); maybe_raddr)
-                    ranges.emplace(std::move(*maybe_raddr), std::move(*range));
+                    sns_ranges[arg].push_back(std::move(range));
                 else
-                    throw std::invalid_argument{"[network]:exit-node bad address: {}"_format(arg)};
+                {
+                    try
+                    {
+                        ranges[NetworkAddress{arg}].push_back(std::move(range));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        throw std::invalid_argument{"[exit]:reserved-range invalid address: {}"_format(arg)};
+                    }
+                }
             });
 
         conf.define_option<std::string>(
@@ -347,7 +344,7 @@ namespace llarp
             "routed-range",
             MultiValue,
             Comment{
-                "Route local exit node traffic through the specified IP range. If omitted, the",
+                "Advertise that exit node routes exit traffic to the specified IP range. If omitted, the",
                 "default is ALL public ranges.  Can be set to public to indicate that this exit",
                 "routes traffic to the public internet.",
                 "For example:",
@@ -360,10 +357,22 @@ namespace llarp
                 "must be configured separately on the exit system to handle lokinet traffic.",
             },
             [this](std::string arg) {
-                if (auto range = IPRange::from_string(arg))
-                    exit_policy.ranges.insert(std::move(*range));
+                if (arg == "public")
+                    exit_policy.ranges.push_back(ipv4{0} / 0);
                 else
-                    throw std::invalid_argument{"Bad IP range passed to routed-range:{}"_format(arg)};
+                {
+                    try
+                    {
+                        if (arg.find(':') != std::string::npos)
+                            exit_policy.ranges_v6.push_back(parse_ipv6_range(arg, 128));
+                        else
+                            exit_policy.ranges.push_back(parse_ipv4_range(arg, 32));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        throw std::invalid_argument{"[exit]:routed-range invalid range '{}': {}"_format(arg, e.what())};
+                    }
+                }
             });
     }
 
@@ -377,10 +386,8 @@ namespace llarp
         static constexpr Default ReachableDefault{true};
         static constexpr Default HopsDefault{4};
         static constexpr Default PathsDefault{4};
-        static constexpr Default IP6RangeDefault{"[fd00::]/16"};
 
-        conf.define_option<bool>(
-            "network", "init-tun", InitTunDefault, Hidden, assignment_acceptor(init_tun));
+        conf.define_option<bool>("network", "init-tun", InitTunDefault, Hidden, assignment_acceptor(init_tun));
 
         conf.define_option<bool>(
             "network", "save-profiles", SaveProfilesDefault, Hidden, assignment_acceptor(save_profiles));
@@ -477,10 +484,15 @@ namespace llarp
                 "manually add a remote endpoint by .loki address to the access whitelist",
             },
             [this](std::string arg) {
-                if (auto addr = NetworkAddress::from_network_addr(arg))
-                    auth_whitelist.emplace(std::move(*addr));
-                else
-                    throw std::invalid_argument{"bad loki address: {}"_format(arg)};
+                try
+                {
+                    auth_whitelist.insert(NetworkAddress{arg});
+                }
+                catch (const std::exception& e)
+                {
+                    throw std::invalid_argument{
+                        "[network]:auth-whitelist: invalid .loki address '{}': {}"_format(arg, e.what())};
+                }
             });
 
         conf.define_option<fs::path>(
@@ -495,7 +507,7 @@ namespace llarp
             [this](fs::path arg) {
                 if (not fs::exists(arg))
                     throw std::invalid_argument{"cannot load auth file {}: file does not exist"_format(arg)};
-                auth_files.emplace(std::move(arg));
+                auth_files.insert(std::move(arg));
             });
 
         conf.define_option<std::string>(
@@ -558,168 +570,6 @@ namespace llarp
 
         conf.define_option<bool>(
             "network",
-            "exit",
-            Hidden,
-            ClientOnly,
-            [this](bool arg) {
-                allow_exit = arg;
-                log::warning(logcat, "This option is deprecated! Use [exit]:enable instead!");
-            },
-            Comment{
-                "<< DEPRECATED -- use [exit]:enable instead >>\n",
-                "Whether or not we should act as an exit node. "
-                "Beware that this increases demand",
-                "on the server and may pose liability concerns. Enable at your own risk.",
-            });
-
-        conf.define_option<std::string>(
-            "network",
-            "routed-range",
-            Hidden,
-            MultiValue,
-            Comment{
-                "<< DEPRECATED -- use [exit]:routed-range instead >>\n",
-                "When in exit mode announce one or more IP ranges that this exit node routes",
-                "traffic for.  If omitted, the default is all public ranges.  Can be set to",
-                "public to indicate that this exit routes traffic to the public internet.",
-                "For example:",
-                "    routed-range=10.0.0.0/16",
-                "    routed-range=public",
-                "to advertise that this exit routes traffic to both the public internet, and to",
-                "10.0.x.y addresses.",
-                "",
-                "Note that this option does not automatically configure network routing; that",
-                "must be configured separately on the exit system to handle lokinet traffic.",
-            },
-            [this](std::string arg) {
-                if (not traffic_policy)
-                    traffic_policy = net::ExitPolicy{};
-
-                if (auto range = IPRange::from_string(arg))
-                    traffic_policy->ranges.insert(std::move(*range));
-                else
-                    throw std::invalid_argument{"Bad IP range passed to routed-range:{}"_format(arg)};
-            });
-
-        conf.define_option<std::string>(
-            "network",
-            "traffic-whitelist",
-            Hidden,
-            MultiValue,
-            Comment{
-                "<< DEPRECATED -- use [exit]:policy instead >>\n",
-                "Adds an IP traffic type whitelist; can be specified multiple times.  If any are",
-                "specified then only matched traffic will be allowed and all other traffic will be",
-                "dropped.  Examples:",
-                "    traffic-whitelist=tcp",
-                "would allow all TCP/IP packets (regardless of port);",
-                "    traffic-whitelist=0x69",
-                "would allow IP traffic with IP protocol 0x69;",
-                "    traffic-whitelist=udp/53",
-                "would allow UDP port 53; and",
-                "    traffic-whitelist=tcp/smtp",
-                "would allow TCP traffic on the standard smtp port (21).",
-            },
-            [this](std::string arg) {
-                if (not traffic_policy)
-                    traffic_policy = net::ExitPolicy{};
-
-                log::warning(logcat, "This option is deprecated! Use [exit]:policy instead!");
-
-                // this will throw on error
-                traffic_policy->protocols.emplace(arg);
-            });
-
-        conf.define_option<std::string>(
-            "network",
-            "exit-node",
-            Hidden,
-            ClientOnly,
-            MultiValue,
-            Comment{
-                "<< DEPRECATED -- use [exit]:reserved-range instead >>\n",
-                "Specify a `.loki` address and an ip range to use as an exit broker.",
-                "Examples:",
-                "    exit-node=whatever.loki",
-                "would route all exit traffic through whatever.loki; and",
-                "    exit-node=stuff.loki:100.0.0.0/24",
-                "would route the IP range 100.0.0.0/24 through stuff.loki.",
-                "This option can be specified multiple times (to map different IP ranges).",
-            },
-            [this](std::string arg) {
-                if (arg.empty())
-                    return;
-
-                log::warning(logcat, "This option is deprecated! Use [exit]:reserved-range instead!");
-
-                std::optional<IPRange> range;
-
-                const auto pos = arg.find(":");
-
-                std::string input = (pos == std::string::npos) ? "0.0.0.0/0"s : arg.substr(pos + 1);
-
-                range = IPRange::from_string(std::move(input));
-
-                if (not range.has_value())
-                    throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
-
-                if (pos != std::string::npos)
-                    arg = arg.substr(0, pos);
-
-                if (is_valid_sns(arg))
-                    _ons_ranges.emplace(std::move(arg), std::move(*range));
-                else if (auto maybe_raddr = NetworkAddress::from_network_addr(arg); maybe_raddr)
-                    _exit_ranges.emplace(std::move(*maybe_raddr), std::move(*range));
-                else
-                    throw std::invalid_argument{"[network]:exit-node bad address: {}"_format(arg)};
-            });
-
-        conf.define_option<std::string>(
-            "network",
-            "exit-auth",
-            ClientOnly,
-            Hidden,
-            MultiValue,
-            Comment{
-                "<< DEPRECATED -- use [exit]:auth instead >>\n",
-                "Specify an optional authentication code required to use ",
-                "a non-public exit node.",
-                "For example:",
-                "    exit-auth=myfavouriteexit.loki:abc",
-                "uses the authentication code `abc` whenever myfavouriteexit.loki is accessed.",
-                "Can be specified multiple times to store codes for different exit nodes.",
-            },
-            [this](std::string arg) {
-                if (arg.empty())
-                    throw std::invalid_argument{"Empty argument passed to 'exit-auth'"};
-
-                log::warning(logcat, "This option is deprecated! Use [exit]:auth instead!");
-
-                const auto pos = arg.find(":");
-
-                if (pos == std::string::npos)
-                {
-                    throw std::invalid_argument(
-                        "[network]:exit-auth invalid format, expects exit-address.loki:auth-code-goes-here");
-                }
-
-                const auto addr = arg.substr(0, pos);
-                auto auth = arg.substr(pos + 1);
-
-                if (is_valid_sns(addr))
-                {
-                    ons_exit_auths.emplace(std::move(addr), std::move(auth));
-                }
-                else if (auto exit = NetworkAddress::from_network_addr(addr); exit->is_client())
-                {
-                    exit_auths.emplace(std::move(*exit), std::move(auth));
-                }
-                else
-                    throw std::invalid_argument("[network]:exit-auth invalid exit address");
-            });
-
-        conf.define_option<bool>(
-            "network",
             "auto-routing",
             ClientOnly,
             Default{true},
@@ -756,54 +606,57 @@ namespace llarp
             "network",
             "ifaddr",
             Comment{
-                "Local IP and range for lokinet traffic. For example, 172.16.0.1/16 to use",
-                "172.16.0.1 for this machine and 172.16.x.y for remote peers. If omitted then",
-                "lokinet will attempt to find an unused private range.",
+                "Local IP and netmask for lokinet traffic. For example, 172.16.0.1/16 to use",
+                "172.16.0.1 for this lokinet instance and 172.16.x.y for remote peers. If omitted",
+                "then lokinet will attempt to automatically select an unused private range.",
+                "If you specify an all-0 address with range (e.g. 0.0.0.0/12) then lokinet will",
+                "auto-select a private range of the given size.",
             },
             [this](std::string arg) {
-                if (auto maybe_range = IPRange::from_string(arg); maybe_range)
+                try
                 {
-                    log::critical(logcat, "Parsed local ip range from config: {}", *maybe_range);
-                    _local_ip_range = *maybe_range;
-                    _local_addr = _local_ip_range->address();
-                    log::critical(logcat, "Parsed local addr from config: {}", *_local_addr);
-                    _local_base_ip = _local_ip_range->base_ip();
+                    _local_ip_net = parse_ipv4_net(arg);
                 }
-                else
-                    throw std::invalid_argument{"[network]:ifaddr invalid value: '{}'"_format(arg)};
+                catch (const std::exception& e)
+                {
+                    throw std::invalid_argument{"[network]:ifaddr invalid value '{}': {}"_format(arg, e.what())};
+                }
             });
-
-        conf.define_option<bool>(
-            "network",
-            "enable-ipv6-tun",
-            Default{false},
-            assignment_acceptor(enable_ipv6),
-            Comment{"Enable IPv6 addressing for lokinet virtual TUN device interface (default: off)"});
 
         conf.define_option<std::string>(
             "network",
-            "ip6-range",
+            "ipv6-network",
             ClientOnly,
+            Hidden,
             Comment{
-                "For all IPv6 exit traffic you will use this as the base address bitwised or'd "
-                "with the v4 address in use.To disable ipv6 set this to an empty value.",
-                "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to ",
-                "de-anonymization as lokinet will no longer carry your ipv6 traffic.",
+                "Enables internal IPv6 traffic for lokinet.  Can be set to:",
+                "  - false to disable IPv6 support.  This is the default if omitted",
+                "  - true to enable IPv6 support and auto-detect a free private /64 network range",
+                "  - ::/80 to auto-detect a free private range of netmask 80 (change as needed) ",
+                "    instead of the default 64",
+                "  - An explicit private address and range to use, such as: fd00:abcd:1234::1/56",
+                "",
+                "Currently experimental and not supported.",
             },
-            IP6RangeDefault,
             [this](std::string arg) {
                 if (arg.empty())
                 {
-                    log::warning(
-                        logcat,
-                        "!!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to de-anonymization as "
-                        "lokinet will no longer carry your ipv6 traffic !!!");
+                    enable_ipv6 = false;
                     return;
                 }
-
-                if (not _base_ipv6_range->from_string(arg))
+                if (auto b = parse_boolean(arg))
                 {
-                    throw std::invalid_argument{"[network]:ip6-range invalid value: '{}'"_format(arg)};
+                    enable_ipv6 = *b;
+                    return;
+                }
+                try
+                {
+                    _local_ipv6_net = parse_ipv6_net(arg);
+                    enable_ipv6 = true;
+                }
+                catch (const std::exception& e)
+                {
+                    throw std::invalid_argument{"[network]:ipv6-addr invalid value '{}': {}"_format(arg, e.what())};
                 }
             });
 
@@ -825,27 +678,25 @@ namespace llarp
                 const auto pos = arg.find(":");
 
                 if (pos == std::string::npos)
-                    throw std::invalid_argument{"[endpoint]:mapaddr invalid entry: {}"_format(arg)};
+                    throw std::invalid_argument{
+                        "[endpoint]:mapaddr invalid entry '{}'; expected 'ADDR:IP'"_format(arg)};
 
-                auto addr_arg = arg.substr(0, pos);
+                auto addr_arg = std::string_view{arg}.substr(0, pos);
                 auto ip_arg = arg.substr(pos + 1);
 
-                if (is_valid_sns(addr_arg))
-                    throw std::invalid_argument{"`mapaddr` cannot take an ONS entry: {}"_format(arg)};
-
-                if (auto maybe_raddr = NetworkAddress::from_network_addr(std::move(addr_arg)); maybe_raddr)
+                try
                 {
-                    ip_v ipv;
+                    NetworkAddress raddr{addr_arg};
                     // ipv6
                     if (ip_arg.find(':') != std::string_view::npos)
-                        ipv = ipv6{std::move(ip_arg)};
+                        _reserved_local_ipv6.emplace(raddr, ip_arg);
                     else
-                        ipv = ipv4{std::move(ip_arg)};
-
-                    _reserved_local_ips.emplace(std::move(*maybe_raddr), std::move(ipv));
+                        _reserved_local_ipv4.emplace(raddr, ip_arg);
                 }
-                else
-                    throw std::invalid_argument{"[endpoint]:mapaddr invalid entry: {}"_format(arg)};
+                catch (const std::exception& e)
+                {
+                    throw std::invalid_argument{"[endpoint]:mapaddr invalid entry '{}': {}"_format(arg, e.what())};
+                }
             });
 
         conf.define_option<std::string>(
@@ -906,8 +757,6 @@ namespace llarp
                 path_alignment_timeout = std::chrono::seconds{val};
             });
 
-        constexpr auto addrmap_errorstr = "Invalid entry in persist-addrmap-file:"sv;
-
         conf.define_option<fs::path>(
             "network",
             "persist-addrmap-file",
@@ -918,7 +767,8 @@ namespace llarp
                 "is not specified then the local IP of remote lokinet targets will not persist across",
                 "restarts of lokinet.",
             },
-            [this, &addrmap_errorstr](fs::path file) {
+            [this](fs::path file) {
+                static constexpr auto addrmap_errorstr = "Invalid entry in persist-addrmap-file"sv;
                 if (file.empty())
                     throw std::invalid_argument("persist-addrmap-file cannot be empty");
 
@@ -937,65 +787,74 @@ namespace llarp
                     }
                 }
 
-                std::vector<char> data;
-
+                std::string data;
                 if (auto maybe = util::OpenFileStream<std::ifstream>(file, std::ios_base::binary); maybe and load_file)
                 {
                     log::debug(logcat, "Config loading persisting address map file from path:{}", file);
-
                     maybe->seekg(0, std::ios_base::end);
-                    const size_t len = maybe->tellg();
-
+                    const auto len = maybe->tellg();
                     maybe->seekg(0, std::ios_base::beg);
                     data.resize(len);
-
-                    log::trace(logcat, "Config reading {}B", len);
-
-                    maybe->read(data.data(), data.size());
+                    maybe->read(data.data(), len);
                 }
                 else
                 {
                     auto err = "Config could not load persisting address map file from path:{}"_format(file);
-
                     log::warning(logcat, "{} {}", err, load_file ? "NOT FOUND" : "STALE");
                 }
 
                 if (not data.empty())
                 {
-                    std::string_view bdata{data.data(), data.size()};
+                    log::trace(logcat, "Config parsing address map data: {}", llarp::buffer_printer{data});
 
-                    log::trace(logcat, "Config parsing address map data: {}", bdata);
-
-                    const auto parsed = oxenc::bt_deserialize<oxenc::bt_dict>(bdata);
+                    const auto parsed = oxenc::bt_deserialize<oxenc::bt_dict>(data);
 
                     for (const auto& [key, value] : parsed)
                     {
                         try
                         {
-                            oxen::quic::Address addr{key, 0};
+                            quic::Address addr{key, 0};
 
-                            ip_v _ip;
+                            std::variant<ipv4, ipv6> ip;
+
+                            auto check_ip_okay = []<typename Range>(const std::optional<Range>& range, const auto& ip) {
+                                if (range)
+                                {
+                                    bool bad = ip == range->ip || ip == range->to_range().ip;
+                                    if constexpr (std::same_as<Range, ipv4_net>)
+                                        bad = bad || ip == range->broadcast();
+                                    if (bad)
+                                    {
+                                        log::warning(
+                                            logcat, "{}: ignore invalid address map IP {}", addrmap_errorstr, ip);
+                                        return false;
+                                    }
+                                    if (!range->contains(ip))
+                                    {
+                                        log::warning(
+                                            logcat,
+                                            "{}: IP {} is outside the configured local range {}",
+                                            addrmap_errorstr,
+                                            ip,
+                                            range->to_range());
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            };
 
                             if (addr.is_ipv4())
-                                _ip = addr.to_ipv4();
-                            else
-                                _ip = addr.to_ipv6();
-
-                            if (_ip == _local_base_ip)
-                                continue;
-
-                            if (not _local_ip_range->contains(_ip))
                             {
-                                log::warning(
-                                    logcat,
-                                    "{}: {}",
-                                    addrmap_errorstr,
-                                    "out of range IP! (local range:{}, IP:{})"_format(*_local_ip_range, addr.host()));
-                                continue;
+                                if (!check_ip_okay(_local_ip_net, ip.emplace<ipv4>(addr.to_ipv4())))
+                                    continue;
+                            }
+                            else
+                            {
+                                if (!check_ip_okay(_local_ipv6_net, ip.emplace<ipv6>(addr.to_ipv6())))
+                                    continue;
                             }
 
                             const auto* arg = std::get_if<std::string>(&value);
-
                             if (not arg)
                             {
                                 log::warning(logcat, "{}: {}", addrmap_errorstr, "not a string!");
@@ -1008,12 +867,19 @@ namespace llarp
                                 continue;
                             }
 
-                            if (auto maybe_netaddr = NetworkAddress::from_network_addr(*arg))
+                            try
                             {
-                                _reserved_local_ips.emplace(std::move(*maybe_netaddr), std::move(_ip));
+                                NetworkAddress netaddr{*arg};
+                                if (auto* ip4 = std::get_if<ipv4>(&ip))
+                                    _reserved_local_ipv4.emplace(std::move(netaddr), std::move(*ip4));
+                                else
+                                    _reserved_local_ipv6.emplace(std::move(netaddr), std::move(std::get<ipv6>(ip)));
                             }
-                            else
-                                log::warning(logcat, "{}: {}", addrmap_errorstr, *arg);
+                            catch (const std::exception& e)
+                            {
+                                log::warning(logcat, "{}: invalid value {}: {}", addrmap_errorstr, *arg, e.what());
+                                continue;
+                            }
                         }
                         catch (const std::exception& e)
                         {
@@ -1054,7 +920,7 @@ namespace llarp
         };
 
         auto parse_addr_for_dns = [](const std::string& arg) {
-            std::optional<oxen::quic::Address> addr = std::nullopt;
+            std::optional<quic::Address> addr = std::nullopt;
             std::string_view arg_v{arg}, port;
             std::string host;
             uint16_t p{DEFAULT_DNS_PORT};
@@ -1067,7 +933,7 @@ namespace llarp
                 if (not llarp::parse_int<uint16_t>(port, p))
                     log::info(logcat, "Failed to parse port in arg:{}, defaulting to DNS port 53", port);
 
-                addr = oxen::quic::Address{host, p};
+                addr = quic::Address{host, p};
             }
 
             return addr;
@@ -1176,8 +1042,7 @@ namespace llarp
         conf.add_section_comments(
             "bind",
             {
-                "This section allows specifying the IPs that lokinet uses for incoming and "
-                "outgoing",
+                "This section allows specifying the IPs that lokinet uses for incoming and outgoing",
                 "connections.  For simple setups it can usually be left blank, but may be required",
                 "for routers with multiple IPs, or routers that must listen on a private IP with",
                 "forwarded public traffic.  It can also be useful for clients that want to use a",
@@ -1227,7 +1092,7 @@ namespace llarp
             });
 
         auto parse_addr_for_link = [net_ptr](const std::string& arg, bool& given_port_only) {
-            std::optional<oxen::quic::Address> maybe = std::nullopt;
+            std::optional<quic::Address> maybe = std::nullopt;
             std::string_view arg_v{arg};
             std::string host;
             uint16_t p{};
@@ -1244,7 +1109,7 @@ namespace llarp
                 maybe = net_ptr->get_best_public_address(true, p);
             }
             else
-                maybe = oxen::quic::Address{host, p};
+                maybe = quic::Address{host, p};
 
             /* TODO: fix this and the option below
             if (maybe and maybe->is_loopback())
@@ -1263,25 +1128,19 @@ namespace llarp
                 "IP and/or port for lokinet to bind to for inbound/outbound connections.",
                 "",
                 "If IP is omitted then lokinet will search for a local network interface with a",
-                "public IP address and use that IP (and will exit with an error if no such IP is "
-                "found",
+                "public IP address and use that IP (and will exit with an error if no such IP is found",
                 "on the system).  If port is omitted then lokinet defaults to 1090.",
                 "",
-                "Note: only one address will be accepted. If this option is not specified, it "
-                "will ",
-                "default",
-                "to the inbound or outbound value. Conversely, specifying this option will "
-                "supercede ",
-                "the",
-                "deprecated inbound/outbound opts.",
+                "Note: only one address will be accepted. If this option is not specified, it will default",
+                "to the inbound or outbound value. Conversely, specifying this option will supercede ",
+                "the deprecated inbound/outbound opts.",
                 "",
                 "Examples:",
                 "    listen=15.5.29.5:443",
                 "    listen=10.0.2.2",
                 "    listen=:1234",
                 "",
-                "Using a private range IP address (like the second example entry) will require "
-                "using",
+                "Using a private range IP address (like the second example entry) will require using",
                 "the public-ip= and public-port= to specify the public IP address at which this",
                 "router can be reached.",
             },
@@ -1345,11 +1204,11 @@ namespace llarp
                 return;
             }
 
-            oxen::quic::Address temp;
+            quic::Address temp;
 
             try
             {
-                temp = oxen::quic::Address{std::string{key}, port};
+                temp = quic::Address{std::string{key}, port};
             }
             catch (const std::exception& e)
             {
@@ -1553,16 +1412,20 @@ namespace llarp
             DefaultUniqueCIDR,
             ClientOnly,
             [=, this](int arg) {
-                if (arg > 32 or arg < 4)
-                    throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
+                if (arg > 32 or (arg < 4 and arg != 0))
+                    throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32, or 0"};
 
                 unique_hop_netmask = static_cast<uint8_t>(arg);
             },
             Comment{
-                "Netmask for router path selection; each router must be from a distinct IPv4 "
-                "subnet",
-                "of the given size.",
-                "E.g. 16 ensures that all routers are using IPs from distinct /16 IP ranges."});
+                "Netmask for router path selection; each router must be from a distinct IPv4 subnet",
+                "of the given size.  Defaults to 24.",
+                "",
+                "For instance, setting this to 16 selects routers for each path that have distinct",
+                "x.y.*.* IP addresses; 32 merely requires that each router have a unique IP.  Setting",
+                "this to 0 disables IP uniqueness entirely (i.e. paths can be selected that go through",
+                "different Lokinet routers using different ports on the same IP)",
+            });
 
 #ifdef WITH_GEOIP
         conf.defineOption<std::string>(
@@ -1578,22 +1441,6 @@ namespace llarp
                 "would avoid building paths through routers with IPs in Germany.",
                 "This option can be specified multiple times to exclude multiple countries"});
 #endif
-    }
-
-    bool PeerSelectionConfig::check_rcs(const std::set<RemoteRC>& rcs) const
-    {
-        if (unique_hop_netmask == 0)
-            return true;
-
-        std::set<IPRange> seen_ranges;
-
-        for (const auto& hop : rcs)
-        {
-            if (auto [it, b] = seen_ranges.emplace(hop.addr(), unique_hop_netmask); not b)
-                return false;
-        }
-
-        return true;
     }
 
     std::unique_ptr<ConfigGenParameters> Config::make_gen_params() const
@@ -1866,16 +1713,16 @@ namespace llarp
         return def.generate_ini_config(true);
     }
 
-    std::shared_ptr<Config> Config::make_embedded_config()
+    Config Config::make_embedded_config()
     {
-        auto config = std::make_shared<Config>();
-        config->load();
-        config->logging.type = std::nullopt;
-        config->logging.levels = "";
-        config->api.enable_rpc_server = false;
-        config->network.init_tun = false;
-        config->network.save_profiles = false;
-        config->bootstrap.files.clear();
+        Config config;
+        config.load();
+        config.logging.type = std::nullopt;
+        config.logging.levels = "";
+        config.api.enable_rpc_server = false;
+        config.network.init_tun = false;
+        config.network.save_profiles = false;
+        config.bootstrap.files.clear();
         return config;
     }
 

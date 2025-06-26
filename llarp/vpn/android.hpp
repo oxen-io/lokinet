@@ -50,9 +50,9 @@ namespace llarp::vpn
 
     class AndroidRouteManager : public AbstractRouteManager
     {
-        void add_route(oxen::quic::Address, oxen::quic::Address) override{};
+        void add_route(quic::Address, quic::Address) override{};
 
-        void delete_route(oxen::quic::Address, oxen::quic::Address) override{};
+        void delete_route(quic::Address, quic::Address) override{};
 
         void add_default_route_via_interface(NetworkInterface&) override {};
 
@@ -62,9 +62,9 @@ namespace llarp::vpn
 
         void delete_route_via_interface(NetworkInterface&, IPRange) override {};
 
-        std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface&) override
+        std::vector<quic::Address> get_non_interface_gateways(NetworkInterface&) override
         {
-            return std::vector<oxen::quic::Address>{};
+            return std::vector<quic::Address>{};
         };
     };
 

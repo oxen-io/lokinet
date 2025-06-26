@@ -16,7 +16,7 @@
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 
     namespace rpc
     {
@@ -69,8 +69,7 @@ namespace llarp
         class RPCServer
         {
           public:
-            explicit RPCServer(std::shared_ptr<oxenmq::OxenMQ>, Router&);
-            ~RPCServer() = default;
+            explicit RPCServer(oxenmq::OxenMQ&, Router&);
 
             void HandleLogsSubRequest(oxenmq::Message& m);
 
@@ -94,7 +93,7 @@ namespace llarp
             void invoke(DNSQuery& dnsquery);
             void invoke(Config& config);
 
-            std::shared_ptr<oxenmq::OxenMQ> m_LMQ;
+            oxenmq::OxenMQ& _omq;
             Router& _router;
             oxen::log::PubsubLogger log_subs;
         };

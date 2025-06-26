@@ -58,15 +58,15 @@ namespace llarp::rpc
             input,
             "address",
             mapexit.request.address,
-            "ip_range",
-            mapexit.request.ip_range,
+            "ip_ranges",
+            mapexit.request.ip_ranges,
             "token",
             mapexit.request.token);
     }
 
     void parse_request(UnmapExit& unmapexit, rpc_input input)
     {
-        get_values(input, "ip_range", unmapexit.request.ip_range);
+        get_values(input, "address", unmapexit.request.address);
     }
 
     void parse_request(SwapExits& swapexits, rpc_input input)

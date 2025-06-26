@@ -31,10 +31,10 @@ namespace llarp::dns
     {
         Server& _dns;
         std::unique_ptr<UDPHandle> _udp;
-        oxen::quic::Address _local_addr;
+        quic::Address _local_addr;
 
       public:
-        explicit UDPReader(Server& dns, const std::shared_ptr<EventLoop>& loop, oxen::quic::Address bind) : _dns{dns}
+        explicit UDPReader(Server& dns, const std::shared_ptr<quic::Loop>& loop, quic::Address bind) : _dns{dns}
         {
             _udp = std::make_unique<UDPHandle>(loop, bind, [&](NetworkPacket pkt) {
                 auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
@@ -60,25 +60,25 @@ namespace llarp::dns
                 throw std::runtime_error{"cannot find which address our dns socket is bound on"};
         }
 
-        std::optional<oxen::quic::Address> bound_on() const override { return _udp->bind(); }
+        std::optional<quic::Address> bound_on() const override { return _udp->bind(); }
 
-        bool would_loop(const oxen::quic::Address& to, const oxen::quic::Address&) const override
-        {
-            return to != _local_addr;
-        }
+        bool would_loop(const quic::Address& to, const quic::Address&) const override { return to != _local_addr; }
 
-        void send_to(const oxen::quic::Address& to, const oxen::quic::Address&, IPPacket data) const override
+        void send_to(const quic::Address& to, const quic::Address&, IPPacket data) const override
         {
             _udp->send(to, data.give_buffer());
         }
 
-        void send_to(
-            const oxen::quic::Address& to, const oxen::quic::Address&, std::vector<uint8_t> data) const override
+        void send_to(const quic::Address& to, const quic::Address&, std::vector<uint8_t> data) const override
         {
             _udp->send(to, std::move(data));
         }
 
-        void stop() override { _udp->loop()->stop(); }
+        void stop() override
+        {
+            // TODO FIXME
+            log::critical(logcat, "FIXME: stop is uniplemented!");
+        }
     };
 
     namespace libunbound
@@ -88,16 +88,16 @@ namespace llarp::dns
         class Query : public QueryJob_Base, public std::enable_shared_from_this<Query>
         {
             std::shared_ptr<PacketSource_Base> src;
-            oxen::quic::Address resolverAddr;
-            oxen::quic::Address askerAddr;
+            quic::Address resolverAddr;
+            quic::Address askerAddr;
 
           public:
             explicit Query(
                 std::weak_ptr<Resolver> parent_,
                 Message query,
                 std::shared_ptr<PacketSource_Base> pktsrc,
-                oxen::quic::Address toaddr,
-                oxen::quic::Address fromaddr)
+                quic::Address toaddr,
+                quic::Address fromaddr)
                 : QueryJob_Base{std::move(query)},
                   src{std::move(pktsrc)},
                   resolverAddr{std::move(toaddr)},
@@ -114,7 +114,7 @@ namespace llarp::dns
         class Resolver final : public Resolver_Base, public std::enable_shared_from_this<Resolver>
         {
             ub_ctx* m_ctx = nullptr;
-            std::weak_ptr<EventLoop> _loop;
+            std::weak_ptr<quic::Loop> _loop;
 #ifdef _WIN32
             // windows is dumb so we do ub mainloop in a thread
             std::thread runner;
@@ -123,7 +123,7 @@ namespace llarp::dns
             // std::shared_ptr<uvw::PollHandle> _poller;
 #endif
 
-            std::optional<oxen::quic::Address> _local_addr;
+            std::optional<quic::Address> _local_addr;
             std::unordered_set<std::shared_ptr<Query>> _pending;
 
             struct ub_result_deleter
@@ -163,7 +163,7 @@ namespace llarp::dns
                 query->send_reply(std::move(pkt).give_buffer());
             }
 
-            void add_upstream_resolver(const oxen::quic::Address& dns)
+            void add_upstream_resolver(const quic::Address& dns)
             {
                 auto str = "{}@{}"_format(dns.host(), dns.port());
 
@@ -173,7 +173,7 @@ namespace llarp::dns
                 }
             }
 
-            bool configure_apple_trampoline(const oxen::quic::Address& dns)
+            bool configure_apple_trampoline(const quic::Address& dns)
             {
                 // On Apple, when we turn on exit mode, we tear down and then reestablish the
                 // unbound resolver: in exit mode, we set use upstream to a localhost trampoline
@@ -230,7 +230,7 @@ namespace llarp::dns
 
                 if (auto maybe_addr = conf._query_bind; maybe_addr and not is_apple_tramp)
                 {
-                    oxen::quic::Address addr{*maybe_addr};
+                    quic::Address addr{*maybe_addr};
                     auto host = addr.host();
 
                     if (addr.port() == 0)
@@ -273,7 +273,7 @@ namespace llarp::dns
                                 fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
                         }
 
-                        addr = oxen::quic::Address{sa, sizeof(sockaddr)};
+                        addr = quic::Address{sa, sizeof(sockaddr)};
                     }
                     _local_addr = addr;
 
@@ -296,7 +296,7 @@ namespace llarp::dns
             llarp::DnsConfig m_conf;
 
           public:
-            explicit Resolver(const std::shared_ptr<EventLoop>& loop, llarp::DnsConfig conf)
+            explicit Resolver(const std::shared_ptr<quic::Loop>& loop, llarp::DnsConfig conf)
                 : _loop{loop}, m_conf{std::move(conf)}
             {
                 up(m_conf);
@@ -306,7 +306,7 @@ namespace llarp::dns
 
             std::string_view resolver_name() const override { return "unbound"; }
 
-            std::optional<oxen::quic::Address> get_local_addr() const override { return _local_addr; }
+            std::optional<quic::Address> get_local_addr() const override { return _local_addr; }
 
             void remove_pending(const std::shared_ptr<Query>& query) { _pending.erase(query); }
 
@@ -401,7 +401,7 @@ namespace llarp::dns
 
             int rank() const override { return 10; }
 
-            void reset_resolver(std::optional<std::vector<oxen::quic::Address>> replace_upstream) override
+            void reset_resolver(std::optional<std::vector<quic::Address>> replace_upstream) override
             {
                 down();
                 if (replace_upstream)
@@ -421,8 +421,8 @@ namespace llarp::dns
             bool maybe_hook_dns(
                 std::shared_ptr<PacketSource_Base> source,
                 const Message& query,
-                const oxen::quic::Address& to,
-                const oxen::quic::Address& from) override
+                const quic::Address& to,
+                const quic::Address& from) override
             {
                 log::trace(logcat, "maybe_hook_dns called");
                 auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
@@ -524,7 +524,7 @@ namespace llarp::dns
         }
     }  // namespace libunbound
 
-    Server::Server(std::shared_ptr<EventLoop> loop, llarp::DnsConfig conf, unsigned int netif)
+    Server::Server(std::shared_ptr<quic::Loop> loop, llarp::DnsConfig conf, unsigned int netif)
         : _loop{std::move(loop)}, _conf{std::move(conf)}, _platform{create_platform()}, m_NetIfIndex{std::move(netif)}
     {}
 
@@ -558,8 +558,7 @@ namespace llarp::dns
         return plat;
     }
 
-    std::shared_ptr<PacketSource_Base> Server::make_packet_source_on(
-        const oxen::quic::Address& addr, const llarp::DnsConfig&)
+    std::shared_ptr<PacketSource_Base> Server::make_packet_source_on(const quic::Address& addr, const llarp::DnsConfig&)
     {
         return std::make_shared<UDPReader>(*this, _loop, addr);
     }
@@ -579,9 +578,9 @@ namespace llarp::dns
         return std::make_shared<libunbound::Resolver>(_loop, _conf);
     }
 
-    std::vector<oxen::quic::Address> Server::bound_packet_source_addrs() const
+    std::vector<quic::Address> Server::bound_packet_source_addrs() const
     {
-        std::vector<oxen::quic::Address> addrs;
+        std::vector<quic::Address> addrs;
 
         for (const auto& src : _packet_sources)
         {
@@ -592,7 +591,7 @@ namespace llarp::dns
         return addrs;
     }
 
-    std::optional<oxen::quic::Address> Server::first_bound_packet_source_addr() const
+    std::optional<quic::Address> Server::first_bound_packet_source_addr() const
     {
         for (const auto& src : _packet_sources)
         {
@@ -644,10 +643,7 @@ namespace llarp::dns
     }
 
     bool Server::maybe_handle_packet(
-        std::shared_ptr<PacketSource_Base> ptr,
-        const oxen::quic::Address& to,
-        const oxen::quic::Address& from,
-        IPPacket pkt)
+        std::shared_ptr<PacketSource_Base> ptr, const quic::Address& to, const quic::Address& from, IPPacket pkt)
     {
         // dont process to prevent feedback loop
         if (ptr->would_loop(to, from))

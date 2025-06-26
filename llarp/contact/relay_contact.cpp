@@ -1,40 +1,20 @@
 #include "relay_contact.hpp"
 
+#include <llarp/util/logging.hpp>
+
+#include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
+
+#include <unordered_set>
 
 namespace llarp
 {
     static auto logcat = log::Cat("relay-contact");
 
-    void RelayContact::bt_verify(oxenc::bt_dict_consumer& btdc, bool reject_expired) const
+    void RelayContact::load(NetID netid, bool accept_expired)
     {
-        btdc.require_signature("~", [this, reject_expired](std::span<const uint8_t> msg, std::span<const uint8_t> sig) {
-            if (sig.size() != 64)
-                throw std::runtime_error{"Invalid signature: not 64 bytes"};
-
-            if (reject_expired and is_expired(time_now_ms()))
-                throw std::runtime_error{"Rejecting expired RemoteRC!"};
-
-            if (not addr().is_public() and BLOCK_BOGONS)
-            {
-                auto err = "Unable to verify expired RemoteRC address!";
-                log::info(logcat, "{}", err);
-                throw std::runtime_error{err};
-            }
-
-            if (not crypto::verify(router_id(), msg, sig))
-                throw std::runtime_error{"Failed to verify RemoteRC signature"};
-        });
-
-        if (not btdc.is_finished())
-            throw std::runtime_error{"RemoteRC has some fucked up shit at the end"};
-
-        btdc.finish();
-    }
-
-    void RelayContact::bt_load(oxenc::bt_dict_consumer& btdc)
-    {
-        if (int rc_ver = btdc.require<uint8_t>(""); rc_ver != RelayContact::VERSION)
+        oxenc::bt_dict_consumer btdc{_payload};
+        if (auto rc_ver = btdc.require<uint8_t>(""); rc_ver != RelayContact::VERSION)
             throw std::runtime_error{"Invalid RC: do not know how to parse v{} RCs"_format(rc_ver)};
 
         auto ipv4_port = btdc.require<std::string_view>("4");
@@ -49,9 +29,9 @@ namespace llarp
         std::memcpy(&s4.sin_addr.s_addr, ipv4_port.data(), 4);
         std::memcpy(&s4.sin_port, ipv4_port.data() + 4, 2);
 
-        _addr = oxen::quic::Address{&s4};
+        _addr = quic::Address{&s4};
 
-        if (!_addr.is_public())
+        if (!_addr.is_public() and BLOCK_BOGONS)
             throw std::runtime_error{"Invalid RC: IPv4 address is not a publicly routable IP"};
 
         if (auto ipv6_port = btdc.maybe<std::string_view>("6"))
@@ -75,27 +55,44 @@ namespace llarp
             _addr6.reset();
         }
 
-        auto netid = btdc.maybe<std::string_view>("i").value_or(llarp::LOKINET_DEFAULT_NETID);
+        auto incoming_netid = static_cast<NetID>(btdc.maybe<int>("i").value_or(static_cast<int>(NetID::MAINNET)));
 
-        if (netid != ACTIVE_NETID)
+        if (netid != incoming_netid)
             throw std::runtime_error{
                 "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
-                    ACTIVE_NETID, netid)};
+                    netid, incoming_netid)};
+        _netid = netid;
 
         auto pubkey = btdc.require<std::string_view>("p");
         if (pubkey.size() != 32)
             throw std::runtime_error{"Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
         std::memcpy(_router_id.data(), pubkey.data(), 32);
 
-        _timestamp = rc_time{std::chrono::seconds{btdc.require<uint64_t>("t")}};
+        _timestamp = time_point{std::chrono::seconds{btdc.require<uint64_t>("t")}};
 
         auto ver = btdc.require<std::span<const uint8_t>>("v");
 
         if (ver.size() != 3)
-            throw std::runtime_error{"Invalid RC router version: received {} bytes (!= 3)"_format(ver.size())};
+            throw std::runtime_error{"Invalid RC router version: received {} bytes, expected 3"_format(ver.size())};
 
         for (int i = 0; i < 3; i++)
             _router_version[i] = ver[i];
+
+        btdc.require_signature("~", [this, accept_expired](std::span<const uint8_t> msg, std::span<const uint8_t> sig) {
+            if (sig.size() != 64)
+                throw std::runtime_error{"Invalid signature: not 64 bytes"};
+
+            if (!accept_expired and is_expired(time_now_ms()))
+                throw std::runtime_error{"Rejecting expired RemoteRC!"};
+
+            if (not crypto::verify(router_id(), msg, sig))
+                throw std::runtime_error{"Failed to verify RemoteRC signature"};
+        });
+
+        if (not btdc.is_finished())
+            throw std::runtime_error{"RemoteRC has invalid trailing fields"};
+
+        btdc.finish();
     }
 
     bool RelayContact::write(const fs::path& fname) const
@@ -125,8 +122,7 @@ namespace llarp
 
     std::string RelayContact::to_string() const
     {
-        return "RC:[ '4':{} | 'i':'{}' | 'p':{} | 't':{} | v:{} ]"_format(
-            _addr.to_string(), ACTIVE_NETID, _router_id, _timestamp.time_since_epoch().count(), VERSION);
+        return "RCv{}[{} @ {}, t={}]"_format(VERSION, _router_id, _addr, _timestamp.time_since_epoch().count());
     }
 
     bool RelayContact::is_public_addressable() const
@@ -169,25 +165,133 @@ namespace llarp
         return time_to_expiry(now) <= dlt;
     }
 
-    static const std::set<std::string_view> obsolete_bootstraps{
+    static const std::unordered_set<std::string_view> obsolete_bootstraps{
         "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
         "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
     };
 
-    bool RelayContact::is_obsolete_bootstrap() const
+    bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.ToHex()); }
+
+    LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local) : _secret_key{std::move(secret)}
     {
-        for (const auto& k : obsolete_bootstraps)
+        _router_id.assign(seckey_to_pubkey(_secret_key));
+        _addr = std::move(local);
+        if (_addr.is_ipv6())
+            _addr6.emplace(&_addr.in6());
+        resign();
+    }
+
+    RemoteRC LocalRC::to_remote() { return RemoteRC{_payload, _netid}; }
+
+    void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
+    {
+        _signature.clear();
+
+        btdp.append_signature("~", [this](std::span<const uint8_t> to_sign) {
+            std::array<unsigned char, 64> sig;
+
+            if (!crypto::sign(sig.data(), _secret_key, to_sign))
+                throw std::runtime_error{"Failed to sign RC"};
+
+            _signature = {sig.data(), sig.size()};
+            return sig;
+        });
+
+        auto v = btdp.view();
+        _payload.resize(v.size());
+        std::memcpy(_payload.data(), v.data(), v.size());
+    }
+
+    oxenc::bt_dict_producer LocalRC::bt_encode_for_signing()
+    {
+        oxenc::bt_dict_producer btdp;
+        btdp.append("", VERSION);
+
+        std::array<unsigned char, 18> buf;
+
         {
-            if (_router_id.ToHex() == k)
-                return true;
+            if (not _addr.is_ipv4())
+                throw std::runtime_error{"Unable to encode RC: addr is not IPv4"};
+
+            auto in4 = _addr.in4();
+
+            std::memcpy(buf.data(), &in4.sin_addr.s_addr, 4);
+            std::memcpy(buf.data() + 4, &in4.sin_port, 2);
+
+            btdp.append("4", std::span<const uint8_t>{buf.data(), 6});
         }
-        return false;
+
+        if (_addr6)
+        {
+            if (not _addr.is_ipv6())
+                throw std::runtime_error{"Unable to encode RC: addr6 is set but is not IPv6"};
+
+            auto in6 = _addr.in6();
+
+            std::memcpy(buf.data(), &in6.sin6_addr.s6_addr, 16);
+            std::memcpy(buf.data() + 16, &in6.sin6_port, 2);
+
+            btdp.append("6", std::span<const uint8_t>{buf.data(), 18});
+        }
+
+        if (_netid != NetID::MAINNET)
+            btdp.append("i", static_cast<int>(_netid));
+
+        btdp.append("p", _router_id.to_view());
+
+        btdp.append("t", _timestamp.time_since_epoch().count());
+
+        static_assert(llarp::LOKINET_VERSION.size() == 3);
+        btdp.append("v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
+
+        return btdp;
     }
 
-    bool RelayContact::is_obsolete(const RelayContact& rc)
+    void LocalRC::resign()
     {
-        const auto& hex = rc._router_id.ToHex();
-
-        return obsolete_bootstraps.count(hex);
+        _timestamp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+        bt_sign_and_store(bt_encode_for_signing());
     }
+
+    /// Mutators for the private member attributes. Calling on the mutators
+    /// will clear the current signature and re-sign the RC
+    void LocalRC::set_addr(quic::Address new_addr)
+    {
+        if (!new_addr.is_ipv4() || !new_addr.is_public())
+            throw std::invalid_argument{"set_addr requires a public IPv4 address/port"};
+        _addr = std::move(new_addr);
+        resign();
+    }
+
+    void LocalRC::set_addr6(quic::Address new_addr)
+    {
+        if (!new_addr.is_ipv6() || !new_addr.is_public())
+            throw std::invalid_argument{"set_addr6 requires a public IPv6 address/port"};
+        _addr6 = std::move(new_addr);
+        resign();
+    }
+    void LocalRC::clear_addr6() { _addr6.reset(); }
+
+    void LocalRC::set_router_id(RouterID rid)
+    {
+        _router_id = std::move(rid);
+        resign();
+    }
+
+    RemoteRC::RemoteRC(std::string_view data, NetID netid, bool accept_expired)
+    {
+        if (data.size() > MAX_RC_SIZE)
+            throw std::invalid_argument{"Invalid RC: exceeds maximum size"};
+        _payload = data;
+        load(netid, accept_expired);
+    }
+
+    template <>
+    RemoteRC::RemoteRC(const fs::path& fname, NetID netid, bool accept_expired)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        _payload = util::file_to_string(fname);
+        load(netid, accept_expired);
+    }
+
 }  // namespace llarp

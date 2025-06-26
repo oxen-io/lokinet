@@ -162,20 +162,12 @@ namespace llarp::rpc
     //
     struct MapExit : RPCRequest
     {
-        MapExit()
-        {
-            if constexpr (platform::supports_ipv6)
-                request.ip_range.emplace_back("::"s, 0);
-            else
-                request.ip_range.emplace_back("0.0.0.0"s, 0);
-        }
-
         static constexpr auto name = "map_exit"sv;
 
         struct request_parameters
         {
             std::string address;
-            std::vector<IPRange> ip_range;
+            std::vector<std::string> ip_ranges;
             std::string token;
         } request;
     };
@@ -197,26 +189,16 @@ namespace llarp::rpc
     //
     //  Inputs:
     //    "endpoint" : ID of endpoint to map
-    //    "range" : IP range to map to exit node
-    //    "token" : auth token
     //
     //  Returns:
     //
     struct UnmapExit : RPCRequest
     {
-        UnmapExit()
-        {
-            if constexpr (platform::supports_ipv6)
-                request.ip_range.emplace_back("::", 0);
-            else
-                request.ip_range.emplace_back("0.0.0.0", 0);
-        }
-
         static constexpr auto name = "unmap_exit"sv;
 
         struct request_parameters
         {
-            std::vector<IPRange> ip_range;
+            std::string address;
         } request;
     };
 

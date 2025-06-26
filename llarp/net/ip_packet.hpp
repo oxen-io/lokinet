@@ -7,6 +7,9 @@
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/time.hpp>
 
+#include <oxen/quic/address.hpp>
+#include <oxen/quic/udp.hpp>
+
 namespace llarp
 {
     inline constexpr size_t MAX_PACKET_SIZE{1500};
@@ -15,7 +18,7 @@ namespace llarp
     struct IPPacket;
 
     // Typedef for packets being transmitted between lokinet instances
-    using NetworkPacket = oxen::quic::Packet;
+    using NetworkPacket = quic::Packet;
 
     using net_pkt_hook = std::function<void(NetworkPacket&& pkt)>;
     using ip_pkt_hook = std::function<void(IPPacket)>;
@@ -35,8 +38,8 @@ namespace llarp
       private:
         std::vector<uint8_t> _buf{};
 
-        oxen::quic::Address _src_addr{};
-        oxen::quic::Address _dst_addr{};
+        quic::Address _src_addr{};
+        quic::Address _dst_addr{};
 
         bool _is_v4{true};
 
@@ -65,7 +68,7 @@ namespace llarp
 
         net::IPProtocol protocol() const { return _proto; }
 
-        const oxen::quic::Address& source() const { return _src_addr; }
+        const quic::Address& source() const { return _src_addr; }
 
         uint16_t source_port() { return source().port(); }
 
@@ -73,7 +76,7 @@ namespace llarp
 
         ipv6 source_ipv6() { return _src_addr.to_ipv6(); }
 
-        const oxen::quic::Address& destination() const { return _dst_addr; }
+        const quic::Address& destination() const { return _dst_addr; }
 
         uint16_t dest_port() { return destination().port(); }
 
@@ -82,10 +85,10 @@ namespace llarp
         ipv6 dest_ipv6() const { return _dst_addr.to_ipv6(); }
 
         ip_header* header() { return reinterpret_cast<ip_header*>(data()); }
-        const ip_header* header() const { return header(); }
+        const ip_header* header() const { return reinterpret_cast<const ip_header*>(data()); }
 
         ipv6_header* v6_header() { return reinterpret_cast<ipv6_header*>(data()); }
-        const ipv6_header* v6_header() const { return v6_header(); }
+        const ipv6_header* v6_header() const { return reinterpret_cast<const ipv6_header*>(data()); }
 
         std::span<std::byte> l4_data();
 
@@ -96,13 +99,14 @@ namespace llarp
             return update_ipv6_address(ipv6{}, ipv6{});
         }
 
-        void update_ipv4_address(ipv4 src, ipv4 dst);
+        void update_ipv4_address(const ipv4& src, const ipv4& dst);
 
-        void update_ipv6_address(ipv6 src, ipv6 dst, std::optional<uint32_t> flowlabel = std::nullopt);
+        void update_ipv6_address(const ipv6& src, const ipv6& dst, std::optional<uint32_t> flowlabel = std::nullopt);
 
         std::optional<IPPacket> make_icmp_unreachable() const;
 
-        static std::string make_udp_packet(const oxen::quic::Address& src, const oxen::quic::Address& dest, std::span<const std::byte>& payload);
+        static std::string make_udp_packet(
+            const quic::Address& src, const quic::Address& dest, std::span<const std::byte>& payload);
 
         uint8_t* data() { return _buf.data(); }
 

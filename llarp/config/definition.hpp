@@ -381,6 +381,10 @@ namespace llarp
     template <>
     bool OptionDefinition<bool>::from_string(const std::string& input);
 
+    // Returns true if the input string looks like a true value, false if it looks like a false
+    // value, and nullopt if neither.
+    std::optional<bool> parse_boolean(std::string_view input);
+
     using UndeclaredValueHandler =
         std::function<void(std::string_view section, std::string_view name, std::string_view value)>;
 

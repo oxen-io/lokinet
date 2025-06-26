@@ -1,7 +1,9 @@
-#include "net.hpp"
 #include "net_if.hpp"
+#include "platform.hpp"
 
+#include <llarp/address/ip_range.hpp>
 #include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <stdexcept>
 
@@ -13,26 +15,44 @@
 
 #include <oxen/quic/address.hpp>
 
-#include <list>
-
 namespace llarp::net
 {
     static auto logcat = log::Cat("posix");
 
+    namespace
+    {
+        struct ifaddrs_deleter
+        {
+            void operator()(ifaddrs* ia) const noexcept { freeifaddrs(ia); }
+        };
+        using ifaddrs_ptr = std::unique_ptr<ifaddrs, ifaddrs_deleter>;
+        ifaddrs_ptr getifaddrs()
+        {
+            if (ifaddrs * ia; 0 == ::getifaddrs(&ia))
+                return ifaddrs_ptr{ia};
+            throw std::runtime_error{"getifaddrs(): {}"_format(strerror(errno))};
+        }
+    }  // namespace
+
     class Platform_Impl : public Platform
     {
-        template <typename Visit_t>
-        void iter_all(Visit_t&& visit) const
+        // Iterates through interfaces.  If the Visitor returns a bool then a true return means to
+        // break the iteration loop.
+        template <std::invocable<const ifaddrs&> Visitor>
+        void for_each_interface(Visitor&& visit) const
         {
-            ifaddrs* addrs{nullptr};
-
-            if (getifaddrs(&addrs))
-                throw std::runtime_error{"getifaddrs(): {}"_format(strerror(errno))};
-
-            for (auto next = addrs; next; next = next->ifa_next)
-                visit(next);
-
-            freeifaddrs(addrs);
+            auto addrs = getifaddrs();
+            for (auto next = addrs.get(); next; next = next->ifa_next)
+            {
+                const auto& n = *next;
+                if constexpr (std::same_as<bool, decltype(visit(n))>)
+                {
+                    if (visit(n))
+                        break;
+                }
+                else
+                    visit(n);
+            }
         }
 
       public:
@@ -40,14 +60,17 @@ namespace llarp::net
         {
             std::string ifname;
 
-            iter_all([&ifname](ifaddrs* i) {
-                if (i and i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+            for_each_interface([&ifname](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET)
                 {
-                    const oxen::quic::Address addr{i->ifa_addr};
-
+                    const quic::Address addr{i.ifa_addr};
                     if (addr.is_loopback())
-                        ifname = i->ifa_name;
+                    {
+                        ifname = i.ifa_name;
+                        return true;
+                    }
                 }
+                return false;
             });
 
             if (ifname.empty())
@@ -56,24 +79,22 @@ namespace llarp::net
             return ifname;
         }
 
-        std::optional<oxen::quic::Address> get_best_public_address(bool ipv4, uint16_t port) const override
+        std::optional<quic::Address> get_best_public_address(bool ipv4, uint16_t port) const override
         {
-            std::optional<oxen::quic::Address> found;
+            std::optional<quic::Address> found;
 
-            iter_all([&found, ipv4, port](ifaddrs* i) {
-                if (found)
-                    return;
-
-                if (i and i->ifa_addr and i->ifa_addr->sa_family == (ipv4 ? AF_INET : AF_INET6))
+            for_each_interface([&found, family = ipv4 ? AF_INET : AF_INET6, port](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == family)
                 {
-                    oxen::quic::Address a{i->ifa_addr};
-
+                    quic::Address a{i.ifa_addr};
                     if (a.is_public_ip())
                     {
                         a.set_port(port);
                         found = std::move(a);
+                        return true;
                     }
                 }
+                return false;
             });
 
             log::info(logcat, "get_best_public_address returned: {}", found);
@@ -81,208 +102,160 @@ namespace llarp::net
             return found;
         }
 
-        std::optional<IPRange> find_free_range(bool ipv6_enabled) const override
+        std::optional<ipv4_net> find_free_ipv4_net(uint8_t mask) const override
         {
-            std::list<IPRange> current_ranges;
+            std::vector<ipv4_range> current_ranges;
 
-            iter_all([&current_ranges, ipv6_enabled](ifaddrs* i) {
-                if (i and i->ifa_addr
-                    and (i->ifa_addr->sa_family == AF_INET or (i->ifa_addr->sa_family == AF_INET6 and ipv6_enabled)))
+            for_each_interface([&current_ranges](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET)
                 {
-                    oxen::quic::Address addr{i->ifa_addr};
-                    auto nma = reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr;
-                    auto m = std::popcount(nma);
-                    log::trace(
-                        logcat, "Adding {} {} (mask={}) to current ranges", addr.is_ipv4() ? "ipv4" : "ipv6", addr, m);
-                    current_ranges.emplace_back(std::move(addr), std::move(m));
-                    // current_ranges.emplace_back(std::move(addr), std::popcount(nma));
+                    ipv4 addr{reinterpret_cast<sockaddr_in*>(i.ifa_addr)->sin_addr};
+                    auto mask = static_cast<uint8_t>(
+                        std::popcount(reinterpret_cast<sockaddr_in*>(i.ifa_netmask)->sin_addr.s_addr));
+
+                    log::debug(logcat, "Adding {}/{} to excluded search ranges", addr, mask);
+                    current_ranges.emplace_back(addr, mask);
                 }
             });
 
-            return IPRange::find_private_range(std::move(current_ranges), ipv6_enabled);
+            return find_private_ipv4_net(std::move(current_ranges), mask);
         }
 
-        std::optional<int> get_interface_index(ip_v ip) const override
+        std::optional<ipv6_net> find_free_ipv6_net(uint8_t mask) const override
         {
-            std::optional<int> ret = std::nullopt;
-            oxen::quic::Address ip_addr{};
+            std::vector<ipv6_range> current_ranges;
 
-            int counter = 0;
+            for_each_interface([&current_ranges](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET6)
+                {
+                    ipv6 addr{reinterpret_cast<sockaddr_in6*>(i.ifa_addr)->sin6_addr};
+                    uint8_t mask = 0;
+                    for (auto c : reinterpret_cast<sockaddr_in6*>(i.ifa_netmask)->sin6_addr.s6_addr)
+                        mask += std::popcount(c);
+                    log::debug(logcat, "Adding {}/{} to excluded search ranges", addr, mask);
+                    current_ranges.emplace_back(addr, mask);
+                }
+            });
 
-            if (auto* maybe = std::get_if<ipv4>(&ip))
-                ip_addr = oxen::quic::Address{*maybe, 0};
-            else if (auto* maybe = std::get_if<ipv6>(&ip))
-                ip_addr = oxen::quic::Address{*maybe, 0};
+            return find_private_ipv6_net(std::move(current_ranges), mask);
+        }
 
-            iter_all([&ret, &counter, ip_addr](ifaddrs* i) {
-                if (ret)
-                    return;
+        std::optional<int> get_interface_index(ipv4 ip) const override
+        {
+            std::optional<int> ret;
 
-                if (not(i and i->ifa_addr))
-                    return;
+            for_each_interface([&ret, &ip](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET)
+                {
+                    auto if_ip = quic::Address{i.ifa_addr}.to_ipv4();
+                    if (if_ip == ip)
+                    {
+                        ret = if_nametoindex(i.ifa_name);
+                        return true;
+                    }
+                }
+                return false;
+            });
 
-                counter += 1;
+            return ret;
+        }
+        std::optional<int> get_interface_index(ipv6 ip) const override
+        {
+            std::optional<int> ret;
 
-                const oxen::quic::Address addr{i->ifa_addr};
-
-                if (addr == ip_addr)
-                    ret = counter;
+            for_each_interface([&ret, &ip](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET6)
+                {
+                    auto if_ip = quic::Address{i.ifa_addr}.to_ipv6();
+                    if (if_ip == ip)
+                    {
+                        ret = if_nametoindex(i.ifa_name);
+                        return true;
+                    }
+                }
+                return false;
             });
 
             return ret;
         }
 
-        if_info find_free_interface(int af = AF_INET) const override
+        std::string find_free_tun(std::string_view suggest) const override
         {
-            if_info info{af};
-            int num = 0;
-
-            while (num < 255)
+#ifdef __linux__
+            if (!suggest.empty())
             {
-                auto ifname = "lokitun{}"_format(num);
-                log::trace(logcat, "Looking for interface ({})...", ifname);
-
-                iter_all([&info, if_name = ifname, af](ifaddrs* i) {
-                    if (info)
-                        return;
-
-                    if (i and i->ifa_addr and i->ifa_addr->sa_family == af and i->ifa_name == if_name)
+                suggest = suggest.substr(0, IFNAMSIZ - 1);
+                auto addrs = getifaddrs();
+                bool found = false;
+                for (auto next = addrs.get(); next; next = next->ifa_next)
+                {
+                    if (next->ifa_name && next->ifa_name == suggest)
                     {
-                        info.if_name = if_name;
-                        info.if_addr = i->ifa_addr;
-                        info.if_netmask = i->ifa_netmask;
-                        info.if_index = if_nametoindex(i->ifa_name);
+                        found = true;
+                        break;
                     }
-                });
-
-                if (info)
-                    break;
-
-                num++;
+                }
+                if (!found)
+                    return std::string{suggest};
             }
-
-            return info;
+            // Let the kernel choose automatically:
+            return "lokitun%d"s;
+#else
+            // On non-linux (e.g. FreeBSD) arbitrary tun device names can't be chosen, so we just
+            // return "" to always auto-allocate.
+            return ""s;
+#endif
         }
 
-        std::optional<std::string> find_free_tun(int af) const override
+        std::optional<ipv4> get_interface_ipv4(std::string_view ifname) const override
         {
-            int num = 0;
+            std::optional<ipv4> addr;
 
-            while (num < 255)
-            {
-                std::string ifname = fmt::format("lokitun{}", num);
-                if (get_interface_addr(ifname, af) == std::nullopt)
-                    return ifname;
-                num++;
-            }
-
-            return std::nullopt;
-        }
-
-        std::optional<oxen::quic::Address> get_interface_addr(std::string_view ifname, int af) const override
-        {
-            std::optional<oxen::quic::Address> addr;
-
-            iter_all([&addr, af, ifname = std::string{ifname}](ifaddrs* i) {
-                if (addr)
-                    return;
-                if (i and i->ifa_addr and i->ifa_addr->sa_family == af and i->ifa_name == ifname)
-                    addr = i->ifa_addr;
+            for_each_interface([&addr, &ifname](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET and i.ifa_name == ifname)
+                {
+                    addr = quic::Address{i.ifa_addr}.to_ipv4();
+                    return true;
+                }
+                return false;
             });
 
             return addr;
         }
 
-        std::optional<oxen::quic::Address> all_interfaces(oxen::quic::Address fallback) const override
+        std::optional<ipv6> get_interface_ipv6(std::string_view ifname) const override
         {
-            std::optional<oxen::quic::Address> found;
+            std::optional<ipv6> addr;
 
-            iter_all([fallback, &found](ifaddrs* i) {
-                if (found)
-                    return;
-
-                if (i == nullptr or i->ifa_addr == nullptr)
-                    return;
-
-                auto& sa_fam = i->ifa_addr->sa_family;
-
-                if (sa_fam == AF_INET and not fallback.is_ipv4())
-                    return;
-
-                if (sa_fam == AF_INET6 and not fallback.is_ipv6())
-                    return;
-
-                oxen::quic::Address addr{i->ifa_addr};
-
-                if (addr == fallback)
-                    found = addr;
+            for_each_interface([&addr, &ifname](const ifaddrs& i) {
+                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET6 and i.ifa_name == ifname)
+                {
+                    addr = quic::Address{i.ifa_addr}.to_ipv6();
+                    return true;
+                }
+                return false;
             });
 
-            // when we cannot find an address but we are looking for 0.0.0.0 just default to the old style
-            if (not found and fallback.is_any_addr())
-                found = wildcard(fallback.is_ipv4() ? AF_INET : AF_INET6);
-
-            return found;
+            return addr;
         }
 
-        bool has_interface_address(ip_v ip) const override
+        bool has_interface_address(ipv4 ip) const override
         {
             bool found{false};
-            oxen::quic::Address ip_addr{};
-
-            if (auto* maybe = std::get_if<ipv4>(&ip))
-                ip_addr = oxen::quic::Address{*maybe, 0};
-            else if (auto* maybe = std::get_if<ipv6>(&ip))
-                ip_addr = oxen::quic::Address{*maybe, 0};
-
-            iter_all([&found, ip_addr](ifaddrs* i) {
-                if (found)
-                    return;
-
-                if (not(i and i->ifa_addr))
-                    return;
-
-                const oxen::quic::Address addr{i->ifa_addr};
-
-                found = addr == ip_addr;
+            for_each_interface([&found, &ip](const ifaddrs& i) {
+                found = i.ifa_addr and i.ifa_addr->sa_family == AF_INET and ip == quic::Address{i.ifa_addr}.to_ipv4();
+                return found;
             });
-
             return found;
         }
-
-        std::vector<InterfaceInfo> all_network_interfaces() const override
+        bool has_interface_address(ipv6 ip) const override
         {
-            std::unordered_map<std::string, InterfaceInfo> ifmap;
-
-            iter_all([&ifmap](ifaddrs* i) {
-                if (i == nullptr or i->ifa_addr == nullptr)
-                    return;
-
-                const auto fam = i->ifa_addr->sa_family;
-
-                if (fam != AF_INET and fam != AF_INET6)
-                    return;
-
-                auto& ent = ifmap[i->ifa_name];
-
-                if (ent.name.empty())
-                {
-                    ent.name = i->ifa_name;
-                    ent.index = if_nametoindex(i->ifa_name);
-                }
-
-                oxen::quic::Address addr{i->ifa_addr};
-                uint8_t m = reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr;
-
-                ent.addrs.emplace_back(std::move(addr), m);
+            bool found{false};
+            for_each_interface([&found, &ip](const ifaddrs& i) {
+                found = i.ifa_addr and i.ifa_addr->sa_family == AF_INET6 and ip == quic::Address{i.ifa_addr}.to_ipv6();
+                return found;
             });
-
-            std::vector<InterfaceInfo> all;
-
-            for (auto& [name, ent] : ifmap)
-                all.emplace_back(std::move(ent));
-
-            return all;
+            return found;
         }
     };
 

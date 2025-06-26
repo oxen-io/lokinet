@@ -20,16 +20,4 @@ namespace llarp
         std::copy(ptr, ptr + SIZE, begin());
         return *this;
     }
-
-    PubKey& PubKey::operator=(const PubKey& other)
-    {
-        std::memcpy(begin(), other.begin(), PUBKEYSIZE);
-        return *this;
-    }
-
-    bool PubKey::operator<(const PubKey& other) const { return as_array() < other.as_array(); }
-
-    bool PubKey::operator==(const PubKey& other) const { return as_array() == other.as_array(); }
-
-    bool PubKey::operator!=(const PubKey& other) const { return !(*this == other); }
 }  // namespace llarp

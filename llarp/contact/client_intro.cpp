@@ -1,5 +1,7 @@
 #include "client_contact.hpp"
 
+#include <llarp/util/logging.hpp>
+
 namespace llarp
 {
     static auto logcat = log::Cat("client-intro");

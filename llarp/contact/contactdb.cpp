@@ -6,35 +6,27 @@ namespace llarp
 {
     static auto logcat = log::Cat("contactdb");
 
-    ContactDB::ContactDB(Router& r)
-        : _router{r}, _local_key{hash_key::derive_from_rid(r.local_rid())}, _storage{XorMetric{_local_key}}
-    {}
+    ContactDB::ContactDB(Router& r) : _router{r} {}
 
     std::optional<ClientContact> ContactDB::get_decrypted_cc(RouterID remote) const
     {
-        std::optional<ClientContact> ret = std::nullopt;
-
-        if (auto enc = get_encrypted_cc(hash_key::derive_from_rid(remote)))
-            ret = enc->decrypt(remote);
-
-        return ret;
+        if (auto* enc = get_encrypted_cc(hash_key::derive_from_rid(remote)))
+            return enc->decrypt(remote);
+        return std::nullopt;
     }
 
-    std::optional<EncryptedClientContact> ContactDB::get_encrypted_cc(const hash_key& key) const
+    const EncryptedClientContact* ContactDB::get_encrypted_cc(const hash_key& key) const
     {
-        std::optional<EncryptedClientContact> enc = std::nullopt;
-
         if (auto it = _storage.find(key); it != _storage.end() && not it->second.is_expired())
-            enc = it->second;
-
-        return enc;
+            return &it->second;
+        return nullptr;
     }
 
     size_t ContactDB::num_ccs() const { return _storage.size(); }
 
     void ContactDB::start_tickers()
     {
-        _router.loop()->call_later(approximate_time(5s, 5), [&]() {
+        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
             purge_ccs();
             log::trace(logcat, "ContactDB starting purge ticker..");
             _purge_ticker = _router.loop()->call_every(5min, [this]() mutable { purge_ccs(); }, true);
@@ -44,7 +36,7 @@ namespace llarp
     void ContactDB::purge_ccs(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        assert(_router.loop()->in_event_loop());
+        assert(_router.loop()->inside());
 
         if (_router.is_stopping() || not _router.is_running())
         {
@@ -71,10 +63,9 @@ namespace llarp
 
     void ContactDB::put_cc(EncryptedClientContact enc)
     {
-        auto key = hash_key{enc.blinded_pubkey};
-
-        if (auto it = _storage.find(key); it == _storage.end() || it->second < enc)
-            _storage[key] = std::move(enc);
+        auto& current = _storage[enc.key()];
+        if (enc.newer_than(current))
+            current = std::move(enc);
     }
 
 }  //  namespace llarp

@@ -1,16 +1,12 @@
 #pragma once
 
-#include "common.hpp"
+#include <sodium/randombytes.h>
 
 #include <limits>
 
-extern "C"
-{
-    extern void randombytes(unsigned char* const ptr, unsigned long long sz);
-}
-
 namespace llarp
 {
+    /// RNG type that produces cryptographically secure random values.
     struct CSRNG
     {
         using result_type = uint64_t;
@@ -19,16 +15,12 @@ namespace llarp
 
         static constexpr uint64_t max() { return std::numeric_limits<uint64_t>::max(); }
 
-        uint64_t randint()
+        uint64_t operator()()
         {
             uint64_t i;
-            randombytes((uint8_t*)&i, sizeof(i));
+            randombytes_buf(&i, sizeof(i));
             return i;
         }
-
-        size_t boundedrand(size_t upper_bound) { return randint() % upper_bound; }
-
-        uint64_t operator()() { return randint(); }
     };
 
     extern CSRNG csrng;

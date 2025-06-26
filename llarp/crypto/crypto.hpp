@@ -18,8 +18,7 @@ namespace llarp
     namespace crypto
     {
         /// decrypt cipherText given the key generated from name
-        std::optional<AlignedBuffer<32>> maybe_decrypt_name(
-            std::string_view ciphertext, SymmNonce nonce, std::string_view name);
+        std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
         /// xchacha symmetric cipher
         bool xchacha20(uint8_t* buf, size_t size, const SharedSecret&, const SymmNonce&);
@@ -87,12 +86,6 @@ namespace llarp
         /// testing ands key_n if given.
         bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root, uint64_t key_n);
 
-        /// randomize buffer
-        void randomize(uint8_t* buf, size_t len);
-
-        /// randomizer memory
-        void randbytes(uint8_t*, size_t);
-
         Ed25519SecretKey generate_identity();
 
         bool check_identity_privkey(const Ed25519SecretKey&);
@@ -100,11 +93,6 @@ namespace llarp
         bool check_passwd_hash(std::string pwhash, std::string challenge);
     };  // namespace crypto
 
-    /// return random 64bit unsigned interger
-    uint64_t randint();
-
-    const uint8_t* seckey_to_pubkey(const Ed25519SecretKey& secret);
-
-    /// rng type that uses llarp::randint(), which is cryptographically secure
+    std::span<const uint8_t, 32> seckey_to_pubkey(const Ed25519SecretKey& secret) { return secret.span().last<32>(); }
 
 }  // namespace llarp

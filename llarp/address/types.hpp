@@ -2,59 +2,36 @@
 
 #include <llarp/util/formattable.hpp>
 
-#include <oxen/quic.hpp>
+#include <oxen/quic/ip.hpp>
 
 namespace llarp
 {
-    using ipv4 = oxen::quic::ipv4;
-    using ipv6 = oxen::quic::ipv6;
-    using ip_v = std::variant<ipv4, ipv6>;
-    using ipv4_range = oxen::quic::ipv4_range;
-    using ipv6_range = oxen::quic::ipv6_range;
-    using ipv4_net = oxen::quic::ipv4_net;
-    using ipv6_net = oxen::quic::ipv6_net;
-    using ip_net_v = std::variant<ipv4_net, ipv6_net>;
+    namespace quic = oxen::quic;
+    using quic::ipv4;
+    using quic::ipv4_net;
+    using quic::ipv4_range;
+    using quic::ipv6;
+    using quic::ipv6_net;
+    using quic::ipv6_range;
 
-    namespace concepts
-    {
-        template <typename ip_t>
-        concept IPType = std::is_same_v<ip_t, ipv4> || std::is_same_v<ip_t, ipv6>;
-
-        template <typename ip_range_t>
-        concept IPRangeType = std::is_same_v<ip_range_t, ipv4_net> || std::is_same_v<ip_range_t, ipv6_net>;
-    }  // namespace concepts
-
-    using KeyedAddress = oxen::quic::RemoteAddress;
+    // Used for hash combining, below
+    inline constexpr size_t inverse_golden_ratio = sizeof(size_t) >= 8 ? 0x9e37'79b9'7f4a'7c15 : 0x9e37'79b9;
 }  //   namespace llarp
 
-namespace std
+template <>
+struct std::hash<llarp::ipv4>
 {
-    template <>
-    struct hash<llarp::ipv4>
-    {
-        size_t operator()(const llarp::ipv4& obj) const noexcept { return hash<decltype(obj.addr)>{}(obj.addr); }
-    };
+    size_t operator()(const llarp::ipv4& obj) const noexcept { return hash<uint32_t>{}(obj.addr); }
+};
 
-    template <>
-    struct hash<llarp::ipv6>
+template <>
+struct std::hash<llarp::ipv6>
+{
+    size_t operator()(const llarp::ipv6& obj) const noexcept
     {
-        size_t operator()(const llarp::ipv6& obj) const noexcept
-        {
-            auto h = hash<decltype(obj.hi)>{}(obj.hi);
-            h ^= hash<decltype(obj.lo)>{}(obj.lo) + oxen::quic::inverse_golden_ratio + (h << 6) + (h >> 2);
-            return h;
-        }
-    };
-
-    template <>
-    struct hash<llarp::ip_v>
-    {
-        size_t operator()(const llarp::ip_v& obj) const noexcept
-        {
-            if (auto maybe_v4 = std::get_if<llarp::ipv4>(&obj))
-                return hash<llarp::ipv4>{}(*maybe_v4);
-
-            return hash<llarp::ipv6>{}(std::get<llarp::ipv6>(obj));
-        }
-    };
-}  //  namespace std
+        std::hash<uint64_t> subhash{};
+        auto h = subhash(obj.hi);
+        h ^= subhash(obj.lo) + llarp::inverse_golden_ratio + (h << 6) + (h >> 2);
+        return h;
+    }
+};

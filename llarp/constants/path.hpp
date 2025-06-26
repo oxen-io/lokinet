@@ -8,10 +8,10 @@
 namespace llarp::path
 {
     /// maximum path length
-    inline constexpr std::size_t MAX_LEN{8};
+    inline constexpr int MAX_LEN{8};
 
     /// default path length
-    inline constexpr std::size_t DEFAULT_LEN{4};
+    inline constexpr int DEFAULT_LEN{4};
 
     /// pad messages to the nearest this many bytes
     inline constexpr std::size_t PAD_SIZE{128};

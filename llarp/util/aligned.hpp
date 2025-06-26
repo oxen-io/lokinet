@@ -1,26 +1,15 @@
 #pragma once
 
-#include "formattable.hpp"
-#include "logging.hpp"
-#include "random.hpp"
-
 #include <oxenc/base32z.h>
 #include <oxenc/bt.h>
+#include <oxenc/bt_serialize.h>
 #include <oxenc/hex.h>
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <memory>
-#include <numeric>
-#include <type_traits>
+#include <span>
 
-extern "C"
-{
-    extern int sodium_is_zero(const unsigned char* n, const size_t nlen);
-}
 namespace llarp
 {
     /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
@@ -40,19 +29,23 @@ namespace llarp
 
         static constexpr size_t SIZE = sz;
 
-        virtual ~AlignedBuffer() = default;
-
         AlignedBuffer() { zero(); }
 
-        AlignedBuffer(const uint8_t* data) { *this = data; }
+        explicit AlignedBuffer(std::span<const uint8_t, SIZE> buf) { *this = buf; }
+        explicit AlignedBuffer(std::span<const std::byte, SIZE> buf) { *this = buf; }
 
-        explicit AlignedBuffer(const std::array<uint8_t, SIZE>& buf) { _data = buf; }
-
-        AlignedBuffer& operator=(const uint8_t* data)
+        AlignedBuffer& operator=(std::span<const uint8_t, SIZE> buf)
         {
-            std::memcpy(_data.data(), data, sz);
+            assign(buf);
             return *this;
         }
+        AlignedBuffer& operator=(std::span<const std::byte, SIZE> buf)
+        {
+            assign(buf);
+            return *this;
+        }
+        void assign(std::span<const uint8_t, SIZE> buf) { std::memcpy(_data.data(), buf.data(), SIZE); }
+        void assign(std::span<const std::byte, SIZE> buf) { std::memcpy(_data.data(), buf.data(), SIZE); }
 
         /// bitwise NOT
         AlignedBuffer<sz> operator~() const
@@ -63,19 +56,8 @@ namespace llarp
             return ret;
         }
 
-        auto operator<=>(const AlignedBuffer& other) const { return _data <=> other._data; }
-
-        bool operator==(const AlignedBuffer& other) const { return (*this <=> other) == 0; }
-
-        bool operator!=(const AlignedBuffer& other) const { return _data != other._data; }
-
-        bool operator<(const AlignedBuffer& other) const { return _data < other._data; }
-
-        bool operator>(const AlignedBuffer& other) const { return _data > other._data; }
-
-        bool operator<=(const AlignedBuffer& other) const { return _data <= other._data; }
-
-        bool operator>=(const AlignedBuffer& other) const { return _data >= other._data; }
+        auto operator<=>(const AlignedBuffer& other) const = default;
+        bool operator==(const AlignedBuffer& other) const = default;
 
         AlignedBuffer operator^(const AlignedBuffer& other) const
         {
@@ -118,9 +100,20 @@ namespace llarp
 
         const uint8_t* data() const { return _data.data(); }
 
+        std::span<uint8_t, SIZE> span() { return std::span<uint8_t, SIZE>{_data}; }
+        std::span<const uint8_t, SIZE> span() const { return std::span<const uint8_t, SIZE>{_data}; }
+        std::span<std::byte, SIZE> byte_span()
+        {
+            return std::span<std::byte, SIZE>{reinterpret_cast<std::byte*>(_data.data()), SIZE};
+        }
+        std::span<const std::byte, SIZE> byte_span() const
+        {
+            return std::span<const std::byte, SIZE>{reinterpret_cast<const std::byte*>(_data.data()), SIZE};
+        }
+
         bool is_zero() const
         {
-            const uint64_t* ptr = reinterpret_cast<const uint64_t*>(data());
+            const auto* ptr = reinterpret_cast<const uint64_t*>(data());
             for (size_t idx = 0; idx < SIZE / sizeof(uint64_t); idx++)
             {
                 if (ptr[idx])
@@ -130,8 +123,6 @@ namespace llarp
         }
 
         void zero() { _data.fill(0); }
-
-        virtual void Randomize() { randombytes(data(), SIZE); }
 
         typename std::array<uint8_t, SIZE>::iterator begin() { return _data.begin(); }
 
@@ -144,12 +135,16 @@ namespace llarp
         bool from_string(std::string_view b)
         {
             if (b.size() != sz)
-            {
-                // log::error(logcat, "Error: buffer size mismatch in aligned buffer!");
                 return false;
-            }
 
             std::memcpy(_data.data(), b.data(), b.size());
+            return true;
+        }
+        bool from_base32z(std::string_view b32z)
+        {
+            if (b32z.size() != oxenc::to_base32z_size(sz) || !oxenc::is_base32z(b32z))
+                return false;
+            oxenc::from_base32z(b32z.begin(), b32z.end(), _data.begin());
             return true;
         }
 
@@ -183,117 +178,27 @@ namespace llarp
         std::array<uint8_t, SIZE> _data;
     };
 
-    template <typename T>
-    concept bt_type = std::is_base_of_v<oxenc::bt_list_consumer, T>;
+    static_assert(sizeof(AlignedBuffer<32>) == 32, "AlignedBuffer should have no overhead");
 
-    template <bt_type T>
-    struct bt_printer
+    struct AlignedHasher
     {
-        log::CategoryLogger logcat = log::Cat("bt-printer");
-
-        T _bt;
-
-        bool _read(std::string& entry, T& btc)
+        // Hashing implementation that uses the raw data value held in an AlignedBuffer-derived
+        // class as the hash value.  This is only suitable for values that come from hashes or
+        // pubkeys where values are unlikely to be correlated.
+        template <typename T>
+            requires std::is_base_of_v<AlignedBuffer<sizeof(T)>, T>
+        std::size_t operator()(const T& buf) const noexcept
         {
-            if (btc.is_string())
-            {
-                entry += "string, value='{}']\n"_format(btc.consume_string_view());
-            }
-            else if (btc.is_unsigned_integer())
-            {
-                entry += "uint, value='{}']\n"_format(btc.template consume_integer<uint64_t>());
-            }
-            else if (btc.is_negative_integer())
-            {
-                entry += "int, value='-{}']\n"_format(btc.template consume_integer<int64_t>());
-            }
-            else if (btc.is_integer())
-            {
-                entry += "int, value='{}']\n"_format(btc.template consume_integer<int64_t>());
-            }
-            else if (btc.is_list())
-            {
-                {
-                    auto sublist = btc.consume_list_consumer();
-                    entry += "bt-list, contents=[\n";
-                    _read_list(entry, sublist);
-                }
-            }
-            else if (btc.is_dict())
-            {
-                {
-                    auto subdict = btc.consume_dict_consumer();
-                    entry += "dict, contents=[ ...\n";
-                    _read_dict(entry, subdict);
-                }
-            }
+            if constexpr (alignof(T) >= sizeof(size_t))
+                return *reinterpret_cast<const size_t*>(buf.data());
             else
             {
-                entry += "UNKNOWN... early end to btc contents ]\n";
-                btc.finish();
-                return false;
-            }
-            return true;
-        }
-
-        void _read_list(std::string& entry, oxenc::bt_list_consumer& btlc)
-        {
-            while (not btlc.is_finished())
-            {
-                entry += "\tentry: [type="s;
-                if (not _read(entry, btlc))
-                    return;
+                std::size_t h;
+                static_assert(T::SIZE >= sizeof(h));
+                std::memcpy(&h, buf.data(), sizeof(h));
+                return h;
             }
         }
-
-        void _read_dict(std::string& entry, oxenc::bt_dict_consumer& btdc)
-        {
-            while (not btdc.is_finished())
-            {
-                entry += "\tkey: {}, entry: [type="_format(btdc.key());
-                if (not _read(entry, btdc))
-                    return;
-            }
-
-            entry += "\t...end of dict contents ]\n";
-        }
-
-      public:
-        bt_printer(std::string_view data)
-        {
-            try
-            {
-                if (data.starts_with('l'))
-                    _bt = oxenc::bt_list_consumer{data};
-                else if (data.starts_with('d'))
-                    _bt = oxenc::bt_dict_consumer{data};
-                else
-                    throw std::invalid_argument{"bt_printer must be given bt list or dict!"};
-            }
-            catch (const std::exception& e)
-            {
-                log::critical(logcat, "bt_printer exception: {}", e.what());
-            }
-        }
-
-        std::string to_string() const
-        {
-            std::string ret{};
-
-            if constexpr (std::is_same_v<T, oxenc::bt_list_consumer>)
-            {
-                ret += "\nbt-list contents[ \n";
-                _read_list(_bt);
-            }
-            else
-            {
-                ret += "\nbt-dict contents[ \n";
-                _read_dict(_bt);
-            }
-            ret += "] ";
-            return ret;
-        }
-        static constexpr bool to_string_formattable = true;
     };
 
 }  // namespace llarp
@@ -301,18 +206,6 @@ namespace llarp
 namespace std
 {
     template <size_t sz>
-    struct hash<llarp::AlignedBuffer<sz>>
-    {
-        std::size_t operator()(const llarp::AlignedBuffer<sz>& buf) const noexcept
-        {
-            if constexpr (alignof(llarp::AlignedBuffer<sz>) >= sizeof(size_t))
-                return *reinterpret_cast<const size_t*>(buf.data());
-            else
-            {
-                std::size_t h{};
-                std::memcpy(&h, buf.data(), sizeof(h));
-                return h;
-            }
-        }
-    };
+    struct hash<llarp::AlignedBuffer<sz>> : llarp::AlignedHasher
+    {};
 }  // namespace std

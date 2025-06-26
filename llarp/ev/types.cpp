@@ -1,34 +1,24 @@
 #include "types.hpp"
 
-#include "loop.hpp"
+#include <llarp/util/logging.hpp>
+#include <llarp/util/time.hpp>
 
 #include <event2/event.h>
 
 namespace llarp
 {
-    static auto logcat = llarp::log::Cat("ev-trigger");
-
-    std::shared_ptr<EventTrigger> EventTrigger::make(
-        const std::shared_ptr<EventLoop>& _loop,
-        std::chrono::microseconds _cooldown,
-        std::function<void()> task,
-        int _n,
-        bool start_immediately)
-    {
-        return _loop->template make_shared<EventTrigger>(
-            _loop->loop(), _cooldown, std::move(task), _n, start_immediately);
-    }
+    static auto logcat = log::Cat("ev-trigger");
 
     EventTrigger::EventTrigger(
-        const loop_ptr& _loop,
-        std::chrono::microseconds _cooldown,
+        const std::shared_ptr<quic::Loop>& loop,
+        std::chrono::microseconds cooldown,
         std::function<void()> task,
-        int _n,
+        int n,
         bool start_immediately)
-        : n{_n}, _cooldown{loop_time_to_timeval(_cooldown)}, f{std::move(task)}
+        : n{n}, _cooldown{loop_time_to_timeval(cooldown)}, f{std::move(task)}
     {
         ev.reset(event_new(
-            _loop,
+            loop->get_event_base(),
             -1,
             0,
             [](evutil_socket_t, short, void* s) {
@@ -66,7 +56,7 @@ namespace llarp
             this));
 
         cv.reset(event_new(
-            _loop,
+            loop->get_event_base(),
             -1,
             0,
             [](evutil_socket_t, short, void* s) {
@@ -171,18 +161,17 @@ namespace llarp
         log::trace(logcat, "Cooldown {}successfully began after {} attempts!", _is_cooling_down ? "" : "un", _current);
     }
 
-    LinuxPoller::LinuxPoller(int _fd, const loop_ptr& _loop, std::function<void()> task)
-        : FDPoller{_fd, std::move(task)}
+    LinuxPoller::LinuxPoller(int _fd, ::event_base* _loop, std::function<void()> task) : FDPoller{_fd, std::move(task)}
     {
         ev.reset(event_new(
             _loop,
             fd,
             EV_READ | EV_PERSIST,
             [](evutil_socket_t, short, void* s) {
+                assert(s);
                 try
                 {
-                    auto* self = reinterpret_cast<LinuxPoller*>(s);
-                    assert(self);
+                    auto* self = static_cast<LinuxPoller*>(s);
 
                     if (not self->f)
                     {

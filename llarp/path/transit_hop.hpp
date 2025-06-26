@@ -6,15 +6,17 @@
 #include <llarp/contact/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>
 
+#include <unordered_set>
+
 namespace llarp
 {
-    struct Router;
+    class Router;
 
     namespace path
     {
         struct SessionHop;
 
-        struct TransitHop : std::enable_shared_from_this<TransitHop>
+        struct TransitHop
         {
             HopID _txid, _rxid;
 
@@ -55,19 +57,11 @@ namespace llarp
 
             std::optional<std::pair<RouterID, HopID>> next_id(const HopID& h) const;
 
-            bool operator<(const TransitHop& other) const
-            {
-                return std::tie(_txid, _rxid, _upstream, _downstream)
-                    < std::tie(other._txid, other._rxid, other._upstream, other._downstream);
-            }
-
             bool operator==(const TransitHop& other) const
             {
                 return std::tie(_txid, _rxid, _upstream, _downstream)
                     == std::tie(other._txid, other._rxid, other._upstream, other._downstream);
             }
-
-            bool operator!=(const TransitHop& other) const { return !(*this == other); }
 
             std::chrono::milliseconds last_activity() const { return _last_activity; }
 
@@ -85,23 +79,19 @@ namespace llarp
             handlers::SessionEndpoint& _parent;
             std::unordered_set<session_tag> _linked_sessions;
 
-            SessionHop(std::shared_ptr<TransitHop>& hop, handlers::SessionEndpoint& p);
-
           public:
-            static std::shared_ptr<SessionHop> make(std::shared_ptr<TransitHop> hop, Router& r);
+            SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p);
 
             void link_session(session_tag t) override;
             bool unlink_session(session_tag t) override;
             bool is_linked() const override { return not _linked_sessions.empty(); }
 
             bool send_path_control_message(
-                std::string method, std::string body, bt_control_response_hook func) override;
+                std::string method, std::string body, std::function<void(quic::message)> func) override;
             bool send_path_data_message(std::string body) override;
 
             RouterID terminal_rid() const override { return _rid; }
             HopID terminal_txid() const override { return _txid; }
-
-            handlers::SessionEndpoint& parent() override { return _parent; }
 
             std::string to_string() const override;
         };

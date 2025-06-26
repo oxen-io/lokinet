@@ -5,13 +5,13 @@
 #include <llarp/address/address.hpp>
 #include <llarp/contact/client_intro.hpp>
 #include <llarp/ev/types.hpp>
-#include <llarp/link/types.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
 
 #include <atomic>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace std
 {
@@ -27,15 +27,15 @@ namespace std
 
 namespace llarp
 {
-    struct Router;
+    class Router;
     namespace path
     {
         // forward declare
         struct Path;
     }  // namespace path
 
-    using path_build_success_hook = std::function<void(std::shared_ptr<path::Path>)>;
-    using path_build_fail_hook = std::function<void(std::shared_ptr<path::Path>, int)>;
+    using path_build_success_hook = std::function<void(const std::shared_ptr<path::Path>&)>;
+    using path_build_fail_hook = std::function<void(const std::shared_ptr<path::Path>&, int)>;
 
     namespace path
     {
@@ -91,7 +91,7 @@ namespace llarp
             void path_build_backoff();
 
           protected:
-            std::shared_ptr<EventTicker> _path_rotater;
+            std::shared_ptr<quic::Ticker> _path_rotater;
 
             /// flag for ::Stop()
             std::atomic<bool> _running;
@@ -110,23 +110,23 @@ namespace llarp
 
             void drop_path(const std::shared_ptr<Path>& p);
 
-            virtual void path_died(std::shared_ptr<Path> p);
+            virtual void path_died(const std::shared_ptr<Path>& p);
 
-            virtual void path_build_failed(std::shared_ptr<Path> p, bool timeout = false);
+            virtual void path_build_failed(const std::shared_ptr<Path>& p, bool timeout = false);
 
-            virtual void path_build_succeeded(std::shared_ptr<Path> p);
+            virtual void path_build_succeeded(const std::shared_ptr<Path>& p);
 
             void path_build_recursive(
-                intro_set intros,
+                sorted_intro_set intros,
                 NetworkAddress remote,
-                std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
+                std::function<void(const std::shared_ptr<Path>&, ClientIntro)> cb,
                 bool keep_path);
 
             void path_build_recursive(
                 int n_tries,
                 RemoteRC rc,
                 NetworkAddress remote,
-                std::function<void(std::shared_ptr<Path>)> cb,
+                std::function<void(const std::shared_ptr<Path>&)> cb,
                 bool keep_path);
 
             void path_build_onepass(
@@ -136,25 +136,22 @@ namespace llarp
 
             void rotate_paths(std::vector<RemoteRC> hops);
 
-            virtual void path_rotation_succeeded(std::shared_ptr<Path> new_path);
+            virtual void path_rotation_succeeded(const std::shared_ptr<Path>& new_path);
 
-            std::shared_ptr<Path> get_oldest_path();
+            const std::shared_ptr<Path>& get_oldest_path() const;
 
-            std::shared_ptr<Path> get_newest_path();
+            const std::shared_ptr<Path>& get_newest_path() const;
 
             virtual void drop_oldest_path() = 0;
 
-            // TESTNET: DEBUG LOGGING METHOD
-            void print_all_paths() const;
-
           public:
             Router& _router;
-            size_t num_hops;
+            int num_hops;
             std::chrono::milliseconds last_build{0s};
             std::chrono::milliseconds build_interval_limit{MIN_PATH_BUILD_INTERVAL};
 
             /// construct
-            PathHandler(Router& _router, size_t num_paths, size_t num_hops = DEFAULT_LEN);
+            PathHandler(Router& _router, size_t num_paths, int num_hops = DEFAULT_LEN);
 
             virtual ~PathHandler() = default;
 
@@ -168,9 +165,9 @@ namespace llarp
 
             Router& router() { return _router; }
 
-            std::optional<std::shared_ptr<Path>> get_path(HopID id) const;
+            const std::shared_ptr<Path>& get_path(HopID id) const;
 
-            intro_set get_local_client_intros() const;
+            sorted_intro_set get_local_client_intros() const;
 
             nlohmann::json ExtractStatus() const;
 
@@ -180,15 +177,13 @@ namespace llarp
 
             void add_path(std::shared_ptr<Path> path);
 
-            std::optional<std::shared_ptr<Path>> get_random_path();
+            // Returns a random path, or nullptr if there are no paths.
+            const std::shared_ptr<Path>& get_random_path() const;
 
-            std::optional<std::shared_ptr<Path>> get_path_conditional(
-                std::function<bool(std::shared_ptr<Path>)> filter);
-
-            std::optional<std::unordered_set<std::shared_ptr<Path>>> get_n_random_paths(size_t n, bool exact = false);
-
-            std::optional<std::vector<std::shared_ptr<Path>>> get_n_random_paths_conditional(
-                size_t n, std::function<bool(std::shared_ptr<Path>)> filter, bool exact = false);
+            // Returns the first path that matches the filter, or nullptr if no paths match.  Note
+            // that the iteration order of paths is not guaranteed so if the filter could match
+            // multiple paths it is not determined which you get.
+            const std::shared_ptr<Path>& find_path(std::function<bool(const Path&)> filter) const;
 
             /// return true if we hit our soft limit for building paths too fast
             bool build_cooldown() const;
@@ -224,43 +219,31 @@ namespace llarp
 
             bool build_path_aligned_to_remote(const RouterID& remote);
 
-            // TESTNET: testing methods
-            // std::optional<std::vector<RemoteRC>> specific_hops_to_remote(std::vector<RouterID> hops);
-
-            std::optional<std::vector<RemoteRC>> aligned_hops_between(const RouterID& edge, const RouterID& pivot);
-
-            std::optional<std::vector<RemoteRC>> aligned_hops_to_remote(
-                const RouterID& pivot, const std::set<RouterID>& exclude = {}, bool strict = true);
+            std::optional<std::vector<RemoteRC>> aligned_hops_to_remote(const RouterID& pivot);
 
             // The build logic is segmented into functions designed to be called sequentially.
             //  - pre_build() : This handles all checking of the vector of hops, verifying with buildlimiter, etc
             //  - build1() : This can be re-implemented by inheriting classes that want to pass different parameters to
             //      the created path. This is useful in cases like OutboundSessions; Paths are constructed with the
             //      respective is_client and is_exit booleans set. Regardless, the implementation needs to return the
-            //      created shared_ptr to be passed by reference to build2(...) and build3(...). The implementation MUST
+            //      created shared_ptr to be passed by reference to build2(...). The implementation MUST
             //      also check if the upstream rxid is already being used for a current path (very unlikely)
             //  - build2() : This contains the bulk of the code that is identical across all instances of path building.
             //      It returns the payload holding the encoded frames for each hop.
-            //  - build3() : Inheriting classes can pass their own response handler functions as the second parameter,
-            //      allowing for differing lambda captures. This function returns the success/failure of the call to
-            //      path::send_control_message(...), allowing for the calling object to decide whether to log path-build
-            //      failures for that respective remote or not.
-            //  - build() : This function calls pre_build() + build{1,2,3}() in the correct order and is used for the
+            //  - build() : This function calls pre_build() + build{1,2}() in the correct order and is used for the
             //      usual times that PathBuilder initiates a path build
             void build(std::vector<RemoteRC> hops);
 
-            bool pre_build(std::vector<RemoteRC>& hops);
+            bool pre_build(const std::vector<RemoteRC>& hops);
 
-            virtual std::shared_ptr<Path> build1(std::vector<RemoteRC>& hops);
+            std::shared_ptr<Path> build1(const std::vector<RemoteRC>& hops);
 
             std::string build2(const std::shared_ptr<Path>& path);
 
-            bool build3(RouterID upstream, std::string payload, bt_control_response_hook handler);
-
-            void for_each_path(std::function<void(const std::shared_ptr<Path>&)> visit) const;
+            void for_each_path(std::function<void(const Path&)> visit) const;
 
             /// pick a first hop
-            std::optional<RemoteRC> select_first_hop(const std::set<RouterID>& exclude = {}) const;
+            std::optional<RemoteRC> select_first_hop(const std::unordered_set<RouterID>& exclude = {}) const;
 
             virtual std::optional<std::vector<RemoteRC>> get_hops_to_random();
         };

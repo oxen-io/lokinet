@@ -1,5 +1,6 @@
 #include "win32.hpp"
 
+#include <llarp/win32/adapters.hpp>
 #include <llarp/win32/windivert.hpp>
 #include <llarp/win32/wintun.hpp>
 
@@ -40,12 +41,12 @@ namespace llarp::win32
         llarp::win32::Exec("route.exe", fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
     }
 
-    void VPNPlatform::add_route(oxen::quic::Address ip, oxen::quic::Address gateway)
+    void VPNPlatform::add_route(quic::Address ip, quic::Address gateway)
     {
         make_route(ip.to_string(), gateway.to_string(), "ADD");
     }
 
-    void VPNPlatform::delete_route(oxen::quic::Address ip, oxen::quic::Address gateway)
+    void VPNPlatform::delete_route(quic::Address ip, quic::Address gateway)
     {
         make_route(ip.to_string(), gateway.to_string(), "DELETE");
     }
@@ -60,28 +61,60 @@ namespace llarp::win32
         route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "DELETE");
     }
 
-    std::vector<oxen::quic::Address> VPNPlatform::get_non_interface_gateways(NetworkInterface& vpn)
+    std::vector<quic::Address> VPNPlatform::get_non_interface_gateways(NetworkInterface& vpn)
     {
-        std::set<oxen::quic::Address> gateways;
+        std::set<quic::Address> gateways;
 
-        const auto ifaddr = vpn.interface_info()[0];
-        for (const auto& iface : Net().all_network_interfaces())
-        {
-            if (not iface._gateway)
-                continue;
+        // FIXME: This code is probably broken.  The idea here:
+        // - iterate through all system interfaces
+        // - if the interface has no gateway, skip it.
+        // - if any of those interfaces have a network that contains our interface network(s) (that
+        //   is: those in the `vpn` input), then skip it.
+        // - else collect the gateway address
+        //
+        win32::iter_adapters([&if_info = vpn.interface_info(), &gateways](auto* a) {
+            auto* igw = a->FirstGatewayAddress;
+            if (!igw)
+                return;
+            quic::Address gw{igw->Address.lpSockaddr, igw->Address.iSockaddrLength};
 
-            bool b = true;
-
-            for (const auto& range : iface.addrs)
+            bool accept = true;
+            for (auto* addr = a->FirstUnicastAddress; accept and addr; addr = addr->Next)
             {
-                if (not range.contains(ifaddr))
-                    b = false;
+                if (addr->Address.lpSockaddr->sa_family != AF_INET && addr->Address.lpSockaddr->sa_family != AF_INET6)
+                    continue;
+                quic::Address adapter_addr{addr->Address.lpSockaddr, addr->Address.iSockaddrLength};
+                auto netmask_bits = ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family);
+                std::variant<ipv4_range, ipv6_range> adapter_range;
+                if (adapter_addr.is_ipv4())
+                    adapter_range = adapter_addr.to_ipv4() / netmask_bits;
+                else
+                    adapter_range = adapter_addr.to_ipv6() / netmask_bits;
+
+                for (auto& a : if_info.addrs)
+                {
+                    auto contains = std::visit(
+                        [&adapter_range]<typename Net, typename Range>(const Net& a, const Range& b) {
+                            if constexpr (
+                                (std::same_as<Net, ipv4_net> && std::same_as<Range, ipv4_range>)
+                                || (std::same_as<Net, ipv6_net> && std::same_as<Range, ipv6_range>))
+                                return b.contains(a.ip);
+                            return false;
+                        },
+                        a,
+                        adapter_range);
+                    if (contains)
+                    {
+                        accept = false;
+                        break;
+                    }
+                }
             }
-            // TODO: FIXME
-            if (b)
-                throw std::runtime_error{"FIXME ALREADY"};
-            // gateways.emplace(*iface.gateway);
-        }
+
+            if (accept)
+                gateways.insert(std::move(gw));
+        });
+
         return {gateways.begin(), gateways.end()};
     }
 
@@ -111,7 +144,7 @@ namespace llarp::win32
     }
 
     std::shared_ptr<PacketIO> VPNPlatform::create_packet_io(
-        unsigned int ifindex, const std::optional<oxen::quic::Address>& dns_upstream_src)
+        unsigned int ifindex, const std::optional<quic::Address>& dns_upstream_src)
     {
         // we only want do this on all interfaes with windivert
         if (ifindex)

@@ -5,7 +5,6 @@
 #include "transit_hop.hpp"
 
 #include <llarp/contact/client_contact.hpp>
-#include <llarp/ev/loop.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 
@@ -14,7 +13,7 @@
 
 namespace llarp
 {
-    struct Router;
+    class Router;
 }
 
 namespace llarp::path
@@ -39,12 +38,10 @@ namespace llarp::path
         // internal unsafe methods
         void _drop_path(const HopID& hop_id);
 
-        std::shared_ptr<Path> _get_path(const HopID& hop_id) const;
-
       public:
         std::tuple<size_t, size_t> path_ctx_stats() const;
 
-        bool has_transit_hop(const std::shared_ptr<TransitHop>& hop) const;
+        bool has_transit_hop(const TransitHop& hop) const;
 
         bool has_transit_hop(const HopID& hop_id) const;
 
@@ -52,17 +49,15 @@ namespace llarp::path
 
         bool has_path(const HopID& hop_id) const;
 
-        std::shared_ptr<Path> get_path(const std::shared_ptr<TransitHop>& hop) const;
+        const std::shared_ptr<Path>& get_path(const HopID& hop_id) const;
 
-        std::shared_ptr<Path> get_path(const HopID& hop_id) const;
-
-        std::shared_ptr<TransitHop> get_transit_hop(const HopID&) const;
+        const std::shared_ptr<TransitHop>& get_transit_hop(const HopID&) const;
 
         void add_path(std::shared_ptr<Path> p);
 
-        void drop_path(const std::shared_ptr<Path>& p);
+        void drop_path(const Path& p);
 
-        // Emplace both the upstream_rxid() and the pivot_txid() into the droplist
+        // Emplace both the edge().rxid() and the pivot().txid() into the droplist
         void drop_paths(std::vector<HopID> droplist);
 
         void expire_hops(std::chrono::milliseconds now);

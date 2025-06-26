@@ -14,7 +14,7 @@ namespace llarp::dns
     /// encode name to buffer
     bool EncodeNameTo(llarp_buffer_t* buf, std::string_view name);
 
-    std::optional<ip_v> DecodePTR(std::string_view name);
+    std::optional<std::variant<ipv4, ipv6>> DecodePTR(std::string_view name);
 
     bool NameIsReserved(std::string_view name);
 

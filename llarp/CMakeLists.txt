@@ -19,12 +19,19 @@ lokinet_add_library(lokinet-cryptography
 # Functional objects use by lokinet-core and other libraries
 # needed by vpn/ router/ rpc/ handlers/ net/ link/
 lokinet_add_library(lokinet-core-utils
+  auth/auth.cpp
   auth/file_auth.cpp
   auth/rpc_auth.cpp
   auth/session_auth.cpp
   
   handlers/session.cpp
   handlers/tun.cpp
+
+  messages/common.cpp
+  messages/dht.cpp
+  messages/fetch.cpp
+  messages/path.cpp
+  messages/session.cpp
   
   vpn/egres_packet_router.cpp
 )
@@ -40,6 +47,7 @@ lokinet_add_library(lokinet-core
   router/route_poker.cpp
 
   session/session.cpp
+  session/map.cpp
 )
 
 lokinet_add_library(lokinet-rpc
@@ -53,7 +61,6 @@ lokinet_add_library(lokinet-rpc
 lokinet_add_library(lokinet-wire
   link/connection.cpp
   link/link_manager.cpp
-  link/tunnel.cpp
 )
 
 # config, crypto, timeplace, nodedb, bootstrap.cpp, net, router
@@ -76,8 +83,6 @@ lokinet_add_library(lokinet-contact
   contact/contactdb.cpp
   contact/keys.cpp
   contact/relay_contact.cpp
-  contact/relay_contact_local.cpp
-  contact/relay_contact_remote.cpp
   contact/router_id.cpp
   contact/sns.cpp
   contact/tag.cpp
@@ -97,7 +102,6 @@ lokinet_add_library(lokinet-addressing
   address/ip_range.cpp
   address/utils.cpp
 
-  ev/loop.cpp
   ev/tcp.cpp
   ev/types.cpp
   ev/udp.cpp
@@ -178,15 +182,8 @@ foreach(bs IN ITEMS MAINNET TESTNET)
   if(LOKINET_BOOTSTRAP_FALLBACK_${bs})
     message(STATUS "Building with ${bs} fallback bootstrap path \"${LOKINET_BOOTSTRAP_FALLBACK_${bs}}\"")
     file(READ "${LOKINET_BOOTSTRAP_FALLBACK_${bs}}" bs_data HEX)
-    if(bs STREQUAL TESTNET)
-      set(network "testnet")
-    elseif(bs STREQUAL MAINNET)
-      set(network "lokinet")
-    else()
-      string(TOLOWER "${bs}" network)
-    endif()
     string(REGEX REPLACE "([0-9a-f][0-9a-f])" "\\\\x\\1" bs_data "${bs_data}")
-    set(BOOTSTRAP_FALLBACKS "${BOOTSTRAP_FALLBACKS}{\"${network}\"s, \"${bs_data}\"sv},\n")
+    set(BOOTSTRAP_FALLBACKS "${BOOTSTRAP_FALLBACKS}        {NetID::${bs}, \"${bs_data}\"sv},\n")
   endif()
 endforeach()
 configure_file("bootstrap-fallbacks.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp" @ONLY)

@@ -4,170 +4,152 @@
 #include "util/logging.hpp"
 #include "util/logging/buffer.hpp"
 
+#include <oxenc/bt_serialize.h>
+
 namespace llarp
 {
     static auto logcat = log::Cat("Bootstrap");
 
-    bool BootstrapList::bt_decode(std::string_view buf)
+    const RemoteRC& BootstrapList::current()
     {
-        const auto& f = buf.front();
-
-        switch (f)
-        {
-            case 'l':
-                return bt_decode_list(buf);
-            case 'd':
-                return bt_decode_dict(buf);
-            default:
-                log::critical(logcat, "Unable to parse bootstrap as bt list or dict!");
-                return false;
-        }
+        if (_bootstraps.empty())
+            throw std::out_of_range{"No bootstraps available"};
+        return _bootstraps[_curr % _bootstraps.size()];
+    }
+    const RemoteRC& BootstrapList::next()
+    {
+        if (_bootstraps.empty())
+            throw std::out_of_range{"No bootstraps available"};
+        ++_curr %= _bootstraps.size();
+        return _bootstraps[_curr];
     }
 
-    bool BootstrapList::bt_decode_dict(std::string_view buf)
+    const RemoteRC& BootstrapList::next_with_shuffling()
     {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        bool ret = true;
-
-        try
-        {
-            ret &= emplace(buf, true).second;
-        }
-        catch (...)
-        {
-            log::warning(logcat, "Unable to decode bootstrap RemoteRC");
-            return false;
-        }
-
-        _curr = begin();
-        return ret;
+        if (_bootstraps.empty())
+            throw std::out_of_range{"No bootstraps available"};
+        if (++_curr == _bootstraps.size())
+            shuffle();  // Resets _curr to 0
+        return _bootstraps[_curr];
     }
 
-    bool BootstrapList::bt_decode_list(std::string_view buf)
+    void BootstrapList::shuffle()
     {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        bool ret = true;
-
-        try
-        {
-            oxenc::bt_list_consumer btlc{buf};
-
-            while (not btlc.is_finished())
-                ret &= emplace(btlc.consume_dict_data(), true).second;
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Unable to decode bootstrap RemoteRC: {}", e.what());
-            return false;
-        }
-
-        _curr = begin();
-        return ret;
+        std::shuffle(_bootstraps.begin(), _bootstraps.end(), llarp::csrng);
+        _curr = 0;
     }
 
     bool BootstrapList::contains(const RouterID& rid) const
     {
-        for (const auto& it : *this)
-        {
-            if (it.router_id() == rid)
-                return true;
-        }
-
-        return false;
+        return std::ranges::any_of(_bootstraps, [&rid](const auto& rc) { return rc.router_id() == rid; });
     }
 
-    bool BootstrapList::contains(const RemoteRC& rc) const { return count(rc); }
-
-    std::string_view BootstrapList::bt_encode() const
+    bool BootstrapList::contains(const RemoteRC& rc) const
     {
-        oxenc::bt_list_producer btlp{};
-
-        for (const auto& it : *this)
-            btlp.append(it.view());
-
-        return btlp.view();
+        return std::ranges::find(_bootstraps, rc) != _bootstraps.end();
     }
 
-    void BootstrapList::populate_bootstraps(std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks)
+    void BootstrapList::clear()
+    {
+        _bootstraps.clear();
+        _curr = 0;
+    }
+
+    std::vector<RemoteRC> BootstrapList::get_fallbacks(NetID netid)
+    {
+        std::vector<RemoteRC> fallbacks;
+        for (const auto& [n, rc_blob] : bootstrap_fallbacks)
+        {
+            if (n != netid)
+                continue;
+            // We don't go through bt_decode because the fallbacks should always be valid, and
+            // because they will always be RC dicts, not possibly lists of RC dicts.
+            fallbacks.emplace_back(rc_blob, netid, true);
+        }
+        return fallbacks;
+    }
+
+    void BootstrapList::populate(
+        NetID netid, const std::vector<fs::path>& paths, const fs::path& def, bool load_fallbacks)
     {
         for (const auto& f : paths)
         {
-            // TESTNET: TODO: revise fucked config
-            log::trace(logcat, "Loading BootstrapRC from file at path:{}", f);
-            if (not read_from_file(f))
-                throw std::invalid_argument{"User-provided BootstrapRC is invalid!"};
+            log::debug(logcat, "Loading BootstrapRC from file {}", f);
+            read_from_file(netid, f);
         }
 
-        if (empty())
+        if (empty() && !def.empty())
         {
-            log::trace(logcat, "BootstrapRC list empty; looking for default BootstrapRC from file at path:{}", def);
-            read_from_file(def);
-        }
-
-        for (auto itr = begin(); itr != end(); ++itr)
-        {
-            if (RelayContact::is_obsolete(*itr))
+            log::debug(logcat, "BootstrapRC list empty; looking for default from {}", def);
+            try
             {
-                log::debug(logcat, "Deleting obsolete BootstrapRC (rid:{})", itr->router_id());
-                itr = erase(itr);
-                continue;
+                read_from_file(netid, def);
+            }
+            catch (const std::exception& e)
+            {
+                log::warning(logcat, "Failed loading from default bootstrap file {}: {}.  Skipping it.", def, e.what());
             }
         }
 
-        // TESTNET: force load fallbacks
-        if (/* empty() and  */ load_fallbacks)
-        {
-            log::info(logcat, "BootstrapRC list force loading fallbacks...");
-            auto fallbacks = llarp::load_bootstrap_fallbacks();
+        auto obsolete = std::erase_if(_bootstraps, [](const auto& bs) { return bs.is_obsolete(); });
+        if (obsolete > 0)
+            log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
 
-            if (auto itr = fallbacks.find(RelayContact::ACTIVE_NETID); itr != fallbacks.end())
+        if (empty() and load_fallbacks)
+        {
+            log::info(logcat, "Bootstrap list is empty; loading built-in fallbacks");
+            if (auto fallbacks = get_fallbacks(netid); !fallbacks.empty())
             {
-                log::debug(logcat, "Loading {} default fallback bootstrap router(s)!", itr->second.size());
-                log::critical(logcat, "Fallback bootstrap loaded: {}", itr->second.current());
-                merge(itr->second);
+                log::debug(logcat, "Loading {} default fallback bootstrap router(s)!", fallbacks.size());
+                _bootstraps = std::move(fallbacks);
             }
 
-            if (empty())
+            if (_bootstraps.empty())
             {
                 log::error(
                     logcat,
                     "No Bootstrap routers were loaded.  The default Bootstrap file {} does not "
-                    "exist, and "
-                    "loading fallback Bootstrap RCs failed.",
-                    def);
+                    "exist, and this lokinet binary does not have any fallback Bootstrap RCs for the '{}' network.",
+                    def,
+                    netid);
 
                 throw std::runtime_error("No Bootstrap nodes available.");
             }
         }
 
+        // Shuffle whatever we loaded so that we're not always hitting the first one, or trying them
+        // always in the same order.
+        shuffle();
+
         log::debug(logcat, "We have {} Bootstrap router(s)!", size());
-        _curr = begin();
     }
 
-    bool BootstrapList::read_from_file(const fs::path& fpath)
+    void BootstrapList::read_from_file(NetID netid, const fs::path& fpath)
     {
-        bool result = false;
-
         if (not fs::exists(fpath))
-        {
-            log::critical(logcat, "Bootstrap RC file non-existent at path:{}", fpath);
-            return result;
-        }
+            throw std::runtime_error{"Bootstrap RC file '{}' does not exist"_format(fpath)};
 
         auto content = util::file_to_string(fpath);
-        result = bt_decode(content);
+        if (content.empty())
+            throw std::runtime_error{"Bootstrap RC file '{}' is empty"_format(fpath)};
 
-        log::trace(
-            logcat,
-            "{}uccessfully loaded BootstrapRC file ({}B) at path:{}, contents: {}",
-            result ? "S" : "Uns",
-            content.size(),
-            fpath,
-            buffer_printer{content});
+        // A file can container either a list of bootstraps, or just a single bootstrap RC:
+        switch (content.front())
+        {
+            case 'l':
+                // list of bootstrap RCs
+                for (oxenc::bt_list_consumer l{content}; !l.is_finished();)
+                    _bootstraps.emplace_back(l.consume_dict_data(), netid, /*accept_expired=*/true);
+                break;
+            case 'd':
+                // single bootstrap RC
+                _bootstraps.emplace_back(content, netid, /*accept_expired=*/true);
+                break;
+            default:
+                throw std::runtime_error{"bootstrap RC file '{}' is not a valid bootstrap file"_format(fpath)};
+        }
 
-        _curr = begin();
-        return result;
+        log::debug(logcat, "Successfully loaded BootstrapRC file {} ({}B)", fpath, content.size());
     }
+
 }  // namespace llarp

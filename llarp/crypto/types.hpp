@@ -21,16 +21,11 @@ namespace llarp
     /// Stores a sodium "secret key" value, which is actually the Ed25519 seed
     /// concatenated with the public key.  Note that the seed is *not* the private
     /// key value itself, but rather the seed from which it can be calculated.
-    struct Ed25519SecretKey final : public AlignedBuffer<SECKEYSIZE>
+    struct Ed25519SecretKey final : AlignedBuffer<SECKEYSIZE>
     {
-        Ed25519SecretKey() = default;
+        using AlignedBuffer<SECKEYSIZE>::AlignedBuffer;
 
-        explicit Ed25519SecretKey(const uint8_t* ptr) : AlignedBuffer<SECKEYSIZE>(ptr) {}
-
-        // The full data
-        explicit Ed25519SecretKey(const AlignedBuffer<SECKEYSIZE>& seed) : AlignedBuffer<SECKEYSIZE>(seed) {}
-
-        // Just the seed, we recalculate the pubkey
+        // If constructed with just the seed, we recalculate the pubkey
         explicit Ed25519SecretKey(const AlignedBuffer<32>& seed)
         {
             std::copy(seed.begin(), seed.end(), begin());
@@ -59,22 +54,16 @@ namespace llarp
     /// the private key and hash value are generated.
     struct Ed25519PrivateData final : public AlignedBuffer<64>
     {
-        friend struct Ed25519SecretKey;
-
-        Ed25519PrivateData() = default;
-
-        explicit Ed25519PrivateData(const uint8_t* ptr) : AlignedBuffer<64>(ptr) {}
-
-        explicit Ed25519PrivateData(const AlignedBuffer<64>& key_and_hash) : AlignedBuffer<64>(key_and_hash) {}
+        using AlignedBuffer<64>::AlignedBuffer;
 
         // Returns writeable access to the 32-byte Ed25519 Private Scalar
-        std::span<uint8_t> scalar() { return {data(), 32}; }
+        std::span<uint8_t, 32> scalar() { return std::span<uint8_t, 32>{data(), 32}; }
         // Returns readable access to the 32-byte Ed25519 Private Scalar
-        std::span<const uint8_t> scalar() const { return {data(), 32}; }
+        std::span<const uint8_t, 32> scalar() const { return std::span<const uint8_t, 32>{data(), 32}; }
         // Returns writeable access to the 32-byte Ed25519 Signing Hash
-        std::span<uint8_t> signing_hash() { return {data() + 32, 32}; }
+        std::span<uint8_t, 32> signing_hash() { return std::span<uint8_t, 32>{data() + 32, 32}; }
         // Returns readable access to the 32-byte Ed25519 Signing Hash
-        std::span<const uint8_t> signing_hash() const { return {data() + 32, 32}; }
+        std::span<const uint8_t, 32> signing_hash() const { return std::span<const uint8_t, 32>{data() + 32, 32}; }
 
         PubKey to_pubkey() const;
 
@@ -97,8 +86,6 @@ namespace llarp
             std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<>());
             return ret;
         }
-
-        static SymmNonce make(std::string n);
 
         static SymmNonce make_random();
     };
@@ -133,13 +120,7 @@ namespace llarp
 
     struct hash_key : public AlignedBuffer<32>
     {
-        explicit hash_key(const uint8_t* buf) : AlignedBuffer<SIZE>(buf) {}
-
-        explicit hash_key(const std::array<uint8_t, SIZE>& data) : AlignedBuffer<SIZE>(data) {}
-
-        explicit hash_key(const AlignedBuffer<SIZE>& data) : AlignedBuffer<SIZE>(data) {}
-
-        hash_key() : AlignedBuffer<SIZE>() {}
+        using AlignedBuffer<32>::AlignedBuffer;
 
         std::string to_string() const;
 
@@ -148,25 +129,16 @@ namespace llarp
         hash_key operator^(const hash_key& other) const
         {
             hash_key dist;
-            std::transform(begin(), end(), other.begin(), dist.begin(), std::bit_xor<uint8_t>());
+            std::transform(begin(), end(), other.begin(), dist.begin(), std::bit_xor<>());
             return dist;
         }
 
         bool operator==(const hash_key& other) const { return as_array() == other.as_array(); }
-
-        bool operator!=(const hash_key& other) const { return as_array() != other.as_array(); }
-
-        bool operator<(const hash_key& other) const { return as_array() < other.as_array(); }
-
-        bool operator>(const hash_key& other) const { return as_array() > other.as_array(); }
     };
 
-    namespace concepts
-    {
-        template <typename T, typename U = std::remove_cvref_t<T>>
-        concept XOR_comparable = U::SIZE == PUBKEYSIZE && (std::same_as<RouterID, U> || std::same_as<hash_key, U>);
-    }
-
+    // FIXME: this metric is wrong, because of vanity pubkeys.  Switch to:
+    // - xor all values of both keys as u64's
+    // - use (xored value, pubkey) for sorting (so if we collide, we tie break with pubkey)
     struct XorMetric
     {
         const hash_key us;
@@ -174,14 +146,7 @@ namespace llarp
         XorMetric(hash_key ourKey) : us{std::move(ourKey)} {}
 
         bool operator()(const hash_key& left, const hash_key& right) const;
-
         bool operator()(const RemoteRC& left, const RemoteRC& right) const;
-
-        template <concepts::XOR_comparable T, concepts::XOR_comparable U>
-        bool operator()(const T& left, const U& right) const
-        {
-            return (left ^ us) < (right < us);
-        }
     };
 
 }  // namespace llarp

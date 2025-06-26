@@ -1,16 +1,19 @@
 #pragma once
 
+#include <llarp/address/address.hpp>
 #include <llarp/address/map.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/contact/client_contact.hpp>
 #include <llarp/path/path_handler.hpp>
 #include <llarp/session/map.hpp>
+#include <llarp/session/session.hpp>
+
+#include <concepts>
+#include <memory>
 
 namespace llarp
 {
     inline constexpr size_t NUM_SESSION_PATHS{4};
-
-    class EventLoop;
 
     namespace rpc
     {
@@ -24,57 +27,29 @@ namespace llarp
             friend class rpc::RPCServer;
             friend struct session::BaseSession;
 
-            const bool _is_exit_node{false};
-            const bool _is_service_node{false};
-
             std::unordered_set<dns::SRVData> _srv_records;
 
             bool should_publish_cc{false};
 
-            session_map<NetworkAddress, session::BaseSession> _sessions;
+            session_map _sessions;
 
-            address_map<oxen::quic::Address, NetworkAddress> _address_map;
+            address_map<quic::Address> _address_map;
 
             // this could probably map to a pair of vectors, or pending packets could
             // be wrapped in callbacks, but for now this works
             std::unordered_map<NetworkAddress, std::vector<IPPacket>> pending_sessions;
             std::unordered_map<NetworkAddress, std::vector<std::function<void(bool)>>> pending_session_hooks;
 
-            // Remote client exit-node addresses mapped to local IP ranges
-            //  - Directly pre-loaded from config
-            address_map<IPRange, NetworkAddress> _range_map;
-
             ClientContact client_contact;
-            uint8_t protoflags;
+            protocol_flag protocols;
 
-            std::shared_ptr<EventTicker> _cc_publisher;
+            std::shared_ptr<quic::Ticker> _cc_publisher;
 
-            // auth tokens for making outbound sessions
+            // auth tokens for making outbound sessions; some of these are copied at construction,
+            // some (with ONS names) get looked up and populated later.
             std::unordered_map<NetworkAddress, std::string> _auth_tokens;
 
-            // static auth tokens for authenticating inbound sessions
-            std::unordered_set<std::string> _static_auth_tokens;
-            // whitelist for authenticating inbound sessions
-            std::unordered_set<NetworkAddress> _auth_whitelist;
-
-            bool _use_tokens{false};
-            bool _use_whitelist{false};
-
-            IPRange _local_range;
-            oxen::quic::Address _local_addr;
-            ip_v _local_base_ip;
-            ip_v _next_ip;
-            std::string _if_name;
-
-            bool _ipv6_enabled{};
-
             std::optional<std::string_view> fetch_auth_token(const NetworkAddress& remote) const;
-
-            // Ranges reachable via our endpoint -- Exit mode only!
-            std::set<IPRange> _routed_ranges;  // formerly from LocalEndpoint
-
-            // policies about traffic that we are willing to carry -- Exit mode only!
-            std::optional<net::ExitPolicy> _exit_policy = std::nullopt;
 
             void unmap_session(NetworkAddress remote, bool using_tun = true);
 
@@ -85,70 +60,58 @@ namespace llarp
 
             void drop_oldest_path() override;
 
-            void path_rotation_succeeded(std::shared_ptr<path::Path> new_path) override;
+            void path_rotation_succeeded(const std::shared_ptr<path::Path>& new_path) override;
 
             std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
 
           public:
             SessionEndpoint(Router& r);
 
-            void configure();
-
             void stop(bool send_close = false) override;
 
             void build_more(size_t n = 0) override;
 
-            const std::shared_ptr<EventLoop>& loop();
+            const std::shared_ptr<quic::Loop>& loop();
 
-            std::tuple<size_t, std::string, bool> session_stats() const;
+            std::pair<size_t, bool> session_stats() const;
 
             std::shared_ptr<path::PathHandler> get_self() override { return shared_from_this(); }
 
             std::weak_ptr<path::PathHandler> get_weak() override { return weak_from_this(); }
 
-            bool is_exit_node() const { return _is_exit_node; }
-
-            bool is_service_node() const { return _is_service_node; }
-
-            oxen::quic::Address local_address() const { return _local_addr; }
+            // quic::Address local_address() const { return _local_addr; }
 
             // get copy of all srv records
-            std::set<dns::SRVData> srv_records() const { return {_srv_records.begin(), _srv_records.end()}; }
+            std::unordered_set<dns::SRVData> srv_records() const { return _srv_records; }
 
             bool recv_path_switch(
                 session_tag t, HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_path);
 
             bool recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid);
 
-            template <concepts::SessionType session_t = session::BaseSession>
-            std::shared_ptr<session_t> get_session(const session_tag& tag) const
+            template <std::derived_from<session::BaseSession> Session = session::BaseSession>
+            std::shared_ptr<Session> get_session(const session_tag& tag) const
             {
-                return std::static_pointer_cast<session_t>(_sessions.get_session(tag));
+                auto s = _sessions.get_session(tag);
+                if constexpr (!std::same_as<Session, session::BaseSession>)
+                    return std::dynamic_pointer_cast<Session>(std::move(s));
+                else
+                    return s;
             }
 
-            template <concepts::SessionType session_t = session::BaseSession>
-            std::shared_ptr<session_t> get_session(const NetworkAddress& remote) const
+            template <std::derived_from<session::BaseSession> Session = session::BaseSession>
+            std::shared_ptr<Session> get_session(const NetworkAddress& remote) const
             {
-                return std::static_pointer_cast<session_t>(_sessions.get_session(remote));
+                auto s = _sessions.get_session(remote);
+                if constexpr (!std::same_as<Session, session::BaseSession>)
+                    return std::dynamic_pointer_cast<Session>(std::move(s));
+                else
+                    return s;
             }
 
             bool close_session(NetworkAddress remote, bool send_close = false);
 
             bool close_session(session_tag t, bool send_close = false);
-
-            void srv_records_changed();
-
-            // This function can be called with the fields to be updated. ClientIntros are always passed, so there
-            // is no need to pass them to this function
-            template <typename... Opt>
-            void update_and_publish_localcc(Opt&&... args)
-            {
-                auto intros = get_local_client_intros();
-                if (intros.empty())
-                    return _localcc_update_fail();
-                client_contact.regenerate(std::move(intros), std::forward<Opt>(args)...);
-                _update_and_publish_localcc();
-            }
 
             void update_and_publish_localcc();
 
@@ -160,7 +123,7 @@ namespace llarp
             // to initiate a session
             bool validate(const NetworkAddress& remote, std::optional<std::string> maybe_auth = std::nullopt);
 
-            std::optional<ip_v> map_session(std::shared_ptr<session::BaseSession>& s);
+            std::optional<std::variant<ipv4, ipv6>> map_session(const session::BaseSession& s);
 
             std::optional<session_tag> prefigure_session(
                 NetworkAddress initiator,
@@ -170,7 +133,7 @@ namespace llarp
                 bool use_tun);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client
-            void resolve_ons(std::string name, std::function<void(std::optional<NetworkAddress>)> func = nullptr);
+            void resolve_sns(std::string name, std::function<void(std::optional<NetworkAddress>)> func);
 
             void lookup_remote_srv(
                 std::string name, std::string service, std::function<void(std::vector<dns::SRVData>)> handler);
@@ -180,7 +143,7 @@ namespace llarp
             void lookup_client_intro(RouterID remote, std::function<void(std::optional<ClientContact>)> func);
 
             // resolves any config mappings that parsed ONS addresses to their pubkey network address
-            void resolve_ons_mappings();
+            void resolve_sns_mappings();
 
             void initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb);
 
@@ -188,18 +151,18 @@ namespace llarp
 
             // TESTNET: the following functions may not be needed -- revisit this
             /*  Address Mapping - Public Mutators  */
-            void map_remote_to_local_addr(NetworkAddress remote, oxen::quic::Address local);
+            void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
 
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
 
             void unmap_remote_by_name(const std::string& name);
 
             /*  IPRange Mapping - Public Mutators  */
-            void map_remote_to_local_range(NetworkAddress remote, IPRange range);
-
-            void unmap_local_range_by_remote(const NetworkAddress& remote);
-
-            void unmap_range_by_name(const std::string& name);
+            // TODO FIXME: these need fixing as they currently erroneously assume a 1-1 relationship
+            // between exit ranges and exit addresses.
+            // void map_remote_to_local_range(NetworkAddress remote, IPRange range);
+            // void unmap_local_range_by_remote(const NetworkAddress& remote);
+            // void unmap_range_by_name(const std::string& name);
 
             bool have_pending_session(const NetworkAddress& remote);
 
@@ -214,12 +177,12 @@ namespace llarp
 
             void _initiate_relay_session(NetworkAddress remote, on_session_init_hook cb);
 
-            void _make_client_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb);
+            void _make_client_session_path(sorted_intro_set intros, NetworkAddress remote, on_session_init_hook cb);
 
             void _make_relay_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb);
 
             void _make_client_session(
-                intro_set remote_intros,
+                sorted_intro_set remote_intros,
                 NetworkAddress remote,
                 ClientIntro remote_intro,
                 std::shared_ptr<path::Path> path,

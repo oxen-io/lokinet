@@ -1,6 +1,6 @@
 #pragma once
 
-// #include <llarp/net/net.hpp>
+#include <llarp/net/policy.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/buffer.hpp>
 
@@ -8,27 +8,22 @@ namespace llarp
 {
     struct alignas(uint64_t) session_tag
     {
-        static constexpr size_t SIZE{8};
-
-        std::array<uint8_t, SIZE> buf;
-
-        session_tag() = default;
-
       private:
-        session_tag(uint8_t protocol);
+        std::array<uint8_t, 8> buf;
 
       public:
-        static session_tag make(uint8_t protocol);
+        session_tag() = default;
+        explicit session_tag(protocol_flag protocols);
 
-        std::pair<bool, bool> proto_bits() const;
+        protocol_flag protocols() const { return static_cast<protocol_flag>(buf[0]); }
 
         void read(std::string_view buf);
 
         std::string_view view() const;
-        uspan span() const;
+        std::span<const unsigned char> span() const;
+        constexpr size_t size() const { return buf.size(); }
 
-        auto operator<=>(const session_tag& other) const { return buf <=> other.buf; }
-        bool operator==(const session_tag& other) const { return (*this <=> other) == 0; }
+        bool operator==(const session_tag& other) const { return buf == other.buf; }
 
         std::string to_string() const;
         static constexpr bool to_string_formattable = true;

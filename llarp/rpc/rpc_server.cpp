@@ -6,6 +6,7 @@
 #include <llarp/config/ini.hpp>
 #include <llarp/constants/version.hpp>
 #include <llarp/contact/client_contact.hpp>
+#include <llarp/dns/dns.hpp>
 #include <llarp/dns/server.hpp>
 #include <llarp/messages/common.hpp>
 #include <llarp/router/router.hpp>
@@ -35,25 +36,25 @@ namespace llarp::rpc
         std::function<void(std::optional<dns::Message>)> func;
 
       public:
-        oxen::quic::Address dumb;
+        quic::Address dumb;
 
         template <typename Callable>
         DummyPacketSource(Callable&& f) : func{std::forward<Callable>(f)}
         {}
 
-        bool would_loop(const oxen::quic::Address&, const oxen::quic::Address&) const override { return false; };
+        bool would_loop(const quic::Address&, const quic::Address&) const override { return false; };
 
         /// send packet with src and dst address containing buf on this packet source
-        void send_to(const oxen::quic::Address&, const oxen::quic::Address&, IPPacket buf) const override
+        void send_to(const quic::Address&, const quic::Address&, IPPacket buf) const override
         {
             func(dns::maybe_parse_dns_msg(buf.view()));
         }
 
         /// stop reading packets and end operation
-        void stop() override {};
+        void stop() override {}
 
         /// returns the sockaddr we are bound on if applicable
-        std::optional<oxen::quic::Address> bound_on() const override { return std::nullopt; }
+        std::optional<quic::Address> bound_on() const override { return std::nullopt; }
     };
 
     bool check_path(std::string path)
@@ -81,13 +82,12 @@ namespace llarp::rpc
         regs.emplace(RPC::name, std::move(cback));
     }
 
-    RPCServer::RPCServer(std::shared_ptr<oxenmq::OxenMQ> lmq, Router& r)
-        : m_LMQ{std::move(lmq)}, _router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
+    RPCServer::RPCServer(oxenmq::OxenMQ& omq, Router& r) : _omq{omq}, _router(r), log_subs{_omq, llarp::logRingBuffer}
     {
         // copied logic loop as placeholder
-        for (const auto& addr : r.config()->api.rpc_bind_addrs)
+        for (const auto& addr : _router.config().api.rpc_bind_addrs)
         {
-            m_LMQ->listen_plain(addr.zmq_address());
+            _omq.listen_plain(addr.zmq_address());
             log::debug(logcat, "Bound RPC server to {}", addr.full_address());
         }
 
@@ -109,13 +109,13 @@ namespace llarp::rpc
 
     void RPCServer::AddCategories()
     {
-        m_LMQ->add_category("llarp", oxenmq::AuthLevel::none).add_request_command("logs", [this](oxenmq::Message& msg) {
+        _omq.add_category("llarp", oxenmq::AuthLevel::none).add_request_command("logs", [this](oxenmq::Message& msg) {
             HandleLogsSubRequest(msg);
         });
 
         for (auto& req : rpc_request_map)
         {
-            m_LMQ->add_request_command(
+            _omq.add_request_command(
                 "llarp", req.first, [name = std::string_view{req.first}, &call = req.second, this](oxenmq::Message& m) {
                     call.invoke(m, *this);
                 });
@@ -205,7 +205,7 @@ namespace llarp::rpc
             return;
         }
 
-        oxen::quic::Address laddr{req.bindAddr, req.port};
+        quic::Address laddr{req.bindAddr, req.port};
 
         try
         {
@@ -268,7 +268,7 @@ namespace llarp::rpc
             auto id = 0;
             try
             {
-                oxen::quic::Address addr{req.remoteHost, req.port};
+                quic::Address addr{req.remoteHost, req.port};
                 // TODO:
                 // id = quic->listen(addr);
             }
@@ -295,6 +295,18 @@ namespace llarp::rpc
         }
     }
 
+    static std::optional<NetworkAddress> try_netaddr(std::string_view x)
+    {
+        try
+        {
+            return NetworkAddress{x};
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
     void RPCServer::invoke(FindCC& findcc)
     {
         log_print_rpc(findcc);
@@ -311,7 +323,7 @@ namespace llarp::rpc
             return;
         }
 
-        auto maybe_netaddr = NetworkAddress::from_network_addr(findcc.request.pk);
+        auto maybe_netaddr = try_netaddr(findcc.request.pk);
 
         if (not maybe_netaddr)
         {
@@ -319,11 +331,9 @@ namespace llarp::rpc
             return;
         }
 
-        auto& netaddr = *maybe_netaddr;
-
-        _router.loop()->call([&, replier = findcc.move()]() mutable {
-            _router.session_endpoint()->lookup_client_intro(
-                netaddr.router_id(), [&](std::optional<llarp::ClientContact> cc) {
+        _router.loop()->call([this, netaddr = *maybe_netaddr, replier = findcc.move()]() mutable {
+            _router.session_endpoint().lookup_client_intro(
+                netaddr.router_id(), [&replier](std::optional<llarp::ClientContact> cc) {
                     nlohmann::json result;
                     if (cc)
                     {
@@ -357,7 +367,7 @@ namespace llarp::rpc
             return;
         }
 
-        auto maybe_netaddr = NetworkAddress::from_network_addr(sessioninit.request.pk);
+        auto maybe_netaddr = try_netaddr(sessioninit.request.pk);
 
         if (not maybe_netaddr)
         {
@@ -365,24 +375,21 @@ namespace llarp::rpc
             return;
         }
 
-        auto& netaddr = *maybe_netaddr;
-
-        _router.loop()->call([&]() {
+        _router.loop()->call([this, netaddr = *maybe_netaddr]() {
             try
             {
                 log::debug(logcat, "Beginning session init to remote instance: {}", netaddr);
-                _router.session_endpoint()->initiate_remote_session(
-                    netaddr, nullptr);
-                    /*[&, replier = sessioninit.move()](auto success) mutable {
-                        // FIXME: needs redone, initiate remote session no longer returns an ip
-                        nlohmann::json result;
-                        std::string a = std::holds_alternative<ipv4>(ip) ? std::get<ipv4>(ip).to_string()
-                                                                         : std::get<ipv6>(ip).to_string();
-                        result.emplace("ip", a);
-                        log::info(logcat, "RPC call to `session_init` succeeded: {}", a);
-                        replier.reply(result.dump());
-                    });
-                    */
+                _router.session_endpoint().initiate_remote_session(netaddr, nullptr);
+                /*[replier = sessioninit.move()](auto success) mutable {
+                    // FIXME: needs redone, initiate remote session no longer returns an ip
+                    nlohmann::json result;
+                    std::string a = std::holds_alternative<ipv4>(ip) ? std::get<ipv4>(ip).to_string()
+                                                                     : std::get<ipv6>(ip).to_string();
+                    result.emplace("ip", a);
+                    log::info(logcat, "RPC call to `session_init` succeeded: {}", a);
+                    replier.reply(result.dump());
+                });
+                */
                 log::info(logcat, "RPC Server dispatched `session_init` to remote:{}", netaddr);
             }
             catch (const std::exception& e)
@@ -402,7 +409,7 @@ namespace llarp::rpc
             return;
         }
 
-        auto maybe_netaddr = NetworkAddress::from_network_addr(sessionclose.request.pk);
+        auto maybe_netaddr = try_netaddr(sessionclose.request.pk);
 
         if (not maybe_netaddr)
         {
@@ -415,9 +422,9 @@ namespace llarp::rpc
         _router.loop()->call([&]() {
             try
             {
-                if (auto session = _router.session_endpoint()->get_session(netaddr))
+                if (auto session = _router.session_endpoint().get_session(netaddr))
                 {
-                    auto hook = [replier = sessionclose.move()](oxen::quic::message m) mutable {
+                    auto hook = [replier = sessionclose.move()](quic::message m) mutable {
                         nlohmann::json result;
 
                         if (m)

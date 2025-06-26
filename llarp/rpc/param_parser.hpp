@@ -110,12 +110,6 @@ namespace llarp::rpc
     template <typename T>
     constexpr bool is_expandable_list<std::vector<T>> = true;
 
-    // Types that are constructible from string
-    template <typename T>
-    constexpr bool is_string_constructible = false;
-    template <>
-    inline constexpr bool is_string_constructible<IPRange> = true;
-
     // Fixed size elements: tuples, pairs, and std::array's; we accept list input as long as the
     // list length matches exactly.
     template <typename T>
@@ -149,8 +143,6 @@ namespace llarp::rpc
             target = c.template consume_integer<T>();
         else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
             target = c.consume_string_view();
-        else if constexpr (is_string_constructible<T>)
-            target = T{c.consume_string()};
         else if constexpr (llarp::rpc::json_is_binary<T>)
             llarp::rpc::load_binary_parameter(c.consume_string_view(), true /*allow raw*/, target);
         else if constexpr (is_expandable_list<T>)

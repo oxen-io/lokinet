@@ -1,8 +1,8 @@
 #include "ip_packet.hpp"
 
-#include "net.hpp"
-
+#include <llarp/net/policy.hpp>
 #include <llarp/util/buffer.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/time.hpp>
 
@@ -29,8 +29,7 @@ namespace llarp
     {
         if (sz and sz < MIN_PACKET_SIZE)
             throw std::invalid_argument{"Buffer size is too small for an IP packet!"};
-        _buf.resize(sz);
-        std::fill(_buf.begin(), _buf.end(), 0);
+        _buf.resize(sz, 0);
         _init_internals();
     }
 
@@ -96,8 +95,8 @@ namespace llarp
 
             log::trace(logcat, "srcv4:{}:{}, dstv4:{}:{}", srcv4, src_port, dstv4, dest_port);
 
-            _src_addr = oxen::quic::Address{srcv4, src_port};
-            _dst_addr = oxen::quic::Address{dstv4, dest_port};
+            _src_addr = quic::Address{srcv4, src_port};
+            _dst_addr = quic::Address{dstv4, dest_port};
         }
         else
         {
@@ -106,8 +105,8 @@ namespace llarp
 
             log::trace(logcat, "srcv6:{}:{}, dstv6:{}:{}", srcv6, src_port, dstv6, dest_port);
 
-            _src_addr = oxen::quic::Address{srcv6, src_port};
-            _dst_addr = oxen::quic::Address{dstv6, dest_port};
+            _src_addr = quic::Address{srcv6, src_port};
+            _dst_addr = quic::Address{dstv6, dest_port};
         }
     }
 
@@ -132,7 +131,7 @@ namespace llarp
         return {ptr, size() - headers_len};
     }
 
-    void IPPacket::update_ipv4_address(ipv4 src, ipv4 dst)
+    void IPPacket::update_ipv4_address(const ipv4& src, const ipv4& dst)
     {
         log::trace(logcat, "Setting new source ({}) and destination ({}) IPs", src, dst);
 
@@ -143,9 +142,10 @@ namespace llarp
             auto payload_size = sz - ihs;
             auto frag_off = size_t(oxenc::big_to_host(_header->frag_off) & 0x1Fff) * 8;
 
-            switch (_header->protocol)
+            auto ip_proto = static_cast<net::IPProtocol>(_header->protocol);
+            switch (ip_proto)
             {
-                case 6:  // TCP
+                case net::IPProtocol::TCP:
                     if (frag_off <= TCP_CSUM_OFF && payload_size >= TCP_CSUM_OFF - frag_off + 2)
                     {
                         auto* tcp_hdr = reinterpret_cast<tcp_header*>(payload);
@@ -153,8 +153,8 @@ namespace llarp
                             utils::ipv4_tcp_checksum_diff(tcp_hdr->checksum, _header->src, _header->dest, src, dst);
                     }
                     break;
-                case 17:   // UDP
-                case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+                case net::IPProtocol::UDP:
+                case net::IPProtocol::UDP_LITE:  // UDP-Lite - same checksum place, same 0->0xFFff condition
                     if (frag_off <= UDP_CSUM_OFF && payload_size >= UDP_CSUM_OFF + 2)
                     {
                         auto* udp_hdr = reinterpret_cast<udp_header*>(payload);
@@ -162,7 +162,7 @@ namespace llarp
                             utils::ipv4_udp_checksum_diff(udp_hdr->checksum, _header->src, _header->dest, src, dst);
                     }
                     break;
-                case 33:  // DCCP
+                case net::IPProtocol::DCCP:
                     if (frag_off <= UDP_CSUM_OFF || payload_size >= UDP_CSUM_OFF - frag_off + 2)
                     {
                         auto* tcp_hdr = reinterpret_cast<tcp_header*>(payload);
@@ -171,7 +171,7 @@ namespace llarp
                     }
                     break;
                 default:
-                    // do nothing
+                    // do nothing (or not implemented)
                     break;
             }
         }
@@ -186,7 +186,7 @@ namespace llarp
         _dst_addr.set_addr(reinterpret_cast<in_addr*>(&_header->dest));
     }
 
-    void IPPacket::update_ipv6_address(ipv6 src, ipv6 dst, std::optional<uint32_t> flowlabel)
+    void IPPacket::update_ipv6_address(const ipv6& src, const ipv6& dst, std::optional<uint32_t> flowlabel)
     {
         const size_t ihs = 4 + 4 + 16 + 16;
         const auto sz = size();
@@ -259,12 +259,12 @@ namespace llarp
 
         bool is_udp = false;
 
-        switch (nextproto)
+        switch (static_cast<net::IPProtocol>(nextproto))
         {
-            case 6:  // TCP
+            case net::IPProtocol::TCP:
                 chksumoff = 16;
                 [[fallthrough]];
-            case 33:  // DCCP
+            case net::IPProtocol::DCCP:
                 chksum = tcp_checksum_ipv6(&hdr->src, &hdr->dest, hdr->payload_len, 0);
                 // ones-complement addition fo 0xFFff is 0; this is verboten
                 if (chksum == 0xFFff)
@@ -272,8 +272,8 @@ namespace llarp
 
                 chksumoff = chksumoff == 16 ? 16 : 6;
                 break;
-            case 17:   // UDP
-            case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+            case net::IPProtocol::UDP:
+            case net::IPProtocol::UDP_LITE:  // UDP-Lite - same checksum place, same 0->0xFFff condition
                 chksum = udp_checksum_ipv6(&hdr->src, &hdr->dest, hdr->payload_len, 0);
                 is_udp = true;
                 break;
@@ -349,16 +349,17 @@ namespace llarp
 
     // TODO: ipv6
     // FIXME: return type is silly, but where it's needed wants a string atm
-    std::string IPPacket::make_udp_packet(const oxen::quic::Address& src, const oxen::quic::Address& dest, std::span< const std::byte>& payload)
+    std::string IPPacket::make_udp_packet(
+        const quic::Address& src, const quic::Address& dest, std::span<const std::byte>& payload)
     {
         std::string pkt{};
         pkt.resize(sizeof(ip_header) + sizeof(udp_header) + payload.size());
-        ip_header* ip_hdr = reinterpret_cast<ip_header*>(pkt.data());
-        udp_header* udp_hdr = reinterpret_cast<udp_header*>(pkt.data() + sizeof(ip_header));
-        std::byte* data = reinterpret_cast<std::byte*>(pkt.data() + sizeof(ip_header) + sizeof(udp_header));
+        auto* ip_hdr = reinterpret_cast<ip_header*>(pkt.data());
+        auto* udp_hdr = reinterpret_cast<udp_header*>(pkt.data() + sizeof(ip_header));
+        auto* data = reinterpret_cast<std::byte*>(pkt.data() + sizeof(ip_header) + sizeof(udp_header));
         std::memcpy(data, payload.data(), payload.size());
 
-        pkt.data()[1] = 0; // DSCP and ECN
+        pkt.data()[1] = 0;  // DSCP and ECN
         ip_hdr->version = 4;
         ip_hdr->header_len = 5;
         ip_hdr->total_len = htons(sizeof(ip_header) + sizeof(udp_header) + payload.size());
@@ -373,7 +374,7 @@ namespace llarp
         udp_hdr->src = oxenc::host_to_big(src.port());
         udp_hdr->dest = oxenc::host_to_big(dest.port());
         udp_hdr->len = oxenc::host_to_big<uint16_t>(payload.size() + sizeof(udp_header));
-        udp_hdr->checksum = 0; // FIXME: does this matter?  old lokinet set 0
+        udp_hdr->checksum = 0;  // FIXME: does this matter?  old lokinet set 0
 
         return pkt;
     }
@@ -383,7 +384,7 @@ namespace llarp
         bstring data{};
         data.reserve(_buf.size());
         std::memmove(data.data(), _buf.data(), _buf.size());
-        return NetworkPacket{oxen::quic::Path{_src_addr, _dst_addr}, std::move(data)};
+        return NetworkPacket{quic::Path{_src_addr, _dst_addr}, std::move(data)};
     }
 
     bool IPPacket::load(const uint8_t* buf, size_t len)

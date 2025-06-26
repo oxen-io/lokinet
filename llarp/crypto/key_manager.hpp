@@ -23,33 +23,22 @@ namespace llarp
     // are generated and written to disk.
     struct KeyManager
     {
-        friend struct Router;
-        friend class handlers::SessionEndpoint;
+        friend class Router;
 
       private:
+        KeyManager() = default;
         KeyManager(const Config& config, bool is_relay);
-
-        std::atomic<bool> is_initialized{false};
-
-        // Initializes keys using the provided config, loading from disk. Must be called
-        // prior to obtaining any keys; blocks on I/O
-        bool _initialize(const Config& config, bool is_relay);
-
-      protected:
-        static std::shared_ptr<KeyManager> make(const Config& config, bool is_relay);
 
         Ed25519SecretKey identity_key;
         Ed25519PrivateData identity_data;
         RouterID public_key;
 
-        fs::path rc_path;
-
         void update_idkey(Ed25519SecretKey&& newkey);
-
-        Ed25519PrivateData derive_subkey(uint64_t domain = 1) const;
 
       public:
         const RouterID& router_id() const { return public_key; }
+
+        Ed25519PrivateData derive_subkey(uint64_t domain = 1) const;
     };
 
 }  // namespace llarp

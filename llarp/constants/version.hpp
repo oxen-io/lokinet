@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string_view>
 
 namespace llarp
 {
@@ -9,7 +10,4 @@ namespace llarp
     extern const std::array<uint8_t, 3> LOKINET_VERSION;
     extern const char* const LOKINET_VERSION_TAG;
     extern const char* const LOKINET_VERSION_FULL;
-
-    extern const char* const LOKINET_DEFAULT_NETID;
-    extern const char* const LOKINET_TESTNET_NETID;
 }  // namespace llarp

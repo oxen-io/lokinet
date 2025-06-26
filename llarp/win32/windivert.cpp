@@ -3,6 +3,7 @@
 #include "dll.hpp"
 #include "handle.hpp"
 
+#include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/thread/queue.hpp>
@@ -19,8 +20,6 @@ extern "C"
 
 namespace
 {
-    using namespace oxen::log::literals;
-
     std::string windivert_addr_to_string(const WINDIVERT_ADDRESS& addr)
     {
         std::string layer_str{};

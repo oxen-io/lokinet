@@ -7,6 +7,8 @@
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
+#include <stdexcept>
+
 using oxenc::bt_dict_consumer;
 using oxenc::bt_dict_producer;
 
@@ -324,7 +326,12 @@ namespace llarp
         while (dict)
         {
             auto [rid, subdict] = dict.next_dict_consumer();
-            _profiles.emplace(reinterpret_cast<const uint8_t*>(rid.data()), subdict);
+            if (rid.size() != RouterID::SIZE)
+                throw std::invalid_argument{
+                    "Invalid profiling data: expected {}-byte pubkey, found {}-byte value"_format(
+                        RouterID::SIZE, rid.size())};
+            std::span<const uint8_t, RouterID::SIZE> rdata{reinterpret_cast<const uint8_t*>(rid.data()), 32};
+            _profiles.emplace(rdata, subdict);
         }
     }
 
