@@ -15,7 +15,7 @@ option(LOKINET_DAEMON "build lokinet daemon and associated utils" ON)
 option(LOKINET_GRAPH_DEPENDENCIES "Produce graphviz representation of cmake dependencies" OFF)
 
 set(LANGS C CXX)
-if(APPLE AND BUILD_DAEMON)
+if(APPLE AND LOKINET_DAEMON)
   set(LANGS ${LANGS} OBJC Swift)
 endif()
 
@@ -305,7 +305,7 @@ endif()
 
 add_subdirectory(llarp)
 
-if(BUILD_DAEMON)
+if(LOKINET_DAEMON)
   add_subdirectory(daemon)
 endif()
 

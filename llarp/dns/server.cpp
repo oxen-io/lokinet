@@ -1,13 +1,14 @@
 #include "server.hpp"
 
+#include "message.hpp"
 #include "nm_platform.hpp"
 #include "sd_platform.hpp"
 
 #include <llarp/constants/apple.hpp>
 #include <llarp/constants/platform.hpp>
-#include <llarp/ev/udp.hpp>
 
 #include <oxen/log.hpp>
+#include <oxen/quic/udp.hpp>
 #include <unbound.h>
 
 #include <memory>
@@ -27,16 +28,16 @@ namespace llarp::dns
     }
 
     /// sucks up udp packets from a bound socket and feeds it to a server
-    class UDPReader : public PacketSource_Base, public std::enable_shared_from_this<UDPReader>
+    class UDPReader : public PacketSource, public std::enable_shared_from_this<UDPReader>
     {
         Server& _dns;
-        std::unique_ptr<UDPHandle> _udp;
+        std::unique_ptr<quic::UDPSocket> _udp;
         quic::Address _local_addr;
 
       public:
         explicit UDPReader(Server& dns, const std::shared_ptr<quic::Loop>& loop, quic::Address bind) : _dns{dns}
         {
-            _udp = std::make_unique<UDPHandle>(loop, bind, [&](NetworkPacket pkt) {
+            _udp = std::make_unique<quic::UDPSocket>(loop->get_event_base(), bind, [this](quic::Packet&& pkt) {
                 auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
                 if (src == _local_addr)
                 {
@@ -44,7 +45,7 @@ namespace llarp::dns
                     return;
                 }
 
-                if (not _dns.maybe_handle_packet(shared_from_this(), _local_addr, src, IPPacket::from_netpkt(pkt)))
+                if (not _dns.maybe_handle_payload(shared_from_this(), _local_addr, src, pkt.data()))
                 {
                     log::warning(logcat, "did not handle dns packet from {} to {}", src, _local_addr);
                 }
@@ -60,24 +61,25 @@ namespace llarp::dns
                 throw std::runtime_error{"cannot find which address our dns socket is bound on"};
         }
 
-        std::optional<quic::Address> bound_on() const override { return _udp->bind(); }
+        std::optional<quic::Address> bound_on() const override { return _udp->address(); }
 
-        bool would_loop(const quic::Address& to, const quic::Address&) const override { return to != _local_addr; }
-
-        void send_to(const quic::Address& to, const quic::Address&, IPPacket data) const override
+        bool would_loop(const quic::Address& to, const quic::Address& /*from*/) const override
         {
-            _udp->send(to, data.give_buffer());
+            return to != _local_addr;
         }
 
-        void send_to(const quic::Address& to, const quic::Address&, std::vector<uint8_t> data) const override
+        void send_udp(const quic::Address& to, const quic::Address&, std::span<const std::byte> data) const override
         {
-            _udp->send(to, std::move(data));
-        }
+            const size_t bufsize = data.size();
+            size_t n_pkts = 1;
+            auto [ior, sent] = _udp->send(quic::Path{_local_addr, to}, data.data(), &bufsize, 0, n_pkts);
 
-        void stop() override
-        {
-            // TODO FIXME
-            log::critical(logcat, "FIXME: stop is uniplemented!");
+            log::trace(
+                logcat,
+                "dns server {} UDP packet to {} (ec={})",
+                ior.success() ? "sent" : "failed to send",
+                to,
+                ior.error_code);
         }
     };
 
@@ -87,7 +89,7 @@ namespace llarp::dns
 
         class Query : public QueryJob_Base, public std::enable_shared_from_this<Query>
         {
-            std::shared_ptr<PacketSource_Base> src;
+            std::shared_ptr<PacketSource> src;
             quic::Address resolverAddr;
             quic::Address askerAddr;
 
@@ -95,7 +97,7 @@ namespace llarp::dns
             explicit Query(
                 std::weak_ptr<Resolver> parent_,
                 Message query,
-                std::shared_ptr<PacketSource_Base> pktsrc,
+                std::shared_ptr<PacketSource> pktsrc,
                 quic::Address toaddr,
                 quic::Address fromaddr)
                 : QueryJob_Base{std::move(query)},
@@ -107,7 +109,7 @@ namespace llarp::dns
             std::weak_ptr<Resolver> parent;
             int id{};
 
-            void send_reply(std::vector<uint8_t> buf) override;
+            void send_reply(std::vector<std::byte> buf) override;
         };
 
         /// Resolver_Base that uses libunbound
@@ -150,9 +152,10 @@ namespace llarp::dns
 
                 log::trace(logcat, "queueing dns response from libunbound to userland");
 
-                IPPacket pkt{
-                    reinterpret_cast<const uint8_t*>(result->answer_packet), static_cast<size_t>(result->answer_len)};
-                llarp_buffer_t buf{pkt};
+                std::vector<std::byte> payload;
+                payload.resize(result->answer_len);
+                std::memcpy(payload.data(), result->answer_packet, result->answer_len);
+                llarp_buffer_t buf{payload};
                 MessageHeader hdr;
                 hdr.Decode(&buf);
                 hdr._id = query->underlying().hdr_id;
@@ -160,7 +163,7 @@ namespace llarp::dns
                 hdr.Encode(&buf);
 
                 // send reply
-                query->send_reply(std::move(pkt).give_buffer());
+                query->send_reply(std::move(payload));
             }
 
             void add_upstream_resolver(const quic::Address& dns)
@@ -419,7 +422,7 @@ namespace llarp::dns
             }
 
             bool maybe_hook_dns(
-                std::shared_ptr<PacketSource_Base> source,
+                const std::shared_ptr<PacketSource>& source,
                 const Message& query,
                 const quic::Address& to,
                 const quic::Address& from) override
@@ -496,7 +499,7 @@ namespace llarp::dns
             }
         };
 
-        void Query::send_reply(std::vector<uint8_t> data)
+        void Query::send_reply(std::vector<std::byte> data)
         {
             log::trace(logcat, "Query::send_reply called");
             if (_done.test_and_set())
@@ -507,14 +510,14 @@ namespace llarp::dns
             if (parent_ptr)
             {
                 parent_ptr->call(
-                    [self = shared_from_this(), parent_ptr = std::move(parent_ptr), buf = std::move(data)]() mutable {
+                    [self = shared_from_this(), parent_ptr = std::move(parent_ptr), data = std::move(data)] {
                         log::trace(
                             logcat,
                             "forwarding dns response from libunbound to userland (resolverAddr: {}, "
                             "askerAddr: {})",
                             self->resolverAddr,
                             self->askerAddr);
-                        self->src->send_to(self->askerAddr, self->resolverAddr, IPPacket{std::move(buf)});
+                        self->src->send_udp(self->askerAddr, self->resolverAddr, data);
                         // remove query
                         parent_ptr->remove_pending(self);
                     });
@@ -558,7 +561,7 @@ namespace llarp::dns
         return plat;
     }
 
-    std::shared_ptr<PacketSource_Base> Server::make_packet_source_on(const quic::Address& addr, const llarp::DnsConfig&)
+    std::shared_ptr<PacketSource> Server::make_packet_source_on(const quic::Address& addr, const llarp::DnsConfig&)
     {
         return std::make_shared<UDPReader>(*this, _loop, addr);
     }
@@ -610,11 +613,11 @@ namespace llarp::dns
         add_resolver(std::weak_ptr<Resolver_Base>{resolver});
     }
 
-    void Server::add_packet_source(std::weak_ptr<PacketSource_Base> pkt) { _packet_sources.push_back(pkt); }
+    void Server::add_packet_source(std::weak_ptr<PacketSource> pkt) { _packet_sources.push_back(pkt); }
 
-    void Server::add_packet_source(std::shared_ptr<PacketSource_Base> pkt)
+    void Server::add_packet_source(std::shared_ptr<PacketSource> pkt)
     {
-        add_packet_source(std::weak_ptr<PacketSource_Base>{pkt});
+        add_packet_source(std::weak_ptr<PacketSource>{pkt});
         _owned_packet_sources.push_back(std::move(pkt));
     }
 
@@ -642,8 +645,11 @@ namespace llarp::dns
             _platform->set_resolver(m_NetIfIndex, *maybe_addr, all_queries);
     }
 
-    bool Server::maybe_handle_packet(
-        std::shared_ptr<PacketSource_Base> ptr, const quic::Address& to, const quic::Address& from, IPPacket pkt)
+    bool Server::maybe_handle_payload(
+        const std::shared_ptr<PacketSource>& ptr,
+        const quic::Address& to,
+        const quic::Address& from,
+        std::span<const std::byte> payload)
     {
         // dont process to prevent feedback loop
         if (ptr->would_loop(to, from))
@@ -652,7 +658,7 @@ namespace llarp::dns
             return false;
         }
 
-        auto maybe = maybe_parse_dns_msg(pkt.view());
+        auto maybe = maybe_parse_dns_msg(payload);
         if (not maybe)
         {
             log::warning(logcat, "invalid dns message format from {} to dns listener on {}", from, to);
@@ -673,7 +679,7 @@ namespace llarp::dns
                 // yea it is, let's turn off DoH because god is dead.
                 msg.add_nx_reply();
                 // press F to pay respects and send it back where it came from
-                ptr->send_to(from, to, msg.to_buffer());
+                ptr->send_udp(from, to, msg.to_buffer());
                 return true;
             }
         }

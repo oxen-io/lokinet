@@ -7,6 +7,7 @@
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 
 #include <oxenc/base32z.h>
 
@@ -389,7 +390,7 @@ namespace llarp::handlers
                 func(std::nullopt);
         };
 
-        auto name_hash = crypto::shorthash(sns);
+        auto name_hash = crypto::shorthash(as_bspan(sns));
         bool at_least_one = false;
 
         // TODO FIXME: this should not be fired down *every* path.
@@ -831,11 +832,11 @@ namespace llarp::handlers
             _router.using_tun_if());
         log::trace(logcat, "inner payload: {}", buffer_printer{inner_payload});
 
-        auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), pivot_txid);
+        auto intermediate_payload = PATH::CONTROL::serialize_aligned(as_bspan(inner_payload), pivot_txid);
 
         path->send_path_control_message(
             "path_control",
-            std::move(intermediate_payload),
+            as_bspan(intermediate_payload),
             [this,
              remote,
              path,
@@ -887,7 +888,7 @@ namespace llarp::handlers
                             session->remote(),
                             pending_packets.size());
                         for (auto& pkt : pending_packets)
-                            session->send_path_data_message(std::move(pkt).steal_payload());
+                            session->send_path_data_message(pkt.span());
                     }
                     if (hook)
                         hook(true);
@@ -935,7 +936,7 @@ namespace llarp::handlers
 
         path->send_path_control_message(
             "session_init",
-            std::move(payload),
+            as_bspan(payload),
             [this,
              rc = std::move(rc),
              remote,
@@ -982,7 +983,7 @@ namespace llarp::handlers
                             session->remote(),
                             pending_packets.size());
                         for (auto& pkt : pending_packets)
-                            session->send_path_data_message(std::move(pkt).steal_payload());
+                            session->send_path_data_message(pkt.span());
                     }
                     for (auto& h : pending_hooks)
                         h(true);

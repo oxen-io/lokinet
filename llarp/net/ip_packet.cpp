@@ -29,106 +29,98 @@ namespace llarp
     {
         if (sz and sz < MIN_PACKET_SIZE)
             throw std::invalid_argument{"Buffer size is too small for an IP packet!"};
-        _buf.resize(sz, 0);
+        _buf.resize(sz, std::byte{0});
         _init_internals();
     }
 
-    IPPacket::IPPacket(bstring_view data) : IPPacket{reinterpret_cast<const unsigned char*>(data.data()), data.size()}
-    {}
+    IPPacket::IPPacket(std::vector<std::byte>&& data) : _buf{std::move(data)} { _init_internals(); }
 
-    IPPacket::IPPacket(std::vector<uint8_t>&& data) : IPPacket{data.data(), data.size()} {}
-
-    IPPacket::IPPacket(const uint8_t* buf, size_t len)
+    IPPacket::IPPacket(std::span<const std::byte> buf)
     {
-        if (len >= MIN_PACKET_SIZE)
+        if (buf.size() < MIN_PACKET_SIZE)
+            throw std::invalid_argument{"Buffer data is too small for an IP packet!"};
+
+        _buf.resize(buf.size());
+        std::memcpy(_buf.data(), buf.data(), buf.size());
+
+        _init_internals();
+    }
+
+    std::optional<IPPacket> IPPacket::try_making(std::span<const std::byte> buf)
+    {
+        std::optional<IPPacket> ret;
+        try
         {
-            _buf.resize(len);
-            std::memcpy(_buf.data(), buf, len);
+            ret.emplace(buf);
         }
-
-        _init_internals();
-    }
-
-    IPPacket IPPacket::from_netpkt(NetworkPacket pkt)
-    {
-        auto data = pkt.data();
-        return IPPacket{reinterpret_cast<const unsigned char*>(data.data()), data.size()};
-    }
-
-    std::optional<IPPacket> IPPacket::from_buffer(const uint8_t* buf, size_t len)
-    {
-        std::optional<IPPacket> ret = std::nullopt;
-
-        if (IPPacket b; b.load(buf, len))
-            ret.emplace(std::move(b));
-
+        catch (const std::invalid_argument& e)
+        {
+            log::trace(logcat, "Invalid IP packet: {}", e.what());
+        }
         return ret;
     }
 
-    static const auto v4_header_version = oxenc::host_to_big<uint8_t>(4);
+    static constexpr uint8_t v4_header_version = 4;
+    [[maybe_unused]] static constexpr uint8_t v6_header_version = 6;
 
     void IPPacket::_init_internals()
     {
         if (_buf.empty())
             return;
 
-        auto _header = reinterpret_cast<ip_header*>(data());
-        auto _v6_header = reinterpret_cast<ipv6_header*>(data());
+        const auto* header = reinterpret_cast<ip_header*>(data());
+        const auto* v6_header = reinterpret_cast<ipv6_header*>(data());
 
-        _proto = net::IPProtocol{_header->protocol};
+        _is_v4 = header->version == v4_header_version;
+        assert(_is_v4 || header->version == v6_header_version);
 
-        _is_v4 = _header->version == v4_header_version;
-        auto keep_port = _proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP;
+        uint16_t pkt_len;
+        if (_is_v4)
+        {
+            _proto = net::IPProtocol{header->protocol};
+            pkt_len = oxenc::big_to_host(header->total_len);
+            _header_len = 4 * header->header_len;
+            _payload_len = pkt_len - _header_len;
+        }
+        else
+        {
+            _proto = net::IPProtocol{v6_header->protocol};
+            _header_len = 40;
+            _payload_len = oxenc::big_to_host(v6_header->payload_len);
+            pkt_len = _payload_len + _header_len;
+        }
 
-        uint16_t src_port = (keep_port) ? oxenc::big_to_host(*reinterpret_cast<uint16_t*>(
-                                              data() + (static_cast<ptrdiff_t>(_header->header_len) * 4)))
-                                        : 0;
+        if (pkt_len != size())
+            throw std::invalid_argument{
+                "Invalid IP packet size: header implies {}B, but packet is {}B"_format(pkt_len, size())};
 
-        uint16_t dest_port = (keep_port) ? oxenc::big_to_host(*reinterpret_cast<uint16_t*>(
-                                               data() + (static_cast<ptrdiff_t>(_header->header_len) * 4) + 2))
-                                         : 0;
+        uint16_t src_port = 0, dest_port = 0;
+        if ((_proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP) && _payload_len >= 4)
+        {
+            src_port = oxenc::load_big_to_host<uint16_t>(data() + _payload_len);
+            dest_port = oxenc::load_big_to_host<uint16_t>(data() + _payload_len + 2);
+        }
 
         if (_is_v4)
         {
-            auto srcv4 = ipv4{oxenc::big_to_host(_header->src)};
-            auto dstv4 = ipv4{oxenc::big_to_host(_header->dest)};
-
-            log::trace(logcat, "srcv4:{}:{}, dstv4:{}:{}", srcv4, src_port, dstv4, dest_port);
-
-            _src_addr = quic::Address{srcv4, src_port};
-            _dst_addr = quic::Address{dstv4, dest_port};
+            _src_addr = quic::Address{ipv4{oxenc::big_to_host(header->src)}, src_port};
+            _dst_addr = quic::Address{ipv4{oxenc::big_to_host(header->dest)}, dest_port};
         }
         else
         {
-            auto srcv6 = ipv6{_v6_header->src};
-            auto dstv6 = ipv6{_v6_header->dest};
-
-            log::trace(logcat, "srcv6:{}:{}, dstv6:{}:{}", srcv6, src_port, dstv6, dest_port);
-
-            _src_addr = quic::Address{srcv6, src_port};
-            _dst_addr = quic::Address{dstv6, dest_port};
+            _src_addr = quic::Address{ipv6{v6_header->src}, src_port};
+            _dst_addr = quic::Address{ipv6{v6_header->dest}, dest_port};
         }
+        log::trace(logcat, "IP packet init: proto={}, src={}, dest={}", _proto, _src_addr, _dst_addr);
     }
 
-    std::span<std::byte> IPPacket::l4_data()
+    std::span<const std::byte> IPPacket::udp_data()
     {
-        size_t hdr_sz = 0;
-
-        auto _header = reinterpret_cast<const ip_header*>(data());
-
-        if (_header->protocol == static_cast<uint8_t>(net::IPProtocol::UDP))
-            hdr_sz = 8;
-        else
+        if (_proto != net::IPProtocol::UDP || _payload_len < 8)
             return {};
 
-        // check for invalid size
-        if (size() < (static_cast<size_t>(_header->header_len) * 4) + hdr_sz)
-            return {};
-
-        size_t headers_len = ((static_cast<size_t>(_header->header_len) * 4) + hdr_sz);
-        std::byte* ptr = reinterpret_cast<std::byte*>(data()) + headers_len;
-
-        return {ptr, size() - headers_len};
+        auto hlen = _header_len + 8;
+        return {reinterpret_cast<const std::byte*>(data()) + hlen, size() - hlen};
     }
 
     void IPPacket::update_ipv4_address(const ipv4& src, const ipv4& dst)
@@ -188,29 +180,25 @@ namespace llarp
 
     void IPPacket::update_ipv6_address(const ipv6& src, const ipv6& dst, std::optional<uint32_t> flowlabel)
     {
-        const size_t ihs = 4 + 4 + 16 + 16;
         const auto sz = size();
         // XXX should've been checked at upper level?
-        if (sz <= ihs)
+        if (sz <= sizeof(ipv6_header))
             return;
 
-        auto hdr = v6_header();
+        auto& hdr = v6_header();
         if (flowlabel.has_value())
-        {
-            // set flow label if desired
-            hdr->set_flowlabel(*flowlabel);
-        }
+            hdr.flowlabel(*flowlabel);
 
         // IPv6 address
-        hdr->src = in6_addr(src);
-        hdr->dest = in6_addr(dst);
+        hdr.src = static_cast<in6_addr>(src);
+        hdr.dest = static_cast<in6_addr>(dst);
 
         // TODO IPv6 header options
-        auto* pld = data() + ihs;
-        auto psz = sz - ihs;
+        auto* pld = reinterpret_cast<const uint8_t*>(data()) + sizeof(ipv6_header);
+        auto psz = sz - sizeof(ipv6_header);
 
         size_t fragoff = 0;
-        auto nextproto = hdr->protocol;
+        auto nextproto = hdr.protocol;
         for (;;)
         {
             switch (nextproto)
@@ -265,7 +253,7 @@ namespace llarp
                 chksumoff = 16;
                 [[fallthrough]];
             case net::IPProtocol::DCCP:
-                chksum = tcp_checksum_ipv6(&hdr->src, &hdr->dest, hdr->payload_len, 0);
+                chksum = tcp_checksum_ipv6(&hdr.src, &hdr.dest, hdr.payload_len, 0);
                 // ones-complement addition fo 0xFFff is 0; this is verboten
                 if (chksum == 0xFFff)
                     chksum = 0x0000;
@@ -274,7 +262,7 @@ namespace llarp
                 break;
             case net::IPProtocol::UDP:
             case net::IPProtocol::UDP_LITE:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-                chksum = udp_checksum_ipv6(&hdr->src, &hdr->dest, hdr->payload_len, 0);
+                chksum = udp_checksum_ipv6(&hdr.src, &hdr.dest, hdr.payload_len, 0);
                 is_udp = true;
                 break;
             default:
@@ -289,13 +277,12 @@ namespace llarp
         _init_internals();
     }
 
-    // TODO: make a compile-time ICMP template with configurable fields
     std::optional<IPPacket> IPPacket::make_icmp_unreachable() const
     {
         if (is_ipv4())
         {
-            auto _header = reinterpret_cast<const ip_header*>(data());
-            auto ip_hdr_sz = _header->header_len * 4;
+            const auto& header = *reinterpret_cast<const ip_header*>(data());
+            auto ip_hdr_sz = header.header_len * 4;
             size_t pkt_size = (ICMP_HEADER_SIZE + ip_hdr_sz) * 2;
 
             if (pkt_size < MIN_PACKET_SIZE)
@@ -303,18 +290,18 @@ namespace llarp
 
             IPPacket pkt{*this};
 
-            pkt.header()->version = 0x04;
-            pkt.header()->header_len = 0x05;
-            pkt.header()->service_type = 0;
-            pkt.header()->checksum = 0;
-            pkt.header()->total_len = ntohs(pkt_size);
-            pkt.header()->src = _header->dest;
-            pkt.header()->dest = _header->src;
-            pkt.header()->protocol = 1;  // ICMP
-            pkt.header()->ttl = _header->ttl;
-            pkt.header()->frag_off = oxenc::host_to_big<uint16_t>(0b0100000000000000);
+            pkt.header().version = 0x04;
+            pkt.header().header_len = 0x05;
+            pkt.header().service_type = 0;
+            pkt.header().checksum = 0;
+            pkt.header().total_len = ntohs(pkt_size);
+            pkt.header().src = header.dest;
+            pkt.header().dest = header.src;
+            pkt.header().protocol = 1;  // ICMP
+            pkt.header().ttl = header.ttl;
+            pkt.header().frag_off = oxenc::host_to_big<uint16_t>(0b01000000'00000000);
 
-            uint8_t* itr = pkt.data() + ip_hdr_sz;
+            uint8_t* itr = reinterpret_cast<uint8_t*>(pkt.data()) + ip_hdr_sz;
             uint8_t* icmp_begin = itr;  // type 'destination unreachable'
             *itr++ = 3;
 
@@ -335,7 +322,7 @@ namespace llarp
             itr += ip_hdr_sz + ICMP_HEADER_SIZE;
 
             // calculate checksum of ip header
-            pkt.header()->checksum = utils::ip_checksum(pkt.data(), ip_hdr_sz);
+            pkt.header().checksum = utils::ip_checksum(reinterpret_cast<const uint8_t*>(pkt.data()), ip_hdr_sz);
 
             // calculate icmp checksum
             *checksum = utils::ip_checksum(icmp_begin, std::distance(icmp_begin, itr));
@@ -344,28 +331,31 @@ namespace llarp
             return pkt;
         }
 
+        // TODO FIXME: ipv6
+
         return std::nullopt;
     }
 
     // TODO: ipv6
-    // FIXME: return type is silly, but where it's needed wants a string atm
-    std::string IPPacket::make_udp_packet(
-        const quic::Address& src, const quic::Address& dest, std::span<const std::byte>& payload)
+    std::vector<std::byte> IPPacket::make_udp_packet(
+        const quic::Address& src, const quic::Address& dest, std::span<const std::byte> payload)
     {
-        std::string pkt{};
+        std::vector<std::byte> pkt;
         pkt.resize(sizeof(ip_header) + sizeof(udp_header) + payload.size());
-        auto* ip_hdr = reinterpret_cast<ip_header*>(pkt.data());
-        auto* udp_hdr = reinterpret_cast<udp_header*>(pkt.data() + sizeof(ip_header));
-        auto* data = reinterpret_cast<std::byte*>(pkt.data() + sizeof(ip_header) + sizeof(udp_header));
+        auto* data = pkt.data() + sizeof(ip_header) + sizeof(udp_header);
+        auto* ip_hdr = reinterpret_cast<ip_header*>(data);
+        data += sizeof(ip_header);
+        auto* udp_hdr = reinterpret_cast<udp_header*>(data);
+        data += sizeof(udp_header);
         std::memcpy(data, payload.data(), payload.size());
 
-        pkt.data()[1] = 0;  // DSCP and ECN
+        data[1] = std::byte{0};  // DSCP and ECN
         ip_hdr->version = 4;
         ip_hdr->header_len = 5;
         ip_hdr->total_len = htons(sizeof(ip_header) + sizeof(udp_header) + payload.size());
         ip_hdr->protocol = static_cast<uint8_t>(net::IPProtocol::UDP);  // udp
         ip_hdr->ttl = 64;
-        ip_hdr->frag_off = htons(0b0100000000000000);
+        ip_hdr->frag_off = oxenc::host_to_big<uint16_t>(0b01000000'00000000);
 
         ip_hdr->src = oxenc::host_to_big(src.to_ipv4().addr);
         ip_hdr->dest = oxenc::host_to_big(dest.to_ipv4().addr);
@@ -379,55 +369,13 @@ namespace llarp
         return pkt;
     }
 
-    NetworkPacket IPPacket::make_netpkt() &&
+    quic::Packet IPPacket::make_netpkt()
     {
-        bstring data{};
-        data.reserve(_buf.size());
-        std::memmove(data.data(), _buf.data(), _buf.size());
-        return NetworkPacket{quic::Path{_src_addr, _dst_addr}, std::move(data)};
+        quic::Packet p{
+            quic::Path{_src_addr, _dst_addr}, {reinterpret_cast<const std::byte*>(_buf.data()), _buf.size()}};
+        p.ensure_owned_data();
+        return p;
     }
-
-    bool IPPacket::load(const uint8_t* buf, size_t len)
-    {
-        if (len < MIN_PACKET_SIZE)
-            return false;
-
-        _buf.clear();
-        _buf.resize(len);
-        std::memcpy(_buf.data(), buf, len);
-
-        _init_internals();
-
-        return true;
-    }
-
-    bool IPPacket::take(std::vector<uint8_t> data)
-    {
-        auto len = data.size();
-        if (len < MIN_PACKET_SIZE)
-            return false;
-
-        _buf.clear();
-        _buf.resize(len);
-        std::memmove(_buf.data(), data.data(), len);
-
-        _init_internals();
-
-        return true;
-    }
-
-    std::vector<uint8_t> IPPacket::steal_buffer() && { return std::move(_buf); }
-
-    std::string IPPacket::steal_payload() &&
-    {
-        auto ret = to_string();
-        _buf.clear();
-        return ret;
-    }
-
-    std::vector<uint8_t> IPPacket::give_buffer() { return {_buf}; }
-
-    std::string IPPacket::to_string() const { return {reinterpret_cast<const char*>(data()), size()}; }
 
     std::string IPPacket::info_line() const
     {

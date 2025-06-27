@@ -1,6 +1,7 @@
 #include "rr.hpp"
 
 #include "dns.hpp"
+#include "name.hpp"
 
 namespace llarp::dns
 {

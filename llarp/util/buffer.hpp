@@ -1,62 +1,18 @@
 #pragma once
 
-#include "common.hpp"
-#include "mem.h"
-
 #include <oxenc/common.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
-#include <memory>
-#include <span>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-namespace llarp
-{
-    using namespace std::literals;
-
-    using cspan = std::span<const char>;
-    using uspan = std::span<const unsigned char>;
-    using span = std::span<const std::byte>;
-
-    using ustring = std::basic_string<uint8_t>;
-    using ustring_view = std::basic_string_view<uint8_t>;
-    using bstring = std::basic_string<std::byte>;
-    using bstring_view = std::basic_string_view<std::byte>;
-
-    inline ustring operator""_us(const char* str, size_t len) noexcept
-    {
-        return {reinterpret_cast<const unsigned char*>(str), len};
-    }
-
-    namespace detail
-    {
-        // Helper function to switch between string_view and ustring_view
-        inline ustring_view to_usv(std::string_view v)
-        {
-            return {reinterpret_cast<const uint8_t*>(v.data()), v.size()};
-        }
-
-        template <oxenc::basic_char T>
-        inline std::span<uint8_t> to_uspan(std::basic_string<T>& v)
-        {
-            return std::span<uint8_t>{reinterpret_cast<uint8_t*>(v.data()), v.size()};
-        }
-
-        static constexpr auto T = "T"sv, F = "F"sv;
-
-        inline constexpr auto bool_alpha(bool b, std::string_view t = T, std::string_view f = F) { return b ? t : f; }
-    }  // namespace detail
-
-}  // namespace llarp
 
 /// TODO: replace usage of these with std::span (via a backport until we move to C++20).  That's a
 /// fairly big job, though, as llarp_buffer_t is currently used a bit differently (i.e. maintains
@@ -129,20 +85,8 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
         return sz - diff;
     }
 
-    template <typename OutputIt>
-    bool read_into(OutputIt begin, OutputIt end);
-
     template <typename InputIt>
     bool write(InputIt begin, InputIt end);
-
-#ifndef _WIN32
-    bool writef(const char* fmt, ...) __attribute__((format(printf, 2, 3)));
-
-#elif defined(__MINGW64__) || defined(__MINGW32__)
-    bool writef(const char* fmt, ...) __attribute__((__format__(__MINGW_PRINTF_FORMAT, 2, 3)));
-#else
-    bool writef(const char* fmt, ...);
-#endif
 
     bool put_uint16(uint16_t i);
     bool put_uint32(uint32_t i);
@@ -154,42 +98,13 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
 
     bool read_uint64(uint64_t& i);
 
-    size_t read_until(char delim, uint8_t* result, size_t resultlen);
-
     /// make a copy of this buffer
     std::vector<uint8_t> copy() const;
-
-    /// get a read-only view over the entire region
-    llarp::ustring_view view_all() const { return {base, sz}; }
-
-    /// get a read-only view over the remaining/unused region
-    llarp::ustring_view view_remaining() const { return {cur, size_left()}; }
-
-    /// Part of the curse.  Returns true if the remaining buffer space starts with the given string
-    /// view.
-    bool startswith(std::string_view prefix_str) const
-    {
-        llarp::ustring_view prefix{reinterpret_cast<const uint8_t*>(prefix_str.data()), prefix_str.size()};
-        return view_remaining().substr(0, prefix.size()) == prefix;
-    }
 
   private:
     llarp_buffer_t(const llarp_buffer_t&) = default;
     llarp_buffer_t(llarp_buffer_t&&) = default;
 };
-
-template <typename OutputIt>
-bool llarp_buffer_t::read_into(OutputIt begin, OutputIt end)
-{
-    auto dist = std::distance(begin, end);
-    if (static_cast<decltype(dist)>(size_left()) >= dist)
-    {
-        std::copy_n(cur, dist, begin);
-        cur += dist;
-        return true;
-    }
-    return false;
-}
 
 template <typename InputIt>
 bool llarp_buffer_t::write(InputIt begin, InputIt end)

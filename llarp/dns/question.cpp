@@ -1,6 +1,7 @@
 #include "question.hpp"
 
 #include "dns.hpp"
+#include "name.hpp"
 
 #include <llarp/util/str.hpp>
 

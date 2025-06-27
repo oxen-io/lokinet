@@ -2,7 +2,6 @@
 #include <llarp/config/config.hpp>  // for ensure_config
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
-#include <llarp/ev/loop.hpp>
 #include <llarp/util/exceptions.hpp>
 #include <llarp/util/lokinet_init.h>
 #include <llarp/util/thread/threading.hpp>
@@ -10,6 +9,7 @@
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 #include <oxen/log.hpp>
+#include <oxen/quic/loop.hpp>
 
 #include <csignal>
 #include <memory>
@@ -53,12 +53,11 @@ namespace
     // operational function definitions
     int lokinet_main(int, char**);
     void handle_signal(int sig);
-    static void run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts);
+    static void start_lokinet(std::optional<fs::path> confFile, bool snode);
 
     // variable declarations
     static auto logcat = llarp::log::Cat("daemon");
-    std::shared_ptr<llarp::Context> ctx;
-    std::promise<int> exit_code;
+    std::unique_ptr<llarp::Context> ctx;
 
     // operational function definitions
     void handle_signal(int sig)
@@ -66,7 +65,7 @@ namespace
         llarp::log::info(logcat, "Handling signal {}", sig);
 
         if (ctx)
-            ctx->_loop->call([sig]() { ctx->handle_signal(sig); });
+            ctx->signal(sig);
         else
             std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
     }
@@ -322,9 +321,6 @@ namespace
 
     int lokinet_main(int argc, char** argv)
     {
-        llarp::RuntimeOptions opts;
-        opts.showBanner = false;
-
 #ifdef _WIN32
         if (startWinsock())
             return -1;
@@ -385,8 +381,6 @@ namespace
                 }
             }
 
-            opts.isSNode = options.router;
-
             if (options.generate)
             {
                 options.configOnly = true;
@@ -414,7 +408,7 @@ namespace
             {
                 try
                 {
-                    llarp::ensure_config(basedir, *configFile, options.overwrite, opts.isSNode);
+                    llarp::ensure_config(basedir, *configFile, options.overwrite, options.router);
                 }
                 catch (std::exception& ex)
                 {
@@ -444,7 +438,7 @@ namespace
             try
             {
                 llarp::ensure_config(
-                    llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), options.overwrite, opts.isSNode);
+                    llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), options.overwrite, options.router);
             }
             catch (std::exception& ex)
             {
@@ -461,117 +455,78 @@ namespace
         SetUnhandledExceptionFilter(&GenerateDump);
 #endif
 
-        std::thread main_thread{[configFile, opts] { run_main_context(configFile, opts); }};
-        auto ftr = exit_code.get_future();
-
-        do
-        {
-            // do periodic non lokinet related tasks here
-            if (ctx and ctx->is_up() and not ctx->looks_alive())
-            {
-                auto deadlock_cat = llarp::log::Cat("deadlock");
-                llarp::log::critical(deadlock_cat, "Router is deadlocked!");
-                llarp::log::flush();
-                llarp::sys::service_manager->failed();
-                std::abort();
-            }
-        } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
-
-        main_thread.join();
-
-        int code = 0;
-
         try
         {
-            code = ftr.get();
+            start_lokinet(configFile, options.router);
         }
         catch (const std::exception& e)
         {
-            std::cerr << "main thread threw exception: " << e.what() << std::endl;
-            code = 1;
+            std::cerr << "\nLokinet failed to start: " << e.what() << "\n\n";
+            return 1;
         }
-        catch (...)
-        {
-            std::cerr << "main thread threw non-standard exception" << std::endl;
-            code = 2;
-        }
+
+        std::promise<void> watchdog_stop;
+        std::thread watchdog{[ftr = watchdog_stop.get_future()] {
+            llarp::util::SetThreadName("llarp-watchdog");
+            while (ftr.wait_for(1s) != std::future_status::ready)
+            {
+                // do periodic non lokinet related tasks here
+                if (ctx and ctx->is_up() and not ctx->looks_alive())
+                {
+                    auto deadlock_cat = llarp::log::Cat("deadlock");
+                    llarp::log::critical(deadlock_cat, "Router has deadlocked!");
+                    llarp::log::flush();
+                    llarp::sys::service_manager->failed();
+                    std::abort();
+                }
+            }
+        }};
+
+        ctx->wait();
+        watchdog_stop.set_value();
+        watchdog.join();
 
         llarp::log::flush();
         llarp::sys::service_manager->stopped();
-        if (ctx)
-        {
-            ctx.reset();
-        }
-        return code;
+        ctx.reset();
+        return 0;
     }
 
     // this sets up, configures and runs the main context
-    static void run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
+    static void start_lokinet(std::optional<fs::path> confFile, bool snode)
     {
         llarp::log::info(logcat, "starting up {}", llarp::LOKINET_VERSION_FULL);
         try
         {
-            std::shared_ptr<llarp::Config> conf;
-            if (confFile)
+            llarp::Config conf{confFile ? confFile->parent_path() : llarp::GetDefaultDataDir()};
+            if (not conf.load(confFile, snode))
             {
-                llarp::log::info(logcat, "Using config file: {}", *confFile);
-                conf = std::make_shared<llarp::Config>(confFile->parent_path());
-            }
-            else
-            {
-                conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
-            }
-            if (not conf->load(confFile, opts.isSNode))
-            {
-                llarp::log::error(logcat, "failed to parse configuration");
-                exit_code.set_value(1);
-                return;
+                llarp::log::error(logcat, "failed to load configuration");
+                throw std::runtime_error{"Failed to parse config file {}"_format(confFile)};
             }
 
             // change cwd to dataDir to support relative paths in config
-            fs::current_path(conf->router.data_dir);
+            fs::current_path(conf.router.data_dir);
 
-            ctx = std::make_shared<llarp::Context>();
-            ctx->configure(std::move(conf));
+            ctx = std::make_unique<llarp::Context>();
 
             signal(SIGINT, handle_signal);
             signal(SIGTERM, handle_signal);
+            signal(SIGKILL, handle_signal);
 
-#ifndef _WIN32
-            signal(SIGHUP, handle_signal);
-            signal(SIGUSR1, handle_signal);
-#endif
-
-            try
-            {
-                ctx->setup(opts);
-            }
-            catch (llarp::util::bind_socket_error& ex)
-            {
-                llarp::log::error(logcat, "{}; is lokinet already running?", ex.what());
-                exit_code.set_value(1);
-                return;
-            }
-            catch (const std::exception& ex)
-            {
-                llarp::log::error(logcat, "failed to start up lokinet: {}", ex.what());
-                exit_code.set_value(1);
-                return;
-            }
-            llarp::util::SetThreadName("llarp-mainloop");
-
-            auto result = ctx->run(opts);
-            exit_code.set_value(result);
+            llarp::util::SetThreadName("llarp-main");
+            ctx->start(std::move(conf));
         }
-        catch (const std::exception& e)
+        catch (llarp::util::bind_socket_error& ex)
         {
-            llarp::log::error(logcat, "Fatal: caught exception while running: {}", e.what());
-            exit_code.set_exception(std::current_exception());
+            auto msg = "{}; is lokinet already running?"_format(ex.what());
+            llarp::log::error(logcat, "{}", msg);
+            throw std::runtime_error{msg};
         }
-        catch (...)
+        catch (const std::exception& ex)
         {
-            llarp::log::error(logcat, "Fatal: caught non-standard exception while running");
-            exit_code.set_exception(std::current_exception());
+            llarp::log::error(logcat, "failed to start up lokinet: {}", ex.what());
+            throw;
         }
     }
 

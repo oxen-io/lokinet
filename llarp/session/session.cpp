@@ -6,7 +6,10 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/formattable.hpp>
+
+#include <oxen/quic/udp.hpp>
 
 #include <utility>
 
@@ -40,7 +43,7 @@ namespace llarp::session
         // FIXME: this is ugly, but maybe necessary?  either side could be
         // tun or not tun, and that changes things, but how that needs to change things
         // is a bit unclear at the moment.
-        _recv_dgram = [this](std::vector<uint8_t> data) {
+        _recv_dgram = [this](std::span<std::byte> data) {
             IPPacket pkt{std::move(data)};
             bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
             if (_use_tun || (is_udp && _r.using_tun_if()))
@@ -64,32 +67,31 @@ namespace llarp::session
     }
 
     bool BaseSession::send_path_control_message(
-        std::string method, std::string body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
-        auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), _remote_pivot_txid);
+        auto inner_payload = PATH::CONTROL::serialize(method, body);
+        auto intermediate_payload = PATH::CONTROL::serialize_aligned(as_bspan(inner_payload), _remote_pivot_txid);
 
         return _current_path->send_path_control_message(
-            "path_control", std::move(intermediate_payload), std::move(func));
+            "path_control", as_bspan(intermediate_payload), std::move(func));
     }
 
-    bool BaseSession::send_path_data_message(std::string data)
+    bool BaseSession::send_path_data_message(std::span<std::byte> data)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
+        session_keys->encrypt(data);
 
-        auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
-        auto intermediate_payload = PATH::DATA::serialize_intermediate(std::move(inner_payload), _remote_pivot_txid);
+        auto intermediate_payload = PATH::DATA::serialize_intermediate(_tag, data, _remote_pivot_txid);
 
-        return _current_path->send_path_data_message(std::move(intermediate_payload));
+        return _current_path->send_path_data_message(as_bspan(intermediate_payload));
     }
 
-    void BaseSession::recv_path_data_message(std::vector<uint8_t> data)
+    void BaseSession::recv_path_data_message(std::span<std::byte> data)
     {
         session_keys->decrypt(data);
 
         if (_recv_dgram)
-            _recv_dgram(std::move(data));
+            _recv_dgram(data);
         else
             throw std::runtime_error{"Session does not have hook to receive datagrams!"};
     }
@@ -117,7 +119,7 @@ namespace llarp::session
     void BaseSession::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
         send_path_control_message(
-            "publish_cc", PublishClientContact::serialize(std::move(ecc), _r.local_rid()), std::move(func));
+            "publish_cc", as_bspan(PublishClientContact::serialize(ecc, _r.local_rid())), std::move(func));
     }
 
     void BaseSession::handle_udp_from_remote(IPPacket&& pkt)
@@ -132,36 +134,43 @@ namespace llarp::session
         auto& socket = itr->second;
         auto dest_port = pkt.dest_port();
 
-        auto payload = pkt.l4_data();
+        auto payload = pkt.udp_data();
         if (payload.empty())
         {
-            log::warning(logcat, "Received udp datagram with empty payload...");
+            log::warning(logcat, "Received invalid udp datagram");
             return;
         }
-        auto dest = socket->bind();
+        auto dest = socket->address();
         dest.set_port(dest_port);
-        socket->send(dest, payload);
+        const size_t bufsize = payload.size();
+        uint8_t ecn = 0;  // FIXME: do we have any way to obtain this?
+        size_t n_pkts = 1;
+        auto [ior, sent] = socket->send(quic::Path{socket->address(), dest}, payload.data(), &bufsize, ecn, n_pkts);
+        log::trace(
+            logcat, "UDP from remote -> socket send to local returned {} (ec={})", ior.success(), ior.error_code);
     }
 
     uint16_t BaseSession::setup_udp_mapping(uint16_t dest_port)
     {
         if (auto itr = udp_handles.find(dest_port); itr != udp_handles.end())
         {
-            auto mapped_port = itr->second->bind().port();
+            auto mapped_port = itr->second->address().port();
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
         quic::Address src{"127.0.0.1"s, 54321};
         quic::Address dest{"127.0.0.1"s, dest_port};
-        auto udp_handle = std::make_unique<UDPHandle>(_r.loop(), src, [this, dest = std::move(dest)](auto pkt) {
-            // ip doesn't matter here, but give remote the source port so we receive responses
-            // as destined for that port and know where to send them
-            auto src = pkt.path.remote;
-            log::trace(logcat, "Packet received from {}", src);
-            auto payload = pkt.data();
-            send_path_data_message(IPPacket::make_udp_packet(src, dest, payload));
-        });
-        auto bound_port = udp_handle->bind().port();
+        auto udp_handle = std::make_unique<quic::UDPSocket>(
+            _r.loop()->get_event_base(), src, [this, dest = std::move(dest)](quic::Packet&& pkt) {
+                // ip doesn't matter here, but give remote the source port so we receive responses
+                // as destined for that port and know where to send them
+                auto src = pkt.path.remote;
+                log::trace(logcat, "Packet received from {}", src);
+                auto payload = pkt.data();
+                auto packet = IPPacket::make_udp_packet(src, dest, payload);
+                send_path_data_message(packet);
+            });
+        auto bound_port = udp_handle->address().port();
         udp_handles[dest_port] = std::move(udp_handle);
 
         return bound_port;
@@ -210,16 +219,13 @@ namespace llarp::session
     {
         log::debug(logcat, "Dispatching close session message...");
         send_path_control_message(
-            "session_close", CloseSession::serialize(_tag), func ? std::move(func) : session_close_cb);
+            "session_close", as_bspan(CloseSession::serialize(_tag)), func ? std::move(func) : session_close_cb);
     }
 
     std::string BaseSession::to_string() const
     {
         return "{}BSession:[ active:{} | exit:{} | {} ]"_format(
-            detail::bool_alpha(_is_outbound, "O", "I"),
-            detail::bool_alpha(_is_active),
-            detail::bool_alpha(_is_exit_session),
-            _current_path->to_string());
+            _is_outbound ? "O" : "I", _is_active, _is_exit_session, _current_path->to_string());
     }
 
     OutboundRelaySession::OutboundRelaySession(
@@ -257,24 +263,23 @@ namespace llarp::session
     std::weak_ptr<path::PathHandler> OutboundRelaySession::get_weak() { return weak_from_this(); }
 
     bool OutboundRelaySession::send_path_control_message(
-        std::string method, std::string body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
+        return _current_path->send_path_control_message(method, body, std::move(func));
     }
 
-    bool OutboundRelaySession::send_path_data_message(std::string data)
+    bool OutboundRelaySession::send_path_data_message(std::span<std::byte> data)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
         // session_keys->encrypt(data);
 
         // return BaseSession::send_path_data_message(std::move(data));
         // return _current_path->send_path_data_message(std::move(data));
-        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
+        session_keys->encrypt(data);
 
-        auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
-        auto intermediate_payload = PATH::DATA::serialize_intermediate(std::move(inner_payload), _remote_pivot_txid);
+        auto intermediate_payload = PATH::DATA::serialize_intermediate(_tag, data, _remote_pivot_txid);
 
-        return _current_path->send_path_data_message(std::move(intermediate_payload));
+        return _current_path->send_path_data_message(as_bspan(intermediate_payload));
     }
 
     void OutboundRelaySession::rotate_paths()
@@ -351,7 +356,7 @@ namespace llarp::session
         log::debug(logcat, "Dispatching path-switch request to remote ({}): {}", _remote, _current_path->to_string());
         send_path_control_message(
             "path_switch",
-            SessionPathSwitch::serialize(_tag, _current_path->terminal_txid(), _remote_pivot_txid),
+            as_bspan(SessionPathSwitch::serialize(_tag, _current_path->terminal_txid(), _remote_pivot_txid)),
             [](quic::message m) {
                 if (m)
                     log::info(logcat, "Session path switch was successful!");
@@ -426,12 +431,7 @@ namespace llarp::session
         sorted_intro_set _remote_intros,
         shared_kx_data kx_data)
         : OutboundRelaySession{
-              std::move(remote),
-              parent,
-              std::move(path),
-              std::move(_t),
-              std::move(remote_pivot_txid),
-              std::move(kx_data)}
+            std::move(remote), parent, std::move(path), std::move(_t), std::move(remote_pivot_txid), std::move(kx_data)}
     {
         // These can both be false but CANNOT both be true
         if (_is_exit_session and _is_snode_session)
@@ -454,14 +454,14 @@ namespace llarp::session
     std::weak_ptr<path::PathHandler> OutboundClientSession::get_weak() { return weak_from_this(); }
 
     bool OutboundClientSession::send_path_control_message(
-        std::string method, std::string body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        return BaseSession::send_path_control_message(std::move(method), std::move(body), std::move(func));
+        return BaseSession::send_path_control_message(method, body, std::move(func));
     }
 
-    bool OutboundClientSession::send_path_data_message(std::string data)
+    bool OutboundClientSession::send_path_data_message(std::span<std::byte> data)
     {
-        return BaseSession::send_path_data_message(std::move(data));
+        return BaseSession::send_path_data_message(data);
     }
 
     void OutboundClientSession::populate_intro_map(const sorted_intro_set& _remote_intros)
@@ -791,15 +791,15 @@ namespace llarp::session
         bool use_tun,
         shared_kx_data kx_data)
         : BaseSession{
-              parent._router,
-              std::move(_p),
-              parent,
-              std::move(remote),
-              std::move(remote_pivot_txid),
-              std::move(_t),
-              use_tun,
-              false,
-              std::move(kx_data)}
+            parent._router,
+            std::move(_p),
+            parent,
+            std::move(remote),
+            std::move(remote_pivot_txid),
+            std::move(_t),
+            use_tun,
+            false,
+            std::move(kx_data)}
     {
         log::debug(
             logcat,
@@ -823,29 +823,36 @@ namespace llarp::session
         bool use_tun,
         shared_kx_data kx_data)
         : InboundClientSession{
-              std::move(remote),
-              std::move(_p),
-              parent,
-              std::move(remote_pivot_txid),
-              std::move(_t),
-              use_tun,
-              std::move(kx_data)}
+            std::move(remote),
+            std::move(_p),
+            parent,
+            std::move(remote_pivot_txid),
+            std::move(_t),
+            use_tun,
+            std::move(kx_data)}
     {
         log::debug(logcat, "InboundSession from remote client to local relay service created");
     }
 
     bool InboundRelaySession::send_path_control_message(
-        std::string method, std::string body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
+        return _current_path->send_path_control_message(method, body, std::move(func));
     }
 
-    bool InboundRelaySession::send_path_data_message(std::string data)
+    bool InboundRelaySession::send_path_data_message(std::span<std::byte> data)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
+        session_keys->encrypt(data);
 
-        return _current_path->send_path_data_message(PATH::DATA::serialize_inner(std::move(data), _tag));
+        auto tag = _tag.span();
+
+        std::vector<std::byte> payload;
+        payload.reserve(tag.size() + data.size());
+        std::memcpy(payload.data(), tag.data(), tag.size());
+        std::memcpy(payload.data() + tag.size(), data.data(), data.size());
+
+        return _current_path->send_path_data_message(payload);
     }
 
 }  // namespace llarp::session

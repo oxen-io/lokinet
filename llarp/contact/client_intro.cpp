@@ -34,9 +34,9 @@ namespace llarp
 
     void ClientIntro::bt_decode(oxenc::bt_dict_consumer&& btdc)
     {
-        pivot_rid.from_string(btdc.require<std::string_view>("k"));
-        pivot_txid.from_string(btdc.require<std::string_view>("p"));
-        expiry = std::chrono::milliseconds{btdc.require<uint64_t>("x")};
+        pivot_rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("k"));
+        pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
+        expiry = std::chrono::milliseconds{btdc.require<int64_t>("x")};
     }
 
     std::string ClientIntro::to_string() const

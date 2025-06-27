@@ -5,6 +5,7 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 
 #include <ranges>
@@ -93,7 +94,7 @@ namespace llarp::path
             return;
 
         log::warning(logcat, "Pinging path TXID={}", edge().txid());
-        send_path_control_message("path_ping"s, ""s, [self = get_weak(), start_time](quic::message m) {
+        send_path_control_message("path_ping", {}, [self = get_weak(), start_time](quic::message m) {
             auto shared_self = self.lock();
             if (!shared_self)
                 return;
@@ -136,52 +137,47 @@ namespace llarp::path
 
     bool Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("fetch_rcs", FetchRC::serialize({{needed}}), std::move(func));
+        return send_path_control_message("fetch_rcs", as_bspan(FetchRC::serialize({{needed}})), std::move(func));
     }
 
     bool Path::find_client_contact(const hash_key& location, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("find_cc", FindClientContact::serialize(location), std::move(func));
+        return send_path_control_message("find_cc", as_bspan(FindClientContact::serialize(location)), std::move(func));
     }
 
     bool Path::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
+        return send_path_control_message("publish_cc", as_bspan(PublishClientContact::serialize(ecc)), std::move(func));
     }
 
-    bool Path::resolve_sns(const std::string& name_hash, std::function<void(quic::message)> func)
+    bool Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
+        return send_path_control_message("resolve_sns", as_bspan(ResolveSNS::serialize(name_hash)), std::move(func));
     }
 
-    std::string Path::make_path_message(std::string inner_payload)
+    std::string Path::make_path_message(std::span<std::byte> inner_payload)
     {
         auto nonce = SymmNonce::make_random();
 
         for (const auto& hop : std::ranges::reverse_view(hops))
         {
-            nonce = crypto::onion(
-                reinterpret_cast<unsigned char*>(inner_payload.data()),
-                inner_payload.size(),
-                hop.kx.shared_secret,
-                nonce,
-                hop.kx.xor_nonce);
+            nonce = crypto::onion(inner_payload, hop.kx.shared_secret, nonce, hop.kx.xor_nonce);
         }
 
-        return ONION::serialize_hop(edge().rxid().to_view(), nonce, std::move(inner_payload));
+        return ONION::serialize_hop(edge().rxid(), nonce, std::move(inner_payload));
     }
 
-    bool Path::send_path_data_message(std::string data)
+    bool Path::send_path_data_message(std::span<std::byte> data)
     {
-        auto payload = make_path_message(std::move(data));
+        auto payload = make_path_message(data);
         return _router.send_data_message(edge().router_id(), std::move(payload));
     }
 
     bool Path::send_path_control_message(
-        std::string endpoint, std::string body, std::function<void(quic::message)> func)
+        std::string_view endpoint, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(std::move(endpoint), std::move(body));
-        auto outer_payload = make_path_message(std::move(inner_payload));
+        auto inner_payload = PATH::CONTROL::serialize(endpoint, std::move(body));
+        auto outer_payload = make_path_message(as_bspan(inner_payload));
         return _router.send_control_message(
             edge().router_id(), "path_control", std::move(outer_payload), std::move(func));
     }
@@ -193,8 +189,8 @@ namespace llarp::path
         return debug_string();
         // return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{}
         // ]"_format(
-        //     detail::bool_alpha(is_active()),
-        //     detail::bool_alpha(is_linked()),
+        //     is_active(),
+        //     is_linked(),
         //     _router.local_rid().short_string(),
         //     pivot().router_id().short_string(),
         //     edge().rxid(),

@@ -16,7 +16,7 @@ namespace llarp
 {
     // FIXME: have this hook give an error string on failure, not just false
     using on_session_init_hook = std::function<void(bool)>;
-    using recv_session_dgram_cb = std::function<void(std::vector<uint8_t>)>;
+    using recv_session_dgram_cb = std::function<void(std::span<std::byte>)>;
 
     inline constexpr size_t PATHS_PER_INTRO{2};
     inline constexpr auto SESSION_PATH_BUILD_ATTEMPTS{3};
@@ -82,7 +82,7 @@ namespace llarp
 
             // for tunneled clients, maps remote dest port to udp socket
             // for return traffic, dest port will be the client's udp socket port
-            std::unordered_map<uint16_t, std::unique_ptr<UDPHandle>> udp_handles;
+            std::unordered_map<uint16_t, std::unique_ptr<quic::UDPSocket>> udp_handles;
 
           public:
             BaseSession(
@@ -105,11 +105,13 @@ namespace llarp
             NetworkAddress remote() { return _remote; }
 
             virtual bool send_path_control_message(
-                std::string method, std::string body, std::function<void(quic::message)> func);
+                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func);
 
-            virtual bool send_path_data_message(std::string data);
+            // NB: mutates data (encrypting in place)
+            virtual bool send_path_data_message(std::span<std::byte> data);
 
-            void recv_path_data_message(std::vector<uint8_t> data);
+            // NB: mutates data (decrypting in place)
+            void recv_path_data_message(std::span<std::byte> data);
 
             void set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path);
 
@@ -184,9 +186,9 @@ namespace llarp
             std::weak_ptr<path::PathHandler> get_weak() override;
 
             bool send_path_control_message(
-                std::string method, std::string body, std::function<void(quic::message)> func) override;
+                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::string data) override;
+            bool send_path_data_message(std::span<std::byte> data) override;
 
             void build_more(size_t n = 0) override;
 
@@ -241,9 +243,9 @@ namespace llarp
             std::weak_ptr<path::PathHandler> get_weak() override;
 
             bool send_path_control_message(
-                std::string method, std::string body, std::function<void(quic::message)> func) override;
+                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::string data) override;
+            bool send_path_data_message(std::span<std::byte> data) override;
 
             void update_outbound_remote_intros(sorted_intro_set intros) override;
 
@@ -292,9 +294,9 @@ namespace llarp
                 shared_kx_data kx_data);
 
             bool send_path_control_message(
-                std::string method, std::string body, std::function<void(quic::message)> func) override;
+                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::string data) override;
+            bool send_path_data_message(std::span<std::byte> data) override;
         };
 
     }  // namespace session

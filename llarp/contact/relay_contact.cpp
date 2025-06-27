@@ -1,5 +1,6 @@
 #include "relay_contact.hpp"
 
+#include <llarp/constants/version.hpp>
 #include <llarp/util/logging.hpp>
 
 #include <oxenc/bt_producer.h>
@@ -78,16 +79,17 @@ namespace llarp
         for (int i = 0; i < 3; i++)
             _router_version[i] = ver[i];
 
-        btdc.require_signature("~", [this, accept_expired](std::span<const uint8_t> msg, std::span<const uint8_t> sig) {
-            if (sig.size() != 64)
-                throw std::runtime_error{"Invalid signature: not 64 bytes"};
+        btdc.require_signature(
+            "~", [this, accept_expired](std::span<const std::byte> msg, std::span<const std::byte> sig) {
+                if (sig.size() != 64)
+                    throw std::runtime_error{"Invalid signature: not 64 bytes"};
 
-            if (!accept_expired and is_expired(time_now_ms()))
-                throw std::runtime_error{"Rejecting expired RemoteRC!"};
+                if (!accept_expired and is_expired(time_now_ms()))
+                    throw std::runtime_error{"Rejecting expired RemoteRC!"};
 
-            if (not crypto::verify(router_id(), msg, sig))
-                throw std::runtime_error{"Failed to verify RemoteRC signature"};
-        });
+                if (not crypto::verify(router_id(), msg, sig.first<64>()))
+                    throw std::runtime_error{"Failed to verify RemoteRC signature"};
+            });
 
         if (not btdc.is_finished())
             throw std::runtime_error{"RemoteRC has invalid trailing fields"};
@@ -174,7 +176,7 @@ namespace llarp
 
     LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local) : _secret_key{std::move(secret)}
     {
-        _router_id.assign(seckey_to_pubkey(_secret_key));
+        _router_id.assign(_secret_key.pubkey_span());
         _addr = std::move(local);
         if (_addr.is_ipv6())
             _addr6.emplace(&_addr.in6());
@@ -185,16 +187,10 @@ namespace llarp
 
     void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
     {
-        _signature.clear();
-
-        btdp.append_signature("~", [this](std::span<const uint8_t> to_sign) {
-            std::array<unsigned char, 64> sig;
-
-            if (!crypto::sign(sig.data(), _secret_key, to_sign))
+        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
+            if (!crypto::sign(_signature, _secret_key, to_sign))
                 throw std::runtime_error{"Failed to sign RC"};
-
-            _signature = {sig.data(), sig.size()};
-            return sig;
+            return std::span<std::byte, 64>{_signature};
         });
 
         auto v = btdp.view();
@@ -242,7 +238,7 @@ namespace llarp
         btdp.append("t", _timestamp.time_since_epoch().count());
 
         static_assert(llarp::LOKINET_VERSION.size() == 3);
-        btdp.append("v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
+        btdp.append("v", std::span{llarp::LOKINET_VERSION});
 
         return btdp;
     }

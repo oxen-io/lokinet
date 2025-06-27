@@ -3,6 +3,7 @@
 #include <llarp/messages/common.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
 
@@ -41,9 +42,9 @@ namespace llarp::path
 
     void TransitHop::bt_decode(oxenc::bt_dict_consumer&& btdc)
     {
-        _rxid.from_string(btdc.require<std::string_view>("r"));
-        _txid.from_string(btdc.require<std::string_view>("t"));
-        _upstream.from_string(btdc.require<std::string_view>("u"));
+        _rxid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
+        _txid.assign(btdc.require_span<std::byte, HopID::SIZE>("t"));
+        _upstream.assign(btdc.require_span<std::byte, RouterID::SIZE>("u"));
         expiry = llarp::time_now_ms() + path::DEFAULT_LIFETIME;
     }
 
@@ -84,12 +85,7 @@ namespace llarp::path
     std::string TransitHop::to_string() const
     {
         return "TransitHop:[ Terminal:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
-            detail::bool_alpha(terminal_hop),
-            _txid,
-            _rxid,
-            _upstream.short_string(),
-            _downstream.short_string(),
-            expiry.count());
+            terminal_hop, _txid, _rxid, _upstream.short_string(), _downstream.short_string(), expiry.count());
     }
 
     SessionHop::SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p) : TransitHop{hop}, _parent{p} {}
@@ -108,24 +104,22 @@ namespace llarp::path
     }
 
     bool SessionHop::send_path_control_message(
-        std::string method, std::string body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
+        auto inner_payload = PATH::CONTROL::serialize(std::move(method), body);
         return _parent._router.send_control_message(
             _downstream,
             "path_control",
-            ONION::serialize_hop(_rxid.to_view(), SymmNonce::make_random(), std::move(inner_payload)),
+            ONION::serialize_hop(_rxid, SymmNonce::make_random(), as_bspan(inner_payload)),
             std::move(func));
     }
 
-    bool SessionHop::send_path_data_message(std::string body)
+    bool SessionHop::send_path_data_message(std::span<std::byte> body)
     {
         auto nonce = SymmNonce::make_random() ^ kx.xor_nonce;
-        crypto::onion(
-            reinterpret_cast<unsigned char*>(body.data()), body.size(), kx.shared_secret, nonce, kx.xor_nonce);
+        crypto::onion(body, kx.shared_secret, nonce, kx.xor_nonce);
 
-        return _parent._router.send_data_message(
-            _downstream, ONION::serialize_hop(_rxid.to_view(), nonce, std::move(body)));
+        return _parent._router.send_data_message(_downstream, ONION::serialize_hop(_rxid, nonce, body));
     }
 
     std::string SessionHop::to_string() const

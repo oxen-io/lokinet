@@ -22,7 +22,7 @@ namespace llarp::handlers
         Router& _router;
 
         /// dns subsystem for this endpoint
-        std::shared_ptr<dns::Server> _dns;
+        std::unique_ptr<dns::Server> _dns;
 
         /// our local ip network
         ipv4_net _local_net;
@@ -69,7 +69,7 @@ namespace llarp::handlers
         std::string_view resolver_name() const override { return LOKI_RESOLVER; }
 
         bool maybe_hook_dns(
-            std::shared_ptr<dns::PacketSource_Base> source,
+            const std::shared_ptr<dns::PacketSource>& source,
             const dns::Message& query,
             const quic::Address& to,
             const quic::Address& from) override;

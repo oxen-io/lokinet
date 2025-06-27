@@ -20,7 +20,7 @@ namespace llarp
         try
         {
             ciphertext = btdc.require<std::string>("c");
-            nonce.from_string(btdc.require<std::string>("n"));
+            nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
         }
         catch (...)
         {

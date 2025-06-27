@@ -1,9 +1,7 @@
 #pragma once
 
-#include "name.hpp"
 #include "serialize.hpp"
 
-#include <memory>
 #include <vector>
 
 namespace llarp::dns
@@ -24,8 +22,6 @@ namespace llarp::dns
         bool Encode(llarp_buffer_t* buf) const override;
 
         bool Decode(llarp_buffer_t* buf) override;
-
-        bool decode(std::span<uint8_t> /* b */) override { return {}; };
 
         nlohmann::json ToJSON() const override;
 

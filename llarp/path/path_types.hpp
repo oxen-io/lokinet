@@ -38,8 +38,9 @@ namespace llarp
         virtual bool is_linked() const = 0;
 
         virtual bool send_path_control_message(
-            std::string method, std::string body, std::function<void(quic::message)> func) = 0;
-        virtual bool send_path_data_message(std::string body) = 0;
+            std::string_view method, std::span<const std::byte> payload, std::function<void(quic::message)> func) = 0;
+        // NB: mutates body
+        virtual bool send_path_data_message(std::span<std::byte> body) = 0;
 
         virtual RouterID terminal_rid() const = 0;
         virtual HopID terminal_txid() const = 0;

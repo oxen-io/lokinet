@@ -8,11 +8,12 @@ namespace llarp
 {
     namespace ONION
     {
-        std::string serialize_frames(std::vector<std::string>&& frames);
+        std::string serialize_frames(const std::vector<std::string>& frames);
 
-        std::vector<std::string> deserialize_frames(std::string_view&& buf);
+        std::vector<std::string> deserialize_frames(std::string_view buf);
 
-        std::string serialize_hop(std::string_view key, const SymmNonce& nonce, const std::string& encrypted);
+        std::string serialize_hop(
+            std::span<const std::byte> key, const SymmNonce& nonce, std::span<const std::byte> encrypted);
 
         std::pair<std::string, shared_kx_data> deserialize_decrypt(
             oxenc::bt_dict_consumer&& btdc, const Ed25519SecretKey& local_sk);
@@ -42,9 +43,9 @@ namespace llarp
 
         namespace CONTROL
         {
-            std::string serialize(std::string endpoint, std::string payload);
+            std::string serialize(std::string_view endpoint, std::span<const std::byte> payload);
 
-            std::string serialize_aligned(std::string payload, const HopID& pivot_txid);
+            std::string serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid);
 
             std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc);
 
@@ -52,17 +53,16 @@ namespace llarp
 
         namespace DATA
         {
-            std::string serialize(std::string payload, const RouterID& local);
+            std::string serialize(std::string_view payload, const RouterID& local);
 
-            std::string serialize_intermediate(std::string payload, const HopID& pivot_txid);
+            std::string serialize_intermediate(
+                const session_tag& tag, std::span<const std::byte> payload, const HopID& pivot_txid);
 
-            std::string serialize_inner(std::string body, session_tag tag);
-
-            std::pair<NetworkAddress, bstring> deserialize(oxenc::bt_dict_consumer&& btdc);
+            std::pair<NetworkAddress, std::span<const std::byte>> deserialize(oxenc::bt_dict_consumer&& btdc);
 
             std::pair<HopID, std::string> deserialize_intermediate(oxenc::bt_dict_consumer&& btdc);
 
-            std::pair<session_tag, std::vector<uint8_t>> deserialize_inner(std::string&& payload);
+            std::pair<session_tag, std::span<std::byte>> deserialize_inner(std::span<std::byte> payload);
 
         }  // namespace DATA
 

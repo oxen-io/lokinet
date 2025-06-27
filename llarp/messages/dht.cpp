@@ -20,8 +20,8 @@ namespace llarp
             oxenc::bt_dict_producer btdp;
 
             btdp.append("e", ecc.bt_payload());
-            if (remote.has_value())
-                btdp.append("i", remote->to_view());
+            if (remote)
+                btdp.append("i", remote->span());
 
             return std::move(btdp).str();
         }
@@ -33,10 +33,10 @@ namespace llarp
 
             try
             {
-                ecc = EncryptedClientContact{btdc.require<std::string_view>("e")};
+                ecc = EncryptedClientContact{btdc.require_span<std::byte>("e")};
 
                 if (btdc.skip_until("i"))
-                    sender.emplace(btdc.consume_span<std::byte, 32>());
+                    sender.emplace(btdc.consume_span<std::byte, RouterID::SIZE>());
             }
             catch (const std::exception& e)
             {
@@ -62,7 +62,7 @@ namespace llarp
         {
             oxenc::bt_dict_producer btdp;
 
-            btdp.append("k", location.to_view());
+            btdp.append("k", location.span());
 
             return std::move(btdp).str();
         }
@@ -73,7 +73,7 @@ namespace llarp
 
             try
             {
-                key.from_string(btdc.require<std::string_view>("k"));
+                key.assign(btdc.require_span<std::byte, hash_key::SIZE>("k"));
             }
             catch (const std::exception& e)
             {
@@ -104,7 +104,7 @@ namespace llarp
 
             try
             {
-                ecc = EncryptedClientContact{btdc.require<std::string_view>("x")};
+                ecc = EncryptedClientContact{btdc.require_span<std::byte>("x")};
             }
             catch (const std::exception& e)
             {
@@ -124,7 +124,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const std::string& name_hash)
+        std::string serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash)
         {
             oxenc::bt_dict_producer btdp;
 

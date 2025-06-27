@@ -22,12 +22,6 @@ namespace llarp
         void from_network_address(std::string_view str);
 
         bool from_relay_address(std::string_view str);
-
-        RouterID& operator=(std::span<const uint8_t, 32> ptr)
-        {
-            std::memcpy(data(), ptr.data(), ptr.size());
-            return *this;
-        }
     };
 
     inline bool operator==(const RouterID& lhs, const RouterID& rhs) { return lhs.as_array() == rhs.as_array(); }

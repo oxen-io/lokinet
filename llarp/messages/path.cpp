@@ -2,6 +2,8 @@
 
 #include "common.hpp"
 
+#include <llarp/util/bspan.hpp>
+
 namespace llarp
 {
 
@@ -9,12 +11,9 @@ namespace llarp
 
     namespace ONION
     {
-        std::string serialize_frames(std::vector<std::string>&& frames)
-        {
-            return oxenc::bt_serialize(std::move(frames));
-        }
+        std::string serialize_frames(const std::vector<std::string>& frames) { return oxenc::bt_serialize(std::move(frames)); }
 
-        std::vector<std::string> deserialize_frames(std::string_view&& buf)
+        std::vector<std::string> deserialize_frames(std::string_view buf)
         {
             return oxenc::bt_deserialize<std::vector<std::string>>(buf);
         }
@@ -24,11 +23,12 @@ namespace llarp
             - 'n' : Symmetric nonce used to encrypt the layer
             - 'x' : Encrypted payload transmitted to next recipient
         */
-        std::string serialize_hop(std::string_view key, const SymmNonce& nonce, const std::string& encrypted)
+        std::string serialize_hop(
+            std::span<const std::byte> key, const SymmNonce& nonce, std::span<const std::byte> encrypted)
         {
             oxenc::bt_dict_producer btdp;
             btdp.append("k", key);
-            btdp.append("n", nonce.to_view());
+            btdp.append("n", nonce.span());
             btdp.append("x", encrypted);
 
             return std::move(btdp).str();
@@ -42,9 +42,9 @@ namespace llarp
 
             try
             {
-                kx_data.pubkey.from_string(btdc.require<std::string_view>("k"));
-                kx_data.nonce.from_string(btdc.require<std::string_view>("n"));
-                payload = btdc.require<std::string_view>("x");
+                kx_data.pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+                kx_data.nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+                payload = btdc.require<std::string>("x");
             }
             catch (const std::exception& e)
             {
@@ -57,7 +57,7 @@ namespace llarp
             try
             {
                 kx_data.server_dh(local_sk);
-                kx_data.decrypt(detail::to_uspan(payload));
+                kx_data.decrypt(as_bspan(payload));
 
                 log::trace(logcat, "xchacha -> payload: {}", buffer_printer{payload});
 
@@ -79,9 +79,9 @@ namespace llarp
 
             try
             {
-                rid.from_string(btdc.require<std::string_view>("k"));
-                nonce.from_string(btdc.require<std::string_view>("n"));
-                payload = btdc.require<std::string_view>("x");
+                rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("k"));
+                nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+                payload = btdc.require<std::string>("x");
                 return ret;
             }
             catch (const std::exception& e)
@@ -97,9 +97,9 @@ namespace llarp
 
             try
             {
-                hop_id.from_string(btdc.require<std::string_view>("k"));
-                nonce.from_string(btdc.require<std::string_view>("n"));
-                payload = btdc.require<std::string_view>("x");
+                hop_id.assign(btdc.require_span<std::byte, HopID::SIZE>("k"));
+                nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+                payload = btdc.require<std::string>("x");
                 return ret;
             }
             catch (const std::exception& e)
@@ -141,25 +141,25 @@ namespace llarp
             */
             std::string serialize_hop(path::TransitHop& hop)
             {
-                std::string hop_payload = hop.bt_encode();
+                auto hop_payload = hop.bt_encode();
 
                 // client dh key derivation
                 hop.kx.client_dh(hop.router_id());
                 // encrypt payload
-                hop.kx.encrypt(detail::to_uspan(hop_payload));
+                hop.kx.encrypt(as_bspan(hop_payload));
                 // generate nonceXOR value
                 hop.kx.generate_xor();
 
                 log::trace(
                     logcat,
                     "Hop serialized; nonce: {}, remote router_id: {}, shared pk: {}, shared secret: {}, payload: {}",
-                    hop.kx.nonce.to_string(),
-                    hop.router_id().to_string(),
-                    hop.kx.pubkey.to_string(),
-                    hop.kx.shared_secret.to_string(),
+                    hop.kx.nonce,
+                    hop.router_id(),
+                    hop.kx.pubkey,
+                    hop.kx.shared_secret,
                     buffer_printer{hop_payload});
 
-                return ONION::serialize_hop(hop.kx.pubkey.to_view(), hop.kx.nonce, std::move(hop_payload));
+                return ONION::serialize_hop(hop.kx.pubkey.span(), hop.kx.nonce, as_bspan(hop_payload));
             }
 
             std::shared_ptr<path::TransitHop> deserialize_hop(
@@ -170,8 +170,8 @@ namespace llarp
 
                 try
                 {
-                    hop->kx.pubkey.from_string(btdc.require<std::string_view>("k"));
-                    hop->kx.nonce.from_string(btdc.require<std::string_view>("n"));
+                    hop->kx.pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+                    hop->kx.nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
                     payload = btdc.require<std::string_view>("x");
                 }
                 catch (const std::exception& e)
@@ -183,21 +183,21 @@ namespace llarp
                 log::trace(
                     logcat,
                     "Hop deserialized; nonce: {}, remote pk: {}, payload: {}",
-                    hop->kx.nonce.to_string(),
-                    hop->kx.pubkey.to_string(),
+                    hop->kx.nonce,
+                    hop->kx.pubkey,
                     buffer_printer{payload});
 
                 try
                 {
                     hop->kx.server_dh(r.identity());
-                    hop->kx.decrypt(detail::to_uspan(payload));
+                    hop->kx.decrypt(as_bspan(payload));
                     hop->kx.generate_xor();
 
                     log::trace(
                         logcat,
                         "Hop decrypted; nonce: {}, remote pk: {}, payload: {}",
-                        hop->kx.nonce.to_string(),
-                        hop->kx.pubkey.to_string(),
+                        hop->kx.nonce,
+                        hop->kx.pubkey,
                         buffer_printer{payload});
 
                     hop->deserialize(oxenc::bt_dict_consumer{std::move(payload)}, src, r);
@@ -208,7 +208,7 @@ namespace llarp
                     throw std::runtime_error{BAD_CRYPTO};
                 }
 
-                log::trace(logcat, "TransitHop data successfully deserialized: {}", hop->to_string());
+                log::trace(logcat, "TransitHop data successfully deserialized: {}", *hop);
                 return hop;
             }
         }  // namespace BUILD
@@ -219,7 +219,7 @@ namespace llarp
                 - 'e' : request endpoint being invoked
                 - 'p' : request payload
             */
-            std::string serialize(std::string endpoint, std::string payload)
+            std::string serialize(std::string_view endpoint, std::span<const std::byte> payload)
             {
                 oxenc::bt_dict_producer btdp;
                 btdp.append("e", endpoint);
@@ -227,11 +227,10 @@ namespace llarp
                 return std::move(btdp).str();
             }
 
-            std::string serialize_aligned(std::string payload, const HopID& pivot_txid)
+            std::string serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid)
             {
-                auto pivot_payload =
-                    ONION::serialize_hop(pivot_txid.to_view(), SymmNonce::make_random(), std::move(payload));
-                return serialize("path_control", std::move(pivot_payload));
+                auto pivot_payload = ONION::serialize_hop(pivot_txid, SymmNonce::make_random(), payload);
+                return serialize("path_control", as_bspan(pivot_payload));
             }
 
             std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -262,36 +261,29 @@ namespace llarp
             std::string serialize(std::string payload, const RouterID& local)
             {
                 oxenc::bt_dict_producer btdp;
-                btdp.append("i", local.to_view());
+                btdp.append("i", local.span());
                 btdp.append("p", payload);
                 return std::move(btdp).str();
             }
 
-            std::string serialize_intermediate(std::string payload, const HopID& pivot_txid)
+            std::string serialize_intermediate(
+                const session_tag& tag, std::span<const std::byte> payload, const HopID& pivot_txid)
             {
                 oxenc::bt_dict_producer btdp;
-                btdp.append("i", pivot_txid.to_view());
-                btdp.append("p", payload);
+                btdp.append("i", pivot_txid.span());
+                btdp.append_concat("p", tag.span(), payload);
                 return std::move(btdp).str();
             }
 
-            std::string serialize_inner(std::string body, session_tag tag)
+            std::pair<NetworkAddress, std::span<const std::byte>> deserialize(oxenc::bt_dict_consumer&& btdc)
             {
-                std::string payload{tag.view()};
-                payload.append(body);
-                return payload;
-            }
-
-            std::pair<NetworkAddress, bstring> deserialize(oxenc::bt_dict_consumer&& btdc)
-            {
-                std::pair<NetworkAddress, bstring> ret;
+                std::pair<NetworkAddress, std::span<const std::byte>> ret;
                 auto& [sender, payload] = ret;
 
                 try
                 {
                     sender = {RouterID{btdc.require_span<uint8_t, 32>("i")}, true};
-                    auto jank = btdc.require_span<std::byte>("p");
-                    payload.assign(jank.data(), jank.size());
+                    payload = btdc.require_span<std::byte>("p");
                     return ret;
                 }
                 catch (const std::exception& e)
@@ -308,7 +300,7 @@ namespace llarp
 
                 try
                 {
-                    hop_id.from_string(btdc.require<std::string_view>("i"));
+                    hop_id.assign(btdc.require_span<std::byte, HopID::SIZE>("i"));
                     payload = btdc.require<std::string>("p");
 
                     return ret;
@@ -320,17 +312,18 @@ namespace llarp
                 }
             }
 
-            std::pair<session_tag, std::vector<uint8_t>> deserialize_inner(std::string&& payload)
+            std::pair<session_tag, std::span<std::byte>> deserialize_inner(std::span<std::byte> payload)
             {
-                std::pair<session_tag, std::vector<uint8_t>> ret;
+                std::pair<session_tag, std::span<std::byte>> ret;
                 auto& [t, body] = ret;
 
                 try
                 {
-                    t.read({payload.data(), t.size()});
-                    body.resize(payload.size() - t.size());
-                    std::memmove(body.data(), payload.data() + t.size(), payload.size() - t.size());
+                    if (payload.size() < session_tag::SIZE)
+                        throw std::invalid_argument{"Deserialization failed: value is too short"};
 
+                    t.assign(payload.first<session_tag::SIZE>());
+                    body = payload.subspan<session_tag::SIZE>();
                     return ret;
                 }
                 catch (const std::exception& e)

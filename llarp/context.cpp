@@ -27,17 +27,24 @@ namespace llarp
 
     bool Context::is_up() const { return router && router->is_running(); }
 
+    bool Context::is_waiting() const { return router && !router->is_running(); }
+
     bool Context::looks_alive() const { return router && router->looks_alive(); }
 
-    int Context::run(Config conf)
+    void Context::start(Config conf)
     {
+        if (router)
+        {
+            log::error(logcat, "Context::start called but Lokinet is already running");
+            throw std::logic_error{"Lokinet is already started"};
+        }
         log::debug(logcat, "Initializing event loop...");
 
         loop = std::make_shared<quic::Loop>();
         log::debug(logcat, "Event loop initialized!");
 
-        auto done_promise = std::promise<void>();
-        auto done_future = done_promise.get_future();
+        std::promise<void> done_promise;
+        lifetime_waiter = done_promise.get_future();
 
         log::debug(logcat, "Initializing platform code...");
         auto plat = vpn::MakeNativePlatform(this);
@@ -52,55 +59,39 @@ namespace llarp
         catch (const std::exception& e)
         {
             log::error(logcat, "Failed to initialize router: {}", e.what());
-            return 2;
+            throw;
         }
-
-        done_future.wait();
-        router.reset();
-
-        if (std::lock_guard lock{close_waiter_mut}; close_waiter)
-        {
-            close_waiter->set_value();
-            close_waiter.reset();
-        }
-
-        return 0;
-    }
-
-    void Context::close_async()
-    {
-        {
-            std::lock_guard lock{close_waiter_mut};
-            if (close_waiter)
-                return;  // already closing
-            close_waiter.emplace();
-        }
-
-        loop->call([this] { handle_signal(SIGTERM); });
-    }
-
-    bool Context::is_stopping() const
-    {
-        std::lock_guard lock{close_waiter_mut};
-        return close_waiter.has_value();
     }
 
     void Context::wait()
     {
-        if (close_waiter)
-        {
-            close_waiter->get_future().wait();
-            close_waiter.reset();
-        }
+        if (!router)
+            return;
+        lifetime_waiter.get();
+        router.reset();
+        loop.reset();
     }
 
-    void Context::handle_signal(int sig)
+    void Context::stop()
     {
-        assert(loop->inside());
-        if (router && (sig == SIGINT || sig == SIGTERM))
+        if (!router)
+            return;
+        loop->call([this] { router->stop(); });
+    }
+
+    bool Context::is_stopping() const { return router && router->is_stopping(); }
+
+    void Context::signal(int sig)
+    {
+        if (router && (sig == SIGINT || sig == SIGTERM || sig == SIGKILL))
         {
-            log::warning(logcat, "Received signal SIG{}; stopping router...", sig == SIGINT ? "INT" : "TERM");
-            router->stop();
+            log::warning(
+                logcat,
+                "Received signal SIG{}; stopping router...",
+                sig == SIGINT        ? "INT"
+                    : sig == SIGTERM ? "TERM"
+                                     : "KILL");
+            stop();
         }
     }
 

@@ -651,7 +651,7 @@ namespace llarp
         auto _ccs = _contact_db->num_ccs();
 
         return "{}RCs:{} | RIDs:{} | CCs:{} | {}:{} | sessions:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
-            _is_service_node ? "Full Mesh:{} | "_format(detail::bool_alpha(_relay == _rcs, "YES", "NO")) : "",
+            _is_service_node ? "Full Mesh:{} | "_format(_relay == _rcs) : "",
             _rcs,
             _rids,
             _ccs,
@@ -884,7 +884,8 @@ namespace llarp
         }
 
         log::debug(logcat, "Creating Router::Tick() repeating event...");
-        _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); }, false);
+        _loop_ticker = _loop->call_every(
+            ROUTER_TICK_INTERVAL, [this] { tick(); }, false);
 
         _systemd_ticker = _loop->call_every(
             SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); }, false, true);

@@ -31,27 +31,22 @@ namespace llarp::rpc
     }
 
     // Fake packet source that serializes repsonses back into dns
-    class DummyPacketSource final : public dns::PacketSource_Base
+    class DummyPacketSource final : public dns::PacketSource
     {
         std::function<void(std::optional<dns::Message>)> func;
 
       public:
         quic::Address dumb;
 
-        template <typename Callable>
-        DummyPacketSource(Callable&& f) : func{std::forward<Callable>(f)}
-        {}
+        explicit DummyPacketSource(std::function<void(std::optional<dns::Message>)> func) : func{std::move(func)} {}
 
         bool would_loop(const quic::Address&, const quic::Address&) const override { return false; };
 
         /// send packet with src and dst address containing buf on this packet source
-        void send_to(const quic::Address&, const quic::Address&, IPPacket buf) const override
+        void send_udp(const quic::Address&, const quic::Address&, std::span<const std::byte> payload) const override
         {
-            func(dns::maybe_parse_dns_msg(buf.view()));
+            func(dns::maybe_parse_dns_msg(payload));
         }
-
-        /// stop reading packets and end operation
-        void stop() override {}
 
         /// returns the sockaddr we are bound on if applicable
         std::optional<quic::Address> bound_on() const override { return std::nullopt; }

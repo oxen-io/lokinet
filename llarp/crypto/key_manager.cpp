@@ -24,7 +24,7 @@ namespace llarp
             }
 
             identity_data = identity_key.to_eddata();
-            public_key = seckey_to_pubkey(identity_key);
+            public_key.assign(identity_key.pubkey_span());
 
             log::info(logcat, "Client public key: {}", public_key);
         }
@@ -36,7 +36,7 @@ namespace llarp
     {
         identity_key = std::move(newkey);
         identity_data = identity_key.to_eddata();
-        public_key = seckey_to_pubkey(identity_key);
+        public_key.assign(identity_key.pubkey_span());
         log::info(logcat, "Relay key manager updated secret key; new public key: {}", public_key);
     }
 

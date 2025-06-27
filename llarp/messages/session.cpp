@@ -3,6 +3,8 @@
 #include "common.hpp"
 #include "path.hpp"
 
+#include <llarp/util/bspan.hpp>
+
 namespace llarp
 {
     static auto logcat = llarp::log::Cat("session.msgs");
@@ -24,9 +26,9 @@ namespace llarp
             {
                 oxenc::bt_dict_producer btdp;
 
-                btdp.append("i", local.to_view());
-                btdp.append("p", local_pivot_txid.to_view());
-                btdp.append("r", remote_pivot_txid.to_view());
+                btdp.append("i", local.span());
+                btdp.append("p", local_pivot_txid.span());
+                btdp.append("r", remote_pivot_txid.span());
                 if (use_tun)
                     btdp.append("t", use_tun);
                 // TOTHINK: this auth field
@@ -58,12 +60,12 @@ namespace llarp
                 auto kx_data = shared_kx_data::generate();
 
                 kx_data.client_dh(remote);
-                kx_data.encrypt(llarp::detail::to_uspan(payload));
+                kx_data.encrypt(as_bspan(payload));
                 kx_data.generate_xor();
 
-                auto new_payload = ONION::serialize_hop(kx_data.pubkey.to_view(), kx_data.nonce, std::move(payload));
+                auto new_payload = ONION::serialize_hop(kx_data.pubkey, kx_data.nonce, as_bspan(payload));
 
-                return {PATH::CONTROL::serialize("session_init", std::move(new_payload)), std::move(kx_data)};
+                return {PATH::CONTROL::serialize("session_init", as_bspan(new_payload)), std::move(kx_data)};
             }
             catch (const std::exception& e)
             {
@@ -77,24 +79,18 @@ namespace llarp
         {
             try
             {
-                std::optional<std::string> maybe_auth = std::nullopt;
+                std::tuple<NetworkAddress, HopID, HopID, bool, std::optional<std::string>> result;
+                auto& [initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] = result;
 
                 RouterID init_rid;
-                init_rid.from_string(btdc.require<std::string_view>("i"));
-                NetworkAddress initiator{init_rid, true};
-                HopID remote_pivot_txid;
-                remote_pivot_txid.from_string(btdc.require<std::string_view>("p"));
-                HopID local_pivot_txid;
-                local_pivot_txid.from_string(btdc.require<std::string_view>("r"));
-                bool use_tun = btdc.maybe<bool>("t").value_or(false);
+                init_rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("i"));
+                initiator = {init_rid, true};
+                remote_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
+                local_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
+                use_tun = btdc.maybe<bool>("t").value_or(false);
                 maybe_auth = btdc.maybe<std::string>("u");
 
-                return {
-                    std::move(initiator),
-                    std::move(local_pivot_txid),
-                    std::move(remote_pivot_txid),
-                    use_tun,
-                    std::move(maybe_auth)};
+                return result;
             }
             catch (const std::exception& e)
             {
@@ -106,11 +102,12 @@ namespace llarp
         std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, bool, std::optional<std::string>> decrypt_deserialize(
             oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local)
         {
+            std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, bool, std::optional<std::string>> result;
+            auto& [kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] = result;
             SymmNonce nonce;
             PubKey shared_pubkey;
             std::string payload;
             SharedSecret shared;
-            shared_kx_data kx_data{};
 
             try
             {
@@ -124,16 +121,9 @@ namespace llarp
 
             try
             {
-                auto [initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] =
+                std::tie(initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
                     deserialize(oxenc::bt_dict_consumer{payload});
-
-                return {
-                    std::move(kx_data),
-                    std::move(initiator),
-                    std::move(local_pivot_txid),
-                    std::move(remote_pivot_txid),
-                    use_tun,
-                    std::move(maybe_auth)};
+                return result;
             }
             catch (const std::exception& e)
             {
@@ -153,9 +143,7 @@ namespace llarp
         {
             try
             {
-                session_tag tag;
-                tag.read(btdc.require<std::string_view>("t"));
-                return tag;
+                return session_tag{btdc.require_span<std::byte, session_tag::SIZE>("t")};
             }
             catch (const std::exception& e)
             {
@@ -178,9 +166,7 @@ namespace llarp
         {
             try
             {
-                session_tag tag;
-                tag.read(btdc.require<std::string_view>("t"));
-                return tag;
+                return session_tag{btdc.require_span<std::byte, session_tag::SIZE>("t")};
             }
             catch (const std::exception& e)
             {
@@ -210,8 +196,8 @@ namespace llarp
         {
             oxenc::bt_dict_producer btdp;
 
-            btdp.append("p", local_pivot_txid.to_view());
-            btdp.append("r", remote_pivot_txid.to_view());
+            btdp.append("p", local_pivot_txid.span());
+            btdp.append("r", remote_pivot_txid.span());
             btdp.append("t", t.view());
 
             return std::move(btdp).str();
@@ -219,22 +205,21 @@ namespace llarp
 
         std::tuple<session_tag, HopID, HopID> deserialize(oxenc::bt_dict_consumer&& btdc)
         {
-            session_tag t;
-            HopID remote_pivot_txid, local_pivot_txid;
+            std::tuple<session_tag, HopID, HopID> result;
+            auto& [t, remote_pivot_txid, local_pivot_txid] = result;
 
             try
             {
-                remote_pivot_txid.from_string(btdc.require<std::string_view>("p"));
-                local_pivot_txid.from_string(btdc.require<std::string_view>("r"));
-                t.read(btdc.require<std::string_view>("t"));
+                remote_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
+                local_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
+                t.assign(btdc.require_span<std::byte, session_tag::SIZE>("t"));
+                return result;
             }
             catch (const std::exception& e)
             {
                 log::warning(logcat, "Exception caught deserializing PathSwitch message: {}", e.what());
                 throw;
             }
-
-            return {std::move(t), std::move(remote_pivot_txid), std::move(local_pivot_txid)};
         }
 
     }  // namespace SessionPathSwitch

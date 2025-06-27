@@ -3,7 +3,6 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include <optional>
 
 namespace oxen::quic
 {
@@ -20,6 +19,12 @@ namespace llarp
     struct Config;
     class Router;
 
+    // Helper "context" that aids in starting up Lokinet.
+    //
+    // Note that this class is *not* thread-safe: only one thread should attempt to hold and
+    // interact with it to manage Lokinet.
+    //
+    // TODO FIXME this class seems unnecessary, we should get rid of it.
     struct Context
     {
         std::unique_ptr<Router> router;
@@ -28,35 +33,35 @@ namespace llarp
         Context();
         ~Context();
 
-        // Runs Lokinet.  Does not return until Lokinet stops, i.e. by something else calling
-        // close() or close_async().
-        int run(Config conf);
+        // Starts Lokinet; returns as soon as Lokinet is up and running (or throws if startup
+        // fails).
+        void start(Config conf);
 
-        void handle_signal(int sig);
+        // Waits for Lokinet to finish.  Note that this does not *trigger* such a shutdown; for that
+        // you would call `stop()` before this.
+        void wait();
+
+        // Call this to deliver a signal, such as SIGTERM or SIGINT to stop Lokinet if currently
+        // running.  (This can be called from any thread).
+        void signal(int sig);
+
+        // Initiates Lokinet shutdown, and returns immediately (without waiting for shutdown).  Call
+        // `wait()` after this if you also want to wait for shutdown to complete.
+        void stop();
 
         bool is_up() const;
 
-        bool looks_alive() const;
-
         bool is_stopping() const;
 
-        /// close async
-        void close_async();
+        // Returns true if Lokinet has stopped and `wait()` needs to be called to finish
+        // destruction.
+        bool is_waiting() const;
 
-        /// wait until closed and done (call close_async first, then this).
-        void wait();
-
-        /// close async + wait
-        void close()
-        {
-            close_async();
-            wait();
-        }
+        bool looks_alive() const;
 
         int androidFD = -1;
 
       private:
-        mutable std::mutex close_waiter_mut;
-        std::optional<std::promise<void>> close_waiter;
+        std::future<void> lifetime_waiter;
     };
 }  // namespace llarp

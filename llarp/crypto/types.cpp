@@ -118,8 +118,7 @@ namespace llarp
 
     void shared_kx_data::generate_xor()
     {
-        ShortHash xhash;
-        crypto::shorthash(xhash, shared_secret.data(), shared_secret.size());
+        auto xhash = crypto::shorthash(shared_secret);
         xor_nonce.assign(xhash.span().first<SymmNonce::SIZE>());
     }
 
@@ -139,16 +138,16 @@ namespace llarp
             throw std::runtime_error{"Server DH failed -- should this even ever happen?"};
     }
 
-    void shared_kx_data::encrypt(std::span<uint8_t> data)
+    void shared_kx_data::encrypt(std::span<std::byte> data)
     {
-        if (!crypto::xchacha20(data.data(), data.size(), shared_secret, nonce))
+        if (!crypto::xchacha20(data, shared_secret, nonce))
             throw std::runtime_error{"xchacha20 encryption failed -- should this even ever happen?"};
     }
 
-    // identical methods, separated for clarity of use/logging for now
-    void shared_kx_data::decrypt(std::span<uint8_t> data)
+    // identical method, separated for clarity of use/logging for now
+    void shared_kx_data::decrypt(std::span<std::byte> data)
     {
-        if (!crypto::xchacha20(data.data(), data.size(), shared_secret, nonce))
+        if (!crypto::xchacha20(data, shared_secret, nonce))
             throw std::runtime_error{"xchacha20 decryption failed -- should this even ever happen?"};
     }
 

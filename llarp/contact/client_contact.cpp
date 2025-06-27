@@ -1,9 +1,10 @@
 #include "client_contact.hpp"
 
-#include <oxenc/bt_serialize.h>
-
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+
+#include <oxenc/bt_serialize.h>
 
 #include <type_traits>
 
@@ -24,7 +25,7 @@ namespace llarp
           _exit_policy{std::move(policy)}
     {}
 
-    ClientContact::ClientContact(std::span<const unsigned char> buf) { bt_decode(oxenc::bt_dict_consumer{buf}); }
+    ClientContact::ClientContact(std::span<const std::byte> buf) { bt_decode(oxenc::bt_dict_consumer{buf}); }
 
     void ClientContact::update_intros(sorted_intro_set iset)
     {
@@ -44,7 +45,7 @@ namespace llarp
     }
 #endif
 
-    std::vector<unsigned char> ClientContact::bt_encode() const
+    std::vector<std::byte> ClientContact::bt_encode() const
     {
         oxenc::bt_dict_producer btdp;
         btdp.append<uint8_t>("", VERSION);
@@ -70,7 +71,7 @@ namespace llarp
         }
 
         auto encoded = btdp.view();
-        std::vector<unsigned char> ret;
+        std::vector<std::byte> ret;
         ret.resize(encoded.size());
         std::memcpy(ret.data(), encoded.data(), encoded.size());
         return ret;
@@ -84,7 +85,7 @@ namespace llarp
             throw std::runtime_error{
                 "Deserialized ClientContact with unsupported version {} (expected {})!"_format(version, VERSION)};
 
-        _pubkey.from_string(btdc.require<std::string_view>("a"));
+        _pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("a"));
 
         if (btdc.skip_until("e"))
             _exit_policy.emplace().bt_decode(btdc.consume_dict_consumer());
@@ -119,14 +120,14 @@ namespace llarp
             enc.blinded_pubkey.assign(derived_privatekey.to_pubkey().span());
             enc.encrypted = bt_encode();
 
-            if (not crypto::xchacha20(enc.encrypted.data(), enc.encrypted.size(), _pubkey.data(), enc.nonce.data()))
+            if (not crypto::xchacha20(enc.encrypted, _pubkey, enc.nonce))
                 throw std::runtime_error{"Failed to encrypt ClientContact bt-payload!"};
 
             enc.signed_at = llarp::time_now_ms();
 
             auto btdp = enc.bt_encode_for_signing();
-            btdp.append_signature("~", [&enc, this](std::span<const uint8_t> to_sign) {
-                if (not crypto::sign(enc.sig, derived_privatekey, to_sign.data(), to_sign.size()))
+            btdp.append_signature("~", [&enc, this](std::span<const std::byte> to_sign) {
+                if (not crypto::sign(enc.sig, derived_privatekey, to_sign))
                     throw std::runtime_error{"Failed to sign EncryptedClientContact payload!"};
                 return enc.sig.span();
             });
@@ -148,7 +149,10 @@ namespace llarp
             _pubkey.short_string(), _exit_policy ? ", exit" : "", _intros.size(), llarp::to_string(_protos));
     }
 
-    EncryptedClientContact::EncryptedClientContact(std::string_view buf) : _bt_payload{buf}
+    EncryptedClientContact::EncryptedClientContact(std::span<const std::byte> buf)
+        : EncryptedClientContact{std::string{reinterpret_cast<const char*>(buf.data()), buf.size()}}
+    {}
+    EncryptedClientContact::EncryptedClientContact(std::string buf) : _bt_payload{std::move(buf)}
     {
         bt_decode(oxenc::bt_dict_consumer{_bt_payload});
     }
@@ -164,16 +168,16 @@ namespace llarp
     {
         try
         {
-            blinded_pubkey.from_string(btdc.require<std::string_view>("i"));
-            nonce.from_string(btdc.require<std::string_view>("n"));
-            signed_at = std::chrono::milliseconds{btdc.require<uint64_t>("t")};
+            blinded_pubkey.assign(btdc.require_span<std::byte, hash_key::SIZE>("i"));
+            nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+            signed_at = std::chrono::milliseconds{btdc.require<int64_t>("t")};
 
             // TESTNET: TOFIX: change this after oxenc span PR is merged
             auto enc = btdc.require<std::string_view>("x");
             encrypted.resize(enc.size());
             std::memcpy(encrypted.data(), enc.data(), enc.size());
 
-            sig.from_string(btdc.require<std::string_view>("~"));
+            sig.assign(btdc.require_span<std::byte, Signature::SIZE>("~"));
         }
         catch (const std::exception& e)
         {
@@ -190,8 +194,7 @@ namespace llarp
     {
         std::optional<ClientContact> cc;
         auto plaintext = encrypted;
-        if (crypto::xchacha20(
-                reinterpret_cast<unsigned char*>(plaintext.data()), plaintext.size(), root.data(), nonce.data()))
+        if (crypto::xchacha20(plaintext, root, nonce))
         {
             log::debug(logcat, "EncryptedClientContact decrypted successfully...");
             cc.emplace(plaintext);
@@ -208,11 +211,11 @@ namespace llarp
         {
             oxenc::bt_dict_consumer btdc{_bt_payload};
 
-            btdc.require_signature("~", [this](std::span<const uint8_t> m, std::span<const uint8_t> s) {
+            btdc.require_signature("~", [this](std::span<const std::byte> m, std::span<const std::byte> s) {
                 if (s.size() != 64)
                     throw std::runtime_error{"Invalid signature: not 64 bytes"};
 
-                if (not crypto::verify(blinded_pubkey, m, s))
+                if (not crypto::verify(blinded_pubkey, m, s.first<64>()))
                     throw std::runtime_error{"Failed to verify EncryptedClientContact signature!"};
             });
         }

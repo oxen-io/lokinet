@@ -38,102 +38,45 @@ namespace llarp::dns
         void cancel();
 
         /// send a raw buffer back to the querier
-        virtual void send_reply(std::vector<uint8_t> buf) = 0;
+        virtual void send_reply(std::vector<std::byte> buf) = 0;
     };
 
-    class PacketSource_Base
+    class PacketSource
     {
       public:
-        virtual ~PacketSource_Base() = default;
+        /// stop reading packets and end operation
+        virtual ~PacketSource() = 0;
 
         /// return true if traffic with source and dest addresses would cause a
         /// loop in resolution and thus should not be sent to query handlers
         virtual bool would_loop(const quic::Address& to, const quic::Address& from) const = 0;
 
-        /// send packet with src and dst address containing buf on this packet source
-        /// two overrides, lets see which is more useful and drop ze ozzzerrrr
-        virtual void send_to(const quic::Address& to, const quic::Address& from, IPPacket data) const = 0;
-        virtual void send_to(const quic::Address& to, const quic::Address& from, std::vector<uint8_t> data) const
-        {
-            send_to(to, from, IPPacket{std::move(data)});
-        }
-
-        /// stop reading packets and end operation
-        virtual void stop() = 0;
+        /// send UDP payload with src and dst address containing buf on this packet source
+        virtual void send_udp(
+            const quic::Address& to, const quic::Address& from, std::span<const std::byte> payload) const = 0;
 
         /// returns the sockaddr we are bound on if applicable
         virtual std::optional<quic::Address> bound_on() const = 0;
-    };
-
-    /// a packet source which will override the sendto function of an wrapped packet source to
-    /// construct a raw ip packet as a reply
-    class PacketSource_Wrapper : public PacketSource_Base
-    {
-        std::weak_ptr<PacketSource_Base> _wrapped;
-        ip_pkt_hook _write_pkt;
-
-      public:
-        explicit PacketSource_Wrapper(std::weak_ptr<PacketSource_Base> wrapped, ip_pkt_hook write_packet)
-            : _wrapped{std::move(wrapped)}, _write_pkt{std::move(write_packet)}
-        {}
-
-        bool would_loop(const quic::Address& to, const quic::Address& from) const override
-        {
-            if (auto ptr = _wrapped.lock())
-                return ptr->would_loop(to, from);
-
-            return true;
-        }
-
-        void send_to(const quic::Address& to, const quic::Address& from, IPPacket data) const override
-        {
-            // TOFIX: this
-            (void)to;
-            (void)from;
-            (void)data;
-            _write_pkt(data);
-        }
-
-        void send_to(const quic::Address& to, const quic::Address& from, std::vector<uint8_t> data) const override
-        {
-            send_to(to, from, IPPacket{std::move(data)});
-        }
-
-        /// stop reading packets and end operation
-        void stop() override
-        {
-            if (auto ptr = _wrapped.lock())
-                ptr->stop();
-        }
-
-        /// returns the sockaddr we are bound on if applicable
-        std::optional<quic::Address> bound_on() const override
-        {
-            if (auto ptr = _wrapped.lock())
-                return ptr->bound_on();
-
-            return std::nullopt;
-        }
     };
 
     /// non complex implementation of QueryJob_Base for use in things that
     /// only ever called on the mainloop thread
     class QueryJob : public QueryJob_Base, std::enable_shared_from_this<QueryJob>
     {
-        std::shared_ptr<PacketSource_Base> src;
+        std::shared_ptr<PacketSource> src;
         const quic::Address resolver;
         const quic::Address asker;
 
       public:
         explicit QueryJob(
-            std::shared_ptr<PacketSource_Base> source,
+            std::shared_ptr<PacketSource> source,
             const Message& query,
             const quic::Address& to_,
             const quic::Address& from_)
             : QueryJob_Base{query}, src{std::move(source)}, resolver{to_}, asker{from_}
         {}
 
-        void send_reply(std::vector<uint8_t> buf) override { src->send_to(asker, resolver, IPPacket{std::move(buf)}); }
+        void send_reply(std::vector<std::byte> buf) override { src->send_udp(asker, resolver, buf); }
     };
 
     /// handler of dns query hooking
@@ -170,18 +113,18 @@ namespace llarp::dns
         /// attempt to handle a dns message
         /// returns true if we consumed this query and it should not be processed again
         virtual bool maybe_hook_dns(
-            std::shared_ptr<PacketSource_Base> source,
+            const std::shared_ptr<PacketSource>& source,
             const Message& query,
             const quic::Address& to,
             const quic::Address& from) = 0;
     };
 
     // Base class for DNS proxy
-    class Server : public std::enable_shared_from_this<Server>
+    class Server
     {
       protected:
         /// add a packet source to this server, does share ownership
-        void add_packet_source(std::shared_ptr<PacketSource_Base> resolver);
+        void add_packet_source(std::shared_ptr<PacketSource> resolver);
         /// add a resolver to this packet handler, does share ownership
         void add_resolver(std::shared_ptr<Resolver_Base> resolver);
 
@@ -203,10 +146,10 @@ namespace llarp::dns
         void add_resolver(std::weak_ptr<Resolver_Base> resolver);
 
         /// add a packet source to this server, does not share ownership
-        void add_packet_source(std::weak_ptr<PacketSource_Base> resolver);
+        void add_packet_source(std::weak_ptr<PacketSource> resolver);
 
         /// create a packet source bound on bindaddr but does not add it
-        virtual std::shared_ptr<PacketSource_Base> make_packet_source_on(
+        virtual std::shared_ptr<PacketSource> make_packet_source_on(
             const quic::Address& bindaddr, const llarp::DnsConfig& conf);
 
         /// sets up all internal binds and such and begins operation
@@ -226,11 +169,11 @@ namespace llarp::dns
         /// feed a packet buffer from a packet source.
         /// returns true if we decided to process the packet and consumed it
         /// returns false if we dont want to process the packet
-        bool maybe_handle_packet(
-            std::shared_ptr<PacketSource_Base> pktsource,
+        bool maybe_handle_payload(
+            const std::shared_ptr<PacketSource>& pktsource,
             const quic::Address& resolver,
             const quic::Address& from,
-            IPPacket buf);
+            std::span<const std::byte> buf);
 
         /// set which dns mode we are in.
         /// true for intercepting all queries. false for just .loki and .snode
@@ -247,8 +190,8 @@ namespace llarp::dns
         std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>> _owned_resolvers;
         std::set<std::weak_ptr<Resolver_Base>, CompareWeakPtr<Resolver_Base>> _resolvers;
 
-        std::vector<std::shared_ptr<PacketSource_Base>> _owned_packet_sources;
-        std::vector<std::weak_ptr<PacketSource_Base>> _packet_sources;
+        std::vector<std::shared_ptr<PacketSource>> _owned_packet_sources;
+        std::vector<std::weak_ptr<PacketSource>> _packet_sources;
     };
 
 }  // namespace llarp::dns

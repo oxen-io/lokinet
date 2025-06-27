@@ -12,11 +12,7 @@
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
 
-#include <algorithm>
 #include <functional>
-#include <list>
-#include <map>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -74,7 +70,7 @@ namespace llarp
 
             void Tick(std::chrono::milliseconds now);
 
-            bool resolve_sns(const std::string& name_hash, std::function<void(quic::message)> func);
+            bool resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
 
             bool fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
 
@@ -83,13 +79,15 @@ namespace llarp
             bool publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
 
             bool send_path_control_message(
-                std::string method, std::string body, std::function<void(quic::message)> func) override;
+                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::string body) override;
+            bool send_path_data_message(std::span<std::byte> body) override;
 
-            std::string make_path_message(std::string payload);
+            // NB: mutates payload!
+            std::string make_path_message(std::span<std::byte> payload);
 
-            std::string make_path_data_message(std::string payload);
+            // NB: mutates payload!
+            std::string make_path_data_message(std::span<std::byte> payload);
 
             bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 

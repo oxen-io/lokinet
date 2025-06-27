@@ -100,16 +100,20 @@ namespace llarp
 
         const uint8_t* data() const { return _data.data(); }
 
-        std::span<uint8_t, SIZE> span() { return std::span<uint8_t, SIZE>{_data}; }
-        std::span<const uint8_t, SIZE> span() const { return std::span<const uint8_t, SIZE>{_data}; }
-        std::span<std::byte, SIZE> byte_span()
+        std::span<std::byte, SIZE> span()
         {
             return std::span<std::byte, SIZE>{reinterpret_cast<std::byte*>(_data.data()), SIZE};
         }
-        std::span<const std::byte, SIZE> byte_span() const
+        std::span<const std::byte, SIZE> span() const
         {
             return std::span<const std::byte, SIZE>{reinterpret_cast<const std::byte*>(_data.data()), SIZE};
         }
+
+        // Implicit conversion to span
+        operator std::span<std::byte, SIZE>() { return span(); }
+        operator std::span<std::byte>() { return span(); }
+        operator std::span<const std::byte, SIZE>() const { return span(); }
+        operator std::span<const std::byte>() const { return span(); }
 
         bool is_zero() const
         {
@@ -132,14 +136,6 @@ namespace llarp
 
         typename std::array<uint8_t, SIZE>::const_iterator end() const { return _data.cend(); }
 
-        bool from_string(std::string_view b)
-        {
-            if (b.size() != sz)
-                return false;
-
-            std::memcpy(_data.data(), b.data(), b.size());
-            return true;
-        }
         bool from_base32z(std::string_view b32z)
         {
             if (b32z.size() != oxenc::to_base32z_size(sz) || !oxenc::is_base32z(b32z))

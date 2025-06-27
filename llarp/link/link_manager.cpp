@@ -9,6 +9,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 
 #include <oxen/quic/context.hpp>
 #include <oxenc/bt_producer.h>
@@ -243,6 +244,21 @@ namespace llarp
             });
         }
     }  // namespace link
+
+    // These requests come over a path (as a "path_control" request),
+    // we may or may not need to make a request to another relay,
+    // then respond (onioned) back along the path.
+    std::unordered_map<std::string_view, void (LinkManager::*)(quic::message, std::optional<std::string>)>
+        LinkManager::path_requests = {
+            {"path_control"sv, &LinkManager::_handle_path_control},
+            {"publish_cc"sv, &LinkManager::_handle_publish_cc},
+            {"find_cc"sv, &LinkManager::_handle_find_cc},
+            {"fetch_rcs"sv, &LinkManager::_handle_fetch_rcs},
+            {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
+            {"session_init"sv, &LinkManager::_handle_initiate_session},
+            {"session_close"sv, &LinkManager::_handle_close_session},
+            {"path_switch"sv, &LinkManager::_handle_path_switch},
+            {"path_ping"sv, &LinkManager::_handle_path_ping}};
 
     std::tuple<size_t, size_t, size_t, size_t> LinkManager::connection_stats() const { return ep->connection_stats(); }
 
@@ -1139,7 +1155,7 @@ namespace llarp
         try
         {
             oxenc::bt_dict_consumer btdc{m.body()};
-            source.from_string(btdc.require<std::string_view>("s"));
+            source.assign(btdc.require_span<std::byte, RouterID::SIZE>("s"));
         }
         catch (const std::exception& e)
         {
@@ -1170,10 +1186,10 @@ namespace llarp
                 btlp.append(rid.to_view());
         }
 
-        btdp.append_signature("~", [this](std::span<const uint8_t> to_sign) {
-            std::array<unsigned char, 64> sig;
+        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
+            std::array<std::byte, SIGSIZE> sig;
 
-            if (!crypto::sign(sig.data(), _router.identity(), to_sign))
+            if (!crypto::sign(sig, _router.identity(), to_sign))
                 throw std::runtime_error{"Failed to sign fetch RouterIDs response"};
 
             return sig;
@@ -1489,12 +1505,7 @@ namespace llarp
             // for (auto& element : frames)
             for (size_t i = 0; i < n_frames - 1; ++i)
             {
-                crypto::onion(
-                    reinterpret_cast<unsigned char*>(frames[i].data()),
-                    frames[i].size(),
-                    hop->kx.shared_secret,
-                    onion_nonce,
-                    onion_nonce);
+                crypto::onion(as_bspan(frames[i]), hop->kx.shared_secret, onion_nonce, onion_nonce);
             }
 
             // randomize final frame
@@ -1572,17 +1583,12 @@ namespace llarp
 
             for (auto& hop : path->hops)
             {
-                nonce = crypto::onion(
-                    reinterpret_cast<unsigned char*>(payload.data()),
-                    payload.size(),
-                    hop.kx.shared_secret,
-                    nonce,
-                    hop.kx.xor_nonce);
+                nonce = crypto::onion(as_bspan(payload), hop.kx.shared_secret, nonce, hop.kx.xor_nonce);
 
                 log::trace(logcat, "xchacha20 -> {}", buffer_printer{payload});
             }
 
-            return handle_path_request(std::move(m), std::move(payload));
+            return handle_path_request(std::move(m), as_bspan(payload));
         }
 
         auto hop = _router.path_context.get_transit_hop(hop_id);
@@ -1595,12 +1601,7 @@ namespace llarp
 
         auto onion_nonce = nonce ^ hop->kx.xor_nonce;
 
-        crypto::onion(
-            reinterpret_cast<unsigned char*>(payload.data()),
-            payload.size(),
-            hop->kx.shared_secret,
-            onion_nonce,
-            hop->kx.xor_nonce);
+        crypto::onion(as_bspan(payload), hop->kx.shared_secret, onion_nonce, hop->kx.xor_nonce);
 
         if (not inner_body)
         {
@@ -1608,7 +1609,7 @@ namespace llarp
             if (hop->terminal_hop)
             {
                 log::debug(logcat, "We are terminal hop for path request: {}", hop->to_string());
-                return handle_path_request(std::move(m), std::move(payload));
+                return handle_path_request(std::move(m), as_bspan(payload));
             }
 
             log::debug(logcat, "We are intermediate hop for path request: {}", hop->to_string());
@@ -1628,7 +1629,7 @@ namespace llarp
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        std::string new_payload = ONION::serialize_hop(next_ids->second.to_view(), onion_nonce, std::move(payload));
+        std::string new_payload = ONION::serialize_hop(next_ids->second, onion_nonce, as_bspan(payload));
 
         send_control_message(
             next_ids->first,
@@ -1707,17 +1708,12 @@ namespace llarp
 
                 for (auto& hop : path->hops)
                 {
-                    nonce = crypto::onion(
-                        reinterpret_cast<unsigned char*>(payload.data()),
-                        payload.size(),
-                        hop.kx.shared_secret,
-                        nonce,
-                        hop.kx.xor_nonce);
+                    nonce = crypto::onion(as_bspan(payload), hop.kx.shared_secret, nonce, hop.kx.xor_nonce);
 
                     log::trace(logcat, "xchacha20 -> {}", buffer_printer{payload});
                 }
 
-                return handle_path_session_data(std::move(payload));
+                return handle_path_session_data(as_bspan(payload));
             }
 
             auto hop = _router.path_context.get_transit_hop(hop_id);
@@ -1730,12 +1726,7 @@ namespace llarp
 
             auto onion_nonce = nonce ^ hop->kx.xor_nonce;
 
-            crypto::onion(
-                reinterpret_cast<unsigned char*>(payload.data()),
-                payload.size(),
-                hop->kx.shared_secret,
-                onion_nonce,
-                hop->kx.xor_nonce);
+            crypto::onion(as_bspan(payload), hop->kx.shared_secret, onion_nonce, hop->kx.xor_nonce);
 
             std::optional<std::pair<RouterID, HopID>> next_ids = std::nullopt;
             std::string next_payload;
@@ -1777,18 +1768,13 @@ namespace llarp
                 if (hop_id == next_ids->second)
                 {
                     log::trace(logcat, "Received path data for local relay: {}", buffer_printer{intermediate});
-                    return handle_path_session_data(std::move(intermediate));
+                    return handle_path_session_data(as_bspan(intermediate));
                 }
 
                 log::debug(logcat, "Bridging path data message to hop: {}", next_hop->to_string());
                 onion_nonce ^= next_hop->kx.xor_nonce;
 
-                crypto::onion(
-                    reinterpret_cast<unsigned char*>(intermediate.data()),
-                    intermediate.size(),
-                    next_hop->kx.shared_secret,
-                    onion_nonce,
-                    next_hop->kx.xor_nonce);
+                crypto::onion(as_bspan(intermediate), next_hop->kx.shared_secret, onion_nonce, next_hop->kx.xor_nonce);
 
                 if (not next_ids)
                 {
@@ -1797,7 +1783,7 @@ namespace llarp
                     return;
                 }
 
-                next_payload = ONION::serialize_hop(next_ids->second.to_view(), onion_nonce, std::move(intermediate));
+                next_payload = ONION::serialize_hop(next_ids->second, onion_nonce, as_bspan(intermediate));
             }
             else
             {
@@ -1809,22 +1795,22 @@ namespace llarp
                     return;
                 }
 
-                next_payload = ONION::serialize_hop(next_ids->second.to_view(), onion_nonce, std::move(payload));
+                next_payload = ONION::serialize_hop(next_ids->second, onion_nonce, as_bspan(payload));
             }
 
             send_data_message(next_ids->first, std::move(next_payload));
         });
     }
 
-    void LinkManager::handle_path_session_data(std::string payload)
+    void LinkManager::handle_path_session_data(std::span<std::byte> payload)
     {
         try
         {
-            auto [tag, data] = PATH::DATA::deserialize_inner(std::move(payload));
+            auto [tag, data] = PATH::DATA::deserialize_inner(payload);
 
             if (auto session = _router.session_endpoint().get_session(tag))
             {
-                session->recv_path_data_message(std::move(data));
+                session->recv_path_data_message(data);
             }
             else
             {
@@ -1837,7 +1823,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_path_request(quic::message m, std::string payload)
+    void LinkManager::handle_path_request(quic::message m, std::span<const std::byte> payload)
     {
         std::string endpoint, body;
 

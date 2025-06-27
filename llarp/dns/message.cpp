@@ -1,6 +1,7 @@
 #include "message.hpp"
 
 #include "dns.hpp"
+#include "name.hpp"
 #include "srv_data.hpp"
 
 #include <llarp/net/ip_packet.hpp>
@@ -43,14 +44,6 @@ namespace llarp::dns
             return false;
         if (!buf->read_uint16(_ar_count))
             return false;
-        return true;
-    }
-
-    bool MessageHeader::decode(std::span<uint8_t> b)
-    {
-        std::memcpy(_data.data(), b.data(), sizeof(_data));
-        for (auto& d : _data)
-            oxenc::big_to_host_inplace(d);
         return true;
     }
 
@@ -145,9 +138,9 @@ namespace llarp::dns
         return nlohmann::json{{"questions", ques}, {"answers", ans}};
     }
 
-    std::vector<uint8_t> Message::to_buffer() const
+    std::vector<std::byte> Message::to_buffer() const
     {
-        std::vector<uint8_t> tmp;
+        std::vector<std::byte> tmp;
         tmp.resize(1500);
         llarp_buffer_t buf{tmp};
         if (not Encode(&buf))
@@ -385,13 +378,13 @@ namespace llarp::dns
             "additional={{{}}}]",
             hdr_id,
             hdr_fields,
-            fmt::format("{}", fmt::join(questions, ",")),
-            fmt::format("{}", fmt::join(answers, ",")),
-            fmt::format("{}", fmt::join(authorities, ",")),
-            fmt::format("{}", fmt::join(additional, ",")));
+            fmt::join(questions, ","),
+            fmt::join(answers, ","),
+            fmt::join(authorities, ","),
+            fmt::join(additional, ","));
     }
 
-    std::optional<Message> maybe_parse_dns_msg(std::string_view b)
+    std::optional<Message> maybe_parse_dns_msg(std::span<const std::byte> b)
     {
         MessageHeader hdr{};
         llarp_buffer_t buf{b};
@@ -399,9 +392,9 @@ namespace llarp::dns
         if (not hdr.Decode(&buf))
             return std::nullopt;
 
-        Message msg{hdr};
-        if (not msg.Decode(&buf))
-            return std::nullopt;
+        auto msg = std::make_optional<Message>(hdr);
+        if (not msg->Decode(&buf))
+            msg.reset();
 
         return msg;
     }

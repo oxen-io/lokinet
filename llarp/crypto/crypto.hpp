@@ -8,91 +8,70 @@
 
 #include <cstdint>
 
-namespace llarp
+namespace llarp::crypto
 {
-    /*
-        TODO:
-          - make uint8_t pointers const where needed
-    */
+    /// decrypt cipherText given the key generated from name
+    std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
-    namespace crypto
-    {
-        /// decrypt cipherText given the key generated from name
-        std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
+    /// xchacha symmetric cipher
+    bool xchacha20(std::span<std::byte> buf, const SharedSecret&, const SymmNonce&);
 
-        /// xchacha symmetric cipher
-        bool xchacha20(uint8_t* buf, size_t size, const SharedSecret&, const SymmNonce&);
-        bool xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce);
+    SymmNonce onion(
+        std::span<std::byte> buf, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor);
 
-        SymmNonce onion(
-            unsigned char* buf,
-            size_t size,
-            const SharedSecret& k,
-            const SymmNonce& nonce,
-            const SymmNonce& xor_factor);
+    /// path dh creator's side
+    bool dh_client(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
 
-        /// path dh creator's side
-        bool dh_client(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
+    /// path dh relay side
+    bool dh_server(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
+    bool dh_server(uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_sk, const uint8_t* nonce);
 
-        /// path dh relay side
-        bool dh_server(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
-        bool dh_server(uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_sk, const uint8_t* nonce);
+    /// blake2b 256 bit
+    void shorthash(std::span<std::byte, SHORTHASHSIZE> out, std::span<const std::byte> buf);
+    AlignedBuffer<SHORTHASHSIZE> shorthash(std::span<const std::byte> buf);
 
-        /// blake2b 256 bit
-        bool shorthash(ShortHash&, uint8_t*, size_t size);
-        std::string shorthash(const std::string& to_hash);
+    /// ed25519 sign
+    bool sign(std::span<std::byte, SIGSIZE> out, const Ed25519SecretKey& secret, std::span<const std::byte> buf);
 
-        /// blake2s 256 bit hmac
-        bool hmac(uint8_t*, const uint8_t*, size_t, const SharedSecret&);
+    /// ed25519 sign (custom with derived keys)
+    bool sign(std::span<std::byte, SIGSIZE> out, const Ed25519PrivateData& privkey, std::span<const std::byte> buf);
 
-        /// ed25519 sign
-        bool sign(Signature&, const Ed25519SecretKey&, uint8_t* buf, size_t size);
+    /// ed25519 verify
+    bool verify(
+        std::span<const std::byte, PUBKEYSIZE> pub,
+        std::span<const std::byte> data,
+        std::span<const std::byte, SIGSIZE> sig);
 
-        /// ed25519 sign, using pointers
-        bool sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size);
-        bool sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf);
+    /// Used in path-build and session initiation messages. Derives a shared secret key for symmetric DH, encrypting
+    /// the given payload in-place. Will throw on failure of either the client DH derivation or the xchacha20
+    /// payload mutation
+    void derive_encrypt_outer_wrapping(
+        const Ed25519SecretKey& shared_key,
+        SharedSecret& secret,
+        const SymmNonce& nonce,
+        const RouterID& remote,
+        std::span<std::byte> payload);
 
-        /// ed25519 sign (custom with derived keys)
-        bool sign(Signature&, const Ed25519PrivateData&, const uint8_t* buf, size_t size);
+    /// Used in receiving path-build and session initiation messages. Derives a shared secret key using an ephemeral
+    /// pubkey and the provided nonce. The encrypted payload is mutated in-place. Will throw on failure of either
+    /// the server DH derivation or the xchacha20 payload mutation
+    void derive_decrypt_outer_wrapping(
+        const Ed25519SecretKey& local,
+        SharedSecret& shared,
+        const PubKey& remote,
+        const SymmNonce& nonce,
+        std::span<std::byte> encrypted);
 
-        /// ed25519 verify
-        bool verify(const PubKey&, std::span<const uint8_t>, std::span<const uint8_t>);
-        bool verify(const PubKey&, const uint8_t*, size_t, const Signature&);
-        bool verify(std::span<const uint8_t>, std::span<const uint8_t>, std::span<const uint8_t>);
+    std::array<unsigned char, 32> make_scalar(const PubKey& k, uint64_t domain);
 
-        /// Used in path-build and session initiation messages. Derives a shared secret key for symmetric DH, encrypting
-        /// the given payload in-place. Will throw on failure of either the client DH derivation or the xchacha20
-        /// payload mutation
-        void derive_encrypt_outer_wrapping(
-            const Ed25519SecretKey& shared_key,
-            SharedSecret& secret,
-            const SymmNonce& nonce,
-            const RouterID& remote,
-            std::span<uint8_t> payload);
+    /// derive sub keys for public keys.  hash is really only intended for
+    /// testing ands key_n if given.
+    bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root, uint64_t key_n);
 
-        /// Used in receiving path-build and session initiation messages. Derives a shared secret key using an ephemeral
-        /// pubkey and the provided nonce. The encrypted payload is mutated in-place. Will throw on failure of either
-        /// the server DH derivation or the xchacha20 payload mutation
-        void derive_decrypt_outer_wrapping(
-            const Ed25519SecretKey& local,
-            SharedSecret& shared,
-            const PubKey& remote,
-            const SymmNonce& nonce,
-            std::span<uint8_t> encrypted);
+    Ed25519SecretKey generate_identity();
 
-        std::array<unsigned char, 32> make_scalar(const PubKey& k, uint64_t domain);
+    bool check_identity_privkey(const Ed25519SecretKey&);
 
-        /// derive sub keys for public keys.  hash is really only intended for
-        /// testing ands key_n if given.
-        bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root, uint64_t key_n);
+    bool check_passwd_hash(std::string pwhash, std::string challenge);
 
-        Ed25519SecretKey generate_identity();
-
-        bool check_identity_privkey(const Ed25519SecretKey&);
-
-        bool check_passwd_hash(std::string pwhash, std::string challenge);
-    };  // namespace crypto
-
-    std::span<const uint8_t, 32> seckey_to_pubkey(const Ed25519SecretKey& secret) { return secret.span().last<32>(); }
-
-}  // namespace llarp
+}  // namespace llarp::crypto

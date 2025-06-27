@@ -252,24 +252,15 @@ namespace llarp
         // These requests come over a path (as a "path_control" request),
         // we may or may not need to make a request to another relay,
         // then respond (onioned) back along the path.
-        std::unordered_map<std::string_view, void (LinkManager::*)(quic::message, std::optional<std::string>)>
-            path_requests = {
-                {"path_control"sv, &LinkManager::_handle_path_control},
-                {"publish_cc"sv, &LinkManager::_handle_publish_cc},
-                {"find_cc"sv, &LinkManager::_handle_find_cc},
-                {"fetch_rcs"sv, &LinkManager::_handle_fetch_rcs},
-                {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
-                {"session_init"sv, &LinkManager::_handle_initiate_session},
-                {"session_close"sv, &LinkManager::_handle_close_session},
-                {"path_switch"sv, &LinkManager::_handle_path_switch},
-                {"path_ping"sv, &LinkManager::_handle_path_ping}};
+        static std::unordered_map<std::string_view, void (LinkManager::*)(quic::message, std::optional<std::string>)>
+            path_requests;
 
         // Path relaying
         void handle_path_data_message(quic::datagram dgram);
         void handle_path_control(quic::message);
-        void handle_path_request(quic::message, std::string payload);
-
-        void handle_path_session_data(std::string payload);
+        void handle_path_request(quic::message, std::span<const std::byte> payload);
+        // NB: mutates payload
+        void handle_path_session_data(std::span<std::byte> payload);
 
         // Path responses
         void handle_path_latency_response(quic::message);

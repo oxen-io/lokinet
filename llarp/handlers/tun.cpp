@@ -9,6 +9,7 @@
 #include <llarp/constants/platform.hpp>
 #include <llarp/contact/sns.hpp>
 #include <llarp/dns/dns.hpp>
+#include <llarp/dns/name.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router/route_poker.hpp>
 #include <llarp/router/router.hpp>
@@ -20,7 +21,7 @@ namespace llarp::handlers
     static auto logcat = log::Cat("tun");
 
     bool TunEndpoint::maybe_hook_dns(
-        std::shared_ptr<dns::PacketSource_Base> source,
+        const std::shared_ptr<dns::PacketSource>& source,
         const dns::Message& query,
         const quic::Address& to,
         const quic::Address& from)
@@ -36,7 +37,7 @@ namespace llarp::handlers
 
     /// Intercepts DNS IP packets on platforms where binding to a low port isn't viable.
     /// (windows/macos/ios/android ... aka everything that is not linux... funny that)
-    class DnsInterceptor : public dns::PacketSource_Base
+    class DnsInterceptor : public dns::PacketSource
     {
         ip_pkt_hook _hook;
         quic::Address _our_ip;  // maybe should be an IP type...?
@@ -49,18 +50,18 @@ namespace llarp::handlers
 
         ~DnsInterceptor() override = default;
 
-        void send_to(const quic::Address& to, const quic::Address& from, IPPacket data) const override
+        void send_udp(
+            const quic::Address& to, const quic::Address& from, std::span<const std::byte> payload) const override
         {
-            if (data.empty())
+            log::critical(logcat, "DNS interceptor FIXME!");
+            if (payload.empty())
                 return;
             // FIXME: this
             (void)to;
             (void)from;
-            (void)data;
+            (void)payload;
             // _hook(data.make_udp(to, from));
         }
-
-        void stop() override {}
 
         std::optional<quic::Address> bound_on() const override { return std::nullopt; }
 
@@ -93,7 +94,7 @@ namespace llarp::handlers
         quic::Address _our_ip;
 
       public:
-        std::shared_ptr<dns::PacketSource_Base> pkt_source;
+        std::shared_ptr<dns::PacketSource> pkt_source;
 
         ~TunDNS() override = default;
 
@@ -107,7 +108,7 @@ namespace llarp::handlers
                 _our_ip.set_port(_query_bind->port());
         }
 
-        std::shared_ptr<dns::PacketSource_Base> make_packet_source_on(
+        std::shared_ptr<dns::PacketSource> make_packet_source_on(
             const quic::Address&, const llarp::DnsConfig& conf) override
         {
             (void)_tun;
@@ -138,8 +139,8 @@ namespace llarp::handlers
 
         if (dns_config.l3_intercept)
         {
-            auto dns = std::make_shared<TunDNS>(this, dns_config);
-            _dns = dns;
+            _dns = std::make_unique<TunDNS>(this, dns_config);
+            auto* dns = static_cast<TunDNS*>(_dns.get());
 
             uint16_t p = 53;
 
@@ -148,10 +149,7 @@ namespace llarp::handlers
                 try
                 {
                     _packet_router->add_udp_handler(p, [this, dns](IPPacket pkt) {
-                        auto dns_pkt_src = dns->pkt_source;
-
-                        if (dns->maybe_handle_packet(
-                                std::move(dns_pkt_src), pkt.destination(), pkt.source(), std::move(pkt)))
+                        if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(), pkt.udp_data()))
                             return;
 
                         handle_outbound_packet(std::move(pkt));
@@ -165,7 +163,7 @@ namespace llarp::handlers
             }
         }
         else
-            _dns = std::make_shared<dns::Server>(_router.loop(), dns_config, info.index);
+            _dns = std::make_unique<dns::Server>(_router.loop(), dns_config, info.index);
 
         _dns->add_resolver(weak_from_this());
         _dns->start();
@@ -1009,7 +1007,7 @@ namespace llarp::handlers
             return;
         }
 
-        log::trace(logcat, "outbound packet: {}: {}", pkt.info_line(), buffer_printer{pkt.uview()});
+        log::trace(logcat, "outbound packet: {}: {}", pkt.info_line(), buffer_printer{pkt.span()});
 
         src = pkt.source_ipv4();
         dest = pkt.dest_ipv4();
@@ -1039,7 +1037,7 @@ namespace llarp::handlers
                     pkt.size(),
                     remote,
                     pkt.info_line());
-                session->send_path_data_message(std::move(pkt).steal_payload());
+                session->send_path_data_message(pkt.span());
             }
             else
             {

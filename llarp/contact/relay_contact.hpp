@@ -145,7 +145,7 @@ namespace llarp
     struct LocalRC final : public RelayContact
     {
       private:
-        ustring _signature;
+        std::array<std::byte, 64> _signature;
         Ed25519SecretKey _secret_key;
 
         void bt_sign_and_store(oxenc::bt_dict_producer&& btdp);

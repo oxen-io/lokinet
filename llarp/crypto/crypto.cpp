@@ -1,6 +1,7 @@
 #include "crypto.hpp"
 
 #include <llarp/contact/keys.hpp>
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/random.hpp>
 
@@ -21,7 +22,7 @@
 #include <crypt.h>
 #endif
 
-namespace llarp
+namespace llarp::crypto
 {
     static auto logcat = log::Cat("crypto");
 
@@ -66,7 +67,7 @@ namespace llarp
                 != -1;
         }
 
-        log::warning(logcat, "crypto::dh_client - dh failed");
+        log::warning(logcat, "dh_client - dh failed");
         return false;
     }
 
@@ -81,25 +82,32 @@ namespace llarp
                 != -1;
         }
 
-        log::warning(logcat, "crypto::dh_server - dh failed");
+        log::warning(logcat, "dh_server - dh failed");
         return false;
     }
 
-    std::optional<RouterID> crypto::maybe_decrypt_name(
-        std::string_view ciphertext, SymmNonce nonce, std::string_view name)
+    std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view namestr)
     {
         const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
         if (payloadsize != 32)
-            return {};
+            return std::nullopt;
 
-        SharedSecret derivedKey{};
-        ShortHash namehash{};
-        ustring name_buf{reinterpret_cast<const uint8_t*>(name.data()), name.size()};
+        auto bname = as_bspan(namestr);
 
-        if (not shorthash(namehash, name_buf.data(), name_buf.size()))
-            return {};
-        if (not hmac(derivedKey.data(), name_buf.data(), derivedKey.size(), namehash))
-            return {};
+        // The (unkeyed) blake2b hash of the name is the (public) SNS storage key:
+        auto namehash = shorthash(bname);
+
+        // The value itself is encrypted with a symmetric key that is also a blake2b hash of the
+        // name, but using a hash key to make it unrelated to the public hash:
+        AlignedBuffer<32> derivedKey;
+        crypto_generichash_blake2b(
+            derivedKey.data(),
+            derivedKey.size(),
+            as_uspan(bname).data(),
+            bname.size(),
+            namehash.data(),
+            namehash.size());
+
         auto result = std::make_optional<RouterID>();
         if (crypto_aead_xchacha20poly1305_ietf_decrypt(
                 result->data(),
@@ -111,86 +119,71 @@ namespace llarp
                 0,
                 nonce.data(),
                 derivedKey.data())
-            == -1)
-        {
-            result.reset();
-        }
+            != 0)
+            return std::nullopt;
+
         return result;
     }
 
-    bool crypto::xchacha20(uint8_t* buf, size_t size, const SharedSecret& k, const SymmNonce& n)
+    bool xchacha20(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
-        return xchacha20(buf, size, k.data(), n.data());
-    }
-
-    bool crypto::xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce)
-    {
-        return crypto_stream_xchacha20_xor(buf, buf, size, nonce, secret) == 0;
+        auto ubuf = as_uspan(buf);
+        return crypto_stream_xchacha20_xor(ubuf.data(), ubuf.data(), ubuf.size(), nonce.data(), secret.data()) == 0;
     }
 
     // do a round of chacha for and return the nonce xor the given xor_factor
-    SymmNonce crypto::onion(
-        unsigned char* buf, size_t size, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor)
+    SymmNonce onion(
+        std::span<std::byte> buf, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor)
     {
-        if (!crypto::xchacha20(buf, size, k, nonce))
+        if (!xchacha20(buf, k, nonce))
             throw std::runtime_error{"chacha failed during onion step"};
 
         return nonce ^ xor_factor;
     }
 
-    bool crypto::dh_client(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
+    bool dh_client(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
         return dh_client_priv(shared, pk, sk, n);
     }
 
     /// path dh relay side
-    bool crypto::dh_server(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
+    bool dh_server(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
         return dh_server_priv(shared, pk, sk, n);
     }
 
-    std::string crypto::shorthash(const std::string& to_hash)
+    void shorthash(std::span<std::byte, SHORTHASHSIZE> result, std::span<const std::byte> buf)
     {
-        std::string result;
-        result.resize(ShortHash::SIZE);
-        if (crypto_generichash_blake2b(
-                reinterpret_cast<uint8_t*>(result.data()),
-                ShortHash::SIZE,
-                reinterpret_cast<const uint8_t*>(to_hash.data()),
-                to_hash.size(),
-                nullptr,
-                0)
-            == -1)
-            throw std::runtime_error{"blake2b failed for some reason"};
+        crypto_generichash_blake2b(
+            reinterpret_cast<unsigned char*>(result.data()),
+            result.size(),
+            reinterpret_cast<const unsigned char*>(buf.data()),
+            buf.size(),
+            nullptr,
+            0);
+    }
+    AlignedBuffer<SHORTHASHSIZE> shorthash(std::span<const std::byte> buf)
+    {
+        AlignedBuffer<SHORTHASHSIZE> result;
+        shorthash(result, buf);
         return result;
     }
-
-    bool crypto::shorthash(ShortHash& result, uint8_t* buf, size_t size)
-    {
-        return crypto_generichash_blake2b(result.data(), ShortHash::SIZE, buf, size, nullptr, 0) != -1;
-    }
-
-    bool crypto::hmac(uint8_t* result, const uint8_t* buf, size_t size, const SharedSecret& secret)
-    {
-        return crypto_generichash_blake2b(result, HMACSIZE, buf, size, secret.data(), SharedSecret::SIZE) != -1;
-    }
-
-    bool crypto::sign(Signature& sig, const Ed25519SecretKey& secret, uint8_t* buf, size_t size)
+    bool sign(std::span<uint8_t, SIGSIZE> sig, const Ed25519SecretKey& secret, uint8_t* buf, size_t size)
     {
         return crypto_sign_detached(sig.data(), nullptr, buf, size, secret.data()) != -1;
     }
 
-    bool crypto::sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
+    bool sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
     {
         return crypto_sign_detached(sig, nullptr, buf, size, sk) != -1;
     }
 
-    bool crypto::sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf)
+    bool sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf)
     {
         return crypto_sign_detached(sig, nullptr, buf.data(), buf.size(), sk.data()) != -1;
     }
 
-    bool crypto::sign(Signature& sig, const Ed25519PrivateData& privkey, const uint8_t* buf, size_t size)
+    bool sign(Signature& sig, const Ed25519PrivateData& privkey, const uint8_t* buf, size_t size)
     {
         PubKey pubkey = privkey.to_pubkey();
 
@@ -231,34 +224,25 @@ namespace llarp
         return true;
     }
 
-    bool crypto::verify(const PubKey& pub, std::span<const uint8_t> data, std::span<const uint8_t> sig)
+    bool verify(
+        std::span<const std::byte, PUBKEYSIZE> pub,
+        std::span<const std::byte> data,
+        std::span<const std::byte, SIGSIZE> sig)
     {
-        return (pub.size() == 32 && sig.size() == 64)
-            ? crypto_sign_verify_detached(sig.data(), data.data(), data.size(), pub.data()) != -1
-            : false;
+        return crypto_sign_verify_detached(
+                   as_uspan(sig).data(), as_uspan(data).data(), data.size(), as_uspan(pub).data())
+            != -1;
     }
 
-    bool crypto::verify(const PubKey& pub, const uint8_t* buf, size_t size, const Signature& sig)
-    {
-        return crypto_sign_verify_detached(sig.data(), buf, size, pub.data()) != -1;
-    }
-
-    bool crypto::verify(std::span<const uint8_t> pub, std::span<const uint8_t> buf, std::span<const uint8_t> sig)
-    {
-        return (pub.size() == 32 && sig.size() == 64)
-            ? crypto_sign_verify_detached(sig.data(), buf.data(), buf.size(), pub.data()) != -1
-            : false;
-    }
-
-    void crypto::derive_encrypt_outer_wrapping(
+    void derive_encrypt_outer_wrapping(
         const Ed25519SecretKey& shared_key,
         SharedSecret& secret,
         const SymmNonce& nonce,
         const RouterID& remote,
-        std::span<uint8_t> payload)
+        std::span<std::byte> payload)
     {
         // derive shared key
-        if (!crypto::dh_client(secret, remote, shared_key, nonce))
+        if (!dh_client(secret, remote, shared_key, nonce))
         {
             auto err = "DH client failed during shared key derivation!"s;
             log::warning(logcat, "{}", err);
@@ -266,7 +250,7 @@ namespace llarp
         }
 
         // encrypt hop_info (mutates in-place)
-        if (!crypto::xchacha20(payload.data(), payload.size(), secret, nonce))
+        if (!xchacha20(payload, secret, nonce))
         {
             auto err = "Payload symmetric encryption failed!"s;
             log::warning(logcat, "{}", err);
@@ -274,15 +258,15 @@ namespace llarp
         }
     }
 
-    void crypto::derive_decrypt_outer_wrapping(
+    void derive_decrypt_outer_wrapping(
         const Ed25519SecretKey& local_sk,
         SharedSecret& shared,
         const PubKey& remote,
         const SymmNonce& nonce,
-        std::span<uint8_t> encrypted)
+        std::span<std::byte> encrypted)
     {
         // derive shared secret using shared secret and our secret key (and nonce)
-        if (!crypto::dh_server(shared, remote, local_sk, nonce))
+        if (!dh_server(shared, remote, local_sk, nonce))
         {
             auto err = "DH server failed during shared key derivation!"s;
             log::warning(logcat, "{}", err);
@@ -290,7 +274,7 @@ namespace llarp
         }
 
         // decrypt hop_info (mutates in-place)
-        if (!crypto::xchacha20(encrypted.data(), encrypted.size(), shared, nonce))
+        if (!xchacha20(encrypted, shared, nonce))
         {
             auto err = "Payload symmetric decryption failed!"s;
             log::warning(logcat, "{}", err);
@@ -329,7 +313,7 @@ namespace llarp
         "can't in the and by be or then before so just face it this text hurts "
         "to read? lokinet yolo!";
 
-    std::array<unsigned char, 32> crypto::make_scalar(const PubKey& k, uint64_t domain)
+    std::array<unsigned char, 32> make_scalar(const PubKey& k, uint64_t domain)
     {
         // b = BLIND-STRING || k || i
         std::array<uint8_t, 160 + PubKey::SIZE + sizeof(uint64_t)> buf;
@@ -348,7 +332,7 @@ namespace llarp
         return out;
     }
 
-    bool crypto::derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root_pubkey, uint64_t key_n)
+    bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root_pubkey, uint64_t key_n)
     {
         if (derived_len != PubKey::SIZE)
         {
@@ -357,11 +341,11 @@ namespace llarp
         }
 
         // scalar h = H( BLIND-STRING || root_pubkey || key_n )
-        std::array<unsigned char, 32> h = crypto::make_scalar(root_pubkey, key_n);
+        std::array<unsigned char, 32> h = make_scalar(root_pubkey, key_n);
         return 0 == crypto_scalarmult_ed25519_noclamp(derived, h.data(), root_pubkey.data());
     }
 
-    Ed25519SecretKey crypto::generate_identity()
+    Ed25519SecretKey generate_identity()
     {
         Ed25519SecretKey ret{};
         PubKey pk;
@@ -373,7 +357,7 @@ namespace llarp
         return ret;
     }
 
-    bool crypto::check_identity_privkey(const Ed25519SecretKey& keys)
+    bool check_identity_privkey(const Ed25519SecretKey& keys)
     {
         AlignedBuffer<crypto_sign_SEEDBYTES> seed;
         PubKey pk;
@@ -386,7 +370,7 @@ namespace llarp
     }
 
 #ifdef HAVE_CRYPT
-    bool crypto::check_passwd_hash(std::string pwhash, std::string challenge)
+    bool check_passwd_hash(std::string pwhash, std::string challenge)
     {
         bool ret = false;
         auto pos = pwhash.find_last_of('$');
@@ -415,4 +399,4 @@ namespace llarp
     }
 
     CSRNG csrng = _initialize_crypto();
-}  // namespace llarp
+}  // namespace llarp::crypto

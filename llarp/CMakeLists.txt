@@ -104,7 +104,6 @@ lokinet_add_library(lokinet-addressing
 
   ev/tcp.cpp
   ev/types.cpp
-  ev/udp.cpp
 
   router_version.cpp  # to be deleted shortly
 )

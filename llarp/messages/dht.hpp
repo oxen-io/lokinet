@@ -53,7 +53,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const std::string& name_hash);
+        std::string serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash);
 
         std::string deserialize(oxenc::bt_dict_consumer&& btdc);
 

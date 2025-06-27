@@ -1,6 +1,5 @@
 #pragma once
 
-#include "name.hpp"
 #include "serialize.hpp"
 
 namespace llarp::dns
@@ -20,8 +19,6 @@ namespace llarp::dns
         bool Encode(llarp_buffer_t* buf) const override;
 
         bool Decode(llarp_buffer_t* buf) override;
-
-        bool decode(std::span<uint8_t> /* b */) override { return {}; }
 
         std::string to_string() const;
 

@@ -36,6 +36,7 @@ namespace llarp
         bool recalculate();
 
         PubKey to_pubkey() const;
+        std::span<const std::byte, 32> pubkey_span() { return span().last<32>(); }
 
         Ed25519PrivateData to_eddata() const;
 
@@ -70,8 +71,6 @@ namespace llarp
         std::string_view to_string() const { return "[privatekey]"; }
         static constexpr bool to_string_formattable{true};
     };
-
-    using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
 
     struct Signature final : public AlignedBuffer<SIGSIZE>
     {};
@@ -113,9 +112,9 @@ namespace llarp
 
         void server_dh(const Ed25519SecretKey& local_sk);
 
-        void encrypt(std::span<uint8_t> data);
+        void encrypt(std::span<std::byte> data);
 
-        void decrypt(std::span<uint8_t> enc);
+        void decrypt(std::span<std::byte> enc);
     };
 
     struct hash_key : public AlignedBuffer<32>

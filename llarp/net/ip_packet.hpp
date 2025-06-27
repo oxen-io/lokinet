@@ -17,16 +17,13 @@ namespace llarp
 
     struct IPPacket;
 
-    // Typedef for packets being transmitted between lokinet instances
-    using NetworkPacket = quic::Packet;
-
-    using net_pkt_hook = std::function<void(NetworkPacket&& pkt)>;
+    using net_pkt_hook = std::function<void(quic::Packet&& pkt)>;
     using ip_pkt_hook = std::function<void(IPPacket)>;
 
     /** IPPacket
         This class encapsulates the functionalities and attributes required for data transmission between the local
         lokinet instance and the surrounding IP landscape. As data enters lokinet from the device/internet/etc, it is
-        transmitted across the network as a NetworkPacket via QUIC. As it exits lokinet to the device/internet/etc, it
+        transmitted across the network as a quic::Packet via QUIC. As it exits lokinet to the device/internet/etc, it
         is constructed into an IPPacket.
 
         This allows for necessary functionalities at the junction that data is entering and exiting the local lokinet
@@ -36,30 +33,29 @@ namespace llarp
     struct IPPacket
     {
       private:
-        std::vector<uint8_t> _buf{};
+        std::vector<std::byte> _buf;
 
-        quic::Address _src_addr{};
-        quic::Address _dst_addr{};
+        quic::Address _src_addr;
+        quic::Address _dst_addr;
 
-        bool _is_v4{true};
+        bool _is_v4;
+        uint8_t _header_len;
+        uint16_t _payload_len;
 
         net::IPProtocol _proto{};
 
         void _init_internals();
 
       public:
-        // TESTNET: TODO: after merging libquic retyping for libc++19, revise these constructors
-
         IPPacket() : IPPacket{size_t{0}} {}
         explicit IPPacket(size_t sz);
-        explicit IPPacket(bstring_view data);
-        explicit IPPacket(std::vector<uint8_t>&& data);
-        explicit IPPacket(const uint8_t* buf, size_t len);
+        explicit IPPacket(std::vector<std::byte>&& data);
+        explicit IPPacket(std::span<const std::byte> buf);
 
-        static IPPacket from_netpkt(NetworkPacket pkt);
-        static std::optional<IPPacket> from_buffer(const uint8_t* buf, size_t len);
+        // Is this gross thing really needed?
+        static std::optional<IPPacket> try_making(std::span<const std::byte> buf);
 
-        NetworkPacket make_netpkt() &&;
+        quic::Packet make_netpkt();
 
         // TESTNET: debug methods
         // uint16_t checksum() const { return _is_v4 ? header()->checksum : 0; }
@@ -84,13 +80,13 @@ namespace llarp
 
         ipv6 dest_ipv6() const { return _dst_addr.to_ipv6(); }
 
-        ip_header* header() { return reinterpret_cast<ip_header*>(data()); }
-        const ip_header* header() const { return reinterpret_cast<const ip_header*>(data()); }
+        ip_header& header() { return *reinterpret_cast<ip_header*>(data()); }
+        const ip_header& header() const { return *reinterpret_cast<const ip_header*>(data()); }
 
-        ipv6_header* v6_header() { return reinterpret_cast<ipv6_header*>(data()); }
-        const ipv6_header* v6_header() const { return reinterpret_cast<const ipv6_header*>(data()); }
+        ipv6_header& v6_header() { return *reinterpret_cast<ipv6_header*>(data()); }
+        const ipv6_header& v6_header() const { return *reinterpret_cast<const ipv6_header*>(data()); }
 
-        std::span<std::byte> l4_data();
+        std::span<const std::byte> udp_data();
 
         void clear_addresses()
         {
@@ -105,37 +101,18 @@ namespace llarp
 
         std::optional<IPPacket> make_icmp_unreachable() const;
 
-        static std::string make_udp_packet(
-            const quic::Address& src, const quic::Address& dest, std::span<const std::byte>& payload);
+        static std::vector<std::byte> make_udp_packet(
+            const quic::Address& src, const quic::Address& dest, std::span<const std::byte> payload);
 
-        uint8_t* data() { return _buf.data(); }
-
-        const uint8_t* data() const { return _buf.data(); }
+        std::byte* data() { return _buf.data(); }
+        const std::byte* data() const { return _buf.data(); }
 
         size_t size() const { return _buf.size(); }
 
+        std::span<std::byte> span() { return _buf; }
+        std::span<const std::byte> span() const { return _buf; }
+
         bool empty() const { return _buf.empty(); }
-
-        bool load(const uint8_t* buf, size_t len);
-
-        // takes posession of the data
-        bool take(std::vector<uint8_t> data);
-
-        // steals posession of the underlying data, and can only be used in an r-value context
-        std::vector<uint8_t> steal_buffer() &&;
-
-        std::string steal_payload() &&;
-
-        // gives a copy of the underlying data
-        std::vector<uint8_t> give_buffer();
-
-        std::string_view view() const { return {reinterpret_cast<const char*>(data()), size()}; }
-
-        bstring_view bview() const { return {reinterpret_cast<const std::byte*>(data()), size()}; }
-
-        ustring_view uview() const { return {data(), size()}; }
-
-        std::string to_string() const;
 
         std::string info_line() const;
     };

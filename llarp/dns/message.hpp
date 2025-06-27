@@ -12,41 +12,30 @@ namespace llarp
     {
         struct SRVData;
 
-        using MsgID_t = uint16_t;
-        using Fields_t = uint16_t;
-        using Count_t = uint16_t;
-
         struct MessageHeader : public Serialize
         {
-          private:
-            static enum { id, fields, qd_count, an_count, ns_count, ar_count } indices;
-
           public:
             static constexpr size_t Size = 12;
 
             MessageHeader() = default;
 
-            std::array<uint16_t, 6> _data{};
-
-            MsgID_t _id;
-            Fields_t _fields;
-            Count_t _qd_count;
-            Count_t _an_count;
-            Count_t _ns_count;
-            Count_t _ar_count;
+            uint16_t _id;
+            uint16_t _fields;
+            uint16_t _qd_count;
+            uint16_t _an_count;
+            uint16_t _ns_count;
+            uint16_t _ar_count;
 
             bool Encode(llarp_buffer_t* buf) const override;
 
             bool Decode(llarp_buffer_t* buf) override;
 
-            bool decode(std::span<uint8_t> b) override;
-
             nlohmann::json ToJSON() const override;
 
-            bool operator==(const MessageHeader& other) const
+            bool operator==(const MessageHeader& h) const
             {
-                return _id == other._id && _fields == other._fields && _qd_count == other._qd_count
-                    && _an_count == other._an_count && _ns_count == other._ns_count && _ar_count == other._ar_count;
+                return std::tie(_id, _fields, _qd_count, _an_count, _ns_count, _ar_count)
+                    == std::tie(h._id, h._fields, h._qd_count, h._an_count, h._ns_count, h._ar_count);
             }
         };
 
@@ -82,22 +71,20 @@ namespace llarp
 
             bool Decode(llarp_buffer_t* buf) override;
 
-            bool decode(std::span<uint8_t> /* b */) override { return {}; };  // TODO:
-
             // Wrapper around Encode that encodes into a new buffer and returns it
-            std::vector<uint8_t> to_buffer() const;
+            std::vector<std::byte> to_buffer() const;
 
             std::string to_string() const;
 
-            MsgID_t hdr_id;
-            Fields_t hdr_fields;
+            uint16_t hdr_id;
+            uint16_t hdr_fields;
             std::vector<Question> questions;
             std::vector<ResourceRecord> answers;
             std::vector<ResourceRecord> authorities;
             std::vector<ResourceRecord> additional;
         };
 
-        std::optional<Message> maybe_parse_dns_msg(std::string_view buf);
+        std::optional<Message> maybe_parse_dns_msg(std::span<const std::byte> buf);
     }  // namespace dns
 
 }  // namespace llarp

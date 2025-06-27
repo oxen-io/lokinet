@@ -48,7 +48,7 @@ namespace llarp
         inline static constexpr uint8_t VERSION{0};
 
         ClientContact() = default;
-        explicit ClientContact(std::span<const unsigned char> buf);
+        explicit ClientContact(std::span<const std::byte> buf);
 
         /** Parameters:
             - `private_data` : derived private subkey data
@@ -89,7 +89,7 @@ namespace llarp
         // In exit mode, we advertise our policy for accepted traffic and the corresponding ranges
         std::optional<net::ExitPolicy> _exit_policy;
 
-        std::vector<unsigned char> bt_encode() const;
+        std::vector<std::byte> bt_encode() const;
 
         // Throws like a MF (for now)
         void bt_decode(std::string_view buf);
@@ -128,7 +128,8 @@ namespace llarp
     {
         EncryptedClientContact() : nonce{SymmNonce::make_random()} {}
 
-        explicit EncryptedClientContact(std::string_view buf);
+        explicit EncryptedClientContact(std::span<const std::byte> buf);
+        explicit EncryptedClientContact(std::string buf);
 
       private:
         friend struct ClientContact;
@@ -136,7 +137,7 @@ namespace llarp
         hash_key blinded_pubkey;
         SymmNonce nonce;
         std::chrono::milliseconds signed_at{0s};
-        std::vector<unsigned char> encrypted;
+        std::vector<std::byte> encrypted;
         Signature sig{};
 
         std::string _bt_payload;

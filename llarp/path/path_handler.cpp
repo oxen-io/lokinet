@@ -9,6 +9,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
 
 #include <sodium/randombytes.h>
@@ -538,12 +539,7 @@ namespace llarp::path
             {
                 auto _onion_nonce = path_hops[i].kx.nonce ^ path_hops[i].kx.xor_nonce;
 
-                crypto::onion(
-                    reinterpret_cast<unsigned char*>(frames[j].data()),
-                    frames[j].size(),
-                    path_hops[i].kx.shared_secret,
-                    _onion_nonce,
-                    _onion_nonce);
+                crypto::onion(as_bspan(frames[j]), path_hops[i].kx.shared_secret, _onion_nonce, _onion_nonce);
             }
         }
 

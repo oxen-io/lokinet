@@ -28,63 +28,44 @@ namespace llarp
 
     static_assert(sizeof(ip_header) == 20);
 
-    // TODO: WIP
-    //     struct ipv6_header2
-    //     {
-    //       private:
-    //         std::array<uint8_t, 4> preamble;
-
-    // // #if __BYTE_ORDER == __LITTLE_ENDIAN
-    // //         uint32_t flow_label : 20;
-    // //         uint8_t traffic_class;
-    // //         uint8_t version : 4;
-    // // #else
-    // //         uint8_t version : 4;
-    // //         uint8_t traffic_class : 8;
-    // //         uint32_t flow_label : 20;
-    // // #endif
-    //         uint16_t pload_len; // payload length
-    //         uint8_t nxt_hdr;    // next header (protocol)
-    //         uint8_t hop_limit;
-    //         in6_addr src;
-    //         in6_addr dest;
-
-    //       public:
-
-    //     };
-
-    //     static_assert(sizeof(ipv6_header2) == 40);
-
     struct ipv6_header
     {
-        union
-        {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-            unsigned char pad_small : 4;
-            unsigned char version : 4;
+        uint8_t tclass_hi : 4;
+        uint8_t version : 4;
+        uint8_t flow_hi : 4;
+        uint8_t tclass_lo : 4;
 #else
-            unsigned char version : 4;
-            unsigned char pad_small : 4;
+        uint8_t version : 4;
+        uint8_t tclass_hi : 4;
+        uint8_t tclass_lo : 4;
+        uint8_t flow_hi : 4;
 #endif
-            uint8_t pad[3];
-            uint32_t flowlabel;
-        } preamble;
-
+        uint16_t flow_lo;
         uint16_t payload_len;
         uint8_t protocol;
         uint8_t hoplimit;
         in6_addr src;
         in6_addr dest;
 
-        /// Returns the flowlabel (stored in network order) in HOST ORDER
-        uint32_t get_flowlabel() const { return oxenc::big_to_host(preamble.flowlabel & htonl(ipv6_flowlabel_mask)); }
+        /// Returns the traffic class value
+        constexpr uint8_t tclass() const { return (tclass_hi << 4) | tclass_lo; }
 
-        /// Sets a flowlabel in network order. Takes in a label in HOST ORDER
-        void set_flowlabel(uint32_t label)
+        /// Sets a traffic class value
+        constexpr void tclass(uint8_t tcl)
         {
-            // the ipv6 flow label is the last 20 bits in the first 32 bits of the header
-            preamble.flowlabel =
-                (htonl(ipv6_flowlabel_mask) & htonl(label)) | (preamble.flowlabel & htonl(~ipv6_flowlabel_mask));
+            tclass_hi = (tcl >> 4);
+            tclass_lo = tcl % 0xf;
+        }
+
+        /// Extracts the host-order decoded flowlabel
+        constexpr uint32_t flowlabel() const { return (flow_hi << 16) | oxenc::big_to_host(flow_lo); }
+
+        /// Sets a host-order flowlabel.
+        constexpr void flowlabel(uint32_t label)
+        {
+            flow_hi = (label >> 16) & 0x0f;
+            flow_lo = oxenc::host_to_big(label & 0xffff);
         }
     };
 
@@ -110,17 +91,18 @@ namespace llarp
         uint32_t seqno;  // sequence number
         uint32_t ack;    // ack number
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-        uint8_t xx : 4;        // unused/reserved
+        uint8_t : 4;           // unused/reserved
         uint8_t data_off : 4;  // data offset
 #else
         uint8_t data_off : 4;  // data offset
-        uint8_t xx : 4;        // unused/reserved
+        uint8_t : 4;           // unused/reserved
 #endif
         uint8_t flags;
         uint16_t window;
         uint16_t checksum;
         uint16_t urg_ptr;  // urgent ptr
     };
+    static_assert(sizeof(tcp_header) == 20);
 
     struct udp_header
     {
@@ -129,5 +111,6 @@ namespace llarp
         uint16_t len;  // datagram length
         uint16_t checksum;
     };
+    static_assert(sizeof(udp_header) == 8);
 
 }  // namespace llarp

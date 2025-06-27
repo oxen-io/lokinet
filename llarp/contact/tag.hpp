@@ -8,19 +8,24 @@ namespace llarp
 {
     struct alignas(uint64_t) session_tag
     {
+        inline static constexpr size_t SIZE = 8;
+
       private:
-        std::array<uint8_t, 8> buf;
+        std::array<std::byte, SIZE> buf;
 
       public:
         session_tag() = default;
         explicit session_tag(protocol_flag protocols);
+        explicit session_tag(std::span<const std::byte, SIZE> buf);
 
         protocol_flag protocols() const { return static_cast<protocol_flag>(buf[0]); }
 
-        void read(std::string_view buf);
+        void assign(std::span<const std::byte, SIZE> buf);
 
         std::string_view view() const;
-        std::span<const unsigned char> span() const;
+
+        std::span<const std::byte, SIZE> span() const { return buf; }
+
         constexpr size_t size() const { return buf.size(); }
 
         bool operator==(const session_tag& other) const { return buf == other.buf; }

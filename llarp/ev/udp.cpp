@@ -98,21 +98,8 @@ namespace llarp
             callback({});
     }
 
-    io_result UDPHandle::send(const quic::Address& dest, bstring data)
+    io_result UDPHandle::send(const quic::Address& dest, std::span<const std::byte> data)
     {
-        size_t n_pkts = 1;
-        return _send_impl(quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
-    }
-
-    io_result UDPHandle::send(const quic::Address& dest, std::vector<uint8_t> data)
-    {
-        size_t n_pkts = 1;
-        return _send_impl(quic::Path{_local, dest}, reinterpret_cast<std::byte*>(data.data()), data.size(), 0, n_pkts);
-    }
-
-    io_result UDPHandle::send(const quic::Address& dest, std::span<std::byte> data)
-    {
-        size_t n_pkts = 1;
-        return _send_impl(quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
+        return _send_impl(quic::Path{_local, dest}, data.data(), data.size(), 0);
     }
 }  //  namespace llarp
