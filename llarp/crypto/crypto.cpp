@@ -377,13 +377,17 @@ namespace llarp::crypto
     }
 #endif
 
+}  // namespace llarp::crypto
+
+namespace llarp
+{
     // Called during static initialization to initialize libsodium.  (The CSRNG return is
     // not useful, but just here to get this called during static initialization of `csrng`).
     static CSRNG _initialize_crypto()
     {
         if (sodium_init() == -1)
         {
-            log::critical(logcat, "sodium_init() failed, unable to continue!");
+            log::critical(crypto::logcat, "sodium_init() failed, unable to continue!");
             std::abort();
         }
 
@@ -391,4 +395,5 @@ namespace llarp::crypto
     }
 
     CSRNG csrng = _initialize_crypto();
-}  // namespace llarp::crypto
+
+}  // namespace llarp

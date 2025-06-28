@@ -45,7 +45,7 @@ namespace llarp::dns
     {
       public:
         /// stop reading packets and end operation
-        virtual ~PacketSource() = 0;
+        virtual ~PacketSource() = default;
 
         /// return true if traffic with source and dest addresses would cause a
         /// loop in resolution and thus should not be sent to query handlers

@@ -121,20 +121,26 @@ namespace llarp
 
     void BootstrapList::add(NetID netid, std::string_view data, std::string_view input_desc)
     {
-        // Bootstrap data can container either a list of bootstraps, or just a single bootstrap RC:
-        switch (data.front())
+        try
         {
-            case 'l':
+            // Bootstrap data can container either a list of bootstraps, or just a single bootstrap RC:
+            if (data.front() == 'l')
+            {
                 // list of bootstrap RCs
                 for (oxenc::bt_list_consumer l{data}; !l.is_finished();)
                     _bootstraps.emplace_back(l.consume_dict_data(), netid, /*accept_expired=*/true);
-                break;
-            case 'd':
+            }
+            else
+            {
                 // single bootstrap RC
                 _bootstraps.emplace_back(data, netid, /*accept_expired=*/true);
-                break;
-            default:
-                throw std::runtime_error{"{} does not contain valid bootstrap data!"_format(input_desc)};
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::debug(
+                logcat, "Failed to load the following bootstrap data from {}: {}", input_desc, buffer_printer{data});
+            throw std::runtime_error{"{} does not contain valid bootstrap data: {}"_format(input_desc, e.what())};
         }
     }
 
