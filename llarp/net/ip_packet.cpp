@@ -29,15 +29,17 @@ namespace llarp
     {
         if (sz and sz < MIN_PACKET_SIZE)
             throw std::invalid_argument{"Buffer size is too small for an IP packet!"};
-        _buf.resize(sz);
-        std::fill(_buf.begin(), _buf.end(), 0);
+        // FIXME: does setting all 0 bytes do anything meaningful?
+        _buf.resize(sz, std::byte{0});
         _init_internals();
     }
 
     IPPacket::IPPacket(bstring_view data) : IPPacket{reinterpret_cast<const unsigned char*>(data.data()), data.size()}
     {}
 
-    IPPacket::IPPacket(std::vector<uint8_t>&& data) : IPPacket{data.data(), data.size()} {}
+    IPPacket::IPPacket(std::vector<std::byte>&& data) : _buf{std::move(data)}{
+        _init_internals();
+    }
 
     IPPacket::IPPacket(const uint8_t* buf, size_t len)
     {
@@ -400,7 +402,7 @@ namespace llarp
         return true;
     }
 
-    bool IPPacket::take(std::vector<uint8_t> data)
+    bool IPPacket::take(std::vector<std::byte> data)
     {
         auto len = data.size();
         if (len < MIN_PACKET_SIZE)
@@ -415,7 +417,7 @@ namespace llarp
         return true;
     }
 
-    std::vector<uint8_t> IPPacket::steal_buffer() && { return std::move(_buf); }
+    std::vector<std::byte> IPPacket::steal_buffer() && { return std::move(_buf); }
 
     std::string IPPacket::steal_payload() &&
     {
@@ -424,7 +426,7 @@ namespace llarp
         return ret;
     }
 
-    std::vector<uint8_t> IPPacket::give_buffer() { return {_buf}; }
+    std::vector<std::byte> IPPacket::give_buffer() { return {_buf}; }
 
     std::string IPPacket::to_string() const { return {reinterpret_cast<const char*>(data()), size()}; }
 

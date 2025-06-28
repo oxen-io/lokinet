@@ -73,7 +73,7 @@ namespace llarp::dns
         }
 
         void send_to(
-            const oxen::quic::Address& to, const oxen::quic::Address&, std::vector<uint8_t> data) const override
+            const oxen::quic::Address& to, const oxen::quic::Address&, std::vector<std::byte> data) const override
         {
             _udp->send(to, std::move(data));
         }
@@ -107,7 +107,7 @@ namespace llarp::dns
             std::weak_ptr<Resolver> parent;
             int id{};
 
-            void send_reply(std::vector<uint8_t> buf) override;
+            void send_reply(std::vector<std::byte> buf) override;
         };
 
         /// Resolver_Base that uses libunbound
@@ -496,7 +496,7 @@ namespace llarp::dns
             }
         };
 
-        void Query::send_reply(std::vector<uint8_t> data)
+        void Query::send_reply(std::vector<std::byte> data)
         {
             log::trace(logcat, "Query::send_reply called");
             if (_done.test_and_set())

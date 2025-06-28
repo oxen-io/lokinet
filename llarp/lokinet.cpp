@@ -9,6 +9,8 @@
 
 #include <future>
 
+using namespace std::literals;
+
 namespace
 {
   static auto logcat = llarp::log::Cat("liblokinet");
@@ -67,4 +69,39 @@ namespace lokinet
     llarp::log::warning(logcat, "udp_session creation {}, bound port is {}", bound_port == 0 ? "failed" : "succeeded", bound_port);
     return bound_port;
   }
+
+  void Lokinet::map_tcp_remote_port(const std::string& remote, uint16_t port, std::function<void(tunnel_info)> success_cb, std::function<void(std::string)> failure_cb)
+  {
+    auto maybe_netaddr = llarp::NetworkAddress::from_network_addr(remote);
+    if (!maybe_netaddr) {
+      failure_cb("Failed to parse remote address.");
+      return;
+    }
+    //TODO: ONS
+    auto after_session = [context=this->context, netaddr=*maybe_netaddr, port, success_cb, failure_cb](auto) {
+      if (auto session = context->router->session_endpoint()->get_session(netaddr); session) {
+        auto mapped_port = session->map_tcp_remote_port(port);
+        if (mapped_port) {
+          llarp::log::info(logcat, "TCP session to remote {} mapped, dest port: {}, local port: {}", netaddr, port, mapped_port);
+          // TODO: netaddr.to_string() once that's fixed/merged
+          // TODO: suggested MTU
+          success_cb({netaddr.name(), port, mapped_port, 0});
+        } else {
+          llarp::log::info(logcat, "TCP session to remote {} mapping failed for dest port: {}", netaddr, port);
+          failure_cb("Unknown reason."s);
+        }
+      }
+      else {
+        failure_cb(fmt::format("Failed to establish session to remote {}", netaddr));
+        return;
+      }
+    };
+    context->_loop->call([context=this->context, netaddr=*maybe_netaddr, after=std::move(after_session)]{
+        llarp::log::warning(logcat, "\nCreating session for TCP test\n");
+        context->router->session_endpoint()->initiate_remote_session(
+            netaddr,
+            std::move(after)
+            );});
+  }
+
 }  // namespace lokinet

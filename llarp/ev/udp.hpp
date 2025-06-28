@@ -40,7 +40,7 @@ namespace llarp
 
         io_result send(const oxen::quic::Address& dest, bstring data);
 
-        io_result send(const oxen::quic::Address& dest, std::vector<uint8_t> data);
+        io_result send(const oxen::quic::Address& dest, std::vector<std::byte> data);
 
         io_result send(const oxen::quic::Address& dest, std::span<std::byte> data);
 

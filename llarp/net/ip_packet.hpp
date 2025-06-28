@@ -33,7 +33,7 @@ namespace llarp
     struct IPPacket
     {
       private:
-        std::vector<uint8_t> _buf{};
+        std::vector<std::byte> _buf{};
 
         oxen::quic::Address _src_addr{};
         oxen::quic::Address _dst_addr{};
@@ -50,7 +50,7 @@ namespace llarp
         IPPacket() : IPPacket{size_t{0}} {}
         explicit IPPacket(size_t sz);
         explicit IPPacket(bstring_view data);
-        explicit IPPacket(std::vector<uint8_t>&& data);
+        explicit IPPacket(std::vector<std::byte>&& data);
         explicit IPPacket(const uint8_t* buf, size_t len);
 
         static IPPacket from_netpkt(NetworkPacket pkt);
@@ -104,9 +104,9 @@ namespace llarp
 
         static std::string make_udp_packet(const oxen::quic::Address& src, const oxen::quic::Address& dest, std::span<const std::byte>& payload);
 
-        uint8_t* data() { return _buf.data(); }
+        uint8_t* data() { return reinterpret_cast<uint8_t*>(_buf.data()); }
 
-        const uint8_t* data() const { return _buf.data(); }
+        const uint8_t* data() const { return reinterpret_cast<const uint8_t*>(_buf.data()); }
 
         size_t size() const { return _buf.size(); }
 
@@ -115,21 +115,21 @@ namespace llarp
         bool load(const uint8_t* buf, size_t len);
 
         // takes posession of the data
-        bool take(std::vector<uint8_t> data);
+        bool take(std::vector<std::byte> data);
 
         // steals posession of the underlying data, and can only be used in an r-value context
-        std::vector<uint8_t> steal_buffer() &&;
+        std::vector<std::byte> steal_buffer() &&;
 
         std::string steal_payload() &&;
 
         // gives a copy of the underlying data
-        std::vector<uint8_t> give_buffer();
+        std::vector<std::byte> give_buffer();
 
         std::string_view view() const { return {reinterpret_cast<const char*>(data()), size()}; }
 
         bstring_view bview() const { return {reinterpret_cast<const std::byte*>(data()), size()}; }
 
-        ustring_view uview() const { return {data(), size()}; }
+        ustring_view uview() const { return {reinterpret_cast<const uint8_t*>(data()), size()}; }
 
         std::string to_string() const;
 

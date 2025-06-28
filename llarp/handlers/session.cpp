@@ -920,8 +920,10 @@ namespace llarp::handlers
 
                     if (pending_packets.size()) {
                         log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
-                        for (auto& pkt : pending_packets)
-                            session->send_path_data_message(std::move(pkt).steal_payload());
+                        for (auto& pkt : pending_packets) {
+                            const auto proto = pkt.protocol();
+                            session->send_path_data_message(std::move(pkt).steal_payload(), proto);
+                        }
                     }
                     if (hook)
                         hook(true);
@@ -1011,8 +1013,10 @@ namespace llarp::handlers
 
                     if (pending_packets.size()) {
                         log::debug(logcat, "Session to {} established, sending {} pending packets.", session->remote(), pending_packets.size());
-                        for (auto& pkt : pending_packets)
-                            session->send_path_data_message(std::move(pkt).steal_payload());
+                        for (auto& pkt : pending_packets) {
+                            const auto proto = pkt.protocol();
+                            session->send_path_data_message(std::move(pkt).steal_payload(), proto);
+                        }
                     }
                     for (auto& h : pending_hooks)
                         h(true);
@@ -1078,6 +1082,12 @@ namespace llarp::handlers
 
     void SessionEndpoint::initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
     {
+        if (_sessions.have_session(remote)) {
+            // FIXME: this callback should probably pass a shared_ptr ref or something
+            // rather than making the caller call get_session
+            cb(true);
+            return;
+        }
         if (pending_sessions.contains(remote)) {
             if (cb)
                 pending_session_hooks[remote].push_back(std::move(cb));

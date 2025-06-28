@@ -330,11 +330,6 @@ namespace llarp
             log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
         else
             llarp::logRingBuffer = nullptr;
-
-        // TESTNET:
-        // oxen::log::reset_level(oxen::log::Level::debug);
-        oxen::log::set_level("quic", oxen::log::Level::info);
-        // oxen::log::set_level("quic", oxen::log::Level::debug);
     }
 
     void Router::init_rpc()

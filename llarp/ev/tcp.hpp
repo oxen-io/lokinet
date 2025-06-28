@@ -36,7 +36,16 @@ namespace llarp
 
         std::shared_ptr<oxen::quic::Stream> stream;
 
+        std::vector<std::byte> pending_buffer;
+
+        void on_stream_data(oxen::quic::Stream& stream, std::span<const std::byte> data);
+
         void close(uint64_t ec = 0);
+
+        void on_write_available();
+
+        void stop_reading();
+        void resume_reading();
     };
 
     using tcpconn_hook = std::function<TCPConnection*(struct bufferevent*, evutil_socket_t)>;
@@ -55,7 +64,7 @@ namespace llarp
         std::shared_ptr<::evconnlistener> _tcp_listener;
 
         // The OutboundSession will set up an evconnlistener and set the listening socket address inside ::_bound
-        std::optional<oxen::quic::Address> _bound = std::nullopt;
+        oxen::quic::Address _bound{};
 
         // The InboundSession will set this address to the lokinet-primary-ip to connect to
         std::optional<oxen::quic::Address> _connect = std::nullopt;
@@ -83,11 +92,11 @@ namespace llarp
 
         ~TCPHandle();
 
-        uint16_t port() const { return _bound.has_value() ? _bound->port() : 0; }
+        uint16_t port() const { return _bound.port(); }
 
-        std::optional<oxen::quic::Address> bind() const { return _bound; }
+        const oxen::quic::Address& bind_address() const { return _bound; }
 
-        std::shared_ptr<TCPConnection> connect(std::shared_ptr<oxen::quic::Stream> s, uint16_t port = 0);
+        static std::shared_ptr<TCPConnection> connect(event_base* _ev, oxen::quic::Address src, std::shared_ptr<oxen::quic::Stream> s, uint16_t port);
 
       private:
         void _init_client();

@@ -122,7 +122,7 @@ namespace llarp::vpn
 
         IPPacket read_next_packet() override
         {
-            std::vector<uint8_t> buf;
+            std::vector<std::byte> buf;
             buf.resize(MAX_PACKET_SIZE);
             const auto sz = read(_fd, buf.data(), buf.capacity());
             // log::trace(logcat, "{} bytes read from fd {} (err?:{})", sz, _fd, strerror(errno));

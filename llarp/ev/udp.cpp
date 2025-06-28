@@ -106,11 +106,11 @@ namespace llarp
         return _send_impl(oxen::quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
     }
 
-    io_result UDPHandle::send(const oxen::quic::Address& dest, std::vector<uint8_t> data)
+    io_result UDPHandle::send(const oxen::quic::Address& dest, std::vector<std::byte> data)
     {
         size_t n_pkts = 1;
         return _send_impl(
-            oxen::quic::Path{_local, dest}, reinterpret_cast<std::byte*>(data.data()), data.size(), 0, n_pkts);
+            oxen::quic::Path{_local, dest}, data.data(), data.size(), 0, n_pkts);
     }
 
     io_result UDPHandle::send(const oxen::quic::Address& dest, std::span<std::byte> data)

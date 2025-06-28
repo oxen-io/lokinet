@@ -37,6 +37,8 @@ namespace llarp
             {
                 log::debug(logcat, "Client generating identity key...");
                 identity_key = crypto::generate_identity();
+                if (config.network.keyfile.has_value())
+                    identity_key.write_to_file(*config.network.keyfile);
             }
 
             identity_data = identity_key.to_eddata();

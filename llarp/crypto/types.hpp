@@ -129,6 +129,11 @@ namespace llarp
         void encrypt(std::span<uint8_t> data);
 
         void decrypt(std::span<uint8_t> enc);
+
+        // TODO: finish replacing a bunch of stuff with std::byte
+        void decrypt(std::span<std::byte> enc) {
+            decrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(enc.data()), enc.size()));
+        }
     };
 
     struct hash_key : public AlignedBuffer<32>

@@ -85,7 +85,7 @@ namespace llarp
             bool decode(std::span<uint8_t> /* b */) override { return {}; };  // TODO:
 
             // Wrapper around Encode that encodes into a new buffer and returns it
-            std::vector<uint8_t> to_buffer() const;
+            std::vector<std::byte> to_buffer() const;
 
             std::string to_string() const;
 

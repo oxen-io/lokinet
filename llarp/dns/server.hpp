@@ -38,7 +38,7 @@ namespace llarp::dns
         void cancel();
 
         /// send a raw buffer back to the querier
-        virtual void send_reply(std::vector<uint8_t> buf) = 0;
+        virtual void send_reply(std::vector<std::byte> buf) = 0;
     };
 
     class PacketSource_Base
@@ -54,7 +54,7 @@ namespace llarp::dns
         /// two overrides, lets see which is more useful and drop ze ozzzerrrr
         virtual void send_to(const oxen::quic::Address& to, const oxen::quic::Address& from, IPPacket data) const = 0;
         virtual void send_to(
-            const oxen::quic::Address& to, const oxen::quic::Address& from, std::vector<uint8_t> data) const
+            const oxen::quic::Address& to, const oxen::quic::Address& from, std::vector<std::byte> data) const
         {
             send_to(to, from, IPPacket{std::move(data)});
         }
@@ -96,7 +96,7 @@ namespace llarp::dns
         }
 
         void send_to(
-            const oxen::quic::Address& to, const oxen::quic::Address& from, std::vector<uint8_t> data) const override
+            const oxen::quic::Address& to, const oxen::quic::Address& from, std::vector<std::byte> data) const override
         {
             send_to(to, from, IPPacket{std::move(data)});
         }
@@ -135,7 +135,7 @@ namespace llarp::dns
             : QueryJob_Base{query}, src{std::move(source)}, resolver{to_}, asker{from_}
         {}
 
-        void send_reply(std::vector<uint8_t> buf) override { src->send_to(asker, resolver, IPPacket{std::move(buf)}); }
+        void send_reply(std::vector<std::byte> buf) override { src->send_to(asker, resolver, IPPacket{std::move(buf)}); }
     };
 
     /// handler of dns query hooking

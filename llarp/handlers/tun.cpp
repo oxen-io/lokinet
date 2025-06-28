@@ -1032,7 +1032,8 @@ namespace llarp::handlers
                     pkt.size(),
                     remote,
                     pkt.info_line());
-                session->send_path_data_message(std::move(pkt).steal_payload());
+                const auto pkt_type = pkt.protocol();
+                session->send_path_data_message(std::move(pkt).steal_payload(), pkt_type);
             }
             else
             {
@@ -1133,12 +1134,13 @@ namespace llarp::handlers
         send_packet_to_net_if(std::move(pkt));
     }
 
-    void TunEndpoint::handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote)
+    void TunEndpoint::handle_inbound_packet(IPPacket pkt, uint8_t type, NetworkAddress remote)
     {
         ip_v src, dest;
         auto pkt_is_ipv4 = pkt.is_ipv4();
 
-        auto [is_exit_pkt, is_tunneled_pkt] = tag.proto_bits();
+        (void)type;
+        bool is_exit_pkt=false, is_tunneled_pkt=false;
 
         if (is_tunneled_pkt)
         {

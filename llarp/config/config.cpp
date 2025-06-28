@@ -1878,6 +1878,7 @@ namespace llarp
         config->network.init_tun = false;
         config->network.save_profiles = false;
         config->bootstrap.files.clear();
+        config->links.listen_addr = oxen::quic::Address{"0.0.0.0"s, 0};
         return config;
     }
 

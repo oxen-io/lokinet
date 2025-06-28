@@ -17,7 +17,7 @@ namespace llarp
 {
     // FIXME: have this hook give an error string on failure, not just false
     using on_session_init_hook = std::function<void(bool)>;
-    using recv_session_dgram_cb = std::function<void(std::vector<uint8_t>)>;
+    using recv_session_dgram_cb = std::function<void(std::vector<std::byte>)>;
 
     inline constexpr size_t PATHS_PER_INTRO{2};
     inline constexpr auto SESSION_PATH_BUILD_ATTEMPTS{3};
@@ -43,9 +43,12 @@ namespace llarp
 
     namespace session
     {
+        struct TCPTunnel;
+
         struct BaseSession
         {
-          protected:
+            friend struct TCPTunnel;
+            protected:
             Router& _r;
             handlers::SessionEndpoint& _parent;
 
@@ -69,17 +72,7 @@ namespace llarp
 
             recv_session_dgram_cb _recv_dgram;
 
-            // manually routed QUIC endpoint
-            std::shared_ptr<oxen::quic::Endpoint> _ep;
-
-            std::shared_ptr<oxen::quic::connection_interface> _ci;
-
-            // TCPHandle listeners mapped to the local port they are bound on
-            std::unordered_map<uint16_t, std::shared_ptr<TCPHandle>> _handles;
-
-            std::unordered_set<std::shared_ptr<TCPConnection>> _tcp_conns;
-
-            void _init_ep();
+            std::unique_ptr<TCPTunnel> tcp_tunnel{nullptr};
 
             // for tunneled clients, maps remote dest port to udp socket
             // for return traffic, dest port will be the client's udp socket port
@@ -117,9 +110,13 @@ namespace llarp
 
             virtual bool send_path_control_message(std::string method, std::string body, bt_control_response_hook func);
 
-            virtual bool send_path_data_message(std::string data);
+            // For sending raw IP packets (e.g. straight from tun device), converts
+            // the IPProtocol to a session::traffic_type (or RAW if not present in traffic_type)
+            bool send_path_data_message(std::string data, net::IPProtocol proto);
 
-            void recv_path_data_message(std::vector<uint8_t> data);
+            bool send_path_data_message(std::string data, uint8_t type);
+
+            void recv_path_data_message(std::vector<std::byte> data);
 
             void set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path);
 
@@ -129,15 +126,11 @@ namespace llarp
 
             bool using_tun() const { return _use_tun; }
 
-            // inbound
-            void tcp_backend_connect();
-
-            // outbound
-            void tcp_backend_listen(on_session_init_hook cb, uint16_t port = 0);
-
             void handle_udp_from_remote(IPPacket&& pkt);
 
             uint16_t setup_udp_mapping(uint16_t dest_port);
+
+            uint16_t map_tcp_remote_port(uint16_t dest_port);
 
             session_tag tag() { return _tag; }
 
@@ -194,8 +187,6 @@ namespace llarp
             bool send_path_control_message(
                 std::string method, std::string body, bt_control_response_hook func) override;
 
-            bool send_path_data_message(std::string data) override;
-
             void build_more(size_t n = 0) override;
 
             void send_path_switch();
@@ -251,8 +242,6 @@ namespace llarp
             bool send_path_control_message(
                 std::string method, std::string body, bt_control_response_hook func) override;
 
-            bool send_path_data_message(std::string data) override;
-
             void update_remote_intros(intro_set&& intros);
 
             void build_more(size_t n = 0) override;
@@ -305,8 +294,6 @@ namespace llarp
 
             bool send_path_control_message(
                 std::string method, std::string body, bt_control_response_hook func) override;
-
-            bool send_path_data_message(std::string data) override;
         };
     }  // namespace session
 

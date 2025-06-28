@@ -145,9 +145,9 @@ namespace llarp::dns
         return nlohmann::json{{"questions", ques}, {"answers", ans}};
     }
 
-    std::vector<uint8_t> Message::to_buffer() const
+    std::vector<std::byte> Message::to_buffer() const
     {
-        std::vector<uint8_t> tmp;
+        std::vector<std::byte> tmp;
         tmp.resize(1500);
         llarp_buffer_t buf{tmp};
         if (not Encode(&buf))

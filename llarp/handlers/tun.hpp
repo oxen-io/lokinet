@@ -11,7 +11,18 @@
 #include <type_traits>
 #include <variant>
 
-namespace llarp::handlers
+namespace llarp
+{
+namespace traffic_type
+{
+    constexpr uint8_t UDP = 0;
+    constexpr uint8_t TCP = 1;
+    constexpr uint8_t RAW = 2;
+    constexpr uint8_t TUNNELED_QUIC = 3;
+}  // namespace traffic_type
+
+
+namespace handlers
 {
     inline constexpr auto TUN = "tun"sv;
     inline constexpr auto LOKI_RESOLVER = "lokinet"sv;
@@ -114,7 +125,7 @@ namespace llarp::handlers
         void rewrite_and_send_packet(IPPacket&& pkt, ip_v src, ip_v dest);
 
         // TESTNET: TODO: new inbound packet handling logic
-        void handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote);
+        void handle_inbound_packet(IPPacket pkt, uint8_t type, NetworkAddress remote);
 
         // Handles an inbound packet coming IN from the network
         // bool handle_inbound_packet(IPPacket pkt, NetworkAddress remote, bool is_exit_session, bool
@@ -163,3 +174,4 @@ namespace llarp::handlers
     };
 
 }  // namespace llarp::handlers
+}  // namespace llarp

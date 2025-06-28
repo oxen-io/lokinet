@@ -339,10 +339,10 @@ namespace llarp
                 }
             }
 
-            inline static std::tuple<session_tag, std::vector<uint8_t>> deserialize_inner(std::string&& payload)
+            inline static std::tuple<session_tag, std::vector<std::byte>> deserialize_inner(std::string&& payload)
             {
                 session_tag t{};
-                std::vector<uint8_t> body{};
+                std::vector<std::byte> body{};
 
                 try
                 {
