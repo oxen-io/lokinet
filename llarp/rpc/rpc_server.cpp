@@ -36,8 +36,6 @@ namespace llarp::rpc
         std::function<void(std::optional<dns::Message>)> func;
 
       public:
-        quic::Address dumb;
-
         explicit DummyPacketSource(std::function<void(std::optional<dns::Message>)> func) : func{std::move(func)} {}
 
         bool would_loop(const quic::Address&, const quic::Address&) const override { return false; };
