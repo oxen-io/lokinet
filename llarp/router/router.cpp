@@ -403,7 +403,7 @@ namespace llarp
             else
                 throw std::runtime_error("cannot find free IPv4 address range!");
         }
-        log::info(logcat, "Lokinet {} IPv4 local network is {}", *conf._if_name, conf._local_ip_net);
+        log::info(logcat, "Lokinet IPv4 local network is {}", *conf._local_ip_net);
 
         if (conf.enable_ipv6)
         {
@@ -414,7 +414,7 @@ namespace llarp
                 else
                     throw std::runtime_error("cannot find free IPv6 address range!");
             }
-            log::info(logcat, "Lokinet {} IPv6 local network is {}", *conf._if_name, *conf._local_ipv6_net);
+            log::info(logcat, "Lokinet IPv6 local network is {}", *conf._local_ipv6_net);
             log::warning(
                 logcat, "Lokinet IPv6 support is a work-in-progress and unsupported; enabling it is not recommended");
         }
@@ -1038,8 +1038,6 @@ namespace llarp
             return;
 
         _is_stopping.store(true);
-        if (log::get_level_default() != log::Level::off)
-            log::reset_level(log::Level::info);
 
         log::warning(logcat, "Hard stopping router");
         llarp::sys::service_manager->stopping();
@@ -1062,9 +1060,6 @@ namespace llarp
         }
 
         _is_stopping.store(true);
-
-        if (auto level = log::get_level_default(); level > log::Level::info and level != log::Level::off)
-            log::reset_level(log::Level::info);
 
         log::debug(logcat, "stopping service manager...");
         llarp::sys::service_manager->stopping();

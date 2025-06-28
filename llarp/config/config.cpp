@@ -117,7 +117,7 @@ namespace llarp
             },
             [this](fs::path arg) {
                 if (arg.empty())
-                    throw std::invalid_argument("[router]:data-dir is empty");
+                    arg = fs::path{"."};
                 if (not fs::exists(arg))
                     throw std::runtime_error{"Specified [router]:data-dir {} does not exist"_format(arg)};
 
@@ -504,7 +504,9 @@ namespace llarp
                 "Read auth tokens from file to accept endpoint auth",
                 "Can be provided multiple times",
             },
-            [this](fs::path arg) {
+            [this, rel_base = params.default_data_dir](fs::path arg) {
+                if (!arg.empty() && arg.is_relative())
+                    arg = rel_base / arg;
                 if (not fs::exists(arg))
                     throw std::invalid_argument{"cannot load auth file {}: file does not exist"_format(arg)};
                 auth_files.insert(std::move(arg));
@@ -767,7 +769,9 @@ namespace llarp
                 "is not specified then the local IP of remote lokinet targets will not persist across",
                 "restarts of lokinet.",
             },
-            [this](fs::path file) {
+            [this, rel_base = params.default_data_dir](fs::path file) {
+                if (!file.empty() && file.is_relative())
+                    file = rel_base / file;
                 static constexpr auto addrmap_errorstr = "Invalid entry in persist-addrmap-file"sv;
                 if (file.empty())
                     throw std::invalid_argument("persist-addrmap-file cannot be empty");
@@ -1012,9 +1016,11 @@ namespace llarp
             "add-hosts",
             ClientOnly,
             Comment{"Add a hosts file to the dns resolver", "For use with client side dns filtering"},
-            [=, this](fs::path path) {
+            [this, rel_base = params.default_data_dir](fs::path path) {
                 if (path.empty())
                     return;
+                if (path.is_relative())
+                    path = rel_base / path;
                 if (not fs::exists(path))
                     throw std::invalid_argument{"cannot add hosts file {} as it does not exist"_format(path)};
                 hostfiles.emplace_back(std::move(path));

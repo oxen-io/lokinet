@@ -8,7 +8,7 @@
 
 namespace llarp
 {
-    static auto logcat = log::Cat("Bootstrap");
+    static auto logcat = log::Cat("bootstrap");
 
     const RemoteRC& BootstrapList::current()
     {
@@ -78,7 +78,7 @@ namespace llarp
             read_from_file(netid, f);
         }
 
-        if (empty() && !def.empty())
+        if (empty() && !def.empty() && fs::exists(def))
         {
             log::debug(logcat, "BootstrapRC list empty; looking for default from {}", def);
             try

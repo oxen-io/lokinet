@@ -233,7 +233,7 @@ namespace llarp
     {
         fs::path id_keyfile;
         oxenmq::address rpc_addr;
-        bool disable_testing = true;
+        bool disable_testing = false;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };

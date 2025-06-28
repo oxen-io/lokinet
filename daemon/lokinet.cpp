@@ -505,9 +505,6 @@ namespace
                 throw std::runtime_error{"Failed to parse config file {}"_format(confFile)};
             }
 
-            // change cwd to dataDir to support relative paths in config
-            fs::current_path(conf.router.data_dir);
-
             ctx = std::make_unique<llarp::Context>();
 
             signal(SIGINT, handle_signal);
