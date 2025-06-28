@@ -594,7 +594,7 @@ namespace llarp::handlers
             auto intros = get_local_client_intros();
             if (intros.empty())
                 return _localcc_update_fail();
-            client_contact.regenerate(std::move(intros));
+            client_contact.update_intros(std::move(intros));
             _update_and_publish_localcc();
         }
         else
@@ -1082,7 +1082,7 @@ namespace llarp::handlers
                     {
                         *counter = 0;
                         log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_client_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
+                        _make_client_session_path(std::move(*cc).intros(), remote, std::move(hook));
                     }
                     else if (--*counter == 0)
                         log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);

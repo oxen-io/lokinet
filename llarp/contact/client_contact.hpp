@@ -66,10 +66,11 @@ namespace llarp
 
         EncryptedClientContact encrypt_and_sign() const;
 
-        void regenerate(sorted_intro_set iset);
+        void update_intros(sorted_intro_set intros);
 
         const PubKey& pubkey() const { return _pubkey; }
-        const sorted_intro_set& intros() const { return _intros; }
+        const sorted_intro_set& intros() const& { return _intros; }
+        sorted_intro_set&& intros() && { return std::move(_intros); }
         const std::unordered_set<dns::SRVData>& SRVs() const { return _srv; }
         protocol_flag protocols() const { return _protos; }
         const std::optional<net::ExitPolicy>& exit_policy() const { return _exit_policy; }
@@ -91,19 +92,15 @@ namespace llarp
 
         std::vector<std::byte> bt_encode() const;
 
-        // Throws like a MF (for now)
+        // Throws on failure to parse
         void bt_decode(std::string_view buf);
 
-        // Throws if unsuccessful, must take BTDC in invocation
+        // Throws if unsuccessful
         void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
         session_tag generate_session_tag() const;
 
-        void update_intros(sorted_intro_set intros);
-
       public:
-        sorted_intro_set take_intros() && { return std::move(_intros); }
-
         bool operator==(const ClientContact& other) const
         {
             return std::tie(_pubkey, _intros, _srv, _protos, _exit_policy)

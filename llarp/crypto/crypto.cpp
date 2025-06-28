@@ -168,22 +168,13 @@ namespace llarp::crypto
         shorthash(result, buf);
         return result;
     }
-    bool sign(std::span<uint8_t, SIGSIZE> sig, const Ed25519SecretKey& secret, uint8_t* buf, size_t size)
+    bool sign(std::span<std::byte, SIGSIZE> sig, const Ed25519SecretKey& secret, std::span<const std::byte> buf)
     {
-        return crypto_sign_detached(sig.data(), nullptr, buf, size, secret.data()) != -1;
+        return crypto_sign_detached(as_uspan(sig).data(), nullptr, as_uspan(buf).data(), buf.size(), secret.data())
+            != -1;
     }
 
-    bool sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
-    {
-        return crypto_sign_detached(sig, nullptr, buf, size, sk) != -1;
-    }
-
-    bool sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf)
-    {
-        return crypto_sign_detached(sig, nullptr, buf.data(), buf.size(), sk.data()) != -1;
-    }
-
-    bool sign(Signature& sig, const Ed25519PrivateData& privkey, const uint8_t* buf, size_t size)
+    bool sign(std::span<std::byte, SIGSIZE> sig, const Ed25519PrivateData& privkey, std::span<const std::byte> buf)
     {
         PubKey pubkey = privkey.to_pubkey();
 
@@ -198,26 +189,27 @@ namespace llarp::crypto
         // the derivation hash.
         crypto_hash_sha512_init(&hs);
         crypto_hash_sha512_update(&hs, privkey.signing_hash().data(), 32);
-        crypto_hash_sha512_update(&hs, buf, size);
+        crypto_hash_sha512_update(&hs, as_uspan(buf).data(), buf.size());
         crypto_hash_sha512_final(&hs, nonce);
         crypto_core_ed25519_scalar_reduce(nonce, nonce);
 
         // copy pubkey into sig to make (for now) sig = (R || A)
         memmove(sig.data() + 32, pubkey.data(), 32);
 
+        auto* sig_data = as_uspan(sig).data();
         // R = r * B
-        crypto_scalarmult_ed25519_base_noclamp(sig.data(), nonce);
+        crypto_scalarmult_ed25519_base_noclamp(sig_data, nonce);
 
         // hram = H(R || A || M)
         crypto_hash_sha512_init(&hs);
-        crypto_hash_sha512_update(&hs, sig.data(), 64);
-        crypto_hash_sha512_update(&hs, buf, size);
+        crypto_hash_sha512_update(&hs, sig_data, 64);
+        crypto_hash_sha512_update(&hs, as_uspan(buf).data(), buf.size());
         crypto_hash_sha512_final(&hs, hram);
 
         // S = r + H(R || A || M) * s, so sig = (R || S)
         crypto_core_ed25519_scalar_reduce(hram, hram);
         crypto_core_ed25519_scalar_mul(mulres, hram, privkey.data());
-        crypto_core_ed25519_scalar_add(sig.data() + 32, mulres, nonce);
+        crypto_core_ed25519_scalar_add(sig_data + 32, mulres, nonce);
 
         sodium_memzero(nonce, sizeof nonce);
 

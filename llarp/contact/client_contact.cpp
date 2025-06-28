@@ -4,6 +4,7 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
+#include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
 #include <type_traits>
@@ -155,6 +156,16 @@ namespace llarp
     EncryptedClientContact::EncryptedClientContact(std::string buf) : _bt_payload{std::move(buf)}
     {
         bt_decode(oxenc::bt_dict_consumer{_bt_payload});
+    }
+
+    oxenc::bt_dict_producer EncryptedClientContact::bt_encode_for_signing() const
+    {
+        oxenc::bt_dict_producer btdp;
+        btdp.append("i", blinded_pubkey.to_view());
+        btdp.append("n", nonce.to_view());
+        btdp.append("t", signed_at.count());
+        btdp.append("x", std::span{encrypted});
+        return btdp;
     }
 
     /** EncryptedClientContact

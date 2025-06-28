@@ -1284,7 +1284,7 @@ namespace llarp
                 log::debug(logcat, "Storing ClientContact for remote rid:{}", *sender);
                 _router.contact_db().put_cc(std::move(enc));
 
-                session->update_outbound_remote_intros(std::move(*intro).take_intros());
+                session->update_outbound_remote_intros(std::move(*intro).intros());
 
                 return m.respond(messages::OK_RESPONSE);
             }

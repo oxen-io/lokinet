@@ -446,7 +446,7 @@ namespace llarp
             [this](std::string arg) {
                 if (arg.empty())
                     return;
-                auth_type = parse_auth_type(arg);
+                auth_type = auth::parse_type(arg);
             });
 
         conf.define_option<std::string>(
@@ -518,7 +518,7 @@ namespace llarp
                 "How to interpret the contents of an auth file.",
                 "Possible values: hashes, plaintext",
             },
-            [this](std::string arg) { auth_file_type = parse_auth_file_type(std::move(arg)); });
+            [this](std::string arg) { auth_file_type = auth::parse_file_type(std::move(arg)); });
 
         conf.define_option<std::string>(
             "network",
@@ -1111,10 +1111,8 @@ namespace llarp
             else
                 maybe = quic::Address{host, p};
 
-            /* TODO: fix this and the option below
             if (maybe and maybe->is_loopback())
                 throw std::invalid_argument{"{} is a loopback address"_format(arg)};
-            */
 
             log::trace(logcat, "parsed address: {}", *maybe);
 
@@ -1311,10 +1309,8 @@ namespace llarp
             if (arg.empty())
                 return;
             throw std::invalid_argument(
-                "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc "
-                "config "
-                "option instead with oxend's lmq-local-control address -- typically a value such "
-                "as "
+                "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc config "
+                "option instead with oxend's lmq-local-control address -- typically a value such as "
                 "rpc=ipc:///var/lib/oxen/oxend.sock or rpc=ipc:///home/snode/.oxen/oxend.sock");
         });
         conf.define_option<bool>("lokid", "enabled", RelayOnly, Deprecated);

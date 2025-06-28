@@ -25,7 +25,7 @@ namespace llarp
         }
     }
 
-    NetID netid_from_string(std::string_view s)
+    inline NetID netid_from_string(std::string_view s)
     {
         if (s == "lokinet")
             return NetID::MAINNET;

@@ -41,7 +41,6 @@ namespace llarp
           _close_promise{std::move(p)},
           _vpn{std::move(vpnPlatform)},
           _contact_db{std::make_unique<ContactDB>(*this)},
-          _node_db{std::make_unique<NodeDB>(nodedb_dirname, *this)},
           _disk_thread{_omq->add_tagged_thread("disk")},
           // TODO FIXME: what about non-testnet?  And do we really want a fixed random interval,
           // or do we want a randomized interval on each node's gossip?
@@ -546,8 +545,8 @@ namespace llarp
             // using the NetworkConfig (ex: tun/null, exit::Handler, etc) will have processed values
             process_netconfig();
 
+            _node_db = std::make_unique<NodeDB>(config().router.data_dir / nodedb_dirname, *this);
             init_bootstrap();
-            _node_db->configure();
 
             relay_contact = {identity(), _is_service_node and _public_address ? *_public_address : _listen_address};
 

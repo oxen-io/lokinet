@@ -145,8 +145,6 @@ namespace llarp
 
         void start_tickers();
 
-        void configure();
-
         // returns {num_rcs, num_rids, num_bootstraps}
         std::tuple<size_t, size_t, size_t> db_stats() const;
 

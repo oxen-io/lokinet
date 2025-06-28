@@ -19,7 +19,6 @@ lokinet_add_library(lokinet-cryptography
 # Functional objects use by lokinet-core and other libraries
 # needed by vpn/ router/ rpc/ handlers/ net/ link/
 lokinet_add_library(lokinet-core-utils
-  auth/auth.cpp
   auth/file_auth.cpp
   auth/rpc_auth.cpp
   auth/session_auth.cpp
@@ -190,6 +189,7 @@ target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fal
 
 # lokinet-config is for all configuration types and parsers
 lokinet_add_library(lokinet-config
+  auth/auth.cpp
   config/config.cpp
   config/definition.cpp
   config/ini.cpp

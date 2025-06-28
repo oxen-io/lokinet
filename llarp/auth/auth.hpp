@@ -96,17 +96,18 @@ namespace llarp
             std::optional<oxenmq::ConnectionID> _omq_conn;
             std::unordered_set<session_tag> _pending_sessions;
         };
+
+        /// maybe get auth result from string
+        std::optional<AuthCode> parse_code(std::string_view data);
+
+        /// get an auth type from a string
+        /// throws std::invalid_argument if arg is invalid
+        AuthType parse_type(std::string_view data);
+
+        /// get an auth file type from a string
+        /// throws std::invalid_argument if arg is invalid
+        AuthFileType parse_file_type(std::string_view data);
+
     }  // namespace auth
-
-    /// maybe get auth result from string
-    std::optional<auth::AuthCode> parse_auth_code(std::string data);
-
-    /// get an auth type from a string
-    /// throws std::invalid_argument if arg is invalid
-    auth::AuthType parse_auth_type(std::string data);
-
-    /// get an auth file type from a string
-    /// throws std::invalid_argument if arg is invalid
-    auth::AuthFileType parse_auth_file_type(std::string data);
 
 }  // namespace llarp

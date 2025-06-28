@@ -1,53 +1,55 @@
 #include "auth.hpp"
 
-namespace llarp
+namespace llarp::auth
 {
+
+    static const std::unordered_map<std::string_view, AuthCode> codes = {
+        {"OKAY"sv, AuthCode::ACCEPTED},
+        {"REJECT"sv, AuthCode::REJECTED},
+        {"PAYME"sv, AuthCode::PAYMENT_REQUIRED},
+        {"LIMITED"sv, AuthCode::RATE_LIMIT}};
+
     /// maybe get auth result from string
-    std::optional<auth::AuthCode> parse_auth_code(std::string data)
+    std::optional<AuthCode> parse_code(std::string_view data)
     {
-        std::unordered_map<std::string, auth::AuthCode> values = {
-            {"OKAY", auth::AuthCode::ACCEPTED},
-            {"REJECT", auth::AuthCode::REJECTED},
-            {"PAYME", auth::AuthCode::PAYMENT_REQUIRED},
-            {"LIMITED", auth::AuthCode::RATE_LIMIT}};
-        auto itr = values.find(data);
-        if (itr == values.end())
-            return std::nullopt;
-        return itr->second;
+        if (auto it = codes.find(data); it != codes.end())
+            return it->second;
+        return std::nullopt;
     }
+
+    static const std::unordered_map<std::string_view, AuthType> types = {
+        {"file"sv, AuthType::FILE},
+        {"lmq"sv, AuthType::OMQ},
+        {"whitelist"sv, AuthType::WHITELIST},
+        {"none"sv, AuthType::NONE}};
 
     /// get an auth type from a string
     /// throws std::invalid_argument if arg is invalid
-    auth::AuthType parse_auth_type(std::string data)
+    AuthType parse_type(std::string_view data)
     {
-        std::unordered_map<std::string, auth::AuthType> values = {
-            {"file", auth::AuthType::FILE},
-            {"lmq", auth::AuthType::OMQ},
-            {"whitelist", auth::AuthType::WHITELIST},
-            {"none", auth::AuthType::NONE}};
-        const auto itr = values.find(data);
-        if (itr == values.end())
-            throw std::invalid_argument("no such auth type: " + data);
-        return itr->second;
+        if (auto it = types.find(data); it != types.end())
+            return it->second;
+        throw std::invalid_argument("no such auth type: {}"_format(data));
     }
+
+    static const std::unordered_map<std::string_view, AuthFileType> file_types = {
+        {"plain"sv, AuthFileType::PLAIN},
+        {"plaintext"sv, AuthFileType::PLAIN},
+        {"hashed"sv, AuthFileType::HASHES},
+        {"hashes"sv, AuthFileType::HASHES},
+        {"hash"sv, AuthFileType::HASHES}};
 
     /// get an auth file type from a string
     /// throws std::invalid_argument if arg is invalid
-    auth::AuthFileType parse_auth_file_type(std::string data)
+    AuthFileType parse_file_type(std::string_view data)
     {
-        std::unordered_map<std::string, auth::AuthFileType> values = {
-            {"plain", auth::AuthFileType::PLAIN},
-            {"plaintext", auth::AuthFileType::PLAIN},
-            {"hashed", auth::AuthFileType::HASHES},
-            {"hashes", auth::AuthFileType::HASHES},
-            {"hash", auth::AuthFileType::HASHES}};
-        const auto itr = values.find(data);
-        if (itr == values.end())
-            throw std::invalid_argument("no such auth file type: " + data);
+        const auto itr = file_types.find(data);
+        if (itr == file_types.end())
+            throw std::invalid_argument{"no such auth file type: {}"_format(data)};
 #ifndef HAVE_CRYPT
-        if (itr->second == auth::AuthFileType::HASHES)
-            throw std::invalid_argument("unsupported auth file type: " + data);
+        if (itr->second == AuthFileType::HASHES)
+            throw std::invalid_argument{"unsupported auth file type: {}"_format(data)};
 #endif
         return itr->second;
     }
-}  // namespace llarp
+}  // namespace llarp::auth
