@@ -144,7 +144,7 @@ namespace llarp
 
         std::unordered_set<std::string> auth_static_tokens;
 
-        std::unordered_set<fs::path> auth_files;
+        std::vector<fs::path> auth_files;
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
 

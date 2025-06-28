@@ -509,7 +509,7 @@ namespace llarp
                     arg = rel_base / arg;
                 if (not fs::exists(arg))
                     throw std::invalid_argument{"cannot load auth file {}: file does not exist"_format(arg)};
-                auth_files.insert(std::move(arg));
+                auth_files.push_back(std::move(arg));
             });
 
         conf.define_option<std::string>(
