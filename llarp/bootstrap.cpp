@@ -55,18 +55,16 @@ namespace llarp
         _curr = 0;
     }
 
-    std::vector<RemoteRC> BootstrapList::get_fallbacks(NetID netid)
+    size_t BootstrapList::add_fallbacks(NetID netid)
     {
-        std::vector<RemoteRC> fallbacks;
+        auto start_size = size();
         for (const auto& [n, rc_blob] : bootstrap_fallbacks)
         {
             if (n != netid)
                 continue;
-            // We don't go through bt_decode because the fallbacks should always be valid, and
-            // because they will always be RC dicts, not possibly lists of RC dicts.
-            fallbacks.emplace_back(rc_blob, netid, true);
+            add(netid, rc_blob, "Fallback bootstrap data");
         }
-        return fallbacks;
+        return size() - start_size;
     }
 
     void BootstrapList::populate(
@@ -97,12 +95,9 @@ namespace llarp
 
         if (empty() and load_fallbacks)
         {
-            log::info(logcat, "Bootstrap list is empty; loading built-in fallbacks");
-            if (auto fallbacks = get_fallbacks(netid); !fallbacks.empty())
-            {
-                log::debug(logcat, "Loading {} default fallback bootstrap router(s)!", fallbacks.size());
-                _bootstraps = std::move(fallbacks);
-            }
+            log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
+            auto size = add_fallbacks(netid);
+            log::info(logcat, "Loaded {} {} default fallback bootstrap router contact(s)", size, netid);
 
             if (_bootstraps.empty())
             {
@@ -124,6 +119,25 @@ namespace llarp
         log::debug(logcat, "We have {} Bootstrap router(s)!", size());
     }
 
+    void BootstrapList::add(NetID netid, std::string_view data, std::string_view input_desc)
+    {
+        // Bootstrap data can container either a list of bootstraps, or just a single bootstrap RC:
+        switch (data.front())
+        {
+            case 'l':
+                // list of bootstrap RCs
+                for (oxenc::bt_list_consumer l{data}; !l.is_finished();)
+                    _bootstraps.emplace_back(l.consume_dict_data(), netid, /*accept_expired=*/true);
+                break;
+            case 'd':
+                // single bootstrap RC
+                _bootstraps.emplace_back(data, netid, /*accept_expired=*/true);
+                break;
+            default:
+                throw std::runtime_error{"{} does not contain valid bootstrap data!"_format(input_desc)};
+        }
+    }
+
     void BootstrapList::read_from_file(NetID netid, const fs::path& fpath)
     {
         if (not fs::exists(fpath))
@@ -133,21 +147,7 @@ namespace llarp
         if (content.empty())
             throw std::runtime_error{"Bootstrap RC file '{}' is empty"_format(fpath)};
 
-        // A file can container either a list of bootstraps, or just a single bootstrap RC:
-        switch (content.front())
-        {
-            case 'l':
-                // list of bootstrap RCs
-                for (oxenc::bt_list_consumer l{content}; !l.is_finished();)
-                    _bootstraps.emplace_back(l.consume_dict_data(), netid, /*accept_expired=*/true);
-                break;
-            case 'd':
-                // single bootstrap RC
-                _bootstraps.emplace_back(content, netid, /*accept_expired=*/true);
-                break;
-            default:
-                throw std::runtime_error{"bootstrap RC file '{}' is not a valid bootstrap file"_format(fpath)};
-        }
+        add(netid, content, "Bootstrap RC file '{}'"_format(fpath));
 
         log::debug(logcat, "Successfully loaded BootstrapRC file {} ({}B)", fpath, content.size());
     }

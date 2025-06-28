@@ -18,10 +18,12 @@ namespace llarp
         void add(oxenc::bt_list_consumer&& l);
         void add(oxenc::bt_dict_consumer&& d);
 
-        static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
-        static std::vector<RemoteRC> get_fallbacks(NetID netid);
+        // Decodes either a list of RCs or a single RC and appends it/them to the bootstrap list.
+        void add(NetID netid, std::string_view data, std::string_view input_desc);
 
-        // Decodes either a list of RCs or a single RC and appends it to the bootstrap list.
+        static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
+        size_t add_fallbacks(NetID netid);
+
         void read_from_file(NetID netid, const fs::path& fpath);
 
       public:
