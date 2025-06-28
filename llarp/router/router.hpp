@@ -212,11 +212,27 @@ namespace llarp
 
         const Config& config() const { return _config; }
 
-        ContactDB& contact_db() { assert(_contact_db); return *_contact_db; }
-        const ContactDB& contact_db() const { assert(_contact_db); return *_contact_db; }
+        ContactDB& contact_db()
+        {
+            assert(_contact_db);
+            return *_contact_db;
+        }
+        const ContactDB& contact_db() const
+        {
+            assert(_contact_db);
+            return *_contact_db;
+        }
 
-        NodeDB& node_db() { assert(_node_db); return *_node_db; }
-        const NodeDB& node_db() const { assert(_node_db); return *_node_db; }
+        NodeDB& node_db()
+        {
+            assert(_node_db);
+            return *_node_db;
+        }
+        const NodeDB& node_db() const
+        {
+            assert(_node_db);
+            return *_node_db;
+        }
 
         NetID netid() const { return _config.router.net_id; }
 

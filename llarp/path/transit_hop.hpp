@@ -87,7 +87,9 @@ namespace llarp
             bool is_linked() const override { return not _linked_sessions.empty(); }
 
             bool send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
+                std::string_view method,
+                std::span<const std::byte> body,
+                std::function<void(quic::message)> func) override;
             bool send_path_data_message(std::span<std::byte> body) override;
 
             RouterID terminal_rid() const override { return _rid; }

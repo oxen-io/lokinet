@@ -186,7 +186,9 @@ namespace llarp
             std::weak_ptr<path::PathHandler> get_weak() override;
 
             bool send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
+                std::string_view method,
+                std::span<const std::byte> body,
+                std::function<void(quic::message)> func) override;
 
             bool send_path_data_message(std::span<std::byte> data) override;
 
@@ -243,7 +245,9 @@ namespace llarp
             std::weak_ptr<path::PathHandler> get_weak() override;
 
             bool send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
+                std::string_view method,
+                std::span<const std::byte> body,
+                std::function<void(quic::message)> func) override;
 
             bool send_path_data_message(std::span<std::byte> data) override;
 
@@ -294,7 +298,9 @@ namespace llarp
                 shared_kx_data kx_data);
 
             bool send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
+                std::string_view method,
+                std::span<const std::byte> body,
+                std::function<void(quic::message)> func) override;
 
             bool send_path_data_message(std::span<std::byte> data) override;
         };

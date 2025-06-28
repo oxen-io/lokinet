@@ -70,7 +70,8 @@ namespace llarp
 
             void Tick(std::chrono::milliseconds now);
 
-            bool resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
+            bool resolve_sns(
+                std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
 
             bool fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
 
@@ -79,7 +80,9 @@ namespace llarp
             bool publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
 
             bool send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func) override;
+                std::string_view method,
+                std::span<const std::byte> body,
+                std::function<void(quic::message)> func) override;
 
             bool send_path_data_message(std::span<std::byte> body) override;
 

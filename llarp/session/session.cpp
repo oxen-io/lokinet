@@ -431,7 +431,12 @@ namespace llarp::session
         sorted_intro_set _remote_intros,
         shared_kx_data kx_data)
         : OutboundRelaySession{
-            std::move(remote), parent, std::move(path), std::move(_t), std::move(remote_pivot_txid), std::move(kx_data)}
+              std::move(remote),
+              parent,
+              std::move(path),
+              std::move(_t),
+              std::move(remote_pivot_txid),
+              std::move(kx_data)}
     {
         // These can both be false but CANNOT both be true
         if (_is_exit_session and _is_snode_session)
@@ -791,15 +796,15 @@ namespace llarp::session
         bool use_tun,
         shared_kx_data kx_data)
         : BaseSession{
-            parent._router,
-            std::move(_p),
-            parent,
-            std::move(remote),
-            std::move(remote_pivot_txid),
-            std::move(_t),
-            use_tun,
-            false,
-            std::move(kx_data)}
+              parent._router,
+              std::move(_p),
+              parent,
+              std::move(remote),
+              std::move(remote_pivot_txid),
+              std::move(_t),
+              use_tun,
+              false,
+              std::move(kx_data)}
     {
         log::debug(
             logcat,
@@ -823,13 +828,13 @@ namespace llarp::session
         bool use_tun,
         shared_kx_data kx_data)
         : InboundClientSession{
-            std::move(remote),
-            std::move(_p),
-            parent,
-            std::move(remote_pivot_txid),
-            std::move(_t),
-            use_tun,
-            std::move(kx_data)}
+              std::move(remote),
+              std::move(_p),
+              parent,
+              std::move(remote_pivot_txid),
+              std::move(_t),
+              use_tun,
+              std::move(kx_data)}
     {
         log::debug(logcat, "InboundSession from remote client to local relay service created");
     }

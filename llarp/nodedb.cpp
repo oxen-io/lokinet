@@ -525,19 +525,19 @@ namespace llarp
         _flush_ticker = _router.loop()->call_every(FLUSH_INTERVAL, [this]() mutable { save_to_disk(); });
         _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
-        _purge_ticker = _router.loop()->call_every(
-            PURGE_INTERVAL, [this]() mutable { purge_rcs(); }, not _needs_bootstrap);
+        _purge_ticker =
+            _router.loop()->call_every(PURGE_INTERVAL, [this]() mutable { purge_rcs(); }, not _needs_bootstrap);
         if (not _needs_bootstrap)
             _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
 
         if (not _router.is_service_node())
         {
             // start these immediately if we do not need to bootstrap
-            _rc_fetch_ticker = _router.loop()->call_every(
-                FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
+            _rc_fetch_ticker =
+                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
 
-            _rid_fetch_ticker = _router.loop()->call_every(
-                FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
+            _rid_fetch_ticker =
+                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
 
             if (not _needs_bootstrap)
             {

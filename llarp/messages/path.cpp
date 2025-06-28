@@ -11,7 +11,10 @@ namespace llarp
 
     namespace ONION
     {
-        std::string serialize_frames(const std::vector<std::string>& frames) { return oxenc::bt_serialize(std::move(frames)); }
+        std::string serialize_frames(const std::vector<std::string>& frames)
+        {
+            return oxenc::bt_serialize(std::move(frames));
+        }
 
         std::vector<std::string> deserialize_frames(std::string_view buf)
         {
