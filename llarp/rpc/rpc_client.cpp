@@ -224,7 +224,7 @@ namespace llarp::rpc
                 const nlohmann::json req = {{"passed", success}, {"pubkey", itr->second.ToHex()}, {"type", "lokinet"}};
                 request(
                     "admin.report_peer_status",
-                    [this](bool success, std::vector<std::string>) {
+                    [](bool success, std::vector<std::string>) {
                         if (not success)
                         {
                             log::error(logcat, "Failed to report connection status to oxend");

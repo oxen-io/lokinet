@@ -91,9 +91,6 @@ namespace llarp
         // path to write our self signed rc to
         fs::path our_rc_file;
 
-        // use file based logging?
-        bool use_file_logging{false};
-
         // our router contact
         LocalRC relay_contact;
         std::unique_ptr<oxenmq::OxenMQ> _omq{};
@@ -152,9 +149,6 @@ namespace llarp
 
         int min_client_outbounds{};
         std::atomic<bool> initial_client_connect_complete{false};
-
-        // should we be sending padded messages every interval?
-        bool send_padding{false};
 
         bool should_report_stats(std::chrono::milliseconds now) const;
 

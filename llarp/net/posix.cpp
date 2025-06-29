@@ -179,7 +179,7 @@ namespace llarp::net
             return ret;
         }
 
-        std::string find_free_tun(std::string_view suggest) const override
+        std::string find_free_tun([[maybe_unused]] std::string_view suggest) const override
         {
 #ifdef __linux__
             if (!suggest.empty())
