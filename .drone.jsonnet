@@ -435,7 +435,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   docker_base + 'ubuntu-focal',
                   deps=['g++-10'] + default_deps_nocxx,
                   extra_setup=kitware_repo('focal'),
-                  cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_POLICY_VERSION_MINIMUM=3.5'),
+                  cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
 
   // Static ubuntu focal amd64 build (upload to builds.lokinet.dev)
   debian_pipeline('Ubuntu 20.04 static',
@@ -447,7 +447,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 ' +
-                              '-DCMAKE_POLICY_VERSION_MINIMUM=3.5 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
