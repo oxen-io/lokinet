@@ -15,6 +15,7 @@ local default_deps_base = [
 ];
 local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
 local default_deps = ['g++'] + default_deps_nocxx;
+local oxen_repo_default = ['liboxen-logging-dev', 'liboxenmq-dev', 'liboxenc-dev', 'liboxen-quic-dev'];
 local docker_base = 'registry.oxen.rocks/';
 
 local submodule_commands = [
@@ -59,7 +60,7 @@ local debian_pipeline(name,
                       extra_cmds=[],
                       jobs=6,
                       tests=false,  // FIXME TODO: temporary until test suite is fixed
-                      oxen_repo=false,
+                      oxen_repo=oxen_repo_default,
                       allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
@@ -80,11 +81,12 @@ local debian_pipeline(name,
                   apt_get_quiet + ' update',
                   apt_get_quiet + ' install -y eatmydata',
                 ] + (
-                  if oxen_repo then [
+                  if std.length(oxen_repo) > 0 then [
                     'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y lsb-release',
                     'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
                     'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
                     'eatmydata ' + apt_get_quiet + ' update',
+                    apt_get_quiet + ' install -y ' + std.join(' ', oxen_repo),
                   ] else []
                 ) + extra_setup
                 + [
@@ -107,23 +109,6 @@ local debian_pipeline(name,
     },
   ],
 };
-local local_gnutls(jobs=6, prefix='/usr/local') = [
-  apt_get_quiet + ' install -y curl ca-certificates',
-  'curl -sSL https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz | tar xfz -',
-  'curl -sSL https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz | tar xfJ -',
-  'export PKG_CONFIG_PATH=' + prefix + '/lib/pkgconfig:' + prefix + '/lib64/pkgconfig',
-  'export LD_LIBRARY_PATH=' + prefix + '/lib:' + prefix + '/lib64',
-  'cd nettle-3.9.1',
-  './configure --prefix=' + prefix + ' CC="ccache gcc"',
-  'make -j' + jobs,
-  'make install',
-  'cd ..',
-  'cd gnutls-3.8.0',
-  './configure --prefix=' + prefix + ' --with-included-libtasn1 --with-included-unistring --without-p11-kit  --disable-libdane --disable-cxx --without-tpm --without-tpm2 CC="ccache gcc"',
-  'make -j' + jobs,
-  'make install',
-  'cd ..',
-];
 local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
   kind: 'pipeline',
   type: 'docker',
@@ -238,7 +223,7 @@ local linux_cross_pipeline(name,
 };
 
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
-local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=true) = {
+local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=oxen_repo_default) = {
   kind: 'pipeline',
   type: 'docker',
   name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
@@ -417,10 +402,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // Debian 11
   debian_pipeline('Debian 11',
                   docker_base + 'debian-bullseye',
-                  extra_setup=debian_backports('bullseye', ['cmake']) + local_gnutls()),
+                  extra_setup=debian_backports('bullseye', ['cmake'])),
   debian_pipeline('Debian 11 static/debug',
                   docker_base + 'debian-bullseye',
                   build_type='Debug',
+                  oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON',
                   extra_setup=debian_backports('bullseye', ['cmake'])),
 
@@ -430,6 +416,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   extra_setup=debian_backports('bullseye', ['cmake']),
+                  oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
@@ -447,7 +434,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Ubuntu 20.04',
                   docker_base + 'ubuntu-focal',
                   deps=['g++-10'] + default_deps_nocxx,
-                  extra_setup=kitware_repo('focal') + local_gnutls(),
+                  extra_setup=kitware_repo('focal'),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_POLICY_VERSION_MINIMUM=3.5'),
 
   // Static ubuntu focal amd64 build (upload to builds.lokinet.dev)
@@ -457,7 +444,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   extra_setup=kitware_repo('focal'),
                   lto=true,
                   tests=false,
-                  oxen_repo=true,
+                  oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 ' +
                               '-DCMAKE_POLICY_VERSION_MINIMUM=3.5 ' +
