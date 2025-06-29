@@ -145,7 +145,8 @@ namespace llarp
             // resolves any config mappings that parsed ONS addresses to their pubkey network address
             void resolve_sns_mappings();
 
-            void initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb);
+            // NB: this method can be called from outside the event loop (e.g. in embedded usage).
+            void initiate_remote_session(NetworkAddress remote, on_session_init_hook cb);
 
             void tick(std::chrono::milliseconds now) override;
 

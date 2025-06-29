@@ -1036,13 +1036,16 @@ namespace llarp
         if (_is_stopping)
             return;
 
-        _is_stopping.store(true);
+        if (_is_stopping.exchange(true))
+            return;  // Lost a race with something else trying to stop
 
-        log::warning(logcat, "Hard stopping router");
-        llarp::sys::service_manager->stopping();
-        _session_endpoint->stop();
-        stop_outbounds();
-        close();
+        _loop->call([this] {
+            log::warning(logcat, "Hard stopping router");
+            llarp::sys::service_manager->stopping();
+            _session_endpoint->stop();
+            stop_outbounds();
+            close();
+        });
     }
 
     void Router::stop()
@@ -1058,17 +1061,20 @@ namespace llarp
             return;
         }
 
-        _is_stopping.store(true);
+        if (_is_stopping.exchange(true))
+            return;  // Lost a race with something else trying to stop
 
-        log::debug(logcat, "stopping service manager...");
-        llarp::sys::service_manager->stopping();
+        _loop->call([this] {
+            log::debug(logcat, "stopping service manager...");
+            llarp::sys::service_manager->stopping();
 
-        _session_endpoint->stop(true);
+            _session_endpoint->stop(true);
 
-        if (not _is_service_node)
-            _router_profiling.stop_save_ticker();
+            if (not _is_service_node)
+                _router_profiling.stop_save_ticker();
 
-        _loop->call_later(200ms, [this] { cleanup(); });
+            _loop->call_later(200ms, [this] { cleanup(); });
+        });
     }
 
     quic::Address Router::listen_addr() const { return _listen_address; }

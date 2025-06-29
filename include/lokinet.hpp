@@ -13,6 +13,11 @@ namespace llarp
     struct Config;
 }  // namespace llarp
 
+namespace oxen::quic
+{
+    class Loop;
+}
+
 namespace lokinet
 {
     enum class Network
@@ -50,29 +55,27 @@ namespace lokinet
 
     class Lokinet
     {
-        std::shared_ptr<llarp::Context> context;
-        std::shared_ptr<llarp::Config> config;
+        std::unique_ptr<llarp::Context> context;
 
-        std::thread run_thread;
-
-        struct path_tag
+        struct path_ctor
         {};
-        Lokinet(path_tag, const std::filesystem::path& p);
+        Lokinet(path_ctor, const std::filesystem::path& p, std::shared_ptr<oxen::quic::Loop> loop);
 
       public:
         // Starts an embedded lokinet that loads the given string contents as a config file.
-        explicit Lokinet(std::string_view config);
+        explicit Lokinet(std::string_view config, std::shared_ptr<oxen::quic::Loop> existing_loop = nullptr);
 
         // Starts an embedded lokinet instance with extra configuration specified in the given
-        // config file.
-        template <typename FSPath>  // Templatize to avoid ambiguous implicit conversion from std::string
-            requires std::same_as<std::filesystem::path, std::remove_cvref_t<FSPath>>
-        explicit Lokinet(FSPath&& config) : Lokinet{path_tag{}, config}
+        // config file.  (Templatized to avoid ambiguous implicit conversion from std::string
+        // conflicting with the constructor above.)
+        template <std::same_as<std::filesystem::path> FSPath>
+        explicit Lokinet(const FSPath& config, std::shared_ptr<oxen::quic::Loop> existing_loop = nullptr)
+            : Lokinet{path_ctor{}, config, std::move(existing_loop)}
         {}
 
         // Starts an embedded lokinet with default config that runs on the given network with
         // default settings.
-        explicit Lokinet(Network network);
+        explicit Lokinet(Network network, std::shared_ptr<oxen::quic::Loop> existing_loop = nullptr);
 
         // Destructor stops the lokinet instance.  The destructor blocks until shutdown is complete.
         ~Lokinet();
@@ -92,15 +95,18 @@ namespace lokinet
         // The callbacks must not block as they are called from Lokinet's logic thread (and so any
         // blocking will stall Lokinet).
         void establish_udp(
-            std::string remote,
+            std::string_view remote_view,
             uint16_t port,
             std::function<void(tunnel_info info)> on_established,
-            std::function<void(std::string_view errmsg)> on_failed);
+            std::function<void(std::string errmsg)> on_failed);
 
         // Simple synchronous wrapper around the above: this blocks until either `on_established` or
         // `on_failed` is called then returns the tunnel info (success) or throws the error message
         // (failure).  This is provided for quick-and-dirty implementation code; generally code
-        // should prefer the async version, above.
-        tunnel_info establish_udp_blocking(std::string remote, uint16_t port);
+        // should prefer the callback-based async version, above.
+        tunnel_info establish_udp_blocking(std::string_view remote, uint16_t port);
     };
+
+    extern template Lokinet::Lokinet(const std::filesystem::path&, std::shared_ptr<oxen::quic::Loop>);
+
 }  // namespace lokinet

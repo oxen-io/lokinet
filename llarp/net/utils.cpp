@@ -109,18 +109,18 @@ namespace llarp
 
         // TODO FIXME: this cannot possibly be correct, because it is doing overflow handling of
         // 32-bit values using little-endian interpretation.
-        auto* s32 = reinterpret_cast<const uint32_t*>(saddr->s6_addr);
+        auto *s32 = reinterpret_cast<const uint32_t *>(saddr->s6_addr);
         for (size_t i = 0; i < 4; ++i)
         {
-            auto& val = s32[i];
+            auto &val = s32[i];
             csum += val;
             csum += (csum < val);
         }
 
-        auto* d32 = reinterpret_cast<const uint32_t*>(daddr->s6_addr);
+        auto *d32 = reinterpret_cast<const uint32_t *>(daddr->s6_addr);
         for (size_t i = 0; i < 4; ++i)
         {
-            auto& val = d32[i];
+            auto &val = d32[i];
             csum += val;
             csum += (csum < val);
         }

@@ -1048,23 +1048,25 @@ namespace llarp::handlers
             false);
     }
 
-    void SessionEndpoint::initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
+    void SessionEndpoint::initiate_remote_session(NetworkAddress remote, on_session_init_hook cb)
     {
-        if (pending_sessions.contains(remote))
-        {
-            if (cb)
-                pending_session_hooks[remote].push_back(std::move(cb));
-            log::debug(logcat, "Session init to remote {} already in progress.", remote);
-            return;
-        }
+        _router.loop()->call([this, remote = std::move(remote), cb = std::move(cb)]() mutable {
+            if (pending_sessions.contains(remote))
+            {
+                if (cb)
+                    pending_session_hooks[remote].push_back(std::move(cb));
+                log::debug(logcat, "Session init to remote {} already in progress.", remote);
+                return;
+            }
 
-        pending_sessions[remote];
-        pending_session_hooks[remote];
+            pending_sessions[remote];
+            pending_session_hooks[remote];
 
-        if (remote.is_client())
-            _initiate_client_session(remote, std::move(cb));
-        else
-            _initiate_relay_session(remote, std::move(cb));
+            if (remote.is_client())
+                _initiate_client_session(remote, std::move(cb));
+            else
+                _initiate_relay_session(remote, std::move(cb));
+        });
     }
 
     void SessionEndpoint::_initiate_client_session(NetworkAddress remote, on_session_init_hook cb)

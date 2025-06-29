@@ -28,14 +28,14 @@ namespace llarp
     struct Context
     {
         std::unique_ptr<Router> router;
-        std::shared_ptr<oxen::quic::Loop> loop;
 
         Context();
         ~Context();
 
         // Starts Lokinet; returns as soon as Lokinet is up and running (or throws if startup
-        // fails).
-        void start(Config conf);
+        // fails).  The loop may be provided in order to use an existing loop, but otherwise a new
+        // one will be started.
+        void start(Config conf, std::shared_ptr<oxen::quic::Loop> loop = nullptr);
 
         // Waits for Lokinet to finish.  Note that this does not *trigger* such a shutdown; for that
         // you would call `stop()` before this.

@@ -31,17 +31,22 @@ namespace llarp
 
     bool Context::looks_alive() const { return router && router->looks_alive(); }
 
-    void Context::start(Config conf)
+    void Context::start(Config conf, std::shared_ptr<oxen::quic::Loop> loop)
     {
         if (router)
         {
             log::error(logcat, "Context::start called but Lokinet is already running");
             throw std::logic_error{"Lokinet is already started"};
         }
-        log::debug(logcat, "Initializing event loop...");
+        if (loop)
+            log::debug(logcat, "Re-using existing loop");
+        else
+        {
+            log::debug(logcat, "Initializing event loop...");
 
-        loop = std::make_shared<quic::Loop>();
-        log::debug(logcat, "Event loop initialized!");
+            loop = std::make_shared<quic::Loop>();
+            log::debug(logcat, "Event loop initialized!");
+        }
 
         std::promise<void> done_promise;
         lifetime_waiter = done_promise.get_future();
@@ -54,7 +59,8 @@ namespace llarp
         log::debug(logcat, "Starting main router...");
         try
         {
-            router = std::make_unique<Router>(std::move(conf), loop, std::move(plat), std::move(done_promise));
+            router =
+                std::make_unique<Router>(std::move(conf), std::move(loop), std::move(plat), std::move(done_promise));
         }
         catch (const std::exception& e)
         {
@@ -69,14 +75,13 @@ namespace llarp
             return;
         lifetime_waiter.get();
         router.reset();
-        loop.reset();
     }
 
     void Context::stop()
     {
         if (!router)
             return;
-        loop->call([this] { router->stop(); });
+        router->stop();
     }
 
     bool Context::is_stopping() const { return router && router->is_stopping(); }
