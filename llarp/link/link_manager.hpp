@@ -24,7 +24,7 @@
 
 namespace llarp
 {
-    struct LinkManager;
+    class LinkManager;
     class NodeDB;
 
     using quic::connection_closed_callback;
@@ -105,7 +105,7 @@ namespace llarp
 
     class Router;
 
-    struct LinkManager
+    class LinkManager
     {
       public:
         explicit LinkManager(Router& r);

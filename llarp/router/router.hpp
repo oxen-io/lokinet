@@ -36,7 +36,7 @@ namespace llarp
 
     namespace quic = oxen::quic;
 
-    struct LinkManager;
+    class LinkManager;
 
     /// number of routers to publish to
     inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
@@ -64,8 +64,8 @@ namespace llarp
 
     inline constexpr auto SERVICE_MANAGER_REPORT_INTERVAL{5s};
 
-    struct ContactDB;
-    struct NodeDB;
+    class ContactDB;
+    class NodeDB;
 
     class Router : std::enable_shared_from_this<Router>
     {
