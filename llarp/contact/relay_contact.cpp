@@ -174,10 +174,11 @@ namespace llarp
 
     bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.ToHex()); }
 
-    LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local) : _secret_key{std::move(secret)}
+    LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid) : _secret_key{std::move(secret)}
     {
         _router_id.assign(_secret_key.pubkey_span());
         _addr = std::move(local);
+        _netid = netid;
         if (_addr.is_ipv6())
             _addr6.emplace(&_addr.in6());
         resign();

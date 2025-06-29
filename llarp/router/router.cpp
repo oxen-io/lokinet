@@ -540,7 +540,8 @@ namespace llarp
             _node_db = std::make_unique<NodeDB>(config().router.data_dir / nodedb_dirname, *this);
             init_bootstrap();
 
-            relay_contact = {identity(), _is_service_node and _public_address ? *_public_address : _listen_address};
+            relay_contact = {
+                identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};
 
             if (not relay_contact.is_public_addressable())
             {

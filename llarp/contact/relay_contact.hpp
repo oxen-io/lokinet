@@ -154,7 +154,7 @@ namespace llarp
 
       public:
         LocalRC() = default;
-        LocalRC(Ed25519SecretKey secret, quic::Address local);
+        LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid);
 
         RemoteRC to_remote();
 
