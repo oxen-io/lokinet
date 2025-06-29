@@ -467,14 +467,6 @@ namespace llarp
             throw std::runtime_error{"Client must be configured to have at least 1 outbound router connection!"};
     }
 
-    void Router::init_tun()
-    {
-        if (_tun = _loop->template make_shared<handlers::TunEndpoint>(*this); _tun != nullptr)
-            _tun->configure();
-        else
-            throw std::runtime_error{"Failed to construct TunEndpoint API!"};
-    }
-
     void Router::configure()
     {
         _loop->call_get([this] {

@@ -124,12 +124,6 @@ namespace llarp::handlers
         }
     };
 
-    TunEndpoint::TunEndpoint(Router& r) : _router{r}
-    {
-        _packet_router =
-            std::make_shared<vpn::PacketRouter>([this](IPPacket pkt) { handle_outbound_packet(std::move(pkt)); });
-    }
-
     void TunEndpoint::setup_dns()
     {
         log::debug(logcat, "{} setting up DNS...", name());
@@ -261,102 +255,103 @@ namespace llarp::handlers
         }
     }
 
-    void TunEndpoint::configure()
+    TunEndpoint::TunEndpoint(Router& r) : _router{r}
     {
-        return _router.loop()->call_get([this]() {
-            log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        _packet_router =
+            std::make_shared<vpn::PacketRouter>([this](IPPacket pkt) { handle_outbound_packet(std::move(pkt)); });
 
-            auto& net_conf = _router.config().network;
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-            _exit_policy = net_conf.traffic_policy;
+        auto& net_conf = _router.config().network;
 
-            if (net_conf.path_alignment_timeout)
+        _exit_policy = net_conf.traffic_policy;
+
+        if (net_conf.path_alignment_timeout)
+        {
+            if (is_service_node())
+                throw std::runtime_error{"Service nodes cannot specify path alignment timeout!"};
+
+            _path_alignment_timeout = *net_conf.path_alignment_timeout;
+        }
+
+        ipv6_enabled = net_conf.enable_ipv6;
+        if (ipv6_enabled)
+        {
+            _local_ipv6_net = net_conf._local_ipv6_net;
+            if (_local_ipv6_net)
+                _local_ipv6_range_iterator.emplace(*_local_ipv6_net);
+        }
+
+        _if_name = net_conf._if_name.value_or("");
+        if (net_conf._local_ip_net)
+            _local_net = *net_conf._local_ip_net;
+
+        if (net_conf.addr_map_persist_file)
+        {
+            _persisting_addr_file = net_conf.addr_map_persist_file;
+            persist_addrs = true;
+        }
+
+        for (auto& [remote, local] : net_conf._reserved_local_ipv4)
+            _local_ipv4_mapping.insert_or_assign(local, remote);
+        for (auto& [remote, local] : net_conf._reserved_local_ipv6)
+            _local_ipv6_mapping.insert_or_assign(local, remote);
+
+        log::debug(logcat, "Tun constructing IPRange iterator on local network: {}", _local_net);
+        _local_range_iterator = IPRangeIterator{_local_net};
+
+        _local_netaddr = NetworkAddress{_router.local_rid(), not _router.is_service_node()};
+        _local_ipv4_mapping.insert_or_assign(_local_net.ip, std::move(_local_netaddr));
+
+        vpn::InterfaceInfo info;
+        info.ifname = _if_name;
+        info.addrs.emplace_back(_local_net);
+
+        if (ipv6_enabled and _local_ipv6_net)
+        {
+            log::info(logcat, "{} using ipv6 range:{}", name(), *_local_ipv6_net);
+            info.addrs.emplace_back(*_local_ipv6_net);
+        }
+
+        log::debug(logcat, "{} setting up network...", name());
+
+        log::info(logcat, "{} using IPv4 address range {}", name(), _local_net);
+        if (ipv6_enabled && _local_ipv6_net)
+            log::info(logcat, "{} using IPv6 address range {}", name(), _local_ipv6_net);
+
+        _net_if = router().vpn_platform()->create_interface(std::move(info), &_router);
+        _if_name = _net_if->interface_info().ifname;
+
+        log::info(logcat, "{} got network interface:{}", name(), _if_name);
+
+        auto pkt_hook = [this]() mutable {
+            for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
             {
-                if (is_service_node())
-                    throw std::runtime_error{"Service nodes cannot specify path alignment timeout!"};
-
-                _path_alignment_timeout = *net_conf.path_alignment_timeout;
+                log::trace(logcat, "packet router receiving {}", pkt.info_line());
+                _packet_router->handle_ip_packet(std::move(pkt));
             }
-
-            ipv6_enabled = net_conf.enable_ipv6;
-            if (ipv6_enabled)
-            {
-                _local_ipv6_net = net_conf._local_ipv6_net;
-                if (_local_ipv6_net)
-                    _local_ipv6_range_iterator.emplace(*_local_ipv6_net);
-            }
-
-            _if_name = net_conf._if_name.value_or("");
-            if (net_conf._local_ip_net)
-                _local_net = *net_conf._local_ip_net;
-
-            if (net_conf.addr_map_persist_file)
-            {
-                _persisting_addr_file = net_conf.addr_map_persist_file;
-                persist_addrs = true;
-            }
-
-            for (auto& [remote, local] : net_conf._reserved_local_ipv4)
-                _local_ipv4_mapping.insert_or_assign(local, remote);
-            for (auto& [remote, local] : net_conf._reserved_local_ipv6)
-                _local_ipv6_mapping.insert_or_assign(local, remote);
-
-            log::debug(logcat, "Tun constructing IPRange iterator on local network: {}", _local_net);
-            _local_range_iterator = IPRangeIterator{_local_net};
-
-            _local_netaddr = NetworkAddress{_router.local_rid(), not _router.is_service_node()};
-            _local_ipv4_mapping.insert_or_assign(_local_net.ip, std::move(_local_netaddr));
-
-            vpn::InterfaceInfo info;
-            info.ifname = _if_name;
-            info.addrs.emplace_back(_local_net);
-
-            if (ipv6_enabled and _local_ipv6_net)
-            {
-                log::info(logcat, "{} using ipv6 range:{}", name(), *_local_ipv6_net);
-                info.addrs.emplace_back(*_local_ipv6_net);
-            }
-
-            log::debug(logcat, "{} setting up network...", name());
-
-            log::info(logcat, "{} using IPv4 address range {}", name(), _local_net);
-            if (ipv6_enabled && _local_ipv6_net)
-                log::info(logcat, "{} using IPv6 address range {}", name(), _local_ipv6_net);
-
-            _net_if = router().vpn_platform()->create_interface(std::move(info), &_router);
-            _if_name = _net_if->interface_info().ifname;
-
-            log::info(logcat, "{} got network interface:{}", name(), _if_name);
-
-            auto pkt_hook = [this]() mutable {
-                for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
-                {
-                    log::trace(logcat, "packet router receiving {}", pkt.info_line());
-                    _packet_router->handle_ip_packet(std::move(pkt));
-                }
-            };
+        };
 
 #ifdef __linux__
-            _poller =
-                std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop()->get_event_base(), std::move(pkt_hook));
+        _poller =
+            std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop()->get_event_base(), std::move(pkt_hook));
 #endif
-            if (not _poller)
-            {
-                auto err = "{} failed to add network interface!"_format(name());
-                log::critical(logcat, "{}", err);
-                throw std::runtime_error{std::move(err)};
-            }
+        if (not _poller)
+        {
+            auto err = "{} failed to add network interface!"_format(name());
+            log::critical(logcat, "{}", err);
+            throw std::runtime_error{std::move(err)};
+        }
 
-            // if (auto* quic = GetQUICTunnel())
-            // {
-            // TODO:
-            // quic->listen([this](std::string_view, uint16_t port) {
-            //   return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
-            // });
-            // }
+        // if (auto* quic = GetQUICTunnel())
+        // {
+        // TODO:
+        // quic->listen([this](std::string_view, uint16_t port) {
+        //   return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
+        // });
+        // }
 
-            setup_dns();
-        });
+        setup_dns();
     }
 
     static bool is_random_snode(const dns::Message& msg) { return msg.questions[0].IsName("random.snode"); }

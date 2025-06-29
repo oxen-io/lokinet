@@ -162,8 +162,6 @@ namespace llarp
 
         void init_logging();
 
-        void init_tun();
-
         void init_bootstrap();
 
         void process_routerconfig();
