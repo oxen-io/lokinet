@@ -1,9 +1,11 @@
-local default_deps_base = [
+local default_deps_base = std.set([
+  'g++',
   'libcli11-dev',
   'libcurl4-openssl-dev',
   'libevent-dev',
   'libfmt-dev',
   'libgnutls28-dev',
+  'libsodium-dev',
   'libspdlog-dev',
   'libsqlite3-dev',
   'libssl-dev',
@@ -14,11 +16,14 @@ local default_deps_base = [
   'nettle-dev',
   'nlohmann-json3-dev',
   'python3-dev',
-];
-local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
-local default_deps = ['g++'] + default_deps_nocxx;
+]);
+local default_deps(add=[], remove=[]) = std.setDiff(
+  std.setUnion(default_deps, if std.isArray(add) then std.set(add) else [add]),
+  std.set(if std.isArray(remove) then std.set(remove) else [remove])
+);
 local oxen_repo_default = ['liboxen-logging-dev', 'liboxenmq-dev', 'liboxenc-dev', 'liboxen-quic-dev'];
 local docker_base = 'registry.oxen.rocks/';
+
 
 local submodule_commands = [
   'git fetch --tags',
@@ -52,7 +57,7 @@ local debian_backports(distro, pkgs) = [
 local debian_pipeline(name,
                       image,
                       arch='amd64',
-                      deps=default_deps,
+                      deps=default_deps(),
                       extra_setup=[],
                       build_type='Release',
                       lto=false,
@@ -277,15 +282,15 @@ local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=oxen_rep
 local clang(version) = debian_pipeline(
   'Debian sid/clang-' + version,
   docker_base + 'debian-sid-clang',
-  deps=['clang-' + version] + default_deps_nocxx,
+  deps=default_deps(add='clang-' + version, remove='g++'),
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + ' '
 );
 
 local full_llvm(version) = debian_pipeline(
   'Debian sid/llvm-' + version,
   docker_base + 'debian-sid-clang',
-  deps=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev']
-       + default_deps_nocxx,
+  deps=default_deps(add=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev'],
+                    remove='g++'),
   oxen_repo=[],
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version +
               ' -DCMAKE_CXX_COMPILER=clang++-' + version +
@@ -436,7 +441,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Ubuntu 22.04', docker_base + 'ubuntu-jammy'),
   debian_pipeline('Ubuntu 20.04',
                   docker_base + 'ubuntu-focal',
-                  deps=['g++-10'] + default_deps_nocxx,
+                  deps=default_deps(remove='g++', add='g++-10'),
                   extra_setup=kitware_repo('focal'),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
 
@@ -482,7 +487,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // integration tests
   debian_pipeline('Router Hive',
                   docker_base + 'ubuntu-lts',
-                  deps=['python3-dev', 'python3-pytest', 'python3-pybind11'] + default_deps,
+                  deps=default_deps(add=['python3-dev', 'python3-pytest', 'python3-pybind11']),
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
