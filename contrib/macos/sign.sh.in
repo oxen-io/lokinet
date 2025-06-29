@@ -35,7 +35,7 @@ for ext in systemextension appex; do
     fi
 done
 
-if [ "@BUILD_GUI@" == "ON" ]; then
+if [ "@LOKINET_GUI@" == "ON" ]; then
     gui_app="$SIGN_TARGET"/Contents/Helpers/Lokinet-GUI.app
     gui_sign_targets=()
     for bundle in \

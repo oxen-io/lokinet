@@ -2,7 +2,7 @@
 if(WIN32 AND GUI_EXE)
   message(STATUS "using pre-built lokinet gui executable: ${GUI_EXE}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GUI_EXE}" "${PROJECT_BINARY_DIR}/gui/lokinet-gui.exe")
-elseif(BUILD_GUI)
+elseif(LOKINET_GUI)
   message(STATUS "Building lokinet-gui from source")
 
   set(default_gui_target pack)

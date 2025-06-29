@@ -206,7 +206,7 @@ function(macos_target_setup)
     COMMAND cp -a "${mac_icon}" "${lokinet_app}/Contents/Resources/icon.icns"
   )
 
-  if(BUILD_GUI)
+  if(LOKINET_GUI)
     add_dependencies(sign assemble_gui)
   else()
     add_dependencies(sign assemble)
