@@ -21,6 +21,7 @@ local default_deps(add=[], remove=[]) = std.setDiff(
   std.setUnion(default_deps, if std.isArray(add) then std.set(add) else [add]),
   std.set(if std.isArray(remove) then std.set(remove) else [remove])
 );
+local static_deps = std.set(['g++', 'python3-dev', 'automake', 'libtool']);
 local oxen_repo_default = ['liboxen-logging-dev', 'liboxenmq-dev', 'liboxenc-dev', 'liboxen-quic-dev'];
 local docker_base = 'registry.oxen.rocks/';
 
@@ -410,10 +411,12 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // Debian 11
   debian_pipeline('Debian 11',
                   docker_base + 'debian-bullseye',
+                  deps=default_deps(remove='libcli11-dev'),
                   extra_setup=debian_backports('bullseye', ['cmake'])),
   debian_pipeline('Debian 11 static/debug',
                   docker_base + 'debian-bullseye',
                   build_type='Debug',
+                  deps=static_deps,
                   oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON',
                   extra_setup=debian_backports('bullseye', ['cmake'])),
@@ -422,7 +425,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Debian 11 static [armhf]',
                   docker_base + 'debian-bullseye/arm32v7',
                   arch='arm64',
-                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
+                  deps=static_deps,
                   extra_setup=debian_backports('bullseye', ['cmake']),
                   oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
@@ -441,14 +444,14 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Ubuntu 22.04', docker_base + 'ubuntu-jammy'),
   debian_pipeline('Ubuntu 20.04',
                   docker_base + 'ubuntu-focal',
-                  deps=default_deps(remove='g++', add='g++-10'),
+                  deps=default_deps(remove=['g++', 'libcli11-dev'], add='g++-10'),
                   extra_setup=kitware_repo('focal'),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
 
   // Static ubuntu focal amd64 build (upload to builds.lokinet.dev)
   debian_pipeline('Ubuntu 20.04 static',
                   docker_base + 'ubuntu-focal',
-                  deps=['g++-10', 'python3-dev', 'automake', 'libtool'],
+                  deps=std.setDiff(static_deps, 'g++') + ['g++-10'],
                   extra_setup=kitware_repo('focal'),
                   lto=true,
                   tests=false,
