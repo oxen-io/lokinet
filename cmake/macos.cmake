@@ -157,6 +157,10 @@ endif()
 # Called later to set things up, after the main lokinet targets are set up
 function(macos_target_setup)
 
+  if(NOT LOKINET_DAEMON)
+    return()
+  endif()
+
   if(MACOS_SYSTEM_EXTENSION)
     target_compile_definitions(lokinet PRIVATE MACOS_SYSTEM_EXTENSION)
   endif()

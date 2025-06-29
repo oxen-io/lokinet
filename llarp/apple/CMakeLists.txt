@@ -2,7 +2,7 @@
 # 3.13+ so that we can add link libraries to parent targets
 cmake_minimum_required(VERSION 3.13)
 
-if (BUILD_SHARED_LIBS OR NOT BUILD_STATIC_DEPS OR NOT STATIC_LINK)
+if (LOKINET_DAEMON AND (BUILD_SHARED_LIBS OR NOT BUILD_STATIC_DEPS OR NOT STATIC_LINK))
   message(FATAL_ERROR "macOS builds require a full static build; perhaps use the contrib/mac.sh script to build?")
 endif()
 
