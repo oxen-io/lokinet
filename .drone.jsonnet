@@ -1,17 +1,19 @@
 local default_deps_base = [
-  'libsystemd-dev',
-  'python3-dev',
-  'libunbound-dev',
-  'nettle-dev',
-  'libssl-dev',
+  'libcli11-dev',
+  'libcurl4-openssl-dev',
   'libevent-dev',
   'libfmt-dev',
+  'libgnutls28-dev',
   'libspdlog-dev',
   'libsqlite3-dev',
-  'libcurl4-openssl-dev',
+  'libssl-dev',
+  'libsystemd-dev',
+  'libunbound-dev',
   'libzmq3-dev',
-  'libgnutls28-dev',
   'make',
+  'nettle-dev',
+  'nlohmann-json3-dev',
+  'python3-dev',
 ];
 local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
 local default_deps = ['g++'] + default_deps_nocxx;
