@@ -71,8 +71,6 @@ namespace llarp
             // manually routed QUIC endpoint
             std::shared_ptr<quic::Endpoint> _ep;
 
-            std::shared_ptr<quic::connection_interface> _ci;
-
             // TCPHandle listeners mapped to the local port they are bound on
             std::unordered_map<uint16_t, std::shared_ptr<TCPHandle>> _handles;
 
