@@ -32,6 +32,7 @@ namespace lokinet
     }
 
     Lokinet::Lokinet(path_ctor, const std::filesystem::path& config, std::shared_ptr<oxen::quic::Loop> loop)
+        : context{std::make_unique<llarp::Context>()}
     {
         auto conf = llarp::Config::make_embedded_config();
         conf.load(config);
@@ -39,6 +40,7 @@ namespace lokinet
     }
 
     Lokinet::Lokinet(Network n, std::shared_ptr<oxen::quic::Loop> loop)
+        : context{std::make_unique<llarp::Context>()}
     {
         auto conf = llarp::Config::make_embedded_config();
         switch (n)
