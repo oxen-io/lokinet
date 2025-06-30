@@ -158,7 +158,7 @@ namespace llarp::session
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
-        quic::Address src{"127.0.0.1"s, 54321};
+        quic::Address src{"127.0.0.1"s, 0};
         quic::Address dest{"127.0.0.1"s, dest_port};
         auto udp_handle = std::make_unique<quic::UDPSocket>(
             _r.loop()->get_event_base(), src, [this, dest = std::move(dest)](quic::Packet&& pkt) {
