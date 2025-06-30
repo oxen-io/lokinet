@@ -57,8 +57,12 @@ namespace llarp
             return false;
         }
 
+        // TODO FIXME: there can be more than one bootstrap, and if we are a bootstrap then we may
+        // still want to connect to other bootstraps, so this "just don't bootstrap if a seed" is
+        // wrong.  We instead need something like "if we are the only bootstrap"
+
         // only enter bootstrap process if we have NOT marked initial fetch as needed
-        if (_needs_bootstrap and not _router.is_bootstrap_seed())
+        if (_needs_bootstrap and not _router.config().bootstrap.seednode)
         {
             if (not _has_bstrap_connection)
             {
@@ -98,11 +102,11 @@ namespace llarp
                 return false;
             }
 
-            if (not _bootstrap_handler->is_iterating())
+            if (_bootstrap_handler and not _bootstrap_handler->is_iterating())
             {
                 log::warning(
                     logcat,
-                    "{} has {} of {} minimum RCs; initiating BootstrapRC fetch...",
+                    "{} has {} of {} minimum RCs; initiating bootstrap RC fetch...",
                     _router.is_service_node() ? "Relay" : "Client",
                     num_rcs(),
                     MIN_ACTIVE_RCS);
@@ -552,12 +556,22 @@ namespace llarp
         }
     }
 
-    NodeDB::NodeDB(fs::path rootdir, Router& r) : _router{r}, _root{std::move(rootdir)}
+    NodeDB::NodeDB(Router& r) : _router{r}, _root{_router.config().router.data_dir / nodedb_dirname}
     {
         if (not fs::exists(_root))
             fs::create_directory(_root);
         if (not fs::is_directory(_root))
             throw std::runtime_error{fmt::format("nodedb {} is not a directory", _root)};
+
+        auto seed = _router.config().bootstrap.seednode;
+        if (seed)
+            log::warning(logcat, "Local instance is bootstrap seed node!");
+
+        _bootstraps.populate(
+            _router.netid(),
+            _router.config().bootstrap.files,
+            _router.config().router.data_dir / default_bootstrap,
+            not seed);
 
         bootstrap_init();
         load_from_disk();
@@ -815,13 +829,8 @@ namespace llarp
             counter,
             _bootstraps.size());
 
-        _router.loop()->make_shared<EventTrigger>(
+        _bootstrap_handler = _router.loop()->make_shared<EventTrigger>(
             _router.loop(), FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
-    }
-
-    void NodeDB::populate_bootstraps(const std::vector<fs::path>& paths, const fs::path& def, bool load_fallbacks)
-    {
-        _bootstraps.populate(_router.netid(), paths, def, load_fallbacks);
     }
 
     void NodeDB::load_from_disk()

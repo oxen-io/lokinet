@@ -17,32 +17,30 @@ namespace llarp
     constexpr auto our_enc_key_filename = "encryption.key";
     constexpr auto our_transport_key_filename = "transport.key";
 
-    constexpr auto nodedb_dirname = "nodedb";
+    inline const fs::path nodedb_dirname{"nodedb"};
+    inline const fs::path default_bootstrap{"bootstrap.signed"};
 
     inline fs::path GetDefaultDataDir()
     {
-        if constexpr (not platform::is_windows)
-        {
-            fs::path datadir{"/var/lib/lokinet"};
 #ifndef _WIN32
-            if (auto uid = geteuid())
+        fs::path datadir{"/var/lib/lokinet"};
+        if (auto uid = geteuid())
+        {
+            if (auto* pw = getpwuid(uid))
             {
-                if (auto* pw = getpwuid(uid))
-                {
-                    datadir = fs::path{pw->pw_dir} / ".lokinet";
-                }
+                datadir = fs::path{pw->pw_dir} / ".lokinet";
             }
-#endif
-            return datadir;
         }
-        else
-            return "C:\\ProgramData\\Lokinet";
+        return datadir;
+#else
+        return fs::path{"C:\\ProgramData\\Lokinet"};
+#endif
     }
 
     inline fs::path GetDefaultConfigFilename() { return "lokinet.ini"; }
 
     inline fs::path GetDefaultConfigPath() { return GetDefaultDataDir() / GetDefaultConfigFilename(); }
 
-    inline fs::path GetDefaultBootstrap() { return GetDefaultDataDir() / "bootstrap.signed"; }
+    inline fs::path GetDefaultBootstrap() { return GetDefaultDataDir() / default_bootstrap; }
 
 }  // namespace llarp

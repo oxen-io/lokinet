@@ -139,7 +139,7 @@ namespace llarp
         std::shared_ptr<quic::Ticker> _flush_ticker;
 
       public:
-        explicit NodeDB(fs::path rootdir, Router& r);
+        explicit NodeDB(Router& r);
 
         bool strict_connect_enabled() const { return _strict_connect; }
 
@@ -211,11 +211,9 @@ namespace llarp
 
         const BootstrapList& bootstrap_list() const { return _bootstraps; }
 
-        void populate_bootstraps(const std::vector<fs::path>& paths, const fs::path& def, bool load_fallbacks);
-
         const std::unordered_set<RouterID>& registered_routers() const { return _registered_routers; }
 
-        /// load all known_rcs from disk syncrhonously
+        /// load all known_rcs from disk synchronously
         void load_from_disk();
 
         /// explicit save all RCs to disk synchronously

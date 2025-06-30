@@ -334,17 +334,6 @@ namespace llarp
             llarp::logRingBuffer.reset();
     }
 
-    void Router::init_bootstrap()
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (_bootstrap_seed = _config.bootstrap.seednode; _bootstrap_seed)
-            log::critical(logcat, "Local instance is bootstrap seed node!");
-
-        node_db().populate_bootstraps(
-            _config.bootstrap.files, _config.router.data_dir / "bootstrap.signed", not _bootstrap_seed);
-    }
-
     void Router::process_routerconfig()
     {
         // Router config
@@ -558,8 +547,7 @@ namespace llarp
         // using the NetworkConfig (ex: tun/null, exit::Handler, etc) will have processed values
         process_netconfig();
 
-        _node_db = std::make_unique<NodeDB>(config().router.data_dir / nodedb_dirname, *this);
-        init_bootstrap();
+        _node_db = std::make_unique<NodeDB>(*this);
 
         relay_contact = {
             identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};

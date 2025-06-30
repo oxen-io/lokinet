@@ -105,7 +105,6 @@ namespace llarp
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
 
         bool _testing_disabled{_config.lokid.disable_testing};
-        bool _bootstrap_seed{false};
 
         consensus::reachability_testing router_testing;
 
@@ -162,8 +161,6 @@ namespace llarp
 
         void init_logging();
 
-        void init_bootstrap();
-
         void process_routerconfig();
 
         void process_netconfig();
@@ -185,8 +182,6 @@ namespace llarp
         bool is_fully_meshed() const;
 
         bool using_tun_if() const { return static_cast<bool>(_tun); }
-
-        bool is_bootstrap_seed() const { return _bootstrap_seed; }
 
         int client_outbounds_needed() const { return min_client_outbounds; }
 
