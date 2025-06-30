@@ -564,7 +564,7 @@ namespace llarp
         relay_contact = {
             identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};
 
-        if (not relay_contact.addr().is_public())
+        if (_is_service_node and not relay_contact.addr().is_public())
         {
             auto err =
                 "Router is configured as relay but '{}' is not a public IP; perhaps"
