@@ -1044,7 +1044,7 @@ namespace llarp
             else
                 log::warning(
                     logcat,
-                    "Bootstrap node failed to confirm RID:{} is registered; something is wrong",
+                    "Bootstrap node failed to confirm RID:{} is not registered; something is wrong",
                     remote_rc.router_id());
         }
 
@@ -1076,7 +1076,12 @@ namespace llarp
 
         std::ranges::shuffle(rcs, llarp::csrng);
         oxenc::bt_dict_producer btdp;
-        btdp.append_list("r", rcs);
+        {
+            auto rc_list = btdp.append_list("r");
+            rc_list.reserve(rcs[0].size() * (rcs.size() + 1)); // might be a waste of time
+            for (const auto& rc : rcs)
+                rc_list.append_encoded(rc);
+        }
         m.respond(std::move(btdp).str());
     }
 
