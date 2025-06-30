@@ -877,6 +877,7 @@ namespace llarp
             }
 
             auto rid = rc->router_id();
+            known_rids.insert(rid);
             known_rcs.emplace(std::move(rid), std::move(*rc));
         }
 
