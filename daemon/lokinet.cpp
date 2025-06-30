@@ -522,7 +522,7 @@ namespace
         }
         catch (const std::exception& ex)
         {
-            llarp::log::error(logcat, "failed to start up lokinet: {}", ex.what());
+            // Don't need to log here: context has already error logged the exception message
             throw;
         }
     }
