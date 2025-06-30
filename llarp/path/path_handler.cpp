@@ -256,7 +256,7 @@ namespace llarp::path
             1,
             csrng);
 
-        if (out != &edge)
+        if (out != (&edge + 1))
             return std::nullopt;
         if (auto* rc = _router.node_db().get_rc(edge))
             return *rc;
@@ -432,7 +432,6 @@ namespace llarp::path
                 excluded_ranges.push_back(hop.addr().to_ipv4() % netmask);
         }
 
-        log::debug(logcat, "Found {} RCs for aligned path to pivot {}", hops_needed, pivot);
         hops->push_back(*pivot_rc);
         return hops;
     }
