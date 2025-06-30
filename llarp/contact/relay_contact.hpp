@@ -111,8 +111,6 @@ namespace llarp
 
         bool operator==(const RelayContact& other) const { return compare_tuple() == other.compare_tuple(); }
 
-        bool is_public_addressable() const;
-
         bool has_ip_overlap(const RelayContact& other, uint8_t netmask) const;
 
         /// does this RC expire soon? default delta is 1 minute

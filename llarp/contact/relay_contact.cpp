@@ -115,7 +115,7 @@ namespace llarp
     {
         nlohmann::json obj{
             {"lastUpdated", _timestamp.time_since_epoch().count()},
-            {"publicRouter", is_public_addressable()},
+            {"publicRouter", _addr.is_public()},
             {"identity", _router_id.to_string()},
             {"address", _addr.to_string()}};
 
@@ -125,14 +125,6 @@ namespace llarp
     std::string RelayContact::to_string() const
     {
         return "RCv{}[{} @ {}, t={}]"_format(VERSION, _router_id, _addr, _timestamp.time_since_epoch().count());
-    }
-
-    bool RelayContact::is_public_addressable() const
-    {
-        if (_router_version.empty())
-            return false;
-
-        return _addr.is_addressable();
     }
 
     bool RelayContact::has_ip_overlap(const RelayContact& other, uint8_t netmask) const

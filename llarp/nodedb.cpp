@@ -135,9 +135,9 @@ namespace llarp
 
             // if for some reason we stored an RC that isn't a valid router
             // purge this entry
-            if (not rc.is_public_addressable())
+            if (not rc.addr().is_public())
             {
-                log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
+                log::trace(logcat, "Removing {}: address {} is not public", rc.router_id(), rc.addr());
                 return true;
             }
 
