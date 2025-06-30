@@ -18,6 +18,14 @@ namespace llarp
         if (auto rc_ver = btdc.require<uint8_t>(""); rc_ver != RelayContact::VERSION)
             throw std::runtime_error{"Invalid RC: do not know how to parse v{} RCs"_format(rc_ver)};
 
+        auto parsed_netid = static_cast<NetID>(btdc.maybe<int>("#").value_or(static_cast<int>(NetID::MAINNET)));
+
+        if (netid != parsed_netid)
+            throw std::runtime_error{
+                "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
+                    netid, parsed_netid)};
+        _netid = netid;
+
         auto ipv4_port = btdc.require<std::string_view>("4");
 
         if (ipv4_port.size() != 6)
@@ -55,14 +63,6 @@ namespace llarp
         {
             _addr6.reset();
         }
-
-        auto incoming_netid = static_cast<NetID>(btdc.maybe<int>("i").value_or(static_cast<int>(NetID::MAINNET)));
-
-        if (netid != incoming_netid)
-            throw std::runtime_error{
-                "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
-                    netid, incoming_netid)};
-        _netid = netid;
 
         auto pubkey = btdc.require<std::string_view>("p");
         if (pubkey.size() != 32)
@@ -196,6 +196,9 @@ namespace llarp
         oxenc::bt_dict_producer btdp;
         btdp.append("", VERSION);
 
+        if (_netid != NetID::MAINNET)
+            btdp.append("#", static_cast<int>(_netid));
+
         std::array<unsigned char, 18> buf;
 
         {
@@ -222,9 +225,6 @@ namespace llarp
 
             btdp.append("6", std::span<const uint8_t>{buf.data(), 18});
         }
-
-        if (_netid != NetID::MAINNET)
-            btdp.append("i", static_cast<int>(_netid));
 
         btdp.append("p", _router_id.to_view());
 
