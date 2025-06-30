@@ -379,7 +379,9 @@ namespace llarp
             if (auto maybe_addr = net().get_best_public_address(true, DEFAULT_LISTEN_PORT))
                 _listen_address = std::move(*maybe_addr);
             else
-                throw std::runtime_error{"Could not find net interface on current platform!"};
+                throw std::runtime_error{
+                    "Could not auto-detect a usable public router listen address; please specify one with the "
+                    "[bind]:listen config option"};
         }
 
         if (_is_service_node)
