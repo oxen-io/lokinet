@@ -996,9 +996,14 @@ namespace llarp::handlers
     void TunEndpoint::handle_outbound_packet(IPPacket pkt)
     {
         ipv4 src, dest;
-        if (!pkt.is_ipv4())
+        if (pkt.is_ipv6())
         {
-            log::warning(logcat, "IPv6 packets not yet supported");
+            log::debug(logcat, "Dropping IPv6 packet: not yet supported");
+            return;
+        }
+        if (!pkt.is_ip())
+        {
+            log::debug(logcat, "Dropping non-IP packet");
             return;
         }
 

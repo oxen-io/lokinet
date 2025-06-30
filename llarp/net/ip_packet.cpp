@@ -61,7 +61,7 @@ namespace llarp
     }
 
     static constexpr uint8_t v4_header_version = 4;
-    [[maybe_unused]] static constexpr uint8_t v6_header_version = 6;
+    static constexpr uint8_t v6_header_version = 6;
 
     void IPPacket::_init_internals()
     {
@@ -72,7 +72,10 @@ namespace llarp
         const auto* v6_header = reinterpret_cast<ipv6_header*>(data());
 
         _is_v4 = header->version == v4_header_version;
-        assert(_is_v4 || header->version == v6_header_version);
+        _is_v6 = header->version == v6_header_version;
+        assert(!(_is_v4 && _is_v6));
+        if (!_is_v4 && !_is_v6)
+            return;  // Not an IP packet!
 
         uint16_t pkt_len;
         if (_is_v4)

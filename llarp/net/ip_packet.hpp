@@ -38,7 +38,7 @@ namespace llarp
         quic::Address _src_addr;
         quic::Address _dst_addr;
 
-        bool _is_v4;
+        bool _is_v4, _is_v6;
         uint8_t _header_len;
         uint16_t _payload_len;
 
@@ -60,7 +60,9 @@ namespace llarp
         // TESTNET: debug methods
         // uint16_t checksum() const { return _is_v4 ? header()->checksum : 0; }
 
+        bool is_ip() const { return _is_v4 || _is_v6; }
         bool is_ipv4() const { return _is_v4; }
+        bool is_ipv6() const { return _is_v6; }
 
         net::IPProtocol protocol() const { return _proto; }
 
