@@ -388,12 +388,16 @@ namespace llarp
             });
     }
 
+    //FIXME: all of this RouterID and RC fetching code is pretty nasty and jank,
+    //       but more importantly fragile and not working.
     void NodeDB::fetch_rids()
     {
         if (_router.is_stopping() || not _router.is_running())
         {
             log::debug(logcat, "NodeDB unable to continue RouterID fetch -- router is stopped!");
-            return post_rid_fetch(true);
+            //FIXME: this *was* calling post_rid_fetch, but that seems wrong (and can segfault),
+            //       might need to see *why* it was doing so, if for any logical reason
+            return;
         }
 
         if (rid_sources.empty())
