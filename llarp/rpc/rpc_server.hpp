@@ -95,7 +95,7 @@ namespace llarp
 
             oxenmq::OxenMQ& _omq;
             Router& _router;
-            oxen::log::PubsubLogger log_subs;
+            std::optional<oxen::log::PubsubLogger> log_subs;
         };
 
         template <typename RPC>

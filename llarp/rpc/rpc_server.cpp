@@ -75,8 +75,11 @@ namespace llarp::rpc
         regs.emplace(RPC::name, std::move(cback));
     }
 
-    RPCServer::RPCServer(oxenmq::OxenMQ& omq, Router& r) : _omq{omq}, _router(r), log_subs{_omq, llarp::logRingBuffer}
+    RPCServer::RPCServer(oxenmq::OxenMQ& omq, Router& r) : _omq{omq}, _router(r)
     {
+        if (llarp::logRingBuffer)
+            log_subs.emplace(_omq, llarp::logRingBuffer);
+
         // copied logic loop as placeholder
         for (const auto& addr : _router.config().api.rpc_bind_addrs)
         {
@@ -754,23 +757,29 @@ namespace llarp::rpc
             return;
         }
 
+        if (!log_subs)
+        {
+            m.send_reply("This Lokinet instance is not capturing logs");
+            return;
+        }
+
         auto endpoint = std::string{m.data[0]};
 
         if (endpoint == "unsubscribe")
         {
             log::debug(logcat, "New logs unsubscribe request from conn {}@{}", m.conn.to_string(), m.remote);
-            log_subs.unsubscribe(m.conn);
+            log_subs->unsubscribe(m.conn);
             m.send_reply("OK");
             return;
         }
 
-        auto is_new = log_subs.subscribe(m.conn, endpoint);
+        auto is_new = log_subs->subscribe(m.conn, endpoint);
 
         if (is_new)
         {
             log::debug(logcat, "New logs subscription request from conn {}@{}", m.conn.to_string(), m.remote);
             m.send_reply("OK");
-            log_subs.send_all(m.conn, endpoint);
+            log_subs->send_all(m.conn, endpoint);
         }
         else
         {
