@@ -49,15 +49,19 @@ namespace llarp::vpn
     template <typename NLRequestT>
     std::optional<std::string> nl_submit(int nlfd, const NLRequestT& req)
     {
+        assert(req.header.nlmsg_flags & NLM_F_REQUEST);
+        log::trace(logcat, "submitting netlink request to fd {}", nlfd);
         if (-1 == send(nlfd, &req, req.header.nlmsg_len, 0))
             return strerror(errno);
 
         char resp_buf[4096];
+        log::trace(logcat, "waiting for netlink response");
         int resp_len = recv(nlfd, resp_buf, sizeof(resp_buf), 0);
+        log::trace(logcat, "got netlink response");
         auto* resp = reinterpret_cast<nlmsghdr*>(resp_buf);
         if (!NLMSG_OK(resp, resp_len) || resp->nlmsg_type != NLMSG_ERROR)
             return "Invalid netlink response"s;
-        else if (auto* nlerr = reinterpret_cast<nlmsgerr*>(NLMSG_DATA(resp_buf)); nlerr->error < 0)
+        if (auto* nlerr = reinterpret_cast<nlmsgerr*>(NLMSG_DATA(resp_buf)); nlerr->error < 0)
             return strerror(-nlerr->error);
         return std::nullopt;
     }
@@ -82,12 +86,15 @@ namespace llarp::vpn
             ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
             std::memcpy(ifr.ifr_name, _info.ifname.c_str(), std::min<size_t>(_info.ifname.size(), IFNAMSIZ - 1));
 
+            log::debug(logcat, "Setting interface name to '{}'", _info.ifname);
             if (::ioctl(_fd, TUNSETIFF, &ifr) == -1)
                 throw std::runtime_error{"Cannot set TUN interface name: {}"_format(strerror(errno))};
 
             // The ioctl above could have changed the tun device on us:
             _info.ifname = ifr.ifr_name;
             _info.index = if_nametoindex(_info.ifname.c_str());
+
+            log::debug(logcat, "Set interface name to '{}'.  Adding adresses", _info.ifname);
 
             int nlfd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
             if (nlfd == -1)
@@ -101,6 +108,7 @@ namespace llarp::vpn
             // Add addresses to the tun interface:
             for (const auto& ifaddr : _info.addrs)
             {
+                log::debug(logcat, "Adding address {} to {}", ifaddr, _info.ifname);
                 struct
                 {
                     nlmsghdr header;
@@ -167,7 +175,7 @@ namespace llarp::vpn
                     ifinfomsg content;
                 } request{};
                 request.header.nlmsg_len = NLMSG_LENGTH(sizeof request.content);
-                request.header.nlmsg_flags = NLM_F_REQUEST;
+                request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
                 request.header.nlmsg_type = RTM_NEWLINK;
                 request.content.ifi_index = static_cast<int>(_info.index);
                 request.content.ifi_flags = IFF_UP;
