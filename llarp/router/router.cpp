@@ -1,6 +1,7 @@
 #include "router.hpp"
 
 #include <llarp/config/config.hpp>
+#include <llarp/constants/platform.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -10,10 +11,14 @@
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 
+#include <oxen/log.hpp>
+#include <oxenmq/oxenmq.h>
+
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
 #include <utility>
+
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
@@ -21,10 +26,6 @@
 #if defined(WITH_SYSTEMD)
 #include <systemd/sd-daemon.h>
 #endif
-
-#include <llarp/constants/platform.hpp>
-
-#include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL{250ms};
 
@@ -303,8 +304,25 @@ namespace llarp
                 && (_config.logging.file == "stdout" || _config.logging.file == "-" || _config.logging.file.empty()))
                 log_type = log::Type::Print;
 
+#ifndef NDEBUG
+            std::string debug_pattern =
+                log_type == log::Type::Print ? log::DEFAULT_PATTERN_COLOR : log::DEFAULT_PATTERN_MONO;
+            // In a debug build replace YYYY-MM-DD with "t=THREADID"
+            if (auto pos = debug_pattern.find("%Y-%m-%d"); pos != std::string::npos)
+                debug_pattern = debug_pattern.substr(0, pos) + "t=%t" + debug_pattern.substr(pos + 8);
+            else
+                debug_pattern = "[t=%t] " + debug_pattern;
+#endif
+
             log::clear_sinks();
-            log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : _config.logging.file);
+            log::add_sink(
+                log_type,
+                log_type == log::Type::System ? "lokinet" : _config.logging.file
+#ifndef NDEBUG
+                ,
+                debug_pattern
+#endif
+            );
         }
 
         log::apply_categories(_config.logging.levels);
