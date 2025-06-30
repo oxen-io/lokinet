@@ -39,8 +39,7 @@ namespace lokinet
         context->start(std::move(conf), loop);
     }
 
-    Lokinet::Lokinet(Network n, std::shared_ptr<oxen::quic::Loop> loop)
-        : context{std::make_unique<llarp::Context>()}
+    Lokinet::Lokinet(Network n, std::shared_ptr<oxen::quic::Loop> loop) : context{std::make_unique<llarp::Context>()}
     {
         auto conf = llarp::Config::make_embedded_config();
         switch (n)

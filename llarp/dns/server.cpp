@@ -684,7 +684,8 @@ namespace llarp::dns
             }
         }
 
-        if (_resolvers.empty()) {
+        if (_resolvers.empty())
+        {
             log::warning(logcat, "Trying to resolve DNS query, but we no resolver set up.");
             return false;
         }

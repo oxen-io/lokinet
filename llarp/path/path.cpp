@@ -102,7 +102,11 @@ namespace llarp::path
             auto time_taken = now - start_time;
             if (m && m.body() == messages::OK_RESPONSE)
             {
-                log::trace(logcat, "Ping response for path TXID={} response received in {}", shared_self->upstream_txid(), time_taken);
+                log::trace(
+                    logcat,
+                    "Ping response for path TXID={} response received in {}",
+                    shared_self->upstream_txid(),
+                    time_taken);
                 shared_self->recent_ping_failures = 0;
                 shared_self->ping_average = std::chrono::milliseconds{
                     ((shared_self->ping_average * shared_self->ping_count) + time_taken) / ++shared_self->ping_count};

@@ -1190,9 +1190,6 @@ namespace llarp::handlers
         return {_local_ipv4_mapping.get_local(addr), _local_ipv6_mapping.get_local(addr)};
     }
 
-    TunEndpoint::~TunEndpoint()
-    {
-        log::trace(logcat, "TunEndpoint::~TunEndpoint()");
-    }
+    TunEndpoint::~TunEndpoint() { log::trace(logcat, "TunEndpoint::~TunEndpoint()"); }
 
 }  // namespace llarp::handlers

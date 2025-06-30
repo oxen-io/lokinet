@@ -1078,7 +1078,7 @@ namespace llarp
         oxenc::bt_dict_producer btdp;
         {
             auto rc_list = btdp.append_list("r");
-            rc_list.reserve(rcs[0].size() * (rcs.size() + 1)); // might be a waste of time
+            rc_list.reserve(rcs[0].size() * (rcs.size() + 1));  // might be a waste of time
             for (const auto& rc : rcs)
                 rc_list.append_encoded(rc);
         }
