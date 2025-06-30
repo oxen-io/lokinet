@@ -574,6 +574,7 @@ namespace llarp
         {
             log::debug(logcat, "Initializing virtual TUN device...");
             _tun = _loop->make_shared<handlers::TunEndpoint>(*this);
+            _tun->setup_dns();
         }
         else
             log::debug(logcat, "Not initializing TUN device; disabled in config.");

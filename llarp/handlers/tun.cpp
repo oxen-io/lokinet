@@ -124,6 +124,8 @@ namespace llarp::handlers
         }
     };
 
+    // NB: It looks like this could/should be called during the constructor,
+    // but as it passes weak_from_this to the dns server, it has to be after.
     void TunEndpoint::setup_dns()
     {
         log::debug(logcat, "{} setting up DNS...", name());
@@ -342,16 +344,6 @@ namespace llarp::handlers
             log::critical(logcat, "{}", err);
             throw std::runtime_error{std::move(err)};
         }
-
-        // if (auto* quic = GetQUICTunnel())
-        // {
-        // TODO:
-        // quic->listen([this](std::string_view, uint16_t port) {
-        //   return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
-        // });
-        // }
-
-        setup_dns();
     }
 
     static bool is_random_snode(const dns::Message& msg) { return msg.questions[0].IsName("random.snode"); }
@@ -1198,6 +1190,9 @@ namespace llarp::handlers
         return {_local_ipv4_mapping.get_local(addr), _local_ipv6_mapping.get_local(addr)};
     }
 
-    TunEndpoint::~TunEndpoint() = default;
+    TunEndpoint::~TunEndpoint()
+    {
+        log::trace(logcat, "TunEndpoint::~TunEndpoint()");
+    }
 
 }  // namespace llarp::handlers

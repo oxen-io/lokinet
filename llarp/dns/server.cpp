@@ -684,6 +684,10 @@ namespace llarp::dns
             }
         }
 
+        if (_resolvers.empty()) {
+            log::warning(logcat, "Trying to resolve DNS query, but we no resolver set up.");
+            return false;
+        }
         for (const auto& resolver : _resolvers)
         {
             if (auto res_ptr = resolver.lock())
