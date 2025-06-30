@@ -250,7 +250,7 @@ namespace llarp::session
     {
         add_path(current_path());
 
-        _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
+        _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this] { rotate_paths(); });
     }
 
     std::shared_ptr<path::Path> OutboundRelaySession::current_path()

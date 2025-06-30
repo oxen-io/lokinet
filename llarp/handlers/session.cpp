@@ -275,18 +275,15 @@ namespace llarp::handlers
 
             _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
                 update_and_publish_localcc();
-                _cc_publisher = _router.loop()->call_every(
-                    CC_PUBLISH_INTERVAL,
-                    [/* this */]() mutable {
-                        log::critical(logcat, "TESTNET: Skipping ClientContact publish!");
-                        // update_and_publish_localcc();
-                    },
-                    true);
+                _cc_publisher = _router.loop()->call_every(CC_PUBLISH_INTERVAL, [this] {
+                    log::critical(logcat, "TESTNET: Skipping ClientContact publish!");
+                    // TODO FIXME
+                    // update_and_publish_localcc();
+                });
             });
 
             log::trace(logcat, "Starting path rotation ticker...");
-            _path_rotater =
-                _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
+            _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this] { rotate_paths(); });
         }
         else
             log::info(logcat, "SessionEndpoint configured to NOT publish ClientContact...");
@@ -353,7 +350,7 @@ namespace llarp::handlers
         log::debug(logcat, "Looking up SNS name {}", sns);
 
         auto remaining = std::make_shared<int>(0);
-        auto response_handler = [sns, remaining, func = std::move(func)](quic::message m) mutable {
+        auto response_handler = [sns, remaining, func = std::move(func)](quic::message m) {
             int rem = --*remaining;
             if (rem < 0)
                 return;  // Some other request beat us to it

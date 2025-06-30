@@ -522,11 +522,14 @@ namespace llarp
     {
         log::trace(logcat, "NodeDB starting tickers...");
 
-        _flush_ticker = _router.loop()->call_every(FLUSH_INTERVAL, [this]() mutable { save_to_disk(); });
+        // TODO FIXME: this startup pattern is very strange.  save_to_disk might fire before the
+        // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
+        // purge-then-save?
+
+        _flush_ticker = _router.loop()->call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
         _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
-        _purge_ticker =
-            _router.loop()->call_every(PURGE_INTERVAL, [this]() mutable { purge_rcs(); }, not _needs_bootstrap);
+        _purge_ticker = _router.loop()->call_every(PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
         if (not _needs_bootstrap)
             _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
 
@@ -882,6 +885,8 @@ namespace llarp
 
         for (const auto& [rid, rc] : known_rcs)
             rc.write(get_path_by_pubkey(rid));
+
+        log::trace(logcat, "Done writing NodeDB contents");
     }
 
     void NodeDB::cleanup()

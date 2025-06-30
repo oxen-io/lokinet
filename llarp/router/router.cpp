@@ -55,8 +55,11 @@ namespace llarp
 
         init_logging();
 
-        configure();
-        start();
+        _loop->call_get([this] {
+            log::debug(logcat, "Inside router loop, initializing router");
+            configure();
+            start();
+        });
     }
 
     // Default, but we define it here because some of the unique_ptrs are for forward-declared types
@@ -469,104 +472,103 @@ namespace llarp
 
     void Router::configure()
     {
-        _loop->call_get([this] {
-            llarp::sys::service_manager->starting();
+        llarp::sys::service_manager->starting();
 
-            if (_is_exit_node and _is_service_node)
-                throw std::runtime_error{
-                    "Lokinet cannot simultaneously operate as a service node and client-operated exit node service!"};
+        if (_is_exit_node and _is_service_node)
+            throw std::runtime_error{
+                "Lokinet cannot simultaneously operate as a service node and client-operated exit node service!"};
 
-            if (_config.lokid.disable_testing && netid() == NetID::MAINNET)
-                throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
+        if (_config.lokid.disable_testing && netid() == NetID::MAINNET)
+            throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
 
-            auto net_id = netid();
-            log::log(
-                logcat, net_id == NetID::MAINNET ? log::Level::debug : log::Level::warn, "Network ID is {}", net_id);
+        auto net_id = netid();
+        log::log(logcat, net_id == NetID::MAINNET ? log::Level::debug : log::Level::warn, "Network ID is {}", net_id);
 
-            log::trace(logcat, "Configuring router...");
+        log::trace(logcat, "Configuring router...");
 
-            _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
+        _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
 
-            log::info(
-                logcat,
-                "Local instance operating in {} mode{}",
-                _is_service_node ? "relay" : "client",
-                _is_exit_node ? " operating an exit node service!" : "!");
+        log::info(
+            logcat,
+            "Local instance operating in {} mode{}",
+            _is_service_node ? "relay" : "client",
+            _is_exit_node ? " operating an exit node service!" : "!");
 
-            if (_is_service_node)
-            {
-                log::debug(logcat, "Starting RPC client");
-                rpc_addr = oxenmq::address(_config.lokid.rpc_addr);
-                _rpc_client = std::make_unique<rpc::RPCClient>(*_omq, *this);
-            }
+        if (_is_service_node)
+        {
+            log::debug(logcat, "Starting RPC client");
+            rpc_addr = oxenmq::address(_config.lokid.rpc_addr);
+            _rpc_client = std::make_unique<rpc::RPCClient>(*_omq, *this);
+        }
 
-            if (_config.api.enable_rpc_server)
-            {
-                log::debug(logcat, "Starting RPC server");
-                _rpc_server = std::make_unique<rpc::RPCServer>(*_omq, *this);
-            }
+        if (_config.api.enable_rpc_server)
+        {
+            log::debug(logcat, "Starting RPC server");
+            _rpc_server = std::make_unique<rpc::RPCServer>(*_omq, *this);
+        }
 
-            log::debug(logcat, "Starting OMQ server");
-            _omq->start();
+        log::debug(logcat, "Starting OMQ server");
+        _omq->start();
 
-            if (_is_service_node)
-            {
-                log::trace(logcat, "RPC client connecting to RPC bind address");
-                _rpc_client->connect_async(rpc_addr);
-            }
+        if (_is_service_node)
+        {
+            log::trace(logcat, "RPC client connecting to RPC bind address");
+            _rpc_client->connect_async(rpc_addr);
+        }
 
-            log::debug(logcat, "Initializing key manager");
+        log::debug(logcat, "Initializing key manager");
 
-            if (_is_service_node)
-                fetch_snode_identity();
-            else
-                key_manager = KeyManager{_config, _is_service_node};
+        if (_is_service_node)
+            fetch_snode_identity();
+        else
+            key_manager = KeyManager{_config, _is_service_node};
 
-            log::trace(logcat, "Initializing from configuration");
+        log::trace(logcat, "Initializing from configuration");
 
-            process_routerconfig();
+        process_routerconfig();
 
-            log::debug(
-                logcat,
-                "public addr={}, listen addr={}",
-                _public_address ? _public_address->to_string() : "< NONE >",
-                _listen_address);
+        log::debug(
+            logcat,
+            "public addr={}, listen addr={}",
+            _public_address ? _public_address->to_string() : "< NONE >",
+            _listen_address);
 
-            // We process the relevant netconfig values (ip_range, address, and ip) here; in case the range or interface
-            // is bad, we search for a free one and set it BACK into the config. Every subsequent object configuring
-            // using the NetworkConfig (ex: tun/null, exit::Handler, etc) will have processed values
-            process_netconfig();
+        // We process the relevant netconfig values (ip_range, address, and ip) here; in case the range or interface
+        // is bad, we search for a free one and set it BACK into the config. Every subsequent object configuring
+        // using the NetworkConfig (ex: tun/null, exit::Handler, etc) will have processed values
+        process_netconfig();
 
-            _node_db = std::make_unique<NodeDB>(config().router.data_dir / nodedb_dirname, *this);
-            init_bootstrap();
+        _node_db = std::make_unique<NodeDB>(config().router.data_dir / nodedb_dirname, *this);
+        init_bootstrap();
 
-            relay_contact = {
-                identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};
+        relay_contact = {
+            identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};
 
-            if (not relay_contact.is_public_addressable())
-            {
-                constexpr auto err = "Router is configured as relay but has no reachable address!";
-                log::critical(logcat, "{}", err);
-                throw std::runtime_error{err};
-            }
+        if (not relay_contact.addr().is_public())
+        {
+            auto err =
+                "Router is configured as relay but '{}' is not a public IP; perhaps"
+                " you need to specify the [router]:public-ip/public-port settings?"_format(relay_contact.addr());
+            log::critical(logcat, "{}", err);
+            throw std::runtime_error{err};
+        }
 
-            _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
+        _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
 
-            log::debug(logcat, "Creating QUIC link manager...");
-            _link_manager = std::make_unique<LinkManager>(*this);
+        log::debug(logcat, "Creating QUIC link manager...");
+        _link_manager = std::make_unique<LinkManager>(*this);
 
-            // API config
-            //  Full clients have TUN
-            //  Embedded clients have nothing
-            //  All relays have TUN
-            if (_config.network.init_tun)
-            {
-                log::debug(logcat, "Initializing virtual TUN device...");
-                _tun = _loop->make_shared<handlers::TunEndpoint>(*this);
-            }
-            else
-                log::debug(logcat, "Not initializing TUN device; disabled in config.");
-        });
+        // API config
+        //  Full clients have TUN
+        //  Embedded clients have nothing
+        //  All relays have TUN
+        if (_config.network.init_tun)
+        {
+            log::debug(logcat, "Initializing virtual TUN device...");
+            _tun = _loop->make_shared<handlers::TunEndpoint>(*this);
+        }
+        else
+            log::debug(logcat, "Not initializing TUN device; disabled in config.");
     }
 
     bool Router::is_service_node() const { return _is_service_node; }
@@ -810,11 +812,12 @@ namespace llarp
 
         const auto now = llarp::time_now_ms();
 
-        if (const auto delta = now - _last_tick; _last_tick != 0s and delta > NETWORK_RESET_SKIP_INTERVAL)
+        if (const auto delta = now - _last_tick;
+            _last_tick != 0s and (delta > NETWORK_RESET_SKIP_INTERVAL || delta < -NETWORK_RESET_SKIP_INTERVAL))
         {
             // TODO: this, if needed?
             // we detected a time skip into the futre, thaw the network
-            log::error(logcat, "Timeskip of {} detected, resetting network state!", delta.count());
+            log::error(logcat, "Timeskip of {}ms detected, resetting network state!", delta.count());
         }
 
         _is_service_node ? _relay_tick(now) : _client_tick(now);
@@ -875,11 +878,11 @@ namespace llarp
             log::info(logcat, "Router profiling disabled");
         }
 
-        log::debug(logcat, "Creating Router::Tick() repeating event...");
-        _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); }, false);
+        log::debug(logcat, "Starting Router main tick interval");
+        _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
-        _systemd_ticker = _loop->call_every(
-            SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); }, false, true);
+        _systemd_ticker =
+            _loop->call_every(SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); });
 
         _started_at = now();
 
@@ -887,76 +890,73 @@ namespace llarp
         {
             log::debug(logcat, "Creating reachability testing ticker...");
             // do service node testing if we are in service node whitelist mode
-            _reachability_ticker = _loop->call_every(
-                consensus::REACHABILITY_TESTING_TIMER_INTERVAL,
-                [this] {
-                    // dont run tests if we are not running or we are stopping
-                    if (not _is_running)
-                        return;
-                    // dont run tests if we think we should not test other routers
-                    // this occurs when we are deregistered or do not have the service node list
-                    // yet when we expect to have one.
-                    if (not can_test_routers())
-                        return;
+            _reachability_ticker = _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, [this] {
+                // dont run tests if we are not running or we are stopping
+                if (not _is_running)
+                    return;
+                // dont run tests if we think we should not test other routers
+                // this occurs when we are deregistered or do not have the service node list
+                // yet when we expect to have one.
+                if (not can_test_routers())
+                    return;
 
-                    auto tests = router_testing.get_failing();
+                auto tests = router_testing.get_failing();
 
-                    if (auto maybe = router_testing.next_random(this))
+                if (auto maybe = router_testing.next_random(this))
+                {
+                    tests.emplace_back(*maybe, 0);
+                }
+                for (const auto& [router, fails] : tests)
+                {
+                    if (not _node_db->is_connection_allowed(router))
                     {
-                        tests.emplace_back(*maybe, 0);
+                        log::debug(
+                            logcat,
+                            "{} is no longer a registered service node; dropping from test "
+                            "list",
+                            router);
+                        router_testing.remove_node_from_failing(router);
+                        continue;
                     }
-                    for (const auto& [router, fails] : tests)
-                    {
-                        if (not _node_db->is_connection_allowed(router))
-                        {
-                            log::debug(
+
+                    log::critical(logcat, "Establishing session to {} for service node testing", router);
+
+                    // try to make a session to this random router
+                    // this will do a dht lookup if needed
+                    _link_manager->test_reachability(
+                        router,
+                        [this, rid = router, previous = fails](quic::connection_interface& conn) {
+                            log::info(
                                 logcat,
-                                "{} is no longer a registered service node; dropping from test "
-                                "list",
-                                router);
-                            router_testing.remove_node_from_failing(router);
-                            continue;
-                        }
-
-                        log::critical(logcat, "Establishing session to {} for service node testing", router);
-
-                        // try to make a session to this random router
-                        // this will do a dht lookup if needed
-                        _link_manager->test_reachability(
-                            router,
-                            [this, rid = router, previous = fails](quic::connection_interface& conn) {
+                                "Successful SN reachability test to {}{}",
+                                rid,
+                                previous ? "after {} previous failures"_format(previous) : "");
+                            router_testing.remove_node_from_failing(rid);
+                            _rpc_client->inform_connection(rid, true);
+                            conn.close_connection();
+                        },
+                        [this, rid = router, previous = fails](quic::connection_interface&, uint64_t ec) {
+                            if (ec != 0)
+                            {
                                 log::info(
                                     logcat,
-                                    "Successful SN reachability test to {}{}",
+                                    "Unsuccessful SN reachability test to {} after {} previous "
+                                    "failures",
                                     rid,
-                                    previous ? "after {} previous failures"_format(previous) : "");
-                                router_testing.remove_node_from_failing(rid);
-                                _rpc_client->inform_connection(rid, true);
-                                conn.close_connection();
-                            },
-                            [this, rid = router, previous = fails](quic::connection_interface&, uint64_t ec) {
-                                if (ec != 0)
-                                {
-                                    log::info(
-                                        logcat,
-                                        "Unsuccessful SN reachability test to {} after {} previous "
-                                        "failures",
-                                        rid,
-                                        previous);
-                                    router_testing.add_failing_node(rid, previous);
-                                }
-                            });
-                    }
-                },
-                false);
+                                    previous);
+                                router_testing.add_failing_node(rid, previous);
+                            }
+                        });
+                }
+            });
         }
-
-        log::critical(logcat, "\n\n\tLOCAL INSTANCE ROUTER ID: {}\n", local_rid().to_network_address(_is_service_node));
 
         start_tickers();
         _is_running = true;
 
         llarp::sys::service_manager->ready();
+
+        log::info(logcat, "{} startup complete", local_rid().to_network_address(_is_service_node));
     }
 
     std::chrono::milliseconds Router::Uptime() const

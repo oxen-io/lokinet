@@ -171,7 +171,7 @@ namespace llarp::rpc
 
         log::info(logcat, "Starting RPCClient ping ticker...");
         ping();
-        _ping_ticker = _router.loop()->call_every(PING_INTERVAL, [this]() { ping(); });
+        _ping_ticker = _router.loop()->call_every(PING_INTERVAL, [this] { ping(); });
     }
 
     void RPCClient::handle_new_service_node_list(const nlohmann::json& j)

@@ -45,6 +45,8 @@ namespace llarp
             log::debug(logcat, "Initializing event loop...");
 
             loop = std::make_shared<quic::Loop>();
+            assert(loop->call_get([] { return 42; }) == 42);
+
             log::debug(logcat, "Event loop initialized!");
         }
 

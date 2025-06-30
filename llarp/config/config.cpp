@@ -951,7 +951,7 @@ namespace llarp
                 "Upstream resolver(s) to use as fallback for non-loki addresses.",
                 "Multiple values accepted.",
             },
-            [this, parse_addr_for_dns](std::string arg) mutable {
+            [this, parse_addr_for_dns](std::string arg) {
                 if (not arg.empty())
                 {
                     if (auto maybe_addr = parse_addr_for_dns(arg))
@@ -981,7 +981,7 @@ namespace llarp
             Comment{
                 "Address to bind to for sending upstream DNS requests.",
             },
-            [this, parse_addr_for_dns](std::string arg) mutable {
+            [this, parse_addr_for_dns](std::string arg) {
                 if (not arg.empty())
                 {
                     if (auto maybe_addr = parse_addr_for_dns(arg))
@@ -999,7 +999,7 @@ namespace llarp
             Comment{
                 "Address to bind to for handling DNS requests.",
             },
-            [this, parse_addr_for_dns](std::string arg) mutable {
+            [this, parse_addr_for_dns](std::string arg) {
                 if (not arg.empty())
                 {
                     if (auto maybe_addr = parse_addr_for_dns(arg))

@@ -272,7 +272,7 @@ namespace llarp
 
     void Profiling::start_save_ticker(Router& r)
     {
-        _disk_saver = r.loop()->call_every(SAVE_INTERVAL, [this]() {
+        _disk_saver = r.loop()->call_every(SAVE_INTERVAL, [this] {
             log::debug(logcat, "Writing router profiles to disk...");
             save_to_disk();
         });
