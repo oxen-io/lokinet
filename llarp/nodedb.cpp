@@ -682,7 +682,11 @@ namespace llarp
 
                         while (not sublist.is_finished())
                         {
-                            accepted += put_rc(RemoteRC{sublist.consume_dict_data(), _router.netid()});
+                            // if we're trusting the bootstrap for RCs regardless of RouterID, we
+                            // should trust the RouterID as well.
+                            RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
+                            known_rids.insert(new_rc.router_id());
+                            accepted += put_rc(std::move(new_rc));
                             ++num;
                         }
                     }
