@@ -354,6 +354,9 @@ namespace llarp::handlers
             int rem = --*remaining;
             if (rem < 0)
                 return;  // Some other request beat us to it
+
+            std::optional<NetworkAddress> client_addr;
+
             if (m)
             {
                 try
@@ -362,18 +365,17 @@ namespace llarp::handlers
 
                     auto enc = ResolveSNS::deserialize_response(oxenc::bt_dict_consumer{m.body()});
 
-                    if (auto client_addr = enc.decrypt(sns))
+                    client_addr = enc.decrypt(sns);
+                    if (client_addr)
                     {
                         log::debug(
                             logcat,
                             "Successfully decrypted SNS record (name: {}, address: {})",
                             sns,
                             client_addr->to_string());
-                        *remaining = 0;
-                        return func(std::move(client_addr));
                     }
-
-                    log::warning(logcat, "Failed to decrypt SNS record (name: {})", sns);
+                    else
+                        log::warning(logcat, "Failed to decrypt SNS record (name: {})", sns);
                 }
                 catch (const std::exception& e)
                 {
@@ -381,30 +383,37 @@ namespace llarp::handlers
                 }
             }
 
-            // If this is the last outstanding response, and still didn't succeed, then signal the
-            // lookup failure to the callback:
-            if (rem == 0)
+            if (client_addr)
+            {
+                *remaining = 0;
+                func(std::move(client_addr));
+            }
+            else if (rem == 0)
+            {
+                // If this is the last outstanding response, and still didn't succeed, then signal
+                // the lookup failure to the callback:
                 func(std::nullopt);
+            }
         };
 
         auto name_hash = crypto::shorthash(as_bspan(sns));
-        bool at_least_one = false;
 
         // TODO FIXME: this should not be fired down *every* path.
-        *remaining = static_cast<int>(_paths.size());
-
         for (const auto& [_, path] : _paths)
         {
-            log::info(
+            if (not path or not path->is_active())
+                continue;
+
+            ++*remaining;
+            log::debug(
                 logcat,
                 "Querying pivot:{} for name lookup (target: {})",
                 path->pivot().router_id().short_string(),
                 sns);
             path->resolve_sns(name_hash, response_handler);
-            at_least_one = true;
         }
 
-        if (!at_least_one)
+        if (*remaining == 0)
         {
             log::warning(logcat, "Unable to resolve Lokinet SNS {}: we have no active paths", sns);
             func(std::nullopt);
@@ -421,15 +430,17 @@ namespace llarp::handlers
 
         log::debug(logcat, "Looking up RelayContact for remote (rid:{})", remote.to_network_address(true));
 
-        auto ignore_remaining = std::make_shared<std::atomic_bool>(false);
+        auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, hook = std::move(func), ignore_remaining](quic::message m) mutable {
-            std::optional<RemoteRC> rc;
-            if (ignore_remaining->load())
-            {
-                log::trace(logcat, "Dropping subsequent `fetch_rc` response (success: {})...", not m.is_error());
+        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+            int rem = --*remaining;
+            if (rem < 0)
+            {  // Some other path handler already replied
+                log::trace(logcat, "Dropping duplicate `fetch_rc` response (success: {})", not m.is_error());
                 return;
             }
+
+            std::optional<RemoteRC> rc;
             try
             {
                 if (m)
@@ -453,7 +464,6 @@ namespace llarp::handlers
                     log::debug(logcat, "Storing RelayContact for remote rid:{}", remote);
                     _router.node_db().put_rc(rcs.front());
                     rc = std::move(rcs.front());
-                    ignore_remaining->store(true);
                 }
                 else
                 {
@@ -471,25 +481,39 @@ namespace llarp::handlers
                 log::warning(logcat, "Exception: {}", e.what());
             }
 
-            hook(std::move(rc));
+            if (rc)
+            {
+                *remaining = 0;
+                func(std::move(rc));
+            }
+            else if (rem == 0)
+            {
+                // We are the last path response and there have been no successes, so signal failure
+                func(std::nullopt);
+            }
         };
 
+        Lock_t l{paths_mutex};
+
+        for (const auto& [_, p] : _paths)
         {
-            Lock_t l{paths_mutex};
+            if (not p or not p->is_active())
+                continue;
 
-            for (const auto& [_, p] : _paths)
-            {
-                if (not p or not p->is_active())
-                    continue;
+            ++*remaining;
+            log::debug(
+                logcat,
+                "Querying pivot (rid:{}) for RelayContact lookup target (rid:{})",
+                p->pivot().router_id().short_string(),
+                remote);
 
-                log::debug(
-                    logcat,
-                    "Querying pivot (rid:{}) for RelayContact lookup target (rid:{})",
-                    p->pivot().router_id().short_string(),
-                    remote);
+            p->fetch_relay_contact(remote, response_handler);
+        }
 
-                p->fetch_relay_contact(remote, response_handler);
-            }
+        if (*remaining == 0)
+        {
+            log::warning(logcat, "RC lookup failed: no usable paths!");
+            func(std::nullopt);
         }
     }
 
@@ -509,14 +533,18 @@ namespace llarp::handlers
             remote_key,
             remote.to_network_address(false));
 
-        auto ignore_remaining = std::make_shared<std::atomic_bool>(false);
+        auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, hook = std::move(func), ignore_remaining](quic::message m) mutable {
-            if (ignore_remaining->load())
+        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+            int rem = --*remaining;
+            if (rem < 0)
             {
-                log::trace(logcat, "Dropping subsequent `find_cc` response (success: {})...", not m.is_error());
+                // Another path response already returned it
+                log::trace(logcat, "Dropping duplicate `find_cc` response (success: {})", not m.is_error());
                 return;
             }
+
+            std::optional<ClientContact> cc;
             try
             {
                 if (m)
@@ -528,11 +556,10 @@ namespace llarp::handlers
                     {
                         log::debug(logcat, "Storing ClientContact for remote rid:{}", remote);
                         _router.contact_db().put_cc(std::move(enc));
-                        ignore_remaining->store(true);
-                        return hook(std::move(intro));
+                        cc = std::move(intro);
                     }
-
-                    log::warning(logcat, "Failed to decrypt returned EncryptedClientContact!");
+                    else
+                        log::warning(logcat, "Failed to decrypt returned EncryptedClientContact!");
                 }
                 else
                 {
@@ -551,25 +578,39 @@ namespace llarp::handlers
                 log::warning(logcat, "Exception: {}", e.what());
             }
 
-            hook(std::nullopt);
+            if (cc)
+            {
+                *remaining = 0;
+                func(std::move(cc));
+            }
+            else if (rem == 0)
+            {
+                // Last chance and all failed, so trigger failure
+                func(std::nullopt);
+            }
         };
 
+        Lock_t l{paths_mutex};
+
+        for (const auto& [_, p] : _paths)
         {
-            Lock_t l{paths_mutex};
+            if (not p or not p->is_active())
+                continue;
 
-            for (const auto& [_, p] : _paths)
-            {
-                if (not p or not p->is_active())
-                    continue;
+            ++*remaining;
+            log::debug(
+                logcat,
+                "Querying pivot (rid:{}) for ClientContact lookup target (rid:{})",
+                p->pivot().router_id().short_string(),
+                remote);
 
-                log::debug(
-                    logcat,
-                    "Querying pivot (rid:{}) for ClientContact lookup target (rid:{})",
-                    p->pivot().router_id().short_string(),
-                    remote);
+            p->find_client_contact(remote_key, response_handler);
+        }
 
-                p->find_client_contact(remote_key, response_handler);
-            }
+        if (*remaining == 0)
+        {
+            log::warning(logcat, "CC lookup failed: no usable paths!");
+            func(std::nullopt);
         }
     }
 
@@ -1068,46 +1109,38 @@ namespace llarp::handlers
 
     void SessionEndpoint::_initiate_client_session(NetworkAddress remote, on_session_init_hook cb)
     {
-        auto counter = std::make_shared<size_t>(num_paths_desired);
-
-        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
+        _router.loop()->call([this, remote, cb = std::move(cb)]() mutable {
             lookup_client_intro(
-                remote.router_id(),
-                [this, remote, hook = std::move(handler), counter](std::optional<ClientContact> cc) mutable {
-                    if (*counter == 0)
-                        return;
-
+                remote.router_id(), [this, remote, cb = std::move(cb)](std::optional<ClientContact> cc) mutable {
                     if (cc)
                     {
-                        *counter = 0;
                         log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_client_session_path(std::move(*cc).intros(), remote, std::move(hook));
+                        _make_client_session_path(std::move(*cc).intros(), remote, std::move(cb));
                     }
-                    else if (--*counter == 0)
+                    else
+                    {
                         log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);
+                        cb(false);
+                    }
                 });
         });
     }
 
     void SessionEndpoint::_initiate_relay_session(NetworkAddress remote, on_session_init_hook cb)
     {
-        auto counter = std::make_shared<size_t>(num_paths_desired);
-
-        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
+        _router.loop()->call([this, remote, cb = std::move(cb)]() mutable {
             lookup_relay_contact(
-                remote.router_id(),
-                [this, remote, hook = std::move(handler), counter](std::optional<RemoteRC> rc) mutable {
-                    if (*counter == 0)
-                        return;
-
+                remote.router_id(), [this, remote, cb = std::move(cb)](std::optional<RemoteRC> rc) mutable {
                     if (rc)
                     {
-                        *counter = 0;
                         log::debug(logcat, "Session initiation returned RC: {}", rc->to_string());
-                        _make_relay_session_path(std::move(*rc), remote, std::move(hook));
+                        _make_relay_session_path(std::move(*rc), remote, std::move(cb));
                     }
-                    else if (--*counter == 0)
+                    else
+                    {
                         log::warning(logcat, "Failed to initiate session at `fetch_rcs` (target:{})", remote);
+                        cb(false);
+                    }
                 });
         });
     }
