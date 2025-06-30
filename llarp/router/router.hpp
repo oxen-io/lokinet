@@ -136,7 +136,7 @@ namespace llarp
         std::chrono::milliseconds _last_stats_report{0s};
         std::chrono::milliseconds _next_decomm_warning{time_now_ms() + 15s};
 
-        std::chrono::milliseconds _last_path_ping;
+        std::chrono::milliseconds _last_path_ping{0s};
 
         std::unique_ptr<rpc::RPCServer> _rpc_server;
 

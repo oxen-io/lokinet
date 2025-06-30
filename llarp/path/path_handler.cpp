@@ -208,7 +208,6 @@ namespace llarp::path
 
         Lock_t l{paths_mutex};
 
-        now = llarp::time_now_ms();
         _router.pathbuild_limiter().Decay(now);
 
         expire_paths(now);
@@ -491,7 +490,7 @@ namespace llarp::path
         {
             Lock_t l{paths_mutex};
 
-            if (auto [it, b] = _paths.try_emplace(path->edge().rxid(), nullptr); not b)
+            if (auto [it, b] = _paths.try_emplace(path->edge().rxid(), path); not b)
             {
                 log::debug(logcat, "Pending build to {} already underway... aborting...", path->edge().rxid());
                 return nullptr;
@@ -624,8 +623,6 @@ namespace llarp::path
             new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak());
             log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
         }
-
-        assert(new_path);
 
         auto on_success = [cb, remote_intro](const auto& new_path) mutable {
             return cb(new_path, std::move(remote_intro));
