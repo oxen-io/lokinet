@@ -24,9 +24,11 @@ namespace llarp::apple
 
         void delete_default_route_via_interface(vpn::NetworkInterface& vpn) override;
 
-        void add_route_via_interface(vpn::NetworkInterface& vpn, IPRange range) override;
+        void add_route_via_interface(vpn::NetworkInterface& vpn, ipv4_range range) override;
+        void add_route_via_interface(vpn::NetworkInterface& vpn, ipv6_range range) override;
 
-        void delete_route_via_interface(vpn::NetworkInterface& vpn, IPRange range) override;
+        void delete_route_via_interface(vpn::NetworkInterface& vpn, ipv4_range range) override;
+        void delete_route_via_interface(vpn::NetworkInterface& vpn, ipv6_range range) override;
 
         std::vector<quic::Address> get_non_interface_gateways(vpn::NetworkInterface& /*vpn*/) override
         {

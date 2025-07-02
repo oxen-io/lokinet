@@ -56,7 +56,7 @@ namespace llarp::handlers
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (using_tun)
-            _router.tun_endpoint()->unmap_session_to_local_ip(remote);
+            _router.tun_endpoint().unmap_session_to_local_ip(remote);
 
         _sessions.unmap(remote);
         log::info(logcat, "Session (remote:{}) closed and unmapped!", remote);
@@ -696,7 +696,7 @@ namespace llarp::handlers
         {
             log::trace(logcat, "{} Instructing lokinet TUN device to create mapped route...", success_msg);
 
-            if (auto maybe_ipv4 = _router.tun_endpoint()->map_session_to_local_ip(s.remote()))
+            if (auto maybe_ipv4 = _router.tun_endpoint().map_session_to_local_ip(s.remote()))
             {
                 log::info(
                     logcat,

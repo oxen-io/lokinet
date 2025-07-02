@@ -189,7 +189,7 @@ namespace llarp
 
         void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
 
-        const std::shared_ptr<handlers::TunEndpoint>& tun_endpoint() const { return _tun; }
+        handlers::TunEndpoint& tun_endpoint() { return *_tun; }
 
         handlers::SessionEndpoint& session_endpoint() { return *_session_endpoint; }
         const handlers::SessionEndpoint& session_endpoint() const { return *_session_endpoint; }

@@ -47,7 +47,7 @@ namespace llarp::session
             IPPacket pkt{std::move(data)};
             bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
             if (_use_tun || (is_udp && _r.using_tun_if()))
-                _r.tun_endpoint()->handle_inbound_packet(std::move(pkt), _tag, _remote);
+                _r.tun_endpoint().handle_inbound_packet(std::move(pkt), _tag, _remote);
             else if (is_udp)
                 handle_udp_from_remote(std::move(pkt));
             // TODO: non-UDP non-tun?
