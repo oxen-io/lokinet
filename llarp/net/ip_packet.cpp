@@ -100,8 +100,8 @@ namespace llarp
         uint16_t src_port = 0, dest_port = 0;
         if ((_proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP) && _payload_len >= 4)
         {
-            src_port = oxenc::load_big_to_host<uint16_t>(data() + _payload_len);
-            dest_port = oxenc::load_big_to_host<uint16_t>(data() + _payload_len + 2);
+            src_port = oxenc::load_big_to_host<uint16_t>(data() + _header_len);
+            dest_port = oxenc::load_big_to_host<uint16_t>(data() + _header_len + 2);
         }
 
         if (_is_v4)
@@ -345,14 +345,14 @@ namespace llarp
     {
         std::vector<std::byte> pkt;
         pkt.resize(sizeof(ip_header) + sizeof(udp_header) + payload.size());
-        auto* data = pkt.data() + sizeof(ip_header) + sizeof(udp_header);
+        auto* data = pkt.data();
+        data[1] = std::byte{0};  // DSCP and ECN
         auto* ip_hdr = reinterpret_cast<ip_header*>(data);
         data += sizeof(ip_header);
         auto* udp_hdr = reinterpret_cast<udp_header*>(data);
         data += sizeof(udp_header);
         std::memcpy(data, payload.data(), payload.size());
 
-        data[1] = std::byte{0};  // DSCP and ECN
         ip_hdr->version = 4;
         ip_hdr->header_len = 5;
         ip_hdr->total_len = htons(sizeof(ip_header) + sizeof(udp_header) + payload.size());

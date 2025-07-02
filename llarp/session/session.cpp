@@ -125,6 +125,7 @@ namespace llarp::session
     void BaseSession::handle_udp_from_remote(IPPacket&& pkt)
     {
         auto source_port = pkt.source_port();
+        log::trace(logcat, "incoming udp packet from remote port {}", source_port);
         auto itr = udp_handles.find(source_port);
         if (itr == udp_handles.end())
         {
@@ -133,11 +134,13 @@ namespace llarp::session
         }
         auto& socket = itr->second;
         auto dest_port = pkt.dest_port();
+        log::trace(logcat, "incoming udp packet for pseudo port {}", dest_port);
         if (!udp_remote_ports.contains(dest_port)) {
             log::warning(logcat, "Received UDP packet destined for an unmapped port ({})", dest_port);
             return;
         }
         dest_port = udp_remote_ports[dest_port];
+        log::trace(logcat, "pseudo port maps to client port {}", dest_port);
 
         auto payload = pkt.udp_data();
         if (payload.empty())
@@ -145,7 +148,7 @@ namespace llarp::session
             log::warning(logcat, "Received invalid udp datagram");
             return;
         }
-        auto dest = socket->address();
+        quic::Address dest = socket->address();
         dest.set_port(dest_port);
         const size_t bufsize = payload.size();
         uint8_t ecn = 0;  // FIXME: do we have any way to obtain this?
@@ -183,6 +186,7 @@ namespace llarp::session
                     }
                     udp_client_ports[client_port] = new_port;
                     udp_remote_ports[new_port] = client_port;
+                    log::trace(logcat, "pseudo client port {} for real client port {}", new_port, client_port);
                     client_port = new_port;
                 }
                 else client_port = udp_client_ports[client_port];
@@ -191,7 +195,6 @@ namespace llarp::session
                 // as destined for that port and know where to send them
                 auto src = pkt.path.remote;
                 src.set_port(client_port);
-                log::trace(logcat, "Packet received from {}", src);
                 auto payload = pkt.data();
                 auto packet = IPPacket::make_udp_packet(src, dest, payload);
                 send_path_data_message(packet);
@@ -296,7 +299,7 @@ namespace llarp::session
 
     bool OutboundRelaySession::send_path_data_message(std::span<std::byte> data)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         // session_keys->encrypt(data);
 
         // return BaseSession::send_path_data_message(std::move(data));
