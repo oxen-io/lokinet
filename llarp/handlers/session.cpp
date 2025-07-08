@@ -1030,6 +1030,8 @@ namespace llarp::handlers
                         for (auto& pkt : pending_packets)
                             session->send_path_data_message(pkt.span());
                     }
+                    if (hook)
+                        hook(true);
                     for (auto& h : pending_hooks)
                         h(true);
                 }
