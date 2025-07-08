@@ -51,6 +51,7 @@ namespace llarp::handlers
         return {_sessions.count(), _router.is_exit_node()};
     }
 
+#ifndef LOKINET_LIBRARY_ONLY
     void SessionEndpoint::unmap_session(NetworkAddress remote, bool using_tun)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -61,6 +62,7 @@ namespace llarp::handlers
         _sessions.unmap(remote);
         log::info(logcat, "Session (remote:{}) closed and unmapped!", remote);
     }
+#endif
 
     void SessionEndpoint::close_session(std::shared_ptr<session::BaseSession>& s, bool send_close)
     {
@@ -688,6 +690,7 @@ namespace llarp::handlers
 
     static constexpr auto success_msg = "SessionEndpoint successfully created and mapped InboundSession object!"sv;
 
+#ifndef LOKINET_LIBRARY_ONLY
     std::optional<std::variant<ipv4, ipv6>> SessionEndpoint::map_session(const session::BaseSession& s)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -716,6 +719,7 @@ namespace llarp::handlers
 
         return std::nullopt;
     }
+#endif
 
     std::optional<session_tag> SessionEndpoint::prefigure_session(
         NetworkAddress initiator,
@@ -745,8 +749,11 @@ namespace llarp::handlers
 
         assert(s and s->is_active());
 
+#ifndef LOKINET_LIBRARY_ONLY
+        // TODO: remove ifdef (and change this) once we allow inbound sessions for liblokinet clients
         if (auto maybe_ip = map_session(*s))
             return tag;
+#endif
 
         return std::nullopt;
     }
@@ -1145,6 +1152,7 @@ namespace llarp::handlers
         });
     }
 
+#ifndef LOKINET_LIBRARY_ONLY
     void SessionEndpoint::map_remote_to_local_addr(NetworkAddress remote, quic::Address local)
     {
         _address_map.insert_or_assign(std::move(local), std::move(remote));
@@ -1153,19 +1161,7 @@ namespace llarp::handlers
     void SessionEndpoint::unmap_local_addr_by_remote(const NetworkAddress& remote) { _address_map.unmap(remote); }
 
     void SessionEndpoint::unmap_remote_by_name(const std::string& name) { _address_map.unmap(name); }
-
-    /*
-     * TODO FIXME (see comment in the .hpp)
-     *
-    void SessionEndpoint::map_remote_to_local_range(NetworkAddress remote, IPRange range)
-    {
-        _range_map.insert_or_assign(std::move(range), std::move(remote));
-    }
-
-    void SessionEndpoint::unmap_local_range_by_remote(const NetworkAddress& remote) { _range_map.unmap(remote); }
-
-    void SessionEndpoint::unmap_range_by_name(const std::string& name) { _range_map.unmap(name); }
-    */
+#endif
 
     bool SessionEndpoint::have_pending_session(const NetworkAddress& remote)
     {

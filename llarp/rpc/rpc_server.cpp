@@ -6,8 +6,10 @@
 #include <llarp/config/ini.hpp>
 #include <llarp/constants/version.hpp>
 #include <llarp/contact/client_contact.hpp>
+#ifndef LOKINET_LIBRARY_ONLY
 #include <llarp/dns/dns.hpp>
 #include <llarp/dns/server.hpp>
+#endif
 #include <llarp/messages/common.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/rpc/rpc_request_definitions.hpp>
@@ -30,6 +32,7 @@ namespace llarp::rpc
         log::info(logcat, "RPC Server received request for endpoint `{}`", req.name);
     }
 
+#ifndef LOKINET_LIBRARY_ONLY
     // Fake packet source that serializes repsonses back into dns
     class DummyPacketSource final : public dns::PacketSource
     {
@@ -49,6 +52,7 @@ namespace llarp::rpc
         /// returns the sockaddr we are bound on if applicable
         std::optional<quic::Address> bound_on() const override { return std::nullopt; }
     };
+#endif
 
     bool check_path(std::string path)
     {
@@ -647,6 +651,7 @@ namespace llarp::rpc
         //     });
     }
 
+#ifndef LOKINET_LIBRARY_ONLY
     void RPCServer::invoke(DNSQuery& dnsquery)
     {
         log_print_rpc(dnsquery);
@@ -681,6 +686,7 @@ namespace llarp::rpc
         //     SetJSONError("Endpoint does not have dns", dnsquery.response);
         return;
     }
+#endif
 
     void RPCServer::invoke(Config& config)
     {

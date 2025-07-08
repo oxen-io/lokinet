@@ -12,6 +12,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 option(LOKINET_DAEMON "build lokinet daemon and associated utils" ON)
+option(LOKINET_LIBRARY_ONLY "build lokinet only as a library, without platform/route management code" OFF)
+option(LOKINET_EMBEDDED "build liblokinet for embedded lokinet" OFF)
+
+if(LOKINET_LIBRARY_ONLY)
+  set(LOKINET_DAEMON OFF)
+  set(LOKINET_EMBEDDED ON)
+  add_definitions(-DLOKINET_LIBRARY_ONLY)
+endif()
+
 option(LOKINET_GRAPH_DEPENDENCIES "Produce graphviz representation of cmake dependencies" OFF)
 
 set(LANGS C CXX)
@@ -52,7 +61,6 @@ endif()
 # Core options
 option(LOKINET_AVX2 "enable avx2 code" OFF)
 option(LOKINET_NATIVE_BUILD "optimise for host system and FPU" ON)
-option(LOKINET_EMBEDDED "build liblokinet for embedded lokinet" OFF)
 option(LOKINET_XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
 option(LOKINET_JEMALLOC "Link to jemalloc for memory allocations, if found (requires non-static build)" ON)
 option(LOKINET_COVERAGE "generate coverage data" OFF)
@@ -323,7 +331,7 @@ add_subdirectory(docs)
 
 include(cmake/gui.cmake)
 
-if(APPLE)
+if(APPLE AND NOT LOKINET_LIBRARY_ONLY)
   macos_target_setup()
 endif()
 

@@ -42,7 +42,11 @@ namespace llarp
     {
         struct ConfigGenParameters_impl : public ConfigGenParameters
         {
+#ifndef LOKINET_LIBRARY_ONLY
             const llarp::net::Platform* net_ptr() const override { return llarp::net::Platform::Default_ptr(); }
+#else
+            const llarp::net::Platform* net_ptr() const override { return nullptr; }
+#endif
         };
     }  // namespace
 
@@ -1112,7 +1116,11 @@ namespace llarp
             {
                 log::debug(logcat, "Host value empty, port:{}{}", p, p == DEFAULT_LISTEN_PORT ? "(DEFAULT PORT)" : "");
                 given_port_only = p != DEFAULT_LISTEN_PORT;
+#ifndef LOKINET_LIBRARY_ONLY
                 maybe = net_ptr->get_best_public_address(true, p);
+#else
+                maybe = quic::Address{"0.0.0.0"s, p};
+#endif
             }
             else
                 maybe = quic::Address{host, p};

@@ -46,10 +46,13 @@ namespace llarp::session
         _recv_dgram = [this](std::span<std::byte> data) {
             IPPacket pkt{std::move(data)};
             bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
+#ifndef LOKINET_LIBRARY_ONLY
             if (_use_tun || (is_udp && _r.using_tun_if()))
                 _r.tun_endpoint().handle_inbound_packet(std::move(pkt), _tag, _remote);
-            else if (is_udp)
-                handle_udp_from_remote(std::move(pkt));
+            else
+#endif
+                if (is_udp)
+                    handle_udp_from_remote(std::move(pkt));
             // TODO: non-UDP non-tun?
             /*
             _ep->manually_receive_packet(std::move(pkt));
@@ -236,7 +239,9 @@ namespace llarp::session
             log::debug(logcat, "Dispatched path close message!");
         }
 
+#ifndef LOKINET_LIBRARY_ONLY
         _parent.unmap_session(_remote, _use_tun);
+#endif
     }
 
     static void session_close_cb(quic::message m)

@@ -231,6 +231,7 @@ namespace llarp::rpc
     //
     //  Returns:
     //
+#ifndef LOKINET_LIBRARY_ONLY
     struct DNSQuery : Immediate
     {
         static constexpr auto name = "dns_query"sv;
@@ -242,6 +243,7 @@ namespace llarp::rpc
             std::string qname;
         } request;
     };
+#endif
 
     //  RPC: config
     //    Runs lokinet router using .ini config file passed as path
@@ -335,7 +337,9 @@ namespace llarp::rpc
         ListExits,
         SwapExits,
         UnmapExit,
+#ifndef LOKINET_LIBRARY_ONLY
         DNSQuery,
+#endif
         Config>;
 
 }  // namespace llarp::rpc

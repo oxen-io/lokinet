@@ -51,8 +51,6 @@ namespace llarp
 
             std::optional<std::string_view> fetch_auth_token(const NetworkAddress& remote) const;
 
-            void unmap_session(NetworkAddress remote, bool using_tun = true);
-
             void close_session(std::shared_ptr<session::BaseSession>& s, bool send_close);
 
           protected:
@@ -123,7 +121,14 @@ namespace llarp
             // to initiate a session
             bool validate(const NetworkAddress& remote, std::optional<std::string> maybe_auth = std::nullopt);
 
+#ifndef LOKINET_LIBRARY_ONLY
+            // FIXME: should SessionEndpoint have these mappings at all?
             std::optional<std::variant<ipv4, ipv6>> map_session(const session::BaseSession& s);
+            void unmap_session(NetworkAddress remote, bool using_tun = true);
+            void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
+            void unmap_local_addr_by_remote(const NetworkAddress& remote);
+            void unmap_remote_by_name(const std::string& name);
+#endif
 
             std::optional<session_tag> prefigure_session(
                 NetworkAddress initiator,
@@ -149,21 +154,6 @@ namespace llarp
             void initiate_remote_session(NetworkAddress remote, on_session_init_hook cb);
 
             void tick(std::chrono::milliseconds now) override;
-
-            // TESTNET: the following functions may not be needed -- revisit this
-            /*  Address Mapping - Public Mutators  */
-            void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
-
-            void unmap_local_addr_by_remote(const NetworkAddress& remote);
-
-            void unmap_remote_by_name(const std::string& name);
-
-            /*  IPRange Mapping - Public Mutators  */
-            // TODO FIXME: these need fixing as they currently erroneously assume a 1-1 relationship
-            // between exit ranges and exit addresses.
-            // void map_remote_to_local_range(NetworkAddress remote, IPRange range);
-            // void unmap_local_range_by_remote(const NetworkAddress& remote);
-            // void unmap_range_by_name(const std::string& name);
 
             bool have_pending_session(const NetworkAddress& remote);
 

@@ -24,7 +24,6 @@ lokinet_add_library(lokinet-core-utils
   auth/session_auth.cpp
   
   handlers/session.cpp
-  handlers/tun.cpp
 
   messages/common.cpp
   messages/dht.cpp
@@ -32,8 +31,11 @@ lokinet_add_library(lokinet-core-utils
   messages/path.cpp
   messages/session.cpp
   
-  vpn/egres_packet_router.cpp
 )
+
+if (NOT LOKINET_LIBRARY_ONLY)
+  target_sources(lokinet-core-utils PRIVATE handlers/tun.cpp vpn/egres_packet_router.cpp)
+endif()
   
 lokinet_add_library(lokinet-core
   context.cpp
@@ -43,11 +45,14 @@ lokinet_add_library(lokinet-core
   link/link_manager.cpp
   
   router/router.cpp
-  router/route_poker.cpp
 
   session/session.cpp
   session/map.cpp
 )
+
+if (NOT LOKINET_LIBRARY_ONLY)
+  target_sources(lokinet-core PRIVATE router/route_poker.cpp)
+endif()
 
 lokinet_add_library(lokinet-rpc
   rpc/json_binary_proxy.cpp
@@ -87,6 +92,11 @@ lokinet_add_library(lokinet-contact
   contact/tag.cpp
 )
 
+# Definitely a better way to do this, but this works for now
+if (LOKINET_LIBRARY_ONLY)
+  target_sources(lokinet-contact PRIVATE dns/srv_data.cpp)
+endif()
+
 # Network interface files used for mediating ip traffic
 lokinet_add_library(lokinet-ip
   net/ip_packet.cpp
@@ -107,64 +117,66 @@ lokinet_add_library(lokinet-addressing
   router_version.cpp  # to be deleted shortly
 )
 
-# lokinet-platform holds all platform specific code
-lokinet_add_library(lokinet-platform
-  vpn/packet_router.cpp
-  vpn/platform.cpp
-)
+if (NOT LOKINET_LIBRARY_ONLY)
+  # lokinet-platform holds all platform specific code
+  lokinet_add_library(lokinet-platform
+    vpn/packet_router.cpp
+    vpn/platform.cpp
+  )
 
-if (ANDROID)
-  target_sources(lokinet-platform PRIVATE android/ifaddrs.c util/nop_service_manager.cpp)
-endif()
+  if (ANDROID)
+    target_sources(lokinet-platform PRIVATE android/ifaddrs.c util/nop_service_manager.cpp)
+  endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  target_sources(lokinet-platform PRIVATE linux/dbus.cpp)
-  if(WITH_SYSTEMD)
-    target_sources(lokinet-platform PRIVATE linux/sd_service_manager.cpp)
+  if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_sources(lokinet-platform PRIVATE linux/dbus.cpp)
+    if(WITH_SYSTEMD)
+      target_sources(lokinet-platform PRIVATE linux/sd_service_manager.cpp)
+    else()
+      target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
+    endif()
+  endif()
+
+  if (WIN32)
+    target_sources(lokinet-platform PRIVATE
+      net/win32.cpp
+      vpn/win32.cpp
+      win32/service_manager.cpp
+      win32/exec.cpp
+      win32/dll.cpp
+      win32/exception.cpp
+      win32/wintun.cpp
+      win32/windivert.cpp)
+    target_include_directories(lokinet-platform PRIVATE ${CMAKE_BINARY_DIR}/wintun/include/ ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/include/)
   else()
+    target_sources(lokinet-platform PRIVATE
+      net/posix.cpp)
+  endif()
+
+  if(APPLE)
+    add_subdirectory(apple)
     target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
   endif()
-endif()
 
-if (WIN32)
-  target_sources(lokinet-platform PRIVATE
-    net/win32.cpp
-    vpn/win32.cpp
-    win32/service_manager.cpp
-    win32/exec.cpp
-    win32/dll.cpp
-    win32/exception.cpp
-    win32/wintun.cpp
-    win32/windivert.cpp)
-  target_include_directories(lokinet-platform PRIVATE ${CMAKE_BINARY_DIR}/wintun/include/ ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/include/)
-else()
-  target_sources(lokinet-platform PRIVATE
-    net/posix.cpp)
-endif()
+  # lokinet-dns is the dns parsing and hooking library that we use to
+  # parse modify and reconstitute dns wire proto, dns queries and RR
+  lokinet_add_library(lokinet-dns
+    dns/message.cpp   # dns/server
+    dns/name.cpp      # srv_data, question, rr
+    dns/platform.cpp
+    dns/question.cpp  # message
+    dns/rr.cpp
+    dns/serialize.cpp
+    dns/server.cpp
+    dns/srv_data.cpp
+  )
 
-if(APPLE)
-  add_subdirectory(apple)
-  target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
-endif()
-
-# lokinet-dns is the dns parsing and hooking library that we use to
-# parse modify and reconstitute dns wire proto, dns queries and RR
-lokinet_add_library(lokinet-dns
-  dns/message.cpp   # dns/server
-  dns/name.cpp      # srv_data, question, rr
-  dns/platform.cpp
-  dns/question.cpp  # message
-  dns/rr.cpp
-  dns/serialize.cpp
-  dns/server.cpp
-  dns/srv_data.cpp  
-)
-
-# platform specific bits and bobs for setting dns
-add_library(lokinet-dns-platform INTERFACE)
-if(WITH_SYSTEMD)
-  lokinet_add_library(lokinet-dns-systemd dns/nm_platform.cpp dns/sd_platform.cpp)
-  target_link_libraries(lokinet-dns-platform INTERFACE lokinet-dns-systemd)
+  # platform specific bits and bobs for setting dns
+  add_library(lokinet-dns-platform INTERFACE)
+  if(WITH_SYSTEMD)
+    lokinet_add_library(lokinet-dns-systemd dns/nm_platform.cpp dns/sd_platform.cpp)
+    target_link_libraries(lokinet-dns-platform INTERFACE lokinet-dns-systemd)
+  endif()
 endif()
 
 # lokinet-nodedb holds all types and logic for storing parsing and constructing
@@ -206,19 +218,21 @@ lokinet_add_library(lokinet-path
 # Link libraries to their internals
 target_link_libraries(lokinet-wire PUBLIC lokinet-addressing)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
-target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
 target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
 target_link_libraries(lokinet-addressing PUBLIC lokinet-utils lokinet-cryptography lokinet-contact lokinet-ip)
 target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
 target_link_libraries(lokinet-config PUBLIC lokinet-cryptography)
 
-target_link_libraries(lokinet-dns
-  PUBLIC
-  lokinet-addressing
-  lokinet-cryptography 
-  lokinet-config 
-  lokinet-dns-platform
-)
+if (NOT LOKINET_LIBRARY_ONLY)
+  target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
+  target_link_libraries(lokinet-dns
+    PUBLIC
+    lokinet-addressing
+    lokinet-cryptography
+    lokinet-config
+    lokinet-dns-platform
+  )
+endif()
 
 target_link_libraries(lokinet-path
   PUBLIC
@@ -227,12 +241,17 @@ target_link_libraries(lokinet-path
 
 target_link_libraries(lokinet-core-utils 
   PUBLIC 
-  lokinet-dns
   lokinet-config
-  lokinet-platform
   lokinet-rpc 
   lokinet-wire 
 )
+if (NOT LOKINET_LIBRARY_ONLY)
+  target_link_libraries(lokinet-core-utils
+    PUBLIC
+    lokinet-dns
+    lokinet-platform
+  )
+endif()
 
 target_link_libraries(lokinet-cryptography
   PUBLIC

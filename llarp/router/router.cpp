@@ -34,13 +34,15 @@ namespace llarp
     static auto logcat = log::Cat("router");
 
     Router::Router(
-        Config conf, std::shared_ptr<quic::Loop> loop, std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
+        Config conf, std::shared_ptr<quic::Loop> loop, [[maybe_unused]] std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
         : _config{std::move(conf)},
           _loop{std::move(loop)},
           _next_explore_at{std::chrono::steady_clock::now()},
           _omq{std::make_unique<oxenmq::OxenMQ>()},
           _close_promise{std::move(p)},
+#ifndef LOKINET_LIBRARY_ONLY
           _vpn{std::move(vpnPlatform)},
+#endif
           _contact_db{std::make_unique<ContactDB>(*this)},
           _disk_thread{_omq->add_tagged_thread("disk")},
           // TODO FIXME: what about non-testnet?  And do we really want a fixed random interval,
@@ -189,6 +191,7 @@ namespace llarp
 
     void Router::start_tickers()
     {
+#ifndef LOKINET_LIBRARY_ONLY
         if (_tun)
             _tun->start_poller();
 
@@ -201,10 +204,12 @@ namespace llarp
         }
         else
             log::debug(logcat, "System service report ticker already auto-started!");
+#endif
 
         _node_db->start_tickers();
         _contact_db->start_tickers();
 
+#ifndef LOKINET_LIBRARY_ONLY
         if (is_service_node())
         {
             _rpc_client->start_pings();
@@ -227,6 +232,7 @@ namespace llarp
             }
         }
         else
+#endif
         {
             _session_endpoint->start_tickers();
             // Resolve needed ONS values now that we have the necessary things prefigured
@@ -359,6 +365,7 @@ namespace llarp
                 _config.links.listen_addr ? "link config" : "default",
                 _listen_address);
         }
+#ifndef LOKINET_LIBRARY_ONLY
         else
         {
             if (paddr or pport)
@@ -372,6 +379,7 @@ namespace llarp
                     "Could not auto-detect a usable public router listen address; please specify one with the "
                     "[bind]:listen config option"};
         }
+#endif
 
         if (_is_service_node)
         {
@@ -383,6 +391,7 @@ namespace llarp
             log::info(logcat, "Assigning addressable listen address {} as public addr", _listen_address);
             _public_address = _listen_address;
         }
+#ifndef LOKINET_LIBRARY_ONLY
         else if (_is_service_node)  // TODO: check if this if is correct
         {
             log::critical(logcat, "Listen address is non-public, querying net-if for public address...");
@@ -397,6 +406,7 @@ namespace llarp
                     "Unable to determine public IP; you must set public-port and public-addr config settings"};
             }
         }
+#endif
 
         RelayContact::BLOCK_BOGONS = _config.router.block_bogons;
     }
@@ -405,6 +415,7 @@ namespace llarp
     {
         auto& conf = _config.network;
 
+#ifndef LOKINET_LIBRARY_ONLY
         if (!conf._if_name)
             conf._if_name = net().find_free_tun();
 
@@ -439,6 +450,7 @@ namespace llarp
             std::erase_if(conf._reserved_local_ipv6, [&conf](const auto& addr_ip) {
                 return !conf._local_ipv6_net->contains(addr_ip.second);
             });
+#endif
 
         // parse strict-connet pubkeys
         if (auto& conf_edges = conf.pinned_edges; not conf_edges.empty())
@@ -481,7 +493,9 @@ namespace llarp
 
     void Router::configure()
     {
+#ifndef LOKINET_LIBRARY_ONLY
         llarp::sys::service_manager->starting();
+#endif
 
         if (_is_exit_node and _is_service_node)
             throw std::runtime_error{
@@ -566,6 +580,7 @@ namespace llarp
         log::debug(logcat, "Creating QUIC link manager...");
         _link_manager = std::make_unique<LinkManager>(*this);
 
+#ifndef LOKINET_LIBRARY_ONLY
         // API config
         //  Full clients have TUN
         //  Embedded clients have nothing
@@ -578,6 +593,16 @@ namespace llarp
         }
         else
             log::debug(logcat, "Not initializing TUN device; disabled in config.");
+#endif
+    }
+
+    bool Router::using_tun_if() const
+    {
+#ifndef LOKINET_LIBRARY_ONLY
+        return static_cast<bool>(_tun);
+#else
+        return false;
+#endif
     }
 
     bool Router::is_service_node() const { return _is_service_node; }
@@ -692,6 +717,7 @@ namespace llarp
         return line;
     }
 
+#ifndef LOKINET_LIBRARY_ONLY
     void Router::_relay_tick(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -755,12 +781,15 @@ namespace llarp
 
         path_context.expire_hops(now);
     }
+#endif
 
     void Router::_client_tick(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
+#ifndef LOKINET_LIBRARY_ONLY
         llarp::sys::service_manager->report_periodic_stats();
+#endif
         _pathbuild_limiter.Decay(now);
         _router_profiling.tick();
 
@@ -829,7 +858,9 @@ namespace llarp
             log::error(logcat, "Timeskip of {}ms detected, resetting network state!", delta.count());
         }
 
+#ifndef LOKINET_LIBRARY_ONLY
         _is_service_node ? _relay_tick(now) : _client_tick(now);
+#endif
 
         // update tick timestamp
         _last_tick = llarp::time_now_ms();
@@ -890,11 +921,14 @@ namespace llarp
         log::debug(logcat, "Starting Router main tick interval");
         _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
+#ifndef LOKINET_LIBRARY_ONLY
         _systemd_ticker =
             _loop->call_every(SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); });
+#endif
 
         _started_at = now();
 
+#ifndef LOKINET_LIBRARY_ONLY
         if (is_service_node() and not _testing_disabled)
         {
             log::debug(logcat, "Creating reachability testing ticker...");
@@ -959,11 +993,14 @@ namespace llarp
                 }
             });
         }
+#endif
 
         start_tickers();
         _is_running = true;
 
+#ifndef LOKINET_LIBRARY_ONLY
         llarp::sys::service_manager->ready();
+#endif
 
         log::info(logcat, "{} startup complete", local_rid().to_network_address(_is_service_node));
     }
@@ -1016,6 +1053,7 @@ namespace llarp
         log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
         _loop_ticker.reset();
 
+#ifndef LOKINET_LIBRARY_ONLY
         rv = _systemd_ticker->stop();
         log::debug(logcat, "systemd ticker stopped {}successfully!", rv ? "" : "un");
         _systemd_ticker.reset();
@@ -1026,6 +1064,7 @@ namespace llarp
             _reachability_ticker->stop();
             _reachability_ticker.reset();
         }
+#endif
 
         log::debug(logcat, "stopping nodedb events");
         node_db().cleanup();
@@ -1043,7 +1082,9 @@ namespace llarp
 
         _loop->call([this] {
             log::warning(logcat, "Hard stopping router");
+#ifndef LOKINET_LIBRARY_ONLY
             llarp::sys::service_manager->stopping();
+#endif
             _session_endpoint->stop();
             stop_outbounds();
             close();
@@ -1068,7 +1109,9 @@ namespace llarp
 
         _loop->call([this] {
             log::debug(logcat, "stopping service manager...");
+#ifndef LOKINET_LIBRARY_ONLY
             llarp::sys::service_manager->stopping();
+#endif
 
             _session_endpoint->stop(true);
 
@@ -1081,6 +1124,8 @@ namespace llarp
 
     quic::Address Router::listen_addr() const { return _listen_address; }
 
+#ifndef LOKINET_LIBRARY_ONLY
     const llarp::net::Platform& Router::net() const { return *llarp::net::Platform::Default_ptr(); }
+#endif
 
 }  // namespace llarp

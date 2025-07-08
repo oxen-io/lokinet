@@ -1,6 +1,5 @@
 #pragma once
 
-#include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
@@ -8,17 +7,21 @@
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/key_manager.hpp>
 #include <llarp/handlers/session.hpp>
-#include <llarp/handlers/tun.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/rpc/rpc_client.hpp>
 #include <llarp/rpc/rpc_server.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
-#include <llarp/util/service_manager.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
+
+#ifndef LOKINET_LIBRARY_ONLY
+#include "route_poker.hpp"
+
+#include <llarp/handlers/tun.hpp>
 #include <llarp/vpn/platform.hpp>
+#endif
 
 #include <oxen/quic/loop.hpp>
 #include <oxenmq/address.h>
@@ -29,6 +32,15 @@
 
 namespace llarp
 {
+
+#ifdef LOKINET_LIBRARY_ONLY
+    // dummy vpn platform for library-only
+    namespace vpn
+    {
+        struct Platform {};
+    }  // namespace vpn
+#endif
+
     namespace link
     {
         struct Connection;
@@ -115,20 +127,24 @@ namespace llarp
 
         std::unique_ptr<LinkManager> _link_manager;
 
+#ifndef LOKINET_LIBRARY_ONLY
         // Only created in full client and relay instances (not embedded clients)
         std::shared_ptr<handlers::TunEndpoint> _tun;
 
-        std::promise<void> _close_promise;
-
         std::shared_ptr<vpn::Platform> _vpn;
         std::unique_ptr<RoutePoker> _route_poker;
+#endif
+
+        std::promise<void> _close_promise;
 
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
         std::shared_ptr<quic::Ticker> _loop_ticker;
+#ifndef LOKINET_LIBRARY_ONLY
         std::shared_ptr<quic::Ticker> _systemd_ticker;
         std::shared_ptr<quic::Ticker> _reachability_ticker;
+#endif
 
         const oxenmq::TaggedThreadID _disk_thread;
 
@@ -167,7 +183,9 @@ namespace llarp
 
         std::chrono::milliseconds _gossip_interval;
 
+#ifndef LOKINET_LIBRARY_ONLY
         void _relay_tick(std::chrono::milliseconds now);
+#endif
 
         void _client_tick(std::chrono::milliseconds now);
 
@@ -181,7 +199,7 @@ namespace llarp
 
         bool is_fully_meshed() const;
 
-        bool using_tun_if() const { return static_cast<bool>(_tun); }
+        bool using_tun_if() const;
 
         int client_outbounds_needed() const { return min_client_outbounds; }
 
@@ -189,7 +207,13 @@ namespace llarp
 
         void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
 
+#ifndef LOKINET_LIBRARY_ONLY
         handlers::TunEndpoint& tun_endpoint() { return *_tun; }
+
+        const llarp::net::Platform& net() const;
+
+        vpn::Platform* vpn_platform() const { return _vpn.get(); }
+#endif
 
         handlers::SessionEndpoint& session_endpoint() { return *_session_endpoint; }
         const handlers::SessionEndpoint& session_endpoint() const { return *_session_endpoint; }
@@ -225,8 +249,6 @@ namespace llarp
 
         path::BuildLimiter& pathbuild_limiter() { return _pathbuild_limiter; }
 
-        const llarp::net::Platform& net() const;
-
         oxenmq::OxenMQ& omq() { return *_omq; }
         const oxenmq::OxenMQ& omq() const { return *_omq; }
 
@@ -239,8 +261,6 @@ namespace llarp
         Profiling& router_profiling() { return _router_profiling; }
 
         const std::shared_ptr<quic::Loop>& loop() const { return _loop; }
-
-        vpn::Platform* vpn_platform() const { return _vpn.get(); }
 
         std::chrono::milliseconds gossip_interval() const { return _gossip_interval; }
 
