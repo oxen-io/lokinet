@@ -198,6 +198,7 @@ namespace llarp
 
         bool Endpoint::establish_and_send_control(RemoteRC rc, std::function<void(quic::BTRequestStream&)> send_hook)
         {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
             return link_manager.router().loop()->call_get([&]() {
                 auto rid = rc.router_id();
 
@@ -375,6 +376,7 @@ namespace llarp
 
     std::shared_ptr<quic::Endpoint> LinkManager::startup_endpoint()
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         /** Parameters:
               - local bind address
               - conection open callback
@@ -693,6 +695,7 @@ namespace llarp
         std::string body,
         std::function<void(quic::message)> func)
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return link_manager.router().loop()->call_get([&]() {
             try
             {
@@ -782,6 +785,7 @@ namespace llarp
         connection_established_callback on_open,
         connection_closed_callback on_close)
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return link_manager.router().loop()->call_get([&]() {
             try
             {

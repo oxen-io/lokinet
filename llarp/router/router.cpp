@@ -11,6 +11,10 @@
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 
+#ifndef LOKINET_LIBRARY_ONLY
+#include <llarp/util/service_manager.hpp>
+#endif
+
 #include <oxen/log.hpp>
 #include <oxenmq/oxenmq.h>
 
@@ -493,6 +497,7 @@ namespace llarp
 
     void Router::configure()
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 #ifndef LOKINET_LIBRARY_ONLY
         llarp::sys::service_manager->starting();
 #endif
@@ -859,8 +864,11 @@ namespace llarp
         }
 
 #ifndef LOKINET_LIBRARY_ONLY
-        _is_service_node ? _relay_tick(now) : _client_tick(now);
+        if (_is_service_node)
+            _relay_tick(now);
+        else
 #endif
+            _client_tick(now);
 
         // update tick timestamp
         _last_tick = llarp::time_now_ms();
