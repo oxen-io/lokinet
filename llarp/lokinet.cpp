@@ -35,7 +35,8 @@ namespace lokinet
         : context{std::make_unique<llarp::Context>()}
     {
         auto conf = llarp::Config::make_embedded_config();
-        conf.load(config);
+        if (!conf.load(config))
+            throw std::runtime_error{fmt::format("Failed to load config from {}", config)};
         context->start(std::move(conf), loop);
     }
 

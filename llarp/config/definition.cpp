@@ -25,7 +25,7 @@ namespace llarp
     template <>
     bool OptionDefinition<bool>::from_string(const std::string& input)
     {
-        if (auto b = parse_boolean)
+        if (auto b = parse_boolean(input))
             return *b;
         throw std::invalid_argument{"{} is not a valid bool"_format(input)};
     }
