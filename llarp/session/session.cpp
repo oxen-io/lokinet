@@ -887,7 +887,7 @@ namespace llarp::session
         auto tag = _tag.span();
 
         std::vector<std::byte> payload;
-        payload.reserve(tag.size() + data.size());
+        payload.resize(tag.size() + data.size());
         std::memcpy(payload.data(), tag.data(), tag.size());
         std::memcpy(payload.data() + tag.size(), data.data(), data.size());
 

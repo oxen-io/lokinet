@@ -1172,10 +1172,8 @@ namespace llarp::handlers
 
     void SessionEndpoint::queue_session_packet(const NetworkAddress& remote, IPPacket pkt)
     {
-        log::error(logcat, "QUEUE_SESSION_PACKET");
         if (pending_sessions.contains(remote))
         {
-            log::error(logcat, "QUEUED THE PACKET");
             if (pending_sessions[remote].size() < 100)  // FIXME: constant
                 pending_sessions[remote].push_back(std::move(pkt));
         }
