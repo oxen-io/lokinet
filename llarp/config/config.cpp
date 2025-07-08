@@ -391,7 +391,15 @@ namespace llarp
         static constexpr Default HopsDefault{4};
         static constexpr Default PathsDefault{4};
 
+#ifndef LOKINET_LIBRARY_ONLY
         conf.define_option<bool>("network", "init-tun", InitTunDefault, Hidden, assignment_acceptor(init_tun));
+#else
+        conf.define_option<bool>("network", "init-tun", InitTunDefault, Hidden, [](bool b){
+                if (b)
+                    log::error(logcat, "init-tun specified, but we compiled library-only!  Ignoring.");
+                    });
+        init_tun = false;
+#endif
 
         conf.define_option<bool>(
             "network", "save-profiles", SaveProfilesDefault, Hidden, assignment_acceptor(save_profiles));

@@ -107,6 +107,6 @@ namespace lokinet
         tunnel_info establish_udp_blocking(std::string_view remote, uint16_t port);
     };
 
-    extern template Lokinet::Lokinet(const std::filesystem::path&, std::shared_ptr<oxen::quic::Loop>);
+    template Lokinet::Lokinet(const std::filesystem::path&, std::shared_ptr<oxen::quic::Loop>);
 
 }  // namespace lokinet
