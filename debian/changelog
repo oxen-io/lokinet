@@ -1,3 +1,9 @@
+lokinet (0.9.14-1~deb11) bullseye; urgency=medium
+
+  * Update mainnet bootstraps
+
+ -- Jason Rhinelander <jason@session.foundation>  Fri, 11 Jul 2025 12:39:03 -0300
+
 lokinet (0.9.13-2~deb11) bullseye; urgency=medium
 
   * lokinet 0.9.13
