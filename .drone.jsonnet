@@ -46,5 +46,4 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
 [
   deb_pipeline(distro_docker),
   deb_pipeline(distro_docker + '/arm64v8', buildarch='arm64', debarch='arm64', jobs=4),
-  deb_pipeline(distro_docker + '/arm32v7', buildarch='arm64', debarch='armhf', jobs=4),
 ]
