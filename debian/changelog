@@ -1,3 +1,9 @@
+lokinet (0.9.14-1~ubuntu2504) plucky; urgency=medium
+
+  * Plucky deb
+
+ -- Jason Rhinelander <jason@session.foundation>  Fri, 11 Jul 2025 12:40:12 -0300
+
 lokinet (0.9.14-1~ubuntu2410) oracular; urgency=medium
 
   * Update mainnet bootstraps
