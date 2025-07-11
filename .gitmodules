@@ -26,6 +26,3 @@
 [submodule "external/oxen-libquic"]
 	path = external/oxen-libquic
 	url = https://github.com/oxen-io/oxen-libquic.git
-[submodule "external/oxen-encoding"]
-	path = external/oxen-encoding
-	url = https://github.com/session-foundation/oxen-encoding.git
