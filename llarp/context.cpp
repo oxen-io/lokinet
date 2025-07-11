@@ -5,9 +5,7 @@
 #include <llarp/link/link_manager.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
-#ifndef LOKINET_LIBRARY_ONLY
 #include <llarp/util/service_manager.hpp>
-#endif
 
 #include <oxen/quic/loop.hpp>
 
@@ -54,22 +52,22 @@ namespace llarp
         std::promise<void> done_promise;
         lifetime_waiter = done_promise.get_future();
 
-#ifndef LOKINET_LIBRARY_ONLY
-        log::debug(logcat, "Initializing platform code...");
-        auto plat = vpn::MakeNativePlatform(this);
-        if (plat == nullptr)
-            throw std::runtime_error{"This platform is not currently supported!"};
+        std::shared_ptr<llarp::vpn::Platform> plat;
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (!embedded)
+        {
+            log::debug(logcat, "Initializing platform code...");
+            plat = vpn::MakeNativePlatform(this);
+            if (!plat)
+                throw std::runtime_error{"This platform is not currently supported!"};
+        }
 #endif
 
         log::debug(logcat, "Starting main router...");
         try
         {
             router =
-#ifndef LOKINET_LIBRARY_ONLY
                 std::make_unique<Router>(std::move(conf), std::move(loop), std::move(plat), std::move(done_promise));
-#else
-                std::make_unique<Router>(std::move(conf), std::move(loop), nullptr, std::move(done_promise));
-#endif
         }
         catch (const std::exception& e)
         {
@@ -109,11 +107,12 @@ namespace llarp
         }
     }
 
-    Context::Context()
+    Context::Context(bool embedded) : embedded{embedded}
     {
+#ifndef LOKINET_EMBEDDED_ONLY
         // service_manager is a global and context isnt
-#ifndef LOKINET_LIBRARY_ONLY
-        llarp::sys::service_manager->give_context(this);
+        if (!embedded)
+            llarp::sys::service_manager->give_context(this);
 #endif
     }
 

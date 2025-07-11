@@ -23,26 +23,23 @@ namespace
 
 namespace lokinet
 {
-    Lokinet::Lokinet(std::string_view config, std::shared_ptr<oxen::quic::Loop> loop)
-        : context{std::make_unique<llarp::Context>()}
+    static auto make_embedded_context() { return std::make_unique<llarp::Context>(/*embedded=*/true); }
+
+    Lokinet::Lokinet(std::string config, std::shared_ptr<oxen::quic::Loop> loop) : context{make_embedded_context()}
     {
-        auto conf = llarp::Config::make_embedded_config();
-        conf.load_string(config);
-        context->start(std::move(conf), loop);
+        context->start(llarp::Config{llarp::config::Type::EmbeddedClient, std::move(config)}, loop);
     }
 
     Lokinet::Lokinet(path_ctor, const std::filesystem::path& config, std::shared_ptr<oxen::quic::Loop> loop)
-        : context{std::make_unique<llarp::Context>()}
+        : context{make_embedded_context()}
     {
-        auto conf = llarp::Config::make_embedded_config();
-        if (!conf.load(config))
-            throw std::runtime_error{fmt::format("Failed to load config from {}", config)};
-        context->start(std::move(conf), loop);
+        ;
+        context->start(llarp::Config{llarp::config::Type::EmbeddedClient, config}, loop);
     }
 
-    Lokinet::Lokinet(Network n, std::shared_ptr<oxen::quic::Loop> loop) : context{std::make_unique<llarp::Context>()}
+    Lokinet::Lokinet(Network n, std::shared_ptr<oxen::quic::Loop> loop) : context{make_embedded_context()}
     {
-        auto conf = llarp::Config::make_embedded_config();
+        llarp::Config conf{llarp::config::Type::EmbeddedClient};
         switch (n)
         {
             case Network::MAINNET:

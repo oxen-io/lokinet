@@ -39,25 +39,6 @@ namespace llarp::session
           _is_exit_session{has_flag(_tag.protocols(), protocol_flag::EXIT)}
     {
         set_new_current_path_interface(std::move(_p));
-
-        // FIXME: this is ugly, but maybe necessary?  either side could be
-        // tun or not tun, and that changes things, but how that needs to change things
-        // is a bit unclear at the moment.
-        _recv_dgram = [this](std::span<std::byte> data) {
-            IPPacket pkt{std::move(data)};
-            bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
-#ifndef LOKINET_LIBRARY_ONLY
-            if (_use_tun || (is_udp && _r.using_tun_if()))
-                _r.tun_endpoint().handle_inbound_packet(std::move(pkt), _tag, _remote);
-            else
-#endif
-                if (is_udp)
-                    handle_udp_from_remote(std::move(pkt));
-            // TODO: non-UDP non-tun?
-            /*
-            _ep->manually_receive_packet(std::move(pkt));
-            */
-        };
     }
 
     BaseSession::~BaseSession()
@@ -93,10 +74,32 @@ namespace llarp::session
     {
         session_keys->decrypt(data);
 
-        if (_recv_dgram)
-            _recv_dgram(data);
-        else
-            throw std::runtime_error{"Session does not have hook to receive datagrams!"};
+        IPPacket pkt{std::move(data)};
+        bool is_udp = pkt.protocol() == net::IPProtocol::UDP;
+
+        if (_r.embedded())
+        {
+            if (is_udp)
+                handle_udp_from_remote(std::move(pkt));
+            else
+            {
+                // TODO FIXME: handle tunneled TCP packets to us here, I think?
+            }
+            return;
+        }
+
+        // Otherwise we're not embedded; if the other side also isn't then this is just a raw IP
+        // packet to handle via the tun endpoint, and the same for UDP packets from embedded
+        // remotes (which also send raw UDP packets):
+        if (_use_tun || is_udp)
+        {
+            _r.tun_endpoint()->handle_inbound_packet(std::move(pkt), _tag, _remote);
+            return;
+        }
+
+        // Otherwise this is a non-UDP packet from a remote, i.e. it must be tunneled TCP (or
+        // garbage).
+        // TODO: tunneled TCP handling here!
     }
 
     void BaseSession::set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path)
@@ -138,7 +141,8 @@ namespace llarp::session
         auto& socket = itr->second;
         auto dest_port = pkt.dest_port();
         log::trace(logcat, "incoming udp packet for pseudo port {}", dest_port);
-        if (!udp_remote_ports.contains(dest_port)) {
+        if (!udp_remote_ports.contains(dest_port))
+        {
             log::warning(logcat, "Received UDP packet destined for an unmapped port ({})", dest_port);
             return;
         }
@@ -192,7 +196,8 @@ namespace llarp::session
                     log::trace(logcat, "pseudo client port {} for real client port {}", new_port, client_port);
                     client_port = new_port;
                 }
-                else client_port = udp_client_ports[client_port];
+                else
+                    client_port = udp_client_ports[client_port];
 
                 // ip doesn't matter here, but give remote the source port so we receive responses
                 // as destined for that port and know where to send them
@@ -239,9 +244,7 @@ namespace llarp::session
             log::debug(logcat, "Dispatched path close message!");
         }
 
-#ifndef LOKINET_LIBRARY_ONLY
-        _parent.unmap_session(_remote, _use_tun);
-#endif
+        _parent.unmap_session(_remote);
     }
 
     static void session_close_cb(quic::message m)
@@ -277,7 +280,7 @@ namespace llarp::session
               std::move(remote),
               std::move(remote_pivot_txid),
               std::move(_t),
-              _router.using_tun_if(),
+              !_router.embedded(),
               true,
               std::move(kx_data)),
           _last_use{_router.now()}

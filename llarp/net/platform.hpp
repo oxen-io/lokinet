@@ -20,11 +20,9 @@ namespace llarp::net
         Platform(const Platform&) = delete;
         Platform(Platform&&) = delete;
 
-        /// get a pointer to our signleton instance used by main lokinet
-        /// unit test mocks will not call this
+        /// get a pointer to our singleton instance used by full lokinet instances.
+        /// embedded clients (and unit test mocks) will not call this
         static const Platform* Default_ptr();
-
-        virtual std::string loopback_interface_name() const = 0;
 
         virtual bool has_interface_address(ipv4 ip) const = 0;
         virtual bool has_interface_address(ipv6 ip) const = 0;

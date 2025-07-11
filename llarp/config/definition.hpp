@@ -8,10 +8,8 @@
 #include <filesystem>
 #include <functional>
 #include <initializer_list>
-#include <iostream>
 #include <memory>
 #include <optional>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -24,6 +22,27 @@ namespace llarp
 {
     namespace config
     {
+        enum class Type
+        {
+            Relay,
+            FullClient,
+            EmbeddedClient
+        };
+
+        inline constexpr std::string_view to_string(Type t)
+        {
+            switch (t)
+            {
+                case Type::Relay:
+                    return "service node";
+                case Type::FullClient:
+                    return "client";
+                case Type::EmbeddedClient:
+                    return "embedded client";
+            }
+            return "unknown config type";
+        }
+
         namespace flag
         {
             // Base class for the following option flag types
@@ -36,9 +55,13 @@ namespace llarp
             {};
             struct MULTIVALUE : opt
             {};
-            struct RELAYONLY : opt
+            struct NOTEMBEDDED : opt
+            {};
+            struct RELAYONLY : NOTEMBEDDED
             {};
             struct CLIENTONLY : opt
+            {};
+            struct FULLCLIENTONLY : CLIENTONLY, NOTEMBEDDED
             {};
             struct DEPRECATED : opt
             {};
@@ -59,6 +82,15 @@ namespace llarp
         /// Value to pass for an option that should only be set for client configs. If found in a
         /// relay config it will be ignored (but will produce a warning).
         inline constexpr flag::CLIENTONLY ClientOnly{};
+        /// Value to pass for an option that should only be set for full client configs but not
+        /// relay configs or embedded client configs. If found in either of this it will be ignored
+        /// (but will produce a warning).
+        inline constexpr flag::FULLCLIENTONLY FullClientOnly{};
+        /// Value to pass for an option that is not allowed in embedded configs.  This is implied by
+        /// RelayOnly and FullClientOnly, but can be specified separately for options supported in
+        /// both full clients and relays but not embedded configs.  If such an option is specified
+        /// for an embedded client config it will be ignored (but will produce a warning).
+        inline constexpr flag::NOTEMBEDDED NotEmbedded{};
         /// Value to pass for an option that is deprecated and does nothing and should be ignored
         /// (with a deprecation warning) if specified.  Note that Deprecated implies Hidden, and
         /// that {client,relay}-only options in a {relay,client} config are also considered
@@ -108,9 +140,8 @@ namespace llarp
         template <typename U>
         constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
 
-        template <typename T, typename Option>
-        constexpr bool is_option =
-            std::is_base_of_v<flag::opt, remove_cvref_t<Option>> or std::is_same_v<Comment, Option>
+        template <typename Option, typename T>
+        concept is_option = std::is_base_of_v<flag::opt, remove_cvref_t<Option>> or std::is_same_v<Comment, Option>
             or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
     }  // namespace config
 
@@ -124,12 +155,13 @@ namespace llarp
         OptionDefinitionBase(std::string section_, std::string name_, const T&...)
             : section(std::move(section_)),
               name(std::move(name_)),
-              required{(std::is_same_v<T, config::flag::REQUIRED> || ...)},
-              multi_valued{(std::is_same_v<T, config::flag::MULTIVALUE> || ...)},
-              deprecated{(std::is_same_v<T, config::flag::DEPRECATED> || ...)},
-              hidden{deprecated || (std::is_same_v<T, config::flag::HIDDEN> || ...)},
-              relay_only{(std::is_same_v<T, config::flag::RELAYONLY> || ...)},
-              clientOnly{(std::is_same_v<T, config::flag::CLIENTONLY> || ...)}
+              required{(std::derived_from<T, config::flag::REQUIRED> || ...)},
+              multi_valued{(std::derived_from<T, config::flag::MULTIVALUE> || ...)},
+              deprecated{(std::derived_from<T, config::flag::DEPRECATED> || ...)},
+              hidden{deprecated || (std::derived_from<T, config::flag::HIDDEN> || ...)},
+              relay_only{(std::derived_from<T, config::flag::RELAYONLY> || ...)},
+              client_only{(std::derived_from<T, config::flag::CLIENTONLY> || ...)},
+              no_embedded{(std::derived_from<T, config::flag::NOTEMBEDDED> || ...)}
         {}
 
         virtual ~OptionDefinitionBase() = default;
@@ -167,7 +199,8 @@ namespace llarp
         bool deprecated = false;
         bool hidden = false;
         bool relay_only = false;
-        bool clientOnly = false;
+        bool client_only = false;
+        bool no_embedded = false;
         // Temporarily holds comments given during construction until the option is actually added
         // to the owning ConfigDefinition.
         std::vector<std::string> comments;
@@ -194,7 +227,7 @@ namespace llarp
         /// tagged options or an invocable acceptor validate and internalize input (e.g. copy it for
         /// runtime use). The acceptor should throw an exception with a useful message if it is not
         /// acceptable.  Parameters may be passed in any order.
-        template <typename... Options, std::enable_if_t<(config::is_option<T, Options> && ...), int> = 0>
+        template <config::is_option<T>... Options>
         OptionDefinition(std::string section_, std::string name_, Options&&... opts)
             : OptionDefinitionBase(section_, name_, opts...)
         {
@@ -410,7 +443,7 @@ namespace llarp
     /// through calls to addConfigValue()).
     struct ConfigDefinition
     {
-        explicit ConfigDefinition(bool relay) : relay{relay} {}
+        explicit ConfigDefinition(config::Type type) : type{type} {}
 
         /// Specify the parameters and type of a configuration option. The parameters are members of
         /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.
@@ -537,8 +570,9 @@ namespace llarp
         std::string generate_ini_config(bool useValues = false);
 
       private:
-        // If true skip client-only options; if false skip relay-only options.
-        bool relay;
+        // Config file; this defines where we skip client-only, relay-only, or non-embedded config
+        // items.
+        config::Type type;
 
         std::unique_ptr<OptionDefinitionBase>& lookup_definition_or_throw(
             std::string_view section, std::string_view name);

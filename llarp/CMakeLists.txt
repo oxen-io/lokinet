@@ -16,13 +16,18 @@ lokinet_add_library(lokinet-cryptography
   crypto/key_manager.cpp
 )
 
+if(LOKINET_FULL)
+  lokinet_add_library(lokinet-exit-auth
+    auth/auth.cpp
+    auth/file.cpp
+    auth/rpc.cpp
+    auth/session.cpp
+  )
+endif()
+
 # Functional objects use by lokinet-core and other libraries
 # needed by vpn/ router/ rpc/ handlers/ net/ link/
 lokinet_add_library(lokinet-core-utils
-  auth/file_auth.cpp
-  auth/rpc_auth.cpp
-  auth/session_auth.cpp
-  
   handlers/session.cpp
 
   messages/common.cpp
@@ -30,13 +35,12 @@ lokinet_add_library(lokinet-core-utils
   messages/fetch.cpp
   messages/path.cpp
   messages/session.cpp
-  
 )
 
-if (NOT LOKINET_LIBRARY_ONLY)
+if (LOKINET_FULL)
   target_sources(lokinet-core-utils PRIVATE handlers/tun.cpp vpn/egres_packet_router.cpp)
 endif()
-  
+
 lokinet_add_library(lokinet-core
   context.cpp
   
@@ -50,17 +54,19 @@ lokinet_add_library(lokinet-core
   session/map.cpp
 )
 
-if (NOT LOKINET_LIBRARY_ONLY)
+if (LOKINET_FULL)
   target_sources(lokinet-core PRIVATE router/route_poker.cpp)
 endif()
 
-lokinet_add_library(lokinet-rpc
-  rpc/json_binary_proxy.cpp
-  rpc/json_conversions.cpp
-  rpc/rpc_client.cpp
-  rpc/rpc_request_parser.cpp
-  rpc/rpc_server.cpp
-)
+if (LOKINET_FULL)
+  lokinet_add_library(lokinet-rpc
+    rpc/json_binary_proxy.cpp
+    rpc/json_conversions.cpp
+    rpc/rpc_client.cpp
+    rpc/rpc_request_parser.cpp
+    rpc/rpc_server.cpp
+  )
+endif()
 
 lokinet_add_library(lokinet-wire
   link/connection.cpp
@@ -92,11 +98,6 @@ lokinet_add_library(lokinet-contact
   contact/tag.cpp
 )
 
-# Definitely a better way to do this, but this works for now
-if (LOKINET_LIBRARY_ONLY)
-  target_sources(lokinet-contact PRIVATE dns/srv_data.cpp)
-endif()
-
 # Network interface files used for mediating ip traffic
 lokinet_add_library(lokinet-ip
   net/ip_packet.cpp
@@ -117,7 +118,13 @@ lokinet_add_library(lokinet-addressing
   router_version.cpp  # to be deleted shortly
 )
 
-if (NOT LOKINET_LIBRARY_ONLY)
+lokinet_add_library(lokinet-dns
+  dns/srv_data.cpp
+)
+
+add_library(lokinet-dns-platform INTERFACE)
+
+if (LOKINET_FULL)
   # lokinet-platform holds all platform specific code
   lokinet_add_library(lokinet-platform
     vpn/packet_router.cpp
@@ -160,7 +167,7 @@ if (NOT LOKINET_LIBRARY_ONLY)
 
   # lokinet-dns is the dns parsing and hooking library that we use to
   # parse modify and reconstitute dns wire proto, dns queries and RR
-  lokinet_add_library(lokinet-dns
+  target_sources(lokinet-dns PRIVATE
     dns/message.cpp   # dns/server
     dns/name.cpp      # srv_data, question, rr
     dns/platform.cpp
@@ -168,11 +175,9 @@ if (NOT LOKINET_LIBRARY_ONLY)
     dns/rr.cpp
     dns/serialize.cpp
     dns/server.cpp
-    dns/srv_data.cpp
   )
 
   # platform specific bits and bobs for setting dns
-  add_library(lokinet-dns-platform INTERFACE)
   if(WITH_SYSTEMD)
     lokinet_add_library(lokinet-dns-systemd dns/nm_platform.cpp dns/sd_platform.cpp)
     target_link_libraries(lokinet-dns-platform INTERFACE lokinet-dns-systemd)
@@ -201,7 +206,6 @@ target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fal
 
 # lokinet-config is for all configuration types and parsers
 lokinet_add_library(lokinet-config
-  auth/auth.cpp
   config/config.cpp
   config/definition.cpp
   config/ini.cpp
@@ -218,21 +222,23 @@ lokinet_add_library(lokinet-path
 # Link libraries to their internals
 target_link_libraries(lokinet-wire PUBLIC lokinet-addressing)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
-target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
+target_link_libraries(lokinet-contact PUBLIC lokinet-dns)
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
+endif()
 target_link_libraries(lokinet-addressing PUBLIC lokinet-utils lokinet-cryptography lokinet-contact lokinet-ip)
 target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
-target_link_libraries(lokinet-config PUBLIC lokinet-cryptography)
-
-if (NOT LOKINET_LIBRARY_ONLY)
+target_link_libraries(lokinet-config PUBLIC lokinet-cryptography lokinet-addressing)
+if(LOKINET_FULL)
   target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
-  target_link_libraries(lokinet-dns
-    PUBLIC
-    lokinet-addressing
-    lokinet-cryptography
-    lokinet-config
-    lokinet-dns-platform
-  )
+  target_link_libraries(lokinet-config PUBLIC lokinet-exit-auth)
 endif()
+target_link_libraries(lokinet-dns
+  PUBLIC
+  lokinet-cryptography
+  lokinet-config
+  lokinet-dns-platform
+)
 
 target_link_libraries(lokinet-path
   PUBLIC
@@ -242,13 +248,14 @@ target_link_libraries(lokinet-path
 target_link_libraries(lokinet-core-utils 
   PUBLIC 
   lokinet-config
-  lokinet-rpc 
   lokinet-wire 
+  lokinet-dns
 )
-if (NOT LOKINET_LIBRARY_ONLY)
+
+if(LOKINET_FULL)
   target_link_libraries(lokinet-core-utils
     PUBLIC
-    lokinet-dns
+    lokinet-rpc
     lokinet-platform
   )
 endif()
@@ -258,21 +265,24 @@ target_link_libraries(lokinet-cryptography
   lokinet-libcrypt
 )
 
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-exit-auth PUBLIC lokinet-core-utils lokinet-cryptography)
+endif()
+
 target_link_libraries(lokinet-utils
   PUBLIC
   lokinet-cryptography
 )
 
-# cross linkage
 target_link_libraries(lokinet-core 
   PUBLIC 
   lokinet-core-utils
-  lokinet-cryptography
   lokinet-nodedb
   lokinet-path
-  lokinet-rpc 
-  lokinet-wire 
 )
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-core PUBLIC lokinet-exit-auth)
+endif()
 
 
 target_link_libraries(lokinet-base 
@@ -282,31 +292,45 @@ target_link_libraries(lokinet-base
 
   oxenc::oxenc 
   oxen::logging 
-  oxenmq::oxenmq 
   
   libunbound
 
   sodium
 )
 
-
-if(LOKINET_EMBEDDED)
-  include(GNUInstallDirs)
-  add_library(lokinet-embedded lokinet.cpp)
-  target_link_libraries(lokinet-embedded PUBLIC lokinet-core)
-  if(WIN32)
-    set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
-  endif()
-  set_target_properties(lokinet-embedded PROPERTIES OUTPUT_NAME lokinet)
-  if(WIN32)
-    target_link_libraries(lokinet-embedded PUBLIC ws2_32 iphlpapi -fstack-protector)
-    install(TARGETS lokinet-embedded DESTINATION bin COMPONENT liblokinet)
-  elseif(NOT APPLE)
-    install(TARGETS lokinet-embedded LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
-  endif()
-
-  add_library(lokinet::embedded ALIAS lokinet-embedded)
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-base INTERFACE oxenmq::oxenmq)
 endif()
+
+# libevent
+if(NOT TARGET libevent::core)
+  add_library(libevent_core INTERFACE)
+  pkg_check_modules(LIBEVENT_core libevent_core>=2.1 IMPORTED_TARGET REQUIRED)
+  target_link_libraries(libevent_core INTERFACE PkgConfig::LIBEVENT_core)
+  add_library(libevent::core ALIAS libevent_core)
+endif()
+target_link_libraries(lokinet-addressing PRIVATE libevent::core)
+
+
+add_library(liblokinet lokinet.cpp)
+target_link_libraries(liblokinet PUBLIC lokinet-core)
+
+set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
+if(BUILD_SHARED_LIBS AND LOKINET_VERSION_SO)
+  set_target_properties(liblokinet PROPERTIES
+    VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+endif()
+
+if(WIN32)
+  target_link_libraries(liblokinet PUBLIC ws2_32 iphlpapi -fstack-protector)
+  install(TARGETS liblokinet DESTINATION bin COMPONENT liblokinet)
+elseif(NOT APPLE)
+  include(GNUInstallDirs)
+  install(TARGETS liblokinet LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
+endif()
+
+add_library(lokinet::embedded ALIAS liblokinet)
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)

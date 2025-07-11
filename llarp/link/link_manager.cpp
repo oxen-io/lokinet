@@ -11,6 +11,10 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
 
+#ifndef LOKINET_EMBEDDED_ONLY
+#include <llarp/rpc/rpc_client.hpp>
+#endif
+
 #include <oxen/quic/context.hpp>
 #include <oxenc/bt_producer.h>
 #include <sodium/crypto_generichash_blake2b.h>
@@ -198,7 +202,7 @@ namespace llarp
 
         bool Endpoint::establish_and_send_control(RemoteRC rc, std::function<void(quic::BTRequestStream&)> send_hook)
         {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+            log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
             return link_manager.router().loop()->call_get([&]() {
                 auto rid = rc.router_id();
 
@@ -1208,8 +1212,12 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::_handle_resolve_sns(quic::message m, std::optional<std::string> inner_body)
+    void LinkManager::_handle_resolve_sns(
+        [[maybe_unused]] quic::message m, [[maybe_unused]] std::optional<std::string> inner_body)
     {
+#ifdef LOKINET_EMBEDDED_ONLY
+        throw std::logic_error{"This lokinet is not a service node!"};
+#else
         log::trace(logcat, "Received request to publish client contact!");
 
         std::string name_hash;
@@ -1240,6 +1248,7 @@ namespace llarp
                     prev_msg.respond(ResolveSNS::NOT_FOUND, true);
                 }
             });
+#endif
     }
 
     void LinkManager::_handle_publish_cc(quic::message m, std::optional<std::string> inner_body)

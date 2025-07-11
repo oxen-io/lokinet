@@ -3,11 +3,9 @@
 #include <llarp/util/file.hpp>
 
 #include <functional>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <vector>
 
 namespace llarp
 {
@@ -18,20 +16,15 @@ namespace llarp
         /// clear parser
         void clear();
 
-        /// load config file for bootserv
-        /// return true on success
-        /// return false on error
-        bool load_file(const fs::path& fname);
+        /// Load config file.  Throws on error.
+        void load_file(const fs::path& fname);
 
-        /// load new .ini file from string (calls ParseAll() rather than Parse())
-        /// return true on success
-        /// return false on error
-        bool load_new_from_str(std::string_view str);
+        /// Load new .ini data from string (calls ParseAll() rather than Parse())
+        /// Throws on error.
+        void load_new_from_str(std::string str);
 
-        /// load from string
-        /// return true on success
-        /// return false on error
-        bool load_from_str(std::string_view str);
+        /// Load from string. Throws on error.
+        void load_from_str(std::string str);
 
         /// iterate all sections and thier values
         void iter_all_sections(std::function<void(std::string_view, const SectionValues&)> visit);
@@ -52,9 +45,9 @@ namespace llarp
         void set_filename(const fs::path& f) { _filename = f; }
 
       private:
-        bool parse_all();
+        void parse_all();
 
-        bool parse();
+        void parse();
 
         std::string _data;
         ConfigMap _config;

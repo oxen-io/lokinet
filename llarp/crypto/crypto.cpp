@@ -18,7 +18,7 @@
 
 #include <cassert>
 #include <cstring>
-#ifdef HAVE_CRYPT
+#ifdef LOKINET_HAVE_CRYPT
 #include <crypt.h>
 #endif
 
@@ -361,7 +361,7 @@ namespace llarp::crypto
         return keys.to_pubkey() == pk && sk == keys;
     }
 
-#ifdef HAVE_CRYPT
+#ifdef LOKINET_HAVE_CRYPT
     bool check_passwd_hash(std::string pwhash, std::string challenge)
     {
         bool ret = false;

@@ -11,17 +11,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
-option(LOKINET_DAEMON "build lokinet daemon and associated utils" ON)
-option(LOKINET_LIBRARY_ONLY "build lokinet only as a library, without platform/route management code" OFF)
-option(LOKINET_EMBEDDED "build liblokinet for embedded lokinet" OFF)
+set(lokinet_daemon_def ON)
+if(ANDROID OR IOS)
+  set(lokinet_daemon_def OFF)
+endif()
 
-if(LOKINET_LIBRARY_ONLY)
-  set(LOKINET_DAEMON OFF)
-  set(LOKINET_EMBEDDED ON)
-  add_definitions(-DLOKINET_LIBRARY_ONLY)
+# These two are not exclusive: daemon requires full platform, but the main lokinet library itself
+# can support both.
+option(LOKINET_FULL "build with full client/relay support. Disabling this will only allow embedded lokinet usage" ${lokinet_full_def})
+option(LOKINET_DAEMON "build lokinet daemon and associated utils (requires LOKINET_FULL)" ${LOKINET_FULL})
+
+if(LOKINET_DAEMON AND NOT LOKINET_FULL)
+  message(FATAL_ERROR "Cannot use LOKINET_DAEMON without LOKINET_FULL platform support!")
 endif()
 
 option(LOKINET_GRAPH_DEPENDENCIES "Produce graphviz representation of cmake dependencies" OFF)
+
+option(LOKINET_VERSION_SO "Add the project version to the shared library filename, e.g. liblokinet1.2.3.so instead of liblokinet.so" OFF)
 
 set(LANGS C CXX)
 if(APPLE AND LOKINET_DAEMON)
@@ -274,6 +280,9 @@ target_compile_features(lokinet-base INTERFACE cxx_std_20)
 
 add_library(lokinet-base-internal INTERFACE)
 target_include_directories(lokinet-base-internal INTERFACE include/lokinet)
+if(NOT LOKINET_FULL)
+  target_compile_definitions(lokinet-base-internal INTERFACE LOKINET_EMBEDDED_ONLY)
+endif()
 
 target_link_libraries(lokinet-base-internal INTERFACE lokinet-base-internal_warnings)
 
@@ -331,7 +340,7 @@ add_subdirectory(docs)
 
 include(cmake/gui.cmake)
 
-if(APPLE AND NOT LOKINET_LIBRARY_ONLY)
+if(APPLE AND LOKINET_FULL)
   macos_target_setup()
 endif()
 

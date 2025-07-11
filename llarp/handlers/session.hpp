@@ -121,14 +121,12 @@ namespace llarp
             // to initiate a session
             bool validate(const NetworkAddress& remote, std::optional<std::string> maybe_auth = std::nullopt);
 
-#ifndef LOKINET_LIBRARY_ONLY
             // FIXME: should SessionEndpoint have these mappings at all?
             std::optional<std::variant<ipv4, ipv6>> map_session(const session::BaseSession& s);
-            void unmap_session(NetworkAddress remote, bool using_tun = true);
+            void unmap_session(NetworkAddress remote);
             void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
             void unmap_remote_by_name(const std::string& name);
-#endif
 
             std::optional<session_tag> prefigure_session(
                 NetworkAddress initiator,

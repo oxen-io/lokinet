@@ -10,13 +10,17 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
-
-#ifndef LOKINET_LIBRARY_ONLY
 #include <llarp/util/service_manager.hpp>
-#endif
 
 #include <oxen/log.hpp>
+
+#ifndef LOKINET_EMBEDDED_ONLY
+#include <llarp/handlers/tun.hpp>
+#include <llarp/rpc/rpc_client.hpp>
+#include <llarp/rpc/rpc_server.hpp>
+
 #include <oxenmq/oxenmq.h>
+#endif
 
 #include <cstdlib>
 #include <memory>
@@ -38,27 +42,28 @@ namespace llarp
     static auto logcat = log::Cat("router");
 
     Router::Router(
-        Config conf, std::shared_ptr<quic::Loop> loop, [[maybe_unused]] std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
+        Config conf, std::shared_ptr<quic::Loop> loop, std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
         : _config{std::move(conf)},
           _loop{std::move(loop)},
           _next_explore_at{std::chrono::steady_clock::now()},
-          _omq{std::make_unique<oxenmq::OxenMQ>()},
-          _close_promise{std::move(p)},
-#ifndef LOKINET_LIBRARY_ONLY
           _vpn{std::move(vpnPlatform)},
-#endif
+          _close_promise{std::move(p)},
           _contact_db{std::make_unique<ContactDB>(*this)},
-          _disk_thread{_omq->add_tagged_thread("disk")},
           // TODO FIXME: what about non-testnet?  And do we really want a fixed random interval,
           // or do we want a randomized interval on each node's gossip?
           _gossip_interval{TESTNET_GOSSIP_INTERVAL(llarp::csrng)},
           _last_tick{llarp::time_now_ms()}
     {
+#ifndef LOKINET_EMBEDDED_ONLY
+        // Not actually shared, but unique_ptr would require destructor visibility which
+        // embedded-only won't have:
+        _omq = std::make_shared<oxenmq::OxenMQ>();
         // for oxend, so we don't close the connection when syncing the whitelist (which exceeds the
         // defaut 1MB limit).
         _omq->MAX_MSG_SIZE = -1;
         if (_config.router.worker_threads > 0)
             _omq->set_general_threads(_config.router.worker_threads);
+#endif
 
         init_logging();
 
@@ -190,30 +195,23 @@ namespace llarp
         return stats;
     }
 
-    void Router::queue_work(std::function<void()> func) { _omq->job(std::move(func)); }
-    void Router::queue_disk_io(std::function<void()> func) { _omq->job(std::move(func), _disk_thread); }
+    void Router::queue_disk_io(std::function<void()> func) { _disk_loop.call_soon(std::move(func)); }
 
     void Router::start_tickers()
     {
-#ifndef LOKINET_LIBRARY_ONLY
         if (_tun)
             _tun->start_poller();
 
-        if (not _systemd_ticker->is_running())
-        {
-            if (not _systemd_ticker->start())
-                throw std::runtime_error{"Failed to start system service report ticker!"};
-
-            log::debug(logcat, "Successfully started system service report ticker");
-        }
-        else
-            log::debug(logcat, "System service report ticker already auto-started!");
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (!embedded())
+            _service_stat_ticker = _loop->call_every(
+                SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); });
 #endif
 
         _node_db->start_tickers();
         _contact_db->start_tickers();
 
-#ifndef LOKINET_LIBRARY_ONLY
+#ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node())
         {
             _rpc_client->start_pings();
@@ -272,6 +270,7 @@ namespace llarp
     void Router::fetch_snode_identity()
     {
         assert(_is_service_node);
+#ifndef LOKINET_EMBEDDED_ONLY
 
         our_rc_file = _config.router.data_dir / our_rc_filename;
 
@@ -301,6 +300,7 @@ namespace llarp
                     throw;
             }
         }
+#endif
     }
 
     void Router::init_logging()
@@ -337,10 +337,12 @@ namespace llarp
 
         log::apply_categories(_config.logging.levels);
 
+#ifndef LOKINET_EMBEDDED_ONLY
         // re-add rpc log sink if rpc enabled, else free it
         if (_config.api.enable_rpc_server and llarp::logRingBuffer)
             log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
         else
+#endif
             llarp::logRingBuffer.reset();
     }
 
@@ -349,68 +351,118 @@ namespace llarp
         // Router config
         min_client_outbounds = _config.router.client_router_connections;
 
-        auto paddr = _config.router.public_ip;
-        if (!paddr)
-            paddr = _config.links.public_addr;
-        auto pport = _config.router.public_port;
-        if (!pport)
-            pport = _config.links.public_port;
-
-        if (pport and not paddr)
-            throw std::runtime_error{"If public-port is specified, public-addr must be as well!"};
-
-        if (_config.links.listen_addr or not _is_service_node)
-        {
-            _listen_address = _config.links.listen_addr.value_or(DEFAULT_CLIENT_LISTEN_ADDR);
-
-            log::info(
-                logcat,
-                "Using {} listen address: {}",
-                _config.links.listen_addr ? "link config" : "default",
-                _listen_address);
-        }
-#ifndef LOKINET_LIBRARY_ONLY
-        else
-        {
-            if (paddr or pport)
-                throw std::runtime_error{"Must specify [bind]:listen in config with public ip/addr!"};
-
-            log::critical(logcat, "No value in link config listen_addr, querying net-if...");
-            if (auto maybe_addr = net().get_best_public_address(true, DEFAULT_LISTEN_PORT))
-                _listen_address = std::move(*maybe_addr);
-            else
-                throw std::runtime_error{
-                    "Could not auto-detect a usable public router listen address; please specify one with the "
-                    "[bind]:listen config option"};
-        }
-#endif
+        if (_is_service_node && embedded())
+            throw std::runtime_error{"Invalid config: service node and embedded modes are incompatible!"};
 
         if (_is_service_node)
         {
-            _public_address = (not paddr and not pport) ? _listen_address
-                                                        : quic::Address{*paddr, pport.value_or(DEFAULT_LISTEN_PORT)};
-        }
-        else if (_listen_address.is_addressable())
-        {
-            log::info(logcat, "Assigning addressable listen address {} as public addr", _listen_address);
-            _public_address = _listen_address;
-        }
-#ifndef LOKINET_LIBRARY_ONLY
-        else if (_is_service_node)  // TODO: check if this if is correct
-        {
-            log::critical(logcat, "Listen address is non-public, querying net-if for public address...");
-            auto _port = !_listen_address.is_any_port() and _config.links.only_user_port ? _listen_address.port()
-                                                                                         : DEFAULT_LISTEN_PORT;
-            if (auto maybe_addr = net().get_best_public_address(true, _port))
-                _public_address = std::move(*maybe_addr);
+            auto paddr = _config.router.public_ip;
+            if (!paddr)
+                paddr = _config.links.public_addr;
+            auto pport = _config.router.public_port;
+            if (!pport)
+                pport = _config.links.public_port;
+
+            if (pport and not paddr)
+                throw std::runtime_error{"If public-port is specified, public-ip must be as well!"};
+
+            // Treat 0.0.0.0:0 as not specified:
+            if (_config.links.listen_addr && _config.links.listen_addr->is_any_addr()
+                && _config.links.listen_addr->is_any_port())
+                _config.links.listen_addr.reset();
+
+            // If we are given a public address but not port then set port to the listen port (if
+            // one was explicitly given) or otherwise the default relay port.
+            if (paddr && !pport)
+            {
+                if (_config.links.listen_addr && !_config.links.listen_addr->is_any_port())
+                    pport = _config.links.listen_addr->port();
+                else
+                    pport = DEFAULT_RELAY_PORT;
+            }
+            if (paddr)
+            {
+                _public_address.emplace(*paddr, *pport);
+                if (!_public_address->is_public())
+                    throw std::runtime_error{"Invalid public-ip: given IP address is not a public IP address"};
+            }
+
+            bool auto_detect = false;
+            uint16_t auto_port = DEFAULT_RELAY_PORT;
+
+            if (!_config.links.listen_addr)
+            {
+                if (_public_address)
+                    // No listen address, but a public ip/port were given so use that
+                    _listen_address = *_public_address;
+                else
+                    auto_detect = true;
+            }
+            else if (_config.links.listen_addr->is_any_addr())
+            {
+                assert(!_config.links.listen_addr->is_any_port());  // Should be assured from above
+                // port given but not IP: if we have a public ip then use that, else go search
+                if (paddr)
+                    _listen_address = quic::Address{*paddr, _config.links.listen_addr->port()};
+                else
+                {
+                    auto_detect = true;
+                    auto_port = _config.links.listen_addr->port();
+                }
+            }
+            else if (_config.links.listen_addr->is_any_port())
+            {
+                // IP given but not port.  If we have a public port use that, otherwise use the
+                // default.
+                _listen_address = *_config.links.listen_addr;
+                _listen_address.set_port(pport.value_or(DEFAULT_RELAY_PORT));
+            }
             else
             {
-                log::critical(logcat, "Could not find net interface on current platform!");
-                throw std::runtime_error{
-                    "Unable to determine public IP; you must set public-port and public-addr config settings"};
+                assert(_listen_address.is_addressable());
             }
+
+            if (auto_detect)
+            {
+                assert(net());
+                if (auto maybe_addr = net()->get_best_public_address(true, auto_port))
+                    _public_address = _listen_address = std::move(*maybe_addr);
+                else
+                    throw std::runtime_error{
+                        "Unable to determine a public IP on this system; you must set public-ip/public-port config "
+                        "settings"};
+            }
+
+            if (!_public_address)
+            {
+                if (_listen_address.is_public())
+                    _public_address = _listen_address;
+                else
+                    throw std::runtime_error{"When listening on a non-public IP, public-ip must be specified"};
+            }
+
+            if (_listen_address == *_public_address)
+                log::info(logcat, "Using {} for Lokinet communications", _listen_address);
+            else if (!_listen_address.is_public())
+                log::info(
+                    logcat,
+                    "Listening on private address {} with publicly reachable address {}",
+                    _listen_address,
+                    *_public_address);
+            else
+                // Binding to a different public IP/port than we actually advertise in RCs is not
+                // allowed, as it is almost certainly a configuration error (e.g. such as moving the
+                // config from one server to another and updating only one of the two values).
+                throw std::runtime_error{
+                    "public-ip/port ({}) and listen address ({}) are both public addresses but do not match!"_format(
+                        _public_address, _listen_address)};
         }
-#endif
+        else  // Not a service node:
+        {
+            _listen_address = _config.links.listen_addr.value_or(DEFAULT_CLIENT_ADDR);
+
+            log::info(logcat, "Using {} for Lokinet communications", _listen_address);
+        }
 
         RelayContact::BLOCK_BOGONS = _config.router.block_bogons;
     }
@@ -419,42 +471,46 @@ namespace llarp
     {
         auto& conf = _config.network;
 
-#ifndef LOKINET_LIBRARY_ONLY
-        if (!conf._if_name)
-            conf._if_name = net().find_free_tun();
-
-        if (!(conf._local_ip_net && conf._local_ip_net->ip.addr))
+        if (!embedded())
         {
-            if (auto maybe = net().find_free_ipv4_net(conf._local_ip_net ? conf._local_ip_net->mask : 16))
-                conf._local_ip_net = std::move(*maybe);
-            else
-                throw std::runtime_error("cannot find free IPv4 address range!");
-        }
-        log::info(logcat, "Lokinet IPv4 local network is {}", *conf._local_ip_net);
+            assert(net());
 
-        if (conf.enable_ipv6)
-        {
-            if (!conf._local_ipv6_net || (!conf._local_ipv6_net->ip.hi && !conf._local_ipv6_net->ip.lo))
+            if (!conf._if_name)
+                conf._if_name = net()->find_free_tun();
+
+            if (!(conf._local_ip_net && conf._local_ip_net->ip.addr))
             {
-                if (auto maybe = net().find_free_ipv6_net(conf._local_ipv6_net ? conf._local_ipv6_net->mask : 64))
-                    conf._local_ipv6_net = std::move(*maybe);
+                if (auto maybe = net()->find_free_ipv4_net(conf._local_ip_net ? conf._local_ip_net->mask : 16))
+                    conf._local_ip_net = std::move(*maybe);
                 else
-                    throw std::runtime_error("cannot find free IPv6 address range!");
+                    throw std::runtime_error("cannot find free IPv4 address range!");
             }
-            log::info(logcat, "Lokinet IPv6 local network is {}", *conf._local_ipv6_net);
-            log::warning(
-                logcat, "Lokinet IPv6 support is a work-in-progress and unsupported; enabling it is not recommended");
-        }
+            log::info(logcat, "Lokinet IPv4 local network is {}", *conf._local_ip_net);
 
-        // Make sure any reserved addresses are within our local network range:
-        std::erase_if(conf._reserved_local_ipv4, [&conf](const auto& addr_ip) {
-            return !conf._local_ip_net->contains(addr_ip.second);
-        });
-        if (conf._local_ipv6_net)
-            std::erase_if(conf._reserved_local_ipv6, [&conf](const auto& addr_ip) {
-                return !conf._local_ipv6_net->contains(addr_ip.second);
+            if (conf.enable_ipv6)
+            {
+                if (!conf._local_ipv6_net || (!conf._local_ipv6_net->ip.hi && !conf._local_ipv6_net->ip.lo))
+                {
+                    if (auto maybe = net()->find_free_ipv6_net(conf._local_ipv6_net ? conf._local_ipv6_net->mask : 64))
+                        conf._local_ipv6_net = std::move(*maybe);
+                    else
+                        throw std::runtime_error("cannot find free IPv6 address range!");
+                }
+                log::info(logcat, "Lokinet IPv6 local network is {}", *conf._local_ipv6_net);
+                log::warning(
+                    logcat,
+                    "Lokinet IPv6 support is a work-in-progress and unsupported; enabling it is not recommended");
+            }
+
+            // Make sure any reserved addresses are within our local network range:
+            std::erase_if(conf._reserved_local_ipv4, [&conf](const auto& addr_ip) {
+                return !conf._local_ip_net->contains(addr_ip.second);
             });
-#endif
+            if (conf._local_ipv6_net)
+                std::erase_if(conf._reserved_local_ipv6, [&conf](const auto& addr_ip) {
+                    return !conf._local_ipv6_net->contains(addr_ip.second);
+                });
+        }
 
         // parse strict-connet pubkeys
         if (auto& conf_edges = conf.pinned_edges; not conf_edges.empty())
@@ -498,8 +554,9 @@ namespace llarp
     void Router::configure()
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-#ifndef LOKINET_LIBRARY_ONLY
-        llarp::sys::service_manager->starting();
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (!embedded())
+            sys::service_manager->starting();
 #endif
 
         if (_is_exit_node and _is_service_node)
@@ -514,25 +571,26 @@ namespace llarp
 
         log::trace(logcat, "Configuring router...");
 
-        _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
-
         log::info(
             logcat,
             "Local instance operating in {} mode{}",
             _is_service_node ? "relay" : "client",
             _is_exit_node ? " operating an exit node service!" : "!");
 
+#ifndef LOKINET_EMBEDDED_ONLY
+        _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
+
         if (_is_service_node)
         {
             log::debug(logcat, "Starting RPC client");
-            rpc_addr = oxenmq::address(_config.lokid.rpc_addr);
-            _rpc_client = std::make_unique<rpc::RPCClient>(*_omq, *this);
+            _rpc_client = std::make_shared<rpc::RPCClient>(*_omq, *this);
         }
 
         if (_config.api.enable_rpc_server)
         {
             log::debug(logcat, "Starting RPC server");
-            _rpc_server = std::make_unique<rpc::RPCServer>(*_omq, *this);
+            //
+            _rpc_server = std::make_shared<rpc::RPCServer>(*_omq, *this);
         }
 
         log::debug(logcat, "Starting OMQ server");
@@ -541,8 +599,9 @@ namespace llarp
         if (_is_service_node)
         {
             log::trace(logcat, "RPC client connecting to RPC bind address");
-            _rpc_client->connect_async(rpc_addr);
+            _rpc_client->connect_async(oxenmq::address(_config.lokid.rpc_addr));
         }
+#endif
 
         log::debug(logcat, "Initializing key manager");
 
@@ -582,32 +641,23 @@ namespace llarp
 
         _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
 
-        log::debug(logcat, "Creating QUIC link manager...");
+        log::debug(logcat, "Creating QUIC link manager");
         _link_manager = std::make_unique<LinkManager>(*this);
 
-#ifndef LOKINET_LIBRARY_ONLY
-        // API config
-        //  Full clients have TUN
-        //  Embedded clients have nothing
-        //  All relays have TUN
-        if (_config.network.init_tun)
+        if (!embedded())
         {
-            log::debug(logcat, "Initializing virtual TUN device...");
-            _tun = _loop->make_shared<handlers::TunEndpoint>(*this);
-            _tun->setup_dns();
+#ifdef LOKINET_EMBEDDED_ONLY
+            log::critical(logcat, "This lokinet build only supports embedded configurations!");
+            throw std::runtime_error{"This lokinet build only supports embedded configurations!"};
+#else
+            log::debug(logcat, "Initializing TUN device");
+            auto tun = _loop->make_shared<handlers::TunEndpoint>(*this);
+            tun->setup_dns();
+            _tun = std::move(tun);
+#endif
         }
         else
-            log::debug(logcat, "Not initializing TUN device; disabled in config.");
-#endif
-    }
-
-    bool Router::using_tun_if() const
-    {
-#ifndef LOKINET_LIBRARY_ONLY
-        return static_cast<bool>(_tun);
-#else
-        return false;
-#endif
+            log::debug(logcat, "Not initializing TUN device; running as an embedded client");
     }
 
     bool Router::is_service_node() const { return _is_service_node; }
@@ -722,9 +772,10 @@ namespace llarp
         return line;
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
-    void Router::_relay_tick(std::chrono::milliseconds now)
+    void Router::_relay_tick([[maybe_unused]] std::chrono::milliseconds now)
     {
+        assert(_config.relay());
+#ifdef LOKINET_EMBEDDED_ONLY
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         const auto& local = local_rid();
@@ -735,8 +786,6 @@ namespace llarp
             log::trace(logcat, "We are NOT a registered router, figure it out!");
             return;
         }
-
-        sys::service_manager->report_periodic_stats();
 
         if (should_report_stats(now))
             report_stats();
@@ -785,16 +834,13 @@ namespace llarp
         }
 
         path_context.expire_hops(now);
-    }
 #endif
+    }
 
     void Router::_client_tick(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-#ifndef LOKINET_LIBRARY_ONLY
-        llarp::sys::service_manager->report_periodic_stats();
-#endif
         _pathbuild_limiter.Decay(now);
         _router_profiling.tick();
 
@@ -863,11 +909,9 @@ namespace llarp
             log::error(logcat, "Timeskip of {}ms detected, resetting network state!", delta.count());
         }
 
-#ifndef LOKINET_LIBRARY_ONLY
         if (_is_service_node)
             _relay_tick(now);
         else
-#endif
             _client_tick(now);
 
         // update tick timestamp
@@ -929,14 +973,9 @@ namespace llarp
         log::debug(logcat, "Starting Router main tick interval");
         _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
-#ifndef LOKINET_LIBRARY_ONLY
-        _systemd_ticker =
-            _loop->call_every(SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); });
-#endif
-
         _started_at = now();
 
-#ifndef LOKINET_LIBRARY_ONLY
+#ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node() and not _testing_disabled)
         {
             log::debug(logcat, "Creating reachability testing ticker...");
@@ -1006,8 +1045,9 @@ namespace llarp
         start_tickers();
         _is_running = true;
 
-#ifndef LOKINET_LIBRARY_ONLY
-        llarp::sys::service_manager->ready();
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (!embedded())
+            llarp::sys::service_manager->ready();
 #endif
 
         log::info(logcat, "{} startup complete", local_rid().to_network_address(_is_service_node));
@@ -1061,10 +1101,9 @@ namespace llarp
         log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
         _loop_ticker.reset();
 
-#ifndef LOKINET_LIBRARY_ONLY
-        rv = _systemd_ticker->stop();
-        log::debug(logcat, "systemd ticker stopped {}successfully!", rv ? "" : "un");
-        _systemd_ticker.reset();
+        rv = _service_stat_ticker->stop();
+        log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
+        _service_stat_ticker.reset();
 
         if (_reachability_ticker)
         {
@@ -1072,7 +1111,6 @@ namespace llarp
             _reachability_ticker->stop();
             _reachability_ticker.reset();
         }
-#endif
 
         log::debug(logcat, "stopping nodedb events");
         node_db().cleanup();
@@ -1090,8 +1128,9 @@ namespace llarp
 
         _loop->call([this] {
             log::warning(logcat, "Hard stopping router");
-#ifndef LOKINET_LIBRARY_ONLY
-            llarp::sys::service_manager->stopping();
+#ifndef LOKINET_EMBEDDED_ONLY
+            if (!embedded())
+                llarp::sys::service_manager->stopping();
 #endif
             _session_endpoint->stop();
             stop_outbounds();
@@ -1116,9 +1155,12 @@ namespace llarp
             return;  // Lost a race with something else trying to stop
 
         _loop->call([this] {
-            log::debug(logcat, "stopping service manager...");
-#ifndef LOKINET_LIBRARY_ONLY
-            llarp::sys::service_manager->stopping();
+#ifndef LOKINET_EMBEDDED_ONLY
+            if (!embedded())
+            {
+                log::debug(logcat, "stopping service manager...");
+                llarp::sys::service_manager->stopping();
+            }
 #endif
 
             _session_endpoint->stop(true);
@@ -1132,8 +1174,13 @@ namespace llarp
 
     quic::Address Router::listen_addr() const { return _listen_address; }
 
-#ifndef LOKINET_LIBRARY_ONLY
-    const llarp::net::Platform& Router::net() const { return *llarp::net::Platform::Default_ptr(); }
+    const llarp::net::Platform* Router::net() const
+    {
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (!embedded())
+            return llarp::net::Platform::Default_ptr();
 #endif
+        return nullptr;
+    }
 
 }  // namespace llarp

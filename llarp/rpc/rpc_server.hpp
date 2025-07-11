@@ -90,9 +90,7 @@ namespace llarp
             void invoke(ListExits& listexits);
             void invoke(UnmapExit& unmapexit);
             void invoke(SwapExits& swapexits);
-#ifndef LOKINET_LIBRARY_ONLY
-            void invoke(DNSQuery& dnsquery);
-#endif
+            // void invoke(DNSQuery& dnsquery);
             void invoke(Config& config);
 
             oxenmq::OxenMQ& _omq;

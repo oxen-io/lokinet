@@ -30,9 +30,9 @@ namespace
         bool help = false;
         bool version = false;
         bool generate = false;
+        bool generate_embedded = false;
         bool router = false;
         bool config = false;
-        bool configOnly = false;
         bool overwrite = false;
 
         // string options
@@ -336,6 +336,10 @@ namespace
         cli.add_flag("--version", options.version, "Lokinet version");
         cli.add_flag("-g,--generate", options.generate, "Generate default configuration and exit");
         cli.add_flag("-r,--router", options.router, "Run lokinet in routing mode instead of client-only mode");
+        cli.add_flag(
+            "-e,--generate-embedded",
+            options.generate_embedded,
+            "Generate a default config file for an embedded clients and exit");
         cli.add_flag("-f,--force", options.overwrite, "Force writing config even if file exists");
 
         // options: string
@@ -381,11 +385,6 @@ namespace
                 }
             }
 
-            if (options.generate)
-            {
-                options.configOnly = true;
-            }
-
             if (not options.configPath.empty())
             {
                 configFile = options.configPath;
@@ -398,17 +397,21 @@ namespace
         catch (const CLI::Error& e)
         {
             cli.exit(e);
-        };
+        }
+
+        auto type = options.generate_embedded ? llarp::config::Type::EmbeddedClient
+            : options.router                  ? llarp::config::Type::Relay
+                                              : llarp::config::Type::FullClient;
 
         if (configFile.has_value())
         {
             // when we have an explicit filepath
             fs::path basedir = configFile->parent_path();
-            if (options.configOnly)
+            if (options.generate || options.generate_embedded)
             {
                 try
                 {
-                    llarp::ensure_config(basedir, *configFile, options.overwrite, options.router);
+                    llarp::ensure_config(basedir, *configFile, options.overwrite, type);
                 }
                 catch (std::exception& ex)
                 {
@@ -438,7 +441,7 @@ namespace
             try
             {
                 llarp::ensure_config(
-                    llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), options.overwrite, options.router);
+                    llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), options.overwrite, type);
             }
             catch (std::exception& ex)
             {
@@ -448,7 +451,7 @@ namespace
             configFile = llarp::GetDefaultConfigPath();
         }
 
-        if (options.configOnly)
+        if (options.generate || options.generate_embedded)
             return 0;
 
 #ifdef _WIN32
@@ -498,21 +501,26 @@ namespace
         llarp::log::info(logcat, "starting up {}", llarp::LOKINET_VERSION_FULL);
         try
         {
-            llarp::Config conf{confFile ? confFile->parent_path() : llarp::GetDefaultDataDir()};
-            if (not conf.load(confFile, snode))
+            auto type = snode ? llarp::config::Type::Relay : llarp::config::Type::FullClient;
+            std::optional<llarp::Config> conf;
+            try
             {
-                llarp::log::error(logcat, "failed to load configuration");
-                throw std::runtime_error{"Failed to parse config file {}"_format(confFile)};
+                conf = confFile ? llarp::Config{type, *confFile} : llarp::Config{type, "", llarp::GetDefaultDataDir()};
+            }
+            catch (const std::exception& e)
+            {
+                llarp::log::error(logcat, "Failed to load config: {}", e.what());
+                throw;
             }
 
-            ctx = std::make_unique<llarp::Context>();
+            ctx = std::make_unique<llarp::Context>(/*embedded=*/false);
 
             signal(SIGINT, handle_signal);
             signal(SIGTERM, handle_signal);
             signal(SIGKILL, handle_signal);
 
             llarp::util::SetThreadName("llarp-main");
-            ctx->start(std::move(conf));
+            ctx->start(std::move(*conf));
         }
         catch (llarp::util::bind_socket_error& ex)
         {

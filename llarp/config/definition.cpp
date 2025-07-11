@@ -35,24 +35,23 @@ namespace llarp
         using namespace config;
         // If explicitly deprecated or is a {client,relay} option in a {relay,client} config then
         // add a dummy, warning option instead of this one.
-        if (def->deprecated || (relay ? def->clientOnly : def->relay_only))
-        {
+        bool bad = def->deprecated || (type == config::Type::Relay && def->client_only)
+            || (type != config::Type::Relay && def->relay_only)
+            || (type == config::Type::EmbeddedClient && def->no_embedded);
+        if (bad)
             return define_option<std::string>(
                 def->section,
                 def->name,
                 MultiValue,
                 Hidden,
-                [deprecated = def->deprecated, relay = relay, opt = "[" + def->section + "]:" + def->name](
+                [deprecated = def->deprecated, type = type, opt = "[{}]:{}"_format(def->section, def->name)](
                     std::string_view) {
                     log::warning(
                         logcat,
-                        "*** WARNING: The config option {} {} and has been ignored",
+                        "*** WARNING: The config option {} is {} and has been ignored",
                         opt,
-                        (deprecated  ? "is deprecated"
-                             : relay ? "is not valid in service node configuration files"
-                                     : "is not valid in client configuration files"));
+                        (deprecated ? "deprecated" : "invalid in {} configuration files"_format(to_string(type))));
                 });
-        }
 
         auto [sectionItr, newSect] = definitions.try_emplace(def->section);
         if (newSect)

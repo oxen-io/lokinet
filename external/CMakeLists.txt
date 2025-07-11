@@ -60,7 +60,9 @@ macro(system_or_submodule BIGNAME smallname pkgconf subdir)
 endmacro()
 
 system_or_submodule(OXENC oxenc liboxenc>=1.5.0 oxen-encoding)
-system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.20 oxen-mq)
+if(LOKINET_FULL)
+    system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.20 oxen-mq)
+endif()
 
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
@@ -161,7 +163,7 @@ endif()
 # libcrypt defaults, only on with macos and non static linux
 set(default_libcrypt OFF)
 
-if(LINUX AND NOT STATIC_LINK)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT STATIC_LINK)
   pkg_check_modules(LIBCRYPT libcrypt IMPORTED_TARGET)
   if(LIBCRYPTO_FOUND)
       set(default_libcrypt ON)
@@ -176,7 +178,7 @@ option(WITH_LIBCRYPT "enable fast password hash with libcrypt" ${default_libcryp
 add_library(lokinet-libcrypt INTERFACE)
 if(WITH_LIBCRYPT)
   pkg_check_modules(LIBCRYPT libcrypt IMPORTED_TARGET REQUIRED)
-  target_compile_definitions(lokinet-libcrypt INTERFACE -DHAVE_CRYPT)
+  target_compile_definitions(lokinet-libcrypt INTERFACE LOKINET_HAVE_CRYPT)
   target_link_libraries(lokinet-libcrypt INTERFACE PkgConfig::LIBCRYPT)
   message(STATUS "using libcrypt ${LIBCRYPT_VERSION}")
 else()

@@ -23,7 +23,7 @@ namespace llarp::handlers
 
         // *All* clients currently support speaking via QUIC tunnel:
         protocols = protocol_flag::QUIC_TUNNEL;
-        if (_router.using_tun_if())
+        if (!_router.embedded())
         {
             // raw IPv4/IPv6/exit traffic all require a full tun interface.
 
@@ -51,18 +51,16 @@ namespace llarp::handlers
         return {_sessions.count(), _router.is_exit_node()};
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
-    void SessionEndpoint::unmap_session(NetworkAddress remote, bool using_tun)
+    void SessionEndpoint::unmap_session(NetworkAddress remote)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (using_tun)
-            _router.tun_endpoint().unmap_session_to_local_ip(remote);
+        if (auto& tun = _router.tun_endpoint())
+            tun->unmap_session_to_local_ip(remote);
 
         _sessions.unmap(remote);
         log::info(logcat, "Session (remote:{}) closed and unmapped!", remote);
     }
-#endif
 
     void SessionEndpoint::close_session(std::shared_ptr<session::BaseSession>& s, bool send_close)
     {
@@ -690,16 +688,15 @@ namespace llarp::handlers
 
     static constexpr auto success_msg = "SessionEndpoint successfully created and mapped InboundSession object!"sv;
 
-#ifndef LOKINET_LIBRARY_ONLY
     std::optional<std::variant<ipv4, ipv6>> SessionEndpoint::map_session(const session::BaseSession& s)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (_router.using_tun_if())
+        if (const auto& tun = _router.tun_endpoint())
         {
             log::trace(logcat, "{} Instructing lokinet TUN device to create mapped route...", success_msg);
 
-            if (auto maybe_ipv4 = _router.tun_endpoint().map_session_to_local_ip(s.remote()))
+            if (auto maybe_ipv4 = tun->map_session_to_local_ip(s.remote()))
             {
                 log::info(
                     logcat,
@@ -719,7 +716,6 @@ namespace llarp::handlers
 
         return std::nullopt;
     }
-#endif
 
     std::optional<session_tag> SessionEndpoint::prefigure_session(
         NetworkAddress initiator,
@@ -749,11 +745,9 @@ namespace llarp::handlers
 
         assert(s and s->is_active());
 
-#ifndef LOKINET_LIBRARY_ONLY
         // TODO: remove ifdef (and change this) once we allow inbound sessions for liblokinet clients
         if (auto maybe_ip = map_session(*s))
             return tag;
-#endif
 
         return std::nullopt;
     }
@@ -874,7 +868,7 @@ namespace llarp::handlers
             path->pivot().txid(),
             pivot_txid,
             fetch_auth_token(remote),
-            _router.using_tun_if());
+            !_router.embedded());
         log::trace(logcat, "inner payload: {}", buffer_printer{inner_payload});
 
         auto intermediate_payload = PATH::CONTROL::serialize_aligned(as_bspan(inner_payload), pivot_txid);
@@ -975,7 +969,7 @@ namespace llarp::handlers
     {
         auto pivot_txid = path->pivot().txid();
         std::string payload = InitiateSession::serialize(
-            _router.local_rid(), pivot_txid, pivot_txid, fetch_auth_token(remote), _router.using_tun_if());
+            _router.local_rid(), pivot_txid, pivot_txid, fetch_auth_token(remote), !_router.embedded());
 
         log::trace(logcat, "payload: {}", buffer_printer{payload});
 
@@ -1154,7 +1148,6 @@ namespace llarp::handlers
         });
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
     void SessionEndpoint::map_remote_to_local_addr(NetworkAddress remote, quic::Address local)
     {
         _address_map.insert_or_assign(std::move(local), std::move(remote));
@@ -1163,7 +1156,6 @@ namespace llarp::handlers
     void SessionEndpoint::unmap_local_addr_by_remote(const NetworkAddress& remote) { _address_map.unmap(remote); }
 
     void SessionEndpoint::unmap_remote_by_name(const std::string& name) { _address_map.unmap(name); }
-#endif
 
     bool SessionEndpoint::have_pending_session(const NetworkAddress& remote)
     {

@@ -74,7 +74,7 @@ namespace llarp::rpc
         get_values(input, "exit_addresses", swapexits.request.exit_addresses, "token", swapexits.request.token);
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
+#if 0
     void parse_request(DNSQuery& dnsquery, rpc_input input)
     {
         get_values(

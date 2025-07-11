@@ -1,4 +1,4 @@
-#include "auth.hpp"
+#include "session.hpp"
 
 #include <llarp/router/router.hpp>
 

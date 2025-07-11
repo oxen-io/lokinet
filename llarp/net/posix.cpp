@@ -56,29 +56,6 @@ namespace llarp::net
         }
 
       public:
-        std::string loopback_interface_name() const override
-        {
-            std::string ifname;
-
-            for_each_interface([&ifname](const ifaddrs& i) {
-                if (i.ifa_addr and i.ifa_addr->sa_family == AF_INET)
-                {
-                    const quic::Address addr{i.ifa_addr};
-                    if (addr.is_loopback())
-                    {
-                        ifname = i.ifa_name;
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            if (ifname.empty())
-                throw std::runtime_error{"we have no ipv4 loopback interface for some ungodly reason"};
-
-            return ifname;
-        }
-
         std::optional<quic::Address> get_best_public_address(bool ipv4, uint16_t port) const override
         {
             std::optional<quic::Address> found;

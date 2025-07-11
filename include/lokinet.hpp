@@ -63,7 +63,7 @@ namespace lokinet
 
       public:
         // Starts an embedded lokinet that loads the given string contents as a config file.
-        explicit Lokinet(std::string_view config, std::shared_ptr<oxen::quic::Loop> existing_loop = nullptr);
+        explicit Lokinet(std::string config, std::shared_ptr<oxen::quic::Loop> existing_loop = nullptr);
 
         // Starts an embedded lokinet instance with extra configuration specified in the given
         // config file.  (Templatized to avoid ambiguous implicit conversion from std::string

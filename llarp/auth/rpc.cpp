@@ -1,6 +1,8 @@
-#include "auth.hpp"
+#include "rpc.hpp"
 
 #include <llarp/router/router.hpp>
+
+#include <oxenmq/oxenmq.h>
 
 namespace llarp::auth
 {
@@ -19,12 +21,14 @@ namespace llarp::auth
                 "RPC AuthPolicy must be initialized with an endpoint to query and a method to invoke!"};
     }
 
+    RPCAuthPolicy::~RPCAuthPolicy() = default;
+
     void RPCAuthPolicy::start()
     {
         _omq.connect_remote(
             _endpoint,
             [this](oxenmq::ConnectionID c) {
-                _omq_conn = std::move(c);
+                _omq_conn = std::make_unique<oxenmq::ConnectionID>(std::move(c));
                 log::info(logcat, "OMQ connected to endpoint auth server");
             },
             [this](oxenmq::ConnectionID, std::string_view fail) {

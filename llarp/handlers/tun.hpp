@@ -1,5 +1,7 @@
 #pragma once
 
+#include "tun_base.hpp"
+
 #include <llarp/address/map.hpp>
 #include <llarp/dns/server.hpp>
 #include <llarp/ev/types.hpp>
@@ -13,8 +15,9 @@ namespace llarp::handlers
     inline constexpr auto TUN = "tun"sv;
     inline constexpr auto LOKI_RESOLVER = "lokinet"sv;
 
-    struct TunEndpoint : public dns::Resolver_Base, public std::enable_shared_from_this<TunEndpoint>
+    class TunEndpoint : public TunEPBase, public dns::Resolver_Base, public std::enable_shared_from_this<TunEndpoint>
     {
+      public:
         TunEndpoint(Router& r);
         ~TunEndpoint() override;
 
@@ -112,7 +115,7 @@ namespace llarp::handlers
         void rewrite_and_send_packet(IPPacket&& pkt, const ipv6& src, const ipv6& dest);
 
         // TESTNET: TODO: new inbound packet handling logic
-        void handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote);
+        void handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote) override;
 
         // Handles an inbound packet coming IN from the network
         // bool handle_inbound_packet(IPPacket pkt, NetworkAddress remote, bool is_exit_session, bool
@@ -120,11 +123,11 @@ namespace llarp::handlers
 
         // Upon session creation, SessionHandler will instruct TunEndpoint to requisition a private IP through which to
         // route session traffic
-        std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote);
+        std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote) override;
         // TODO:
         // std::optional<ipv6> map_session_to_local_ipv6(const NetworkAddress& remote);
 
-        void unmap_session_to_local_ip(const NetworkAddress& remote);
+        void unmap_session_to_local_ip(const NetworkAddress& remote) override;
 
         bool has_if_addr() const { return true; }
 

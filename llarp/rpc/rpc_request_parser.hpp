@@ -7,8 +7,6 @@
 #include <oxenmq/address.h>
 #include <oxenmq/oxenmq.h>
 
-#include <string_view>
-
 namespace llarp::rpc
 {
     using rpc_input = std::variant<std::monostate, nlohmann::json, oxenc::bt_dict_consumer>;
@@ -25,9 +23,7 @@ namespace llarp::rpc
     void parse_request(MapExit& mapexit, rpc_input input);
     void parse_request(UnmapExit& unmapexit, rpc_input input);
     void parse_request(SwapExits& swapexits, rpc_input input);
-#ifndef LOKINET_LIBRARY_ONLY
-    void parse_request(DNSQuery& dnsquery, rpc_input input);
-#endif
+    // void parse_request(DNSQuery& dnsquery, rpc_input input);
     void parse_request(Config& config, rpc_input input);
 
 }  // namespace llarp::rpc

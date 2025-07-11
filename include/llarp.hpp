@@ -29,7 +29,7 @@ namespace llarp
     {
         std::unique_ptr<Router> router;
 
-        Context();
+        explicit Context(bool embedded);
         ~Context();
 
         // Starts Lokinet; returns as soon as Lokinet is up and running (or throws if startup
@@ -62,6 +62,7 @@ namespace llarp
         int androidFD = -1;
 
       private:
+        bool embedded;
         std::future<void> lifetime_waiter;
     };
 }  // namespace llarp

@@ -39,8 +39,9 @@ namespace llarp
         inline constexpr auto PING_INTERVAL{30s};
 
         /// The RPCClient uses oxen-mq to talk to make API requests to OMQ endpoints
-        struct RPCClient
+        class RPCClient
         {
+          public:
             RPCClient(oxenmq::OxenMQ& omq, Router& r);
 
             /// Connect to lokid async

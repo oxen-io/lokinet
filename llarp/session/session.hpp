@@ -66,8 +66,6 @@ namespace llarp
             std::shared_ptr<session_path_interface> _current_path;
             HopID _pivot_txid;
 
-            recv_session_dgram_cb _recv_dgram;
-
             // manually routed QUIC endpoint
             std::shared_ptr<quic::Endpoint> _ep;
 

@@ -1,15 +1,11 @@
 #pragma once
 
-#include "types.hpp"
-
 #include <llarp/address/address.hpp>
 #include <llarp/contact/router_id.hpp>
 #include <llarp/contact/tag.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/thread/threading.hpp>
-
-#include <oxenmq/oxenmq.h>
 
 #include <functional>
 #include <optional>
@@ -19,95 +15,70 @@
 namespace llarp
 {
     class Router;
-
-    namespace auth
+}
+namespace llarp::auth
+{
+    /// authentication status code
+    enum class AuthCode : uint64_t
     {
-        struct AuthPolicy
-        {
-          protected:
-            Router& _router;
+        /// explicitly accepted
+        ACCEPTED = 0,
+        /// explicitly rejected
+        REJECTED = 1,
+        /// attempt failed
+        FAILED = 2,
+        /// attempt rate limited
+        RATE_LIMIT = 3,
+        /// need mo munny
+        PAYMENT_REQUIRED = 4
+    };
 
-          public:
-            AuthPolicy(Router& r) : _router{r} {}
+    /// auth result object with code and reason
+    struct AuthResult
+    {
+        AuthCode code;
+        std::string reason;
+    };
 
-            virtual ~AuthPolicy() = default;
+    /// info needed by clients in order to authenticate to a remote endpoint
+    struct AuthInfo
+    {
+        std::string token;
+    };
 
-            const Router& router() const { return _router; }
+    /// what kind of backend to use for auth
+    enum class AuthType
+    {
+        /// no authentication
+        NONE,
+        /// manual whitelist
+        WHITELIST,
+        /// OMQ server
+        OMQ,
+        /// static file
+        FILE,
+    };
 
-            Router& router() { return _router; }
-        };
+    struct AuthPolicy
+    {
+      protected:
+        Router& _router;
 
-        struct SessionAuthPolicy final : public AuthPolicy
-        {
-          private:
-            const bool _is_snode_service{false};
-            const bool _is_exit_service{false};
+      public:
+        AuthPolicy(Router& r) : _router{r} {}
 
-            Ed25519SecretKey _session_key;
-            NetworkAddress _remote;
+        virtual ~AuthPolicy() = default;
 
-          public:
-            SessionAuthPolicy(Router& r, RouterID& remote, bool is_snode, bool is_exit = false);
+        const Router& router() const { return _router; }
 
-            bool load_identity_from_file(const char* fname);
+        Router& router() { return _router; }
+    };
 
-            std::optional<std::string_view> fetch_auth_token();
+    /// maybe get auth result from string
+    std::optional<AuthCode> parse_code(std::string_view data);
 
-            const Ed25519SecretKey& session_key() const { return _session_key; }
+    /// get an auth type from a string
+    /// throws std::invalid_argument if arg is invalid
+    AuthType parse_type(std::string_view data);
 
-            bool is_snode_service() const { return _is_snode_service; }
-
-            bool is_exit_service() const { return _is_exit_service; }
-        };
-
-        struct FileAuthPolicy final : public AuthPolicy
-        {
-            FileAuthPolicy(Router& r, std::vector<fs::path> files, AuthFileType filetype)
-                : AuthPolicy{r}, _files{std::move(files)}, _type{filetype}
-            {}
-
-          private:
-            const std::vector<fs::path> _files;
-            const AuthFileType _type;
-            mutable util::Mutex _m;
-            std::unordered_set<session_tag> _pending;
-            /// returns an auth result for a auth info challange, opens every file until it finds a
-            /// token matching it this is expected to be done in the IO thread
-            AuthResult check_files(const AuthInfo& info) const;
-
-            bool check_passwd(std::string hash, std::string challenge) const;
-        };
-
-        struct RPCAuthPolicy final : public AuthPolicy
-        {
-            explicit RPCAuthPolicy(Router& r, std::string url, std::string method, oxenmq::OxenMQ& omq);
-
-            ~RPCAuthPolicy() override = default;
-
-            void start();
-
-          private:
-            const std::string _endpoint;
-            const std::string _method;
-            // const std::unordered_set<NetworkAddress> _whitelist;
-            // const std::unordered_set<std::string> _static_tokens;
-
-            oxenmq::OxenMQ& _omq;
-            std::optional<oxenmq::ConnectionID> _omq_conn;
-            std::unordered_set<session_tag> _pending_sessions;
-        };
-
-        /// maybe get auth result from string
-        std::optional<AuthCode> parse_code(std::string_view data);
-
-        /// get an auth type from a string
-        /// throws std::invalid_argument if arg is invalid
-        AuthType parse_type(std::string_view data);
-
-        /// get an auth file type from a string
-        /// throws std::invalid_argument if arg is invalid
-        AuthFileType parse_file_type(std::string_view data);
-
-    }  // namespace auth
-
-}  // namespace llarp
+}  // namespace llarp::auth

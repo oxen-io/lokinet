@@ -1,5 +1,6 @@
 #pragma once
 
+#include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
@@ -7,44 +8,39 @@
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/key_manager.hpp>
 #include <llarp/handlers/session.hpp>
+#include <llarp/handlers/tun_base.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/rpc/rpc_client.hpp>
-#include <llarp/rpc/rpc_server.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
-
-#ifndef LOKINET_LIBRARY_ONLY
-#include "route_poker.hpp"
-
-#include <llarp/handlers/tun.hpp>
 #include <llarp/vpn/platform.hpp>
-#endif
 
 #include <oxen/quic/loop.hpp>
-#include <oxenmq/address.h>
 
 #include <functional>
 #include <memory>
 #include <vector>
 
+namespace oxenmq
+{
+    class OxenMQ;
+}
+
 namespace llarp
 {
-
-#ifdef LOKINET_LIBRARY_ONLY
-    // dummy vpn platform for library-only
-    namespace vpn
-    {
-        struct Platform {};
-    }  // namespace vpn
-#endif
 
     namespace link
     {
         struct Connection;
     }  // namespace link
+
+    namespace rpc
+    {
+        class RPCServer;
+        class RPCClient;
+    }  // namespace rpc
 
     namespace quic = oxen::quic;
 
@@ -79,7 +75,7 @@ namespace llarp
     class ContactDB;
     class NodeDB;
 
-    class Router : std::enable_shared_from_this<Router>
+    class Router
     {
       public:
         // Starts Lokinet immediately upon construction.
@@ -105,7 +101,7 @@ namespace llarp
 
         // our router contact
         LocalRC relay_contact;
-        std::unique_ptr<oxenmq::OxenMQ> _omq{};
+        std::shared_ptr<oxenmq::OxenMQ> _omq{};
         path::BuildLimiter _pathbuild_limiter;
 
         std::atomic<bool> _is_stopping{false};
@@ -127,13 +123,10 @@ namespace llarp
 
         std::unique_ptr<LinkManager> _link_manager;
 
-#ifndef LOKINET_LIBRARY_ONLY
-        // Only created in full client and relay instances (not embedded clients)
-        std::shared_ptr<handlers::TunEndpoint> _tun;
-
+        // These are only created in full platform mode (not embedded clients)
+        std::shared_ptr<handlers::TunEPBase> _tun;
         std::shared_ptr<vpn::Platform> _vpn;
-        std::unique_ptr<RoutePoker> _route_poker;
-#endif
+        std::shared_ptr<RoutePoker> _route_poker;
 
         std::promise<void> _close_promise;
 
@@ -141,12 +134,13 @@ namespace llarp
         std::unique_ptr<NodeDB> _node_db;
 
         std::shared_ptr<quic::Ticker> _loop_ticker;
-#ifndef LOKINET_LIBRARY_ONLY
-        std::shared_ptr<quic::Ticker> _systemd_ticker;
-        std::shared_ptr<quic::Ticker> _reachability_ticker;
-#endif
 
-        const oxenmq::TaggedThreadID _disk_thread;
+        // Might not be set/used, depending on the platform:
+        std::shared_ptr<quic::Ticker> _service_stat_ticker;
+        std::shared_ptr<quic::Ticker> _reachability_ticker;
+
+        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
+        quic::Loop _disk_loop;
 
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
@@ -154,12 +148,13 @@ namespace llarp
 
         std::chrono::milliseconds _last_path_ping{0s};
 
-        std::unique_ptr<rpc::RPCServer> _rpc_server;
+        // These aren't actually shared, but we unique_ptr requires destructor visibility, which
+        // embedded-only clients won't have as they don't compile any RPC code.
+        std::shared_ptr<rpc::RPCServer> _rpc_server;
+        std::shared_ptr<rpc::RPCClient> _rpc_client;
 
-        std::unique_ptr<rpc::RPCClient> _rpc_client;
         bool whitelist_received{false};
 
-        oxenmq::address rpc_addr;
         Profiling _router_profiling;
 
         int min_client_outbounds{};
@@ -183,9 +178,7 @@ namespace llarp
 
         std::chrono::milliseconds _gossip_interval;
 
-#ifndef LOKINET_LIBRARY_ONLY
         void _relay_tick(std::chrono::milliseconds now);
-#endif
 
         void _client_tick(std::chrono::milliseconds now);
 
@@ -199,21 +192,18 @@ namespace llarp
 
         bool is_fully_meshed() const;
 
-        bool using_tun_if() const;
-
         int client_outbounds_needed() const { return min_client_outbounds; }
 
         std::unordered_set<RouterID> get_current_remotes() const;
 
         void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
 
-#ifndef LOKINET_LIBRARY_ONLY
-        handlers::TunEndpoint& tun_endpoint() { return *_tun; }
+        const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 
-        const llarp::net::Platform& net() const;
+        // Returns the net Platform pointer, or nullptr if this is an embedded client.
+        const llarp::net::Platform* net() const;
 
-        vpn::Platform* vpn_platform() const { return _vpn.get(); }
-#endif
+        const std::shared_ptr<vpn::Platform>& vpn_platform() const { return _vpn; }
 
         handlers::SessionEndpoint& session_endpoint() { return *_session_endpoint; }
         const handlers::SessionEndpoint& session_endpoint() const { return *_session_endpoint; }
@@ -247,12 +237,14 @@ namespace llarp
 
         NetID netid() const { return _config.router.net_id; }
 
+        bool embedded() const { return _config.embedded(); }
+
         path::BuildLimiter& pathbuild_limiter() { return _pathbuild_limiter; }
 
-        oxenmq::OxenMQ& omq() { return *_omq; }
-        const oxenmq::OxenMQ& omq() const { return *_omq; }
+        oxenmq::OxenMQ* omq() { return _omq.get(); }
+        const oxenmq::OxenMQ* omq() const { return _omq.get(); }
 
-        const std::unique_ptr<rpc::RPCClient>& rpc_client() const { return _rpc_client; }
+        const std::shared_ptr<rpc::RPCClient>& rpc_client() const { return _rpc_client; }
 
         const Ed25519SecretKey& identity() const { return key_manager.identity_key; }
 
@@ -276,7 +268,6 @@ namespace llarp
 
         nlohmann::json ExtractSummaryStatus() const;
 
-        void queue_work(std::function<void()> func);
         void queue_disk_io(std::function<void()> func);
 
         const std::unordered_set<RouterID>& get_whitelist() const;

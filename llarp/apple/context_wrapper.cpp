@@ -49,7 +49,7 @@ void* llarp_apple_init(llarp_apple_config* appleconf)
         auto config = std::make_shared<llarp::Config>(config_dir);
         fs::path config_path = config_dir / "lokinet.ini";
         if (!fs::exists(config_path))
-            llarp::ensure_config(config_dir, config_path, /*overwrite=*/false, /*asRouter=*/false);
+            llarp::ensure_config(config_dir, config_path, false, llarp::config::Type::FullClient);
         config->load(config_path);
 
         // If no range is specified then go look for a free one, set that in the config, and then

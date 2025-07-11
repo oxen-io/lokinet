@@ -6,6 +6,7 @@
 #include <llarp/address/address.hpp>
 #include <llarp/address/ip_range.hpp>
 #include <llarp/auth/auth.hpp>
+#include <llarp/auth/file.hpp>
 #include <llarp/bootstrap.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/contact/relay_contact.hpp>
@@ -16,10 +17,9 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 
-#include <oxenmq/address.h>
-
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -30,8 +30,9 @@ namespace llarp
     using SectionValues = llarp::ConfigParser::SectionValues;
     using ConfigMap = llarp::ConfigParser::ConfigMap;
 
-    inline constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
-    inline const quic::Address DEFAULT_CLIENT_LISTEN_ADDR{"0.0.0.0", DEFAULT_LISTEN_PORT};
+    inline constexpr uint16_t DEFAULT_CLIENT_PORT{1091};
+    inline constexpr uint16_t DEFAULT_RELAY_PORT{1090};
+    inline const quic::Address DEFAULT_CLIENT_ADDR{"0.0.0.0", DEFAULT_CLIENT_PORT};
     inline constexpr uint16_t DEFAULT_DNS_PORT{53};
     inline constexpr int CLIENT_ROUTER_CONNECTIONS{4};
 
@@ -46,11 +47,11 @@ namespace llarp
         ConfigGenParameters(const ConfigGenParameters&) = delete;
         ConfigGenParameters(ConfigGenParameters&&) = delete;
 
-        bool is_relay = false;
+        config::Type type;
         fs::path default_data_dir;
 
         /// get network platform (virtual for unit test mocks)
-        virtual const llarp::net::Platform* net_ptr() const = 0;
+        virtual const llarp::net::Platform* net_ptr();
     };
 
     struct RouterConfig
@@ -129,7 +130,6 @@ namespace llarp
 
         bool enable_ipv6{false};
         bool is_reachable{false};
-        bool init_tun{true};
 
         std::set<RouterID> snode_blacklist;
 
@@ -214,17 +214,13 @@ namespace llarp
 
         std::optional<quic::Address> listen_addr;
 
-        bool only_user_port = false;
-        bool using_new_api = false;
-
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
-    // TODO: remove oxenmq from this header
     struct ApiConfig
     {
         bool enable_rpc_server = false;
-        std::vector<oxenmq::address> rpc_bind_addrs;
+        std::vector<std::string> rpc_bind_addrs;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
@@ -232,7 +228,7 @@ namespace llarp
     struct LokidConfig
     {
         fs::path id_keyfile;
-        oxenmq::address rpc_addr;
+        std::string rpc_addr;
         bool disable_testing = false;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -264,7 +260,17 @@ namespace llarp
 
     struct Config
     {
-        explicit Config(std::optional<fs::path> datadir = std::nullopt);
+        // Creates a config for the given lokinet instance type (relay, full client, or embedded
+        // client), loading configuration data from the given string, if given (all default config
+        // otherwise).  The default data directory (if not explicit set in the given config string)
+        // can optionally be provided.  If omitted (and not set in the string) it defaults to cwd.
+        Config(config::Type type, std::string config = "", fs::path default_data_dir = fs::current_path());
+
+        // Creates a config for the given lokinet instance type (relay, full client, or embedded
+        // client), loading configuration data from an existing file.  The default data directory
+        // (if not set in the config itself) will be the directory containing the given config file.
+        Config(config::Type type, fs::path config_file);
+
         Config(Config&&) = default;
         Config(const Config&) = default;
         Config& operator=(Config&&) = default;
@@ -295,16 +301,7 @@ namespace llarp
         /// @param conf is the config to modify
         void add_backcompat_opts(ConfigDefinition& conf);
 
-        // Load a config from the given file if the config file is not provided LoadDefault is
-        // called
-        bool load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
-
-        // Load a config from a string of ini, same effects as Config::Load
-        bool load_string(std::string_view ini, bool isRelay = false);
-
-        std::string generate_client_config_base();
-
-        std::string generate_router_config_base();
+        std::string generate_config_base();
 
         void save();
 
@@ -312,32 +309,23 @@ namespace llarp
 
         void add_default(std::string section, std::string key, std::string value);
 
-        /// create a config with the default parameters for an embedded lokinet
-        static Config make_embedded_config();
+        bool relay() const { return type == config::Type::Relay; }
+        bool embedded() const { return type == config::Type::EmbeddedClient; }
+        bool client() const { return !relay(); }
 
       private:
-        /// Load (initialize) a default config.
-        ///
-        /// This delegates to the ConfigDefinition to generate a default config,
-        /// as though an empty config were specified.
-        ///
-        /// If using Config without the intention of loading from file (or string), this is
-        /// necessary in order to obtain sane defaults.
-        ///
-        /// @param isRelay determines whether the config will reflect that of a relay or client
-        /// @param dataDir is a path representing a directory to be used as the data dir
-        /// @return true on success, false otherwise
-        bool load_default_config(bool isRelay);
-
-        bool load_config_data(std::string_view ini, std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+        void load_config_data(std::string ini, std::optional<fs::path> fname = std::nullopt);
 
         void load_overrides(ConfigDefinition& conf) const;
 
         std::vector<std::array<std::string, 3>> additional;
         ConfigParser parser;
-        fs::path data_dir;
+        fs::path data_dir{fs::current_path()};
+        config::Type type;
     };
 
-    void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
+    // Ensures that a conf file exists, writing a default one if not present.  Only for full
+    // clients/routers (i.e. not embedded clients).
+    void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, config::Type type);
 
 }  // namespace llarp

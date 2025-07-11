@@ -39,8 +39,7 @@ namespace llarp
             std::pair<std::string, uint16_t> result;
             auto &[host, port] = result;
 
-            if (auto p = addr.find_last_not_of(DIGITS);
-                p != std::string_view::npos && p + 2 <= addr.size() && addr[p] == ':')
+            if (auto p = addr.rfind(':'); p != std::string_view::npos)
             {
                 if (!parse_int(addr.substr(p + 1), port))
                     throw std::invalid_argument{"Invalid address: could not parse port"};
@@ -63,9 +62,9 @@ namespace llarp
                 had_sq_brackets = true;
             }
 
-            if (auto p = addr.find_first_not_of(PDIGITS); p != std::string_view::npos)
+            if (auto p = addr.find_first_not_of("0123456789."sv); p != std::string_view::npos)
             {
-                if (auto q = addr.find_first_not_of(ALDIGITS); q != std::string_view::npos)
+                if (auto q = addr.find_first_not_of("0123456789ABCDEFabcdef:."); q != std::string_view::npos)
                     throw std::invalid_argument{"Invalid address: does not look like IPv4 or IPv6!"};
                 if (!had_sq_brackets)
                     throw std::invalid_argument{"Invalid address: IPv6 addresses require [...] square brackets"};

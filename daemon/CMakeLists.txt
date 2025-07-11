@@ -1,7 +1,7 @@
 set(exetargets lokinet)
 
 add_library(lokinet_daemon STATIC utils.cpp)
-target_link_libraries(lokinet_daemon PUBLIC lokinet-base lokinet-core)
+target_link_libraries(lokinet_daemon PUBLIC liblokinet)
 
 if(APPLE)
   add_executable(lokinet lokinet.swift)

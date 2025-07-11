@@ -6,10 +6,8 @@
 #include <llarp/config/ini.hpp>
 #include <llarp/constants/version.hpp>
 #include <llarp/contact/client_contact.hpp>
-#ifndef LOKINET_LIBRARY_ONLY
 #include <llarp/dns/dns.hpp>
 #include <llarp/dns/server.hpp>
-#endif
 #include <llarp/messages/common.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/rpc/rpc_request_definitions.hpp>
@@ -32,7 +30,6 @@ namespace llarp::rpc
         log::info(logcat, "RPC Server received request for endpoint `{}`", req.name);
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
     // Fake packet source that serializes repsonses back into dns
     class DummyPacketSource final : public dns::PacketSource
     {
@@ -52,7 +49,6 @@ namespace llarp::rpc
         /// returns the sockaddr we are bound on if applicable
         std::optional<quic::Address> bound_on() const override { return std::nullopt; }
     };
-#endif
 
     bool check_path(std::string path)
     {
@@ -84,11 +80,10 @@ namespace llarp::rpc
         if (llarp::logRingBuffer)
             log_subs.emplace(_omq, llarp::logRingBuffer);
 
-        // copied logic loop as placeholder
         for (const auto& addr : _router.config().api.rpc_bind_addrs)
         {
-            _omq.listen_plain(addr.zmq_address());
-            log::debug(logcat, "Bound RPC server to {}", addr.full_address());
+            _omq.listen_plain(addr);
+            log::debug(logcat, "Bound RPC server to {}", addr);
         }
 
         AddCategories();
@@ -651,7 +646,7 @@ namespace llarp::rpc
         //     });
     }
 
-#ifndef LOKINET_LIBRARY_ONLY
+#if 0
     void RPCServer::invoke(DNSQuery& dnsquery)
     {
         log_print_rpc(dnsquery);
@@ -738,12 +733,9 @@ namespace llarp::rpc
                     fs::create_directory(conf_d);
 
                 auto parser = ConfigParser();
-
-                if (parser.load_new_from_str(config.request.ini))
-                {
-                    parser.set_filename(conf_d / (config.request.filename));
-                    parser.save_new();
-                }
+                parser.load_new_from_str(config.request.ini);
+                parser.set_filename(conf_d / (config.request.filename));
+                parser.save_new();
             }
             catch (std::exception& e)
             {

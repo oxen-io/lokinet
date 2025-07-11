@@ -12,35 +12,23 @@ namespace llarp
 {
     static auto logcat = log::Cat("config.ini");
 
-    bool ConfigParser::load_file(const fs::path& fname)
+    void ConfigParser::load_file(const fs::path& fname)
     {
-        try
-        {
-            _data = util::file_to_string(fname);
-        }
-        catch (const std::exception& e)
-        {
-            return false;
-        }
-        if (_data.empty())
-            return false;
-
+        _data = util::file_to_string(fname);
         _filename = fname;
-        return parse();
+        parse();
     }
 
-    bool ConfigParser::load_new_from_str(std::string_view str)
+    void ConfigParser::load_new_from_str(std::string str)
     {
-        _data.resize(str.size());
-        std::copy(str.begin(), str.end(), _data.begin());
-        return parse_all();
+        _data = str;
+        parse_all();
     }
 
-    bool ConfigParser::load_from_str(std::string_view str)
+    void ConfigParser::load_from_str(std::string str)
     {
-        _data.resize(str.size());
-        std::copy(str.begin(), str.end(), _data.begin());
-        return parse();
+        _data = str;
+        parse();
     }
 
     void ConfigParser::clear()
@@ -52,10 +40,10 @@ namespace llarp
 
     static bool whitespace(char ch) { return std::isspace(static_cast<unsigned char>(ch)) != 0; }
 
-    /// Differs from Parse() as ParseAll() does NOT skip comments
-    /// ParseAll() is only used by RPC endpoint 'config' for
+    /// Differs from parse() as parse_all() does NOT skip comments
+    /// parse_all() is only used by RPC endpoint 'config' for
     /// reading new .ini files from string and writing them
-    bool ConfigParser::parse_all()
+    void ConfigParser::parse_all()
     {
         std::list<std::string_view> lines;
         {
@@ -119,10 +107,9 @@ namespace llarp
                 throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
             }
         }
-        return true;
     }
 
-    bool ConfigParser::parse()
+    void ConfigParser::parse()
     {
         std::list<std::string_view> lines;
         {
@@ -186,7 +173,6 @@ namespace llarp
                 throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
             }
         }
-        return true;
     }
 
     void ConfigParser::iter_all_sections(std::function<void(std::string_view, const SectionValues&)> visit)
@@ -234,17 +220,11 @@ namespace llarp
     void ConfigParser::save_new() const
     {
         if (not _overrides.empty())
-        {
             throw std::invalid_argument("Override specified when attempting new .ini save");
-        }
         if (_config.empty())
-        {
             throw std::invalid_argument("New config not loaded when attempting new .ini save");
-        }
         if (_filename.empty())
-        {
             throw std::invalid_argument("New config cannot be saved with filepath specified");
-        }
 
         std::ofstream ofs(_filename);
         for (const auto& [section, values] : _config)

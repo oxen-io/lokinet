@@ -221,6 +221,7 @@ namespace llarp::rpc
         } request;
     };
 
+#if 0
     //  RPC: dns_query
     //    Attempts to query endpoint by domain name
     //
@@ -231,7 +232,6 @@ namespace llarp::rpc
     //
     //  Returns:
     //
-#ifndef LOKINET_LIBRARY_ONLY
     struct DNSQuery : Immediate
     {
         static constexpr auto name = "dns_query"sv;
@@ -337,9 +337,7 @@ namespace llarp::rpc
         ListExits,
         SwapExits,
         UnmapExit,
-#ifndef LOKINET_LIBRARY_ONLY
-        DNSQuery,
-#endif
+        // DNSQuery,
         Config>;
 
 }  // namespace llarp::rpc

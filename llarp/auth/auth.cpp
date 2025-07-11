@@ -1,8 +1,9 @@
 #include "auth.hpp"
 
+#include <oxenmq/oxenmq.h>
+
 namespace llarp::auth
 {
-
     static const std::unordered_map<std::string_view, AuthCode> codes = {
         {"OKAY"sv, AuthCode::ACCEPTED},
         {"REJECT"sv, AuthCode::REJECTED},
@@ -32,24 +33,4 @@ namespace llarp::auth
         throw std::invalid_argument("no such auth type: {}"_format(data));
     }
 
-    static const std::unordered_map<std::string_view, AuthFileType> file_types = {
-        {"plain"sv, AuthFileType::PLAIN},
-        {"plaintext"sv, AuthFileType::PLAIN},
-        {"hashed"sv, AuthFileType::HASHES},
-        {"hashes"sv, AuthFileType::HASHES},
-        {"hash"sv, AuthFileType::HASHES}};
-
-    /// get an auth file type from a string
-    /// throws std::invalid_argument if arg is invalid
-    AuthFileType parse_file_type(std::string_view data)
-    {
-        const auto itr = file_types.find(data);
-        if (itr == file_types.end())
-            throw std::invalid_argument{"no such auth file type: {}"_format(data)};
-#ifndef HAVE_CRYPT
-        if (itr->second == AuthFileType::HASHES)
-            throw std::invalid_argument{"unsupported auth file type: {}"_format(data)};
-#endif
-        return itr->second;
-    }
 }  // namespace llarp::auth

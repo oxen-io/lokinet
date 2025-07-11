@@ -130,12 +130,6 @@ namespace llarp::net
             return IPRange::find_private_range(currentRanges);
         }
 
-        std::string loopback_interface_name() const override
-        {
-            // todo: implement me? does windows even have a loopback?
-            return "";
-        }
-
         bool has_interface_address(ip ip) const override { return get_interface_index(ip) != std::nullopt; }
     };
 
