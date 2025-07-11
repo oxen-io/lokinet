@@ -541,6 +541,9 @@ namespace llarp
   static constexpr std::array obsolete_bootstraps = {
       "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
       "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
+      "1f000f09a7b07828dcb72af7cd16857050c10c02bd58afb0e38111fb6cda1fef"sv,
+      "1f200f483f5df9f5fc9909ae0e6146869f9d5b81b75ccba1b39bbaab9d0d88d4"sv,
+      "1f500f17d77c1972d08a0afbc35b558b2c39276258ad67204a27373e7d6a0ecd"sv,
   };
 
   bool
