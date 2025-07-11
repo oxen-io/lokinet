@@ -435,7 +435,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                     './contrib/ci/drone-check-static-libs.sh',
                     'UPLOAD_OS=linux-armhf ./contrib/ci/drone-static-upload.sh',
                   ],
-                  allow_fail=true,  // XXX FIXME: build currently fails!
                   jobs=4),
 
   // Ubuntu

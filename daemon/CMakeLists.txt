@@ -14,12 +14,6 @@ add_executable(lokinet-cntrl lokinet-cntrl.cpp)
 enable_lto(lokinet lokinet-cntrl)
 list(APPEND exetargets lokinet-cntrl)
 
-if(LOKINET_BOOTSTRAP)
-  add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
-  list(APPEND exetargets lokinet-bootstrap)
-  enable_lto(lokinet-bootstrap)
-endif()
-
 
 set(should_install ON)
 set(SETCAP)
@@ -34,15 +28,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
       message(WARNING "cannot find setcap binary you will not be able use the install targets unless you use -DWITH_SETCAP=OFF")
       set(should_install OFF)
     endif()
-  endif()
-endif()
-
-if(LOKINET_BOOTSTRAP)
-  target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
-  if(NOT WIN32)
-    find_package(OpenSSL REQUIRED)
-    # because debian sid's curl doesn't link against openssl for some godawful cursed reason
-    target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::SSL OpenSSL::Crypto)
   endif()
 endif()
 

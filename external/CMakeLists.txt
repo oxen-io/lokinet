@@ -25,7 +25,6 @@ if(SUBMODULE_CHECK)
 
     message(STATUS "Checking submodules")
     check_submodule(CLI11)
-    check_submodule(cpr)
     check_submodule(nlohmann)
     check_submodule(oxen-libquic)
     check_submodule(oxen-mq)
@@ -91,72 +90,6 @@ endif()
 
 set(LIBQUIC_BUILD_TESTS OFF CACHE BOOL "")
 system_or_submodule(OXENQUIC quic liboxenquic>=1.4.1 oxen-libquic)
-
-
-# cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires
-# 3.15+, and we target lower than that (and this is fairly simple to build).
-if(LOKINET_BOOTSTRAP)
-  if(NOT BUILD_STATIC_DEPS)
-    find_package(CURL "7.71.0" COMPONENTS HTTP HTTPS SSL)
-
-    if(CURL_FOUND)
-      if(NOT (CURL_VERSION_STRING VERSION_GREATER_EQUAL "7.71.0"))
-        message(STATUS "System curl version (${CURL_VERSION_STRING}) is too old; using submodule...")
-        set(USE_CURL_SUBMODULE TRUE)
-      else()
-        set(USE_CURL_SUBMODULE FALSE)
-      endif()
-    else()
-      message(STATUS "Could not find system curl; using submodule...")
-      set(USE_CURL_SUBMODULE TRUE)
-    endif()
-
-    if(USE_CURL_SUBMODULE)
-
-      SET(CURL_ZLIB OFF CACHE STRING "" FORCE)
-      set(HTTP_ONLY ON CACHE INTERNAL "" FORCE)
-      set(BUILD_CURL_EXE OFF CACHE INTERNAL "" FORCE)
-      set(BUILD_TESTING OFF)
-      set(CURL_ENABLE_SSL OFF CACHE INTERNAL "" FORCE)
-      set(CURL_CA_PATH "none" CACHE INTERNAL "" FORCE)
-      set(CURL_USE_SCHANNEL OFF CACHE INTERNAL "" FORCE)
-      set(CURL_WINDOWS_SSPI OFF CACHE INTERNAL "" FORCE)
-      set(CURL_USE_OPENSSL OFF CACHE INTERNAL "" FORCE)
-      set(CURL_USE_SECTRANSP OFF CACHE INTERNAL "" FORCE)
-      set(CURL_USE_MBEDTLS OFF CACHE INTERNAL "" FORCE)
-      
-      FetchContent_Declare(curl
-                           URL                    https://github.com/curl/curl/releases/download/curl-8_4_0/curl-8.4.0.tar.xz
-                           URL_HASH               SHA256=16c62a9c4af0f703d28bda6d7bbf37ba47055ad3414d70dec63e2e6336f2a82d # the file hash for curl-8.4.0.tar.xz
-                           USES_TERMINAL_DOWNLOAD TRUE)   # <---- This is needed only for Ninja to show download progress
-      FetchContent_MakeAvailable(curl)
-
-    endif()
-  endif()
-
-  file(GLOB cpr_sources ${conf_depends} cpr/cpr/*.cpp)
-
-  add_library(cpr STATIC EXCLUDE_FROM_ALL ${cpr_sources})
-  target_link_libraries(cpr PUBLIC CURL::libcurl)
-  target_include_directories(cpr PUBLIC cpr/include)
-  target_compile_definitions(cpr PUBLIC CPR_CURL_NOSIGNAL)
-  add_library(cpr::cpr ALIAS cpr)
-
-  file(READ cpr/CMakeLists.txt cpr_cmake_head LIMIT 1000)
-  if(cpr_cmake_head MATCHES "project\\(cpr VERSION ([0-9]+)\.([0-9]+)\.([0-9]+) LANGUAGES CXX\\)")
-    set(cpr_VERSION_MAJOR ${CMAKE_MATCH_1})
-    set(cpr_VERSION_MINOR ${CMAKE_MATCH_2})
-    set(cpr_VERSION_PATCH ${CMAKE_MATCH_3})
-    set(cpr_VERSION "${cpr_VERSION_MAJOR}.${cpr_VERSION_MINOR}.${cpr_VERSION_PATCH}")
-    set(cpr_VERSION_NUM "(${cpr_VERSION_MAJOR} * 0x10000 + ${cpr_VERSION_MINOR} * 0x100 + ${cpr_VERSION_PATCH})")
-
-    configure_file(cpr/cmake/cprver.h.in "${CMAKE_CURRENT_BINARY_DIR}/cpr_generated_includes/cpr/cprver.h")
-    target_include_directories(cpr PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/cpr_generated_includes")
-  else()
-    message(FATAL_ERROR "Could not identify cpr submodule version!")
-  endif()
-
-endif()
 
 
 # libcrypt defaults, only on with macos and non static linux

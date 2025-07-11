@@ -58,12 +58,6 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-set(DEFAULT_LOKINET_BOOTSTRAP ON)
-if(APPLE)
-  set(DEFAULT_LOKINET_BOOTSTRAP OFF)
-endif()
-
-
 # Core options
 option(LOKINET_AVX2 "enable avx2 code" OFF)
 option(LOKINET_NATIVE_BUILD "optimise for host system and FPU" ON)
@@ -74,7 +68,6 @@ option(LOKINET_WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for de
 option(LOKINET_TESTS "build unit tests" OFF)
 option(LOKINET_HIVE "build simulation stubs" OFF)
 option(LOKINET_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
-option(LOKINET_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_LOKINET_BOOTSTRAP})
 option(LOKINET_PEERSTATS "build with experimental peerstats db support" OFF)
 option(LOKINET_STRIP "strip off all debug symbols into an external archive for all executables built" OFF)
 

@@ -14,9 +14,6 @@
 [submodule "external/oxen-mq"]
 	path = external/oxen-mq
 	url = https://github.com/oxen-io/oxen-mq
-[submodule "external/cpr"]
-	path = external/cpr
-	url = https://github.com/whoshuu/cpr
 [submodule "gui"]
 	path = gui
 	url = https://github.com/oxen-io/lokinet-gui.git
