@@ -36,7 +36,6 @@ namespace llarp::auth
 #ifdef LOKINET_HAVE_CRYPT
                 return crypto::check_passwd_hash(std::move(hash), std::move(challenge));
 #else
-#error
                 return false;
 #endif
         }
