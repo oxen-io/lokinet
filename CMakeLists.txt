@@ -337,6 +337,9 @@ if(APPLE AND LOKINET_FULL)
   macos_target_setup()
 endif()
 
+add_executable(liblokinet_jank_test EXCLUDE_FROM_ALL contrib/liblokinet_jank_test.cpp)
+target_link_libraries(liblokinet_jank_test PRIVATE liblokinet)
+
 # uninstall target
 if(NOT TARGET uninstall)
   configure_file(
