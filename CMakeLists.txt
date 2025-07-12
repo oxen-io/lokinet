@@ -11,9 +11,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
-set(lokinet_daemon_def ON)
-if(ANDROID OR IOS)
-  set(lokinet_daemon_def OFF)
+set(lokinet_full_def ON)
+if(IOS)
+  set(lokinet_full_def OFF)
 endif()
 
 # These two are not exclusive: daemon requires full platform, but the main lokinet library itself
