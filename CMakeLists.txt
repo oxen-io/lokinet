@@ -256,11 +256,11 @@ if (NOT BUILD_STATIC_DEPS)
   pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
   add_library(libunbound INTERFACE)
   target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
-endif()
 
-pkg_check_modules(SD libsystemd IMPORTED_TARGET)
-# Default WITH_SYSTEMD to true if we found it
-option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+  pkg_check_modules(SD libsystemd IMPORTED_TARGET)
+  # Default WITH_SYSTEMD to true if we found it
+  option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+endif()
 
 add_subdirectory(external)
 

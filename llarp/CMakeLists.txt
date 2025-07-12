@@ -293,13 +293,12 @@ target_link_libraries(lokinet-base
   oxenc::oxenc 
   oxen::logging 
   
-  libunbound
-
   sodium
 )
 
+
 if(LOKINET_FULL)
-  target_link_libraries(lokinet-base INTERFACE oxenmq::oxenmq)
+  target_link_libraries(lokinet-base INTERFACE libunbound oxenmq::oxenmq)
 endif()
 
 # libevent
