@@ -122,8 +122,6 @@ lokinet_add_library(lokinet-dns
   dns/srv_data.cpp
 )
 
-add_library(lokinet-dns-platform INTERFACE)
-
 if (LOKINET_FULL)
   # lokinet-platform holds all platform specific code
   lokinet_add_library(lokinet-platform
@@ -179,8 +177,7 @@ if (LOKINET_FULL)
 
   # platform specific bits and bobs for setting dns
   if(WITH_SYSTEMD)
-    lokinet_add_library(lokinet-dns-systemd dns/nm_platform.cpp dns/sd_platform.cpp)
-    target_link_libraries(lokinet-dns-platform INTERFACE lokinet-dns-systemd)
+    target_sources(lokinet-dns PRIVATE dns/nm_platform.cpp dns/sd_platform.cpp)
   endif()
 endif()
 
@@ -237,7 +234,7 @@ target_link_libraries(lokinet-dns
   PUBLIC
   lokinet-cryptography
   lokinet-config
-  lokinet-dns-platform
+  lokinet-platform
 )
 
 target_link_libraries(lokinet-path
