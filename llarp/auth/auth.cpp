@@ -24,13 +24,4 @@ namespace llarp::auth
         {"whitelist"sv, AuthType::WHITELIST},
         {"none"sv, AuthType::NONE}};
 
-    /// get an auth type from a string
-    /// throws std::invalid_argument if arg is invalid
-    AuthType parse_type(std::string_view data)
-    {
-        if (auto it = types.find(data); it != types.end())
-            return it->second;
-        throw std::invalid_argument("no such auth type: {}"_format(data));
-    }
-
 }  // namespace llarp::auth

@@ -77,8 +77,4 @@ namespace llarp::auth
     /// maybe get auth result from string
     std::optional<AuthCode> parse_code(std::string_view data);
 
-    /// get an auth type from a string
-    /// throws std::invalid_argument if arg is invalid
-    AuthType parse_type(std::string_view data);
-
 }  // namespace llarp::auth

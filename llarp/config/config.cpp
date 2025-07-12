@@ -437,9 +437,16 @@ namespace llarp
                 "none/whitelist/lmq/file",
             },
             [this](std::string arg) {
-                if (arg.empty())
-                    return;
-                auth_type = auth::parse_type(arg);
+                if (arg == "file")
+                    auth_type = auth::AuthType::FILE;
+                else if (arg == "lmq" || arg == "omq" || arg == "zmq")
+                    auth_type = auth::AuthType::OMQ;
+                else if (arg == "whitelist")
+                    auth_type = auth::AuthType::WHITELIST;
+                else if (arg == "" || arg == "none")
+                    auth_type = auth::AuthType::NONE;
+                else
+                    throw std::invalid_argument{"invalid [network]:auth-type value: '{}'"_format(arg)};
             });
 
         conf.define_option<std::string>(
