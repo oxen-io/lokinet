@@ -209,49 +209,11 @@ function(build_external target)
   )
 endfunction()
 
-build_external(zlib
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
-  BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libz.a
-    ${DEPS_DESTDIR}/include/zlib.h
-)
-add_static_target(zlib zlib_external libz.a)
-
-build_external(expat
-  CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static
-  --disable-shared --with-pic --without-examples --without-tests --without-docbook --without-xmlwf
-  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
-)
-add_static_target(expat expat_external libexpat.a)
-
-
-if(WIN32)
-  set(unbound_patch
-    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
-        ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-delete-crash-fix.patch)
+if(NOT TARGET sodium)
+  build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
+            --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
+  add_static_target(sodium sodium_external libsodium.a)
 endif()
-build_external(unbound
-  DEPENDS nettle_external expat_external
-  ${unbound_patch}
-  CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR}
-  --with-libunbound-only --disable-shared --enable-static
-  --with-pic --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto
-  --with-nettle=${DEPS_DESTDIR} --with-libexpat=${DEPS_DESTDIR}
-  --without-ssl
-  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" "LDFLAGS=${unbound_ldflags}"
-)
-add_static_target(libunbound unbound_external libunbound.a)
-if(NOT WIN32)
-  set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle")
-else()
-  set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle;ws2_32;crypt32;iphlpapi")
-endif()
-
-
-
-build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
-          --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
-add_static_target(sodium sodium_external libsodium.a)
 
 
 if(LOKINET_PEERSTATS)
@@ -260,30 +222,74 @@ if(LOKINET_PEERSTATS)
 endif()
 
 
-if(ARCH_TRIPLET MATCHES mingw)
-  option(WITH_WEPOLL "use wepoll zmq poller (crashy)" OFF)
-  if(WITH_WEPOLL)
-    set(zmq_extra --with-poller=wepoll)
+if(LOKINET_FULL)
+
+  build_external(zlib
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
+    BUILD_BYPRODUCTS
+      ${DEPS_DESTDIR}/lib/libz.a
+      ${DEPS_DESTDIR}/include/zlib.h
+  )
+  add_static_target(zlib zlib_external libz.a)
+
+  build_external(expat
+    CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static
+    --disable-shared --with-pic --without-examples --without-tests --without-docbook --without-xmlwf
+    "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  )
+  add_static_target(expat expat_external libexpat.a)
+
+
+  if(WIN32)
+    set(unbound_patch
+      PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+          ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-delete-crash-fix.patch)
   endif()
-endif()
+  build_external(unbound
+    DEPENDS nettle_external expat_external
+    ${unbound_patch}
+    CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR}
+    --with-libunbound-only --disable-shared --enable-static
+    --with-pic --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto
+    --with-nettle=${DEPS_DESTDIR} --with-libexpat=${DEPS_DESTDIR}
+    --without-ssl
+    "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" "LDFLAGS=${unbound_ldflags}"
+  )
+  add_static_target(libunbound unbound_external libunbound.a)
+  if(NOT WIN32)
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle")
+  else()
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle;ws2_32;crypt32;iphlpapi")
+  endif()
 
 
-build_external(zmq
-  DEPENDS sodium_external
-  CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
-    --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
-    --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
-    "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
-    "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
-)
-add_static_target(libzmq zmq_external libzmq.a)
+
+  if(ARCH_TRIPLET MATCHES mingw)
+    option(WITH_WEPOLL "use wepoll zmq poller (crashy)" OFF)
+    if(WITH_WEPOLL)
+      set(zmq_extra --with-poller=wepoll)
+    endif()
+  endif()
 
 
-set(libzmq_link_libs "sodium")
-if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
-  list(APPEND libzmq_link_libs iphlpapi)
-endif()
+  build_external(zmq
+    DEPENDS sodium_external
+    CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
+      --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
+      --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
+      "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
+      "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
+  )
+  add_static_target(libzmq zmq_external libzmq.a)
 
-set_target_properties(libzmq PROPERTIES
-  INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
-  INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+
+  set(libzmq_link_libs "sodium")
+  if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
+    list(APPEND libzmq_link_libs iphlpapi)
+  endif()
+
+  set_target_properties(libzmq PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
+    INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+
+endif(LOKINET_FULL)
