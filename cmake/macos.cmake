@@ -1,4 +1,4 @@
-if(NOT APPLE)
+if((NOT APPLE) OR NOT LOKINET_DAEMON)
   return()
 endif()
 
