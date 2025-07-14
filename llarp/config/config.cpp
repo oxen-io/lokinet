@@ -1350,7 +1350,7 @@ namespace llarp
             "logging",
             "type",
             Default{
-                params.type == config::Type::EmbeddedClient      ? "print"
+                params.type == config::Type::EmbeddedClient      ? "none"
                     : platform::is_android or platform::is_apple ? "system"
                                                                  : "print"},
             [this](std::string arg) {
