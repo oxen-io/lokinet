@@ -326,7 +326,7 @@ elseif(NOT APPLE)
   install(TARGETS liblokinet LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
 endif()
 
-add_library(lokinet::embedded ALIAS liblokinet)
+add_library(lokinet::liblokinet ALIAS liblokinet)
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)
