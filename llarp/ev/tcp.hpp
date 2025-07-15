@@ -22,7 +22,7 @@ namespace llarp
 
     struct TCPConnection
     {
-        TCPConnection(struct bufferevent* _bev, evutil_socket_t _fd, std::shared_ptr<quic::Stream> _s);
+        TCPConnection(bufferevent* _bev, evutil_socket_t _fd, std::shared_ptr<quic::Stream> _s);
 
         TCPConnection() = delete;
 
@@ -34,15 +34,24 @@ namespace llarp
 
         ~TCPConnection();
 
-        struct bufferevent* bev;
+        bufferevent* bev;
         evutil_socket_t fd;
 
         std::shared_ptr<quic::Stream> stream;
 
+        std::vector<std::byte> pending_buffer;
+
+        void on_stream_data(quic::Stream& stream, std::span<const std::byte> data);
+
         void close(uint64_t ec = 0);
+
+        void on_write_available();
+
+        void stop_reading();
+        void resume_reading();
     };
 
-    using tcpconn_hook = std::function<TCPConnection*(struct bufferevent*, evutil_socket_t)>;
+    using tcpconn_hook = std::function<TCPConnection*(bufferevent*, evutil_socket_t)>;
 
     class TCPHandle
     {
@@ -58,7 +67,7 @@ namespace llarp
         std::shared_ptr<::evconnlistener> _tcp_listener;
 
         // The OutboundSession will set up an evconnlistener and set the listening socket address inside ::_bound
-        std::optional<quic::Address> _bound = std::nullopt;
+        quic::Address _bound{};
 
         // The InboundSession will set this address to the lokinet-primary-ip to connect to
         std::optional<quic::Address> _connect = std::nullopt;
@@ -85,11 +94,12 @@ namespace llarp
 
         ~TCPHandle();
 
-        uint16_t port() const { return _bound.has_value() ? _bound->port() : 0; }
+        uint16_t port() const { return _bound.port(); }
 
-        std::optional<quic::Address> bind() const { return _bound; }
+        const quic::Address& bind_address() const { return _bound; }
 
-        std::shared_ptr<TCPConnection> connect(std::shared_ptr<quic::Stream> s, uint16_t port = 0);
+        static std::shared_ptr<TCPConnection> connect(
+            event_base* _ev, quic::Address src, std::shared_ptr<quic::Stream> s, uint16_t port);
 
       private:
         void _init_client();

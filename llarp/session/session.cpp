@@ -10,13 +10,250 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/formattable.hpp>
 
+#include <oxen/quic/context.hpp>
+#include <oxen/quic/gnutls_crypto.hpp>
 #include <oxen/quic/udp.hpp>
+#include <oxenc/hex.h>
 
 #include <utility>
 
+namespace
+{
+    using namespace oxenc::literals;
+    // GNUTLS Creds tunnel default keys until we implement null-crypto in libquic
+    inline constexpr auto TUNNEL_SEED = "0000000000000000000000000000000000000000000000000000000000000000"_hex;
+    inline constexpr auto TUNNEL_PUBKEY = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"_hex;
+}  // anonymous namespace
+
 namespace llarp::session
 {
+    namespace quic = oxen::quic;
+
     static auto logcat = log::Cat("session");
+    struct TCPTunnel
+    {
+        const quic::Address FAKE_QUIC_ADDR{"127.86.75.30"s, 9};
+        const quic::Path FAKE_QUIC_PATH{FAKE_QUIC_ADDR, FAKE_QUIC_ADDR};
+
+        std::shared_ptr<quic::GNUTLSCreds> tls_creds = quic::GNUTLSCreds::make_from_ed_keys(TUNNEL_SEED, TUNNEL_PUBKEY);
+
+        std::shared_ptr<quic::Endpoint> quic_ep{nullptr};
+        std::shared_ptr<quic::Connection> quic_conn{nullptr};
+
+        // (session initiator) TCPHandle listeners mapped to the destination port they are mapped for
+        std::unordered_map<uint16_t, std::shared_ptr<TCPHandle>> tcp_handles;
+
+        // (session remote) QUIC stream ID to TCP connection
+        std::vector<std::shared_ptr<TCPConnection>> _tcp_conns;
+
+        BaseSession& session;
+
+        std::shared_ptr<bool> destructor_canary{std::make_shared<bool>(true)};
+
+        ~TCPTunnel() { reset(); }
+
+        // the QUIC endpoint should be fine if the QUIC connection closes, but
+        // TCP conns and port mappings will need to be restarted.
+        void reset()
+        {
+            log::critical(logcat, "TCPTunnel::reset()");
+            quic_conn.reset();
+            _tcp_conns.clear();
+            tcp_handles.clear();
+            log::critical(logcat, "TCPTunnel::reset() END");
+        }
+
+        TCPTunnel(BaseSession& _session) : session(_session)
+        {
+            quic::opt::manual_routing quic_send{[this](const quic::Path&, std::span<const std::byte> data) {
+                session.send_path_data_message(data, traffic_type::TUNNELED_QUIC);
+            }};
+            quic::connection_established_callback new_conn{[this](quic::Connection& conn) {
+                if (quic_conn)
+                {
+                    log::error(logcat, "Already have connection for QUIC tunnel for session to {}!", session._remote);
+                    return;
+                }
+                log::debug(logcat, "New connection for QUIC tunnel for session to {}!", session._remote);
+                quic_conn = conn.shared_from_this();
+            }};
+            quic::connection_closed_callback conn_closed{
+                [this, canary = std::weak_ptr{destructor_canary}](quic::Connection&, uint64_t) {
+                    if (!quic_conn)
+                    {
+                        log::warning(
+                            logcat,
+                            "Received conn closed, but this session's QUIC tunnel does not seem to have an open "
+                            "connection, remote: {}",
+                            session._remote);
+                        return;
+                    }
+                    log::debug(logcat, "QUIC TCP tunnel conn to {} closed.", session._remote);
+
+                    // this could fire from quic::Endpoint destructor, at which point
+                    // the members `reset` would reset may no longer be valid objects
+                    if (canary.lock())
+                        reset();
+                }};
+
+            auto stream_opened = [this](quic::Stream& stream) {
+                stream.set_stream_data_cb([this, prev_byte = std::optional<std::byte>{std::nullopt}](
+                                              quic::Stream& stream, std::span<const std::byte> data) mutable {
+                    uint16_t dest_port{0};
+
+                    if (data.empty())
+                    {
+                        log::error(logcat, "QUIC stream data callback with no data!");
+                        return;
+                    }
+                    if (prev_byte)
+                    {
+                        std::array<std::byte, 2> buf;
+                        buf[0] = *prev_byte;
+                        buf[1] = data[0];
+                        dest_port = oxenc::load_big_to_host<uint16_t>(buf.data());
+                        data = data.subspan(1);
+                    }
+                    else if (data.size() >= 2)
+                    {
+                        dest_port = oxenc::load_big_to_host<uint16_t>(data.data());
+                        data = data.subspan(2);
+                    }
+                    else
+                    {  // only got 1 byte total so far, need 2 for dest port
+                        prev_byte = data[0];
+                        return;
+                    }
+
+                    stream.pause();
+
+                    // FIXME: TCPHandle::connect replaces the stream's data callback.  Perhaps
+                    // that should happen here instead.
+                    // FIXME: the connection should probably come from tun bind address, if
+                    // available, rather than always 127.0.0.1
+                    auto tcp_conn = TCPHandle::connect(
+                        session._r.loop()->get_event_base(), FAKE_QUIC_ADDR, stream.shared_from_this(), dest_port);
+                    if (!tcp_conn)
+                    {
+                        stream.close(11223322);  // TODO: meaningful error code
+                        return;
+                    }
+
+                    _tcp_conns.push_back(tcp_conn);
+
+                    if (data.size())
+                    {
+                        // put any remaining stream data on the tcp socket
+                        stream.data_callback(stream, data);
+                    }
+
+                    stream.enable_watermarks(
+                        500'000,
+                        [this, tcp_conn](auto&) { tcp_conn->stop_reading(); },
+                        50'000,
+                        [this, tcp_conn](auto&) { tcp_conn->resume_reading(); });
+                });
+                return 0;
+            };
+
+            quic_ep = quic::Endpoint::endpoint(
+                *session._r.loop(),
+                FAKE_QUIC_ADDR,
+                std::move(quic_send),
+                std::move(new_conn),
+                std::move(conn_closed),
+                quic::opt::disable_mtu_discovery{});
+
+            // TODO: only listen if we support inbound tunneled traffic
+            quic_ep->listen(tls_creds, std::move(stream_opened));
+        }
+
+        void open_connection()
+        {
+            if (quic_conn)
+            {
+                log::error(
+                    logcat, "Cannot create more than one QUIC connection over TPC tunnel, remote: {}", session._remote);
+                return;
+            }
+
+            quic_conn = quic_ep->connect(
+                quic::RemoteAddress{TUNNEL_PUBKEY, FAKE_QUIC_ADDR},
+                tls_creds,
+                [this](quic::Connection& conn) {
+                    log::debug(logcat, "Outbound QUIC TCP Tunnel connection established to {}", session._remote);
+                    if (!quic_conn)
+                    {
+                        quic_conn = conn.shared_from_this();
+                    }
+                },  // connection established
+                [this, canary = std::weak_ptr{destructor_canary}](quic::Connection&, uint64_t) /* connection closed*/ {
+                    // this could fire from quic::Endpoint destructor, at which point
+                    // the members referenced below may no longer be valid objects
+                    if (!canary.lock())
+                        return;
+                    if (!quic_conn)
+                        log::error(logcat, "QUIC TPC tunnel connection to {} failed!", session._remote);
+                    else
+                        log::debug(logcat, "QUIC TPC tunnel connection to {} closed.", session._remote);
+                    reset();
+                });
+        }
+
+        uint16_t map_tcp_remote_port(uint16_t dest_port)
+        {
+            if (!session.is_active())
+                return 0;
+            if (!quic_conn)
+            {
+                open_connection();
+            }
+
+            auto _handle = TCPHandle::make_server(
+                session._r.loop(), [this, dest_port](struct bufferevent* _bev, evutil_socket_t _fd) {
+                    auto s =
+                        quic_conn->open_stream<quic::Stream>([_bev](quic::Stream& s, std::span<const std::byte> data) {
+                            auto rv = bufferevent_write(_bev, data.data(), data.size());
+
+                            log::debug(
+                                logcat,
+                                "Stream (id:{}) {} {}B to TCP buffer",
+                                s.stream_id(),
+                                rv < 0 ? "failed to write" : "successfully wrote",
+                                data.size());
+                        });
+                    if (!s)
+                    {
+                        log::error(logcat, "Failed to open stream for TCP tunnel...");
+                        // FIXME: having to cast nullptr feels wrong, but idk the correct
+                        // way to fix it.
+                        return (TCPConnection*)nullptr;
+                    }
+                    std::string p;
+                    p.resize(2);
+                    oxenc::write_host_as_big(dest_port, p.data());
+                    s->send(std::move(p));
+
+                    auto tcp_conn = std::make_shared<TCPConnection>(_bev, _fd, std::move(s));
+
+                    auto* ptr = tcp_conn.get();
+                    _tcp_conns.push_back(std::move(tcp_conn));
+
+                    return ptr;
+                });
+
+            auto bound_port = _handle->port();
+            if (bound_port == 0)
+            {
+                log::error(logcat, "Failed to bind TCP port for tunneled session.");
+                return 0;
+            }
+
+            log::debug(logcat, "Bound TCP tunneled session, dest_port: {}, local_port: {}", dest_port, bound_port);
+            tcp_handles.emplace(dest_port, std::move(_handle));
+            return bound_port;
+        }
+    };
 
     BaseSession::BaseSession(
         Router& r,
@@ -39,6 +276,7 @@ namespace llarp::session
           _is_snode_session{_is_outbound ? !_remote.is_client() : _r.is_service_node()},
           _is_exit_session{has_flag(_tag.protocols(), protocol_flag::EXIT)}
     {
+        tcp_tunnel = std::make_unique<TCPTunnel>(*this);
         set_new_current_path_interface(std::move(_p));
     }
 
@@ -61,7 +299,7 @@ namespace llarp::session
             "path_control", as_bspan(intermediate_payload), std::move(func));
     }
 
-    bool BaseSession::send_path_data_message(std::span<std::byte> data, net::IPProtocol proto)
+    bool BaseSession::send_path_data_message(std::span<const std::byte> data, net::IPProtocol proto)
     {
         uint8_t type;
         if (proto == net::IPProtocol::UDP)
@@ -71,10 +309,10 @@ namespace llarp::session
         else
             type = traffic_type::RAW;
 
-        return send_path_data_message(std::move(data), type);
+        return send_path_data_message(data, type);
     }
 
-    bool BaseSession::send_path_data_message(std::span<std::byte> data, uint8_t type)
+    bool BaseSession::send_path_data_message(std::span<const std::byte> data, uint8_t type)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -96,16 +334,20 @@ namespace llarp::session
         uint8_t dgram_type = std::to_integer<uint8_t>(data.back());
         data = data.subspan(0, data.size() - 1);
         bool is_udp = dgram_type == traffic_type::UDP;
-        IPPacket pkt{std::move(data)};
+        bool is_tunneled = dgram_type == traffic_type::TUNNELED_QUIC;
 
         if (_r.embedded())
         {
             if (is_udp)
-                handle_udp_from_remote(std::move(pkt));
-            else
             {
-                // TODO FIXME: handle tunneled TCP packets to us here, I think?
+                handle_udp_from_remote(IPPacket{data});
             }
+            else if (!is_tunneled)
+            {
+                log::warning(logcat, "Received non-UDP, non-tunneled datagram on embedded client, dropping!");
+            }
+            else
+                tcp_tunnel->quic_ep->manually_receive_packet(oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, data});
             return;
         }
 
@@ -114,13 +356,17 @@ namespace llarp::session
         // remotes (which also send raw UDP packets):
         if (_use_tun || is_udp)
         {
-            _r.tun_endpoint()->handle_inbound_packet(std::move(pkt), dgram_type, _remote);
+            _r.tun_endpoint()->handle_inbound_packet(IPPacket{data}, dgram_type, _remote);
             return;
         }
 
-        // Otherwise this is a non-UDP packet from a remote, i.e. it must be tunneled TCP (or
-        // garbage).
-        // TODO: tunneled TCP handling here!
+        if (dgram_type == traffic_type::TUNNELED_QUIC)
+        {
+            tcp_tunnel->quic_ep->manually_receive_packet(oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, data});
+            return;
+        }
+
+        log::warning(logcat, "Received unexpected datagram with type byte: {}", dgram_type);
     }
 
     void BaseSession::set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path)
@@ -194,8 +440,8 @@ namespace llarp::session
             log::debug(logcat, "Returning existing mapped port ({}) for dest port {}", mapped_port, dest_port);
             return mapped_port;
         }
-        oxen::quic::Address src{"127.0.0.1"s, 0};
-        oxen::quic::Address dest{"127.0.0.1"s, dest_port};
+        quic::Address src{"127.0.0.1"s, 0};
+        quic::Address dest{"127.0.0.1"s, dest_port};
         auto udp_handle = std::make_unique<quic::UDPSocket>(
             _r.loop()->get_event_base(), src, [this, dest = std::move(dest)](quic::Packet&& pkt) {
                 auto client_port = pkt.path.remote.port();
@@ -233,6 +479,8 @@ namespace llarp::session
 
         return bound_port;
     }
+
+    uint16_t BaseSession::map_tcp_remote_port(uint16_t dest_port) { return tcp_tunnel->map_tcp_remote_port(dest_port); }
 
     void BaseSession::activate()
     {
@@ -884,7 +1132,7 @@ namespace llarp::session
         return _current_path->send_path_control_message(method, body, std::move(func));
     }
 
-    bool InboundRelaySession::send_path_data_message(std::span<std::byte> data, uint8_t type)
+    bool InboundRelaySession::send_path_data_message(std::span<const std::byte> data, uint8_t type)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         auto tag = _tag.span();
