@@ -927,7 +927,7 @@ namespace llarp::handlers
                             session->remote(),
                             pending_packets.size());
                         for (auto& pkt : pending_packets)
-                            session->send_path_data_message(pkt.span());
+                            session->send_path_data_message(pkt.span(), pkt.protocol());
                     }
                     if (hook)
                         hook(true);
@@ -1022,7 +1022,7 @@ namespace llarp::handlers
                             session->remote(),
                             pending_packets.size());
                         for (auto& pkt : pending_packets)
-                            session->send_path_data_message(pkt.span());
+                            session->send_path_data_message(pkt.span(), pkt.protocol());
                     }
                     if (hook)
                         hook(true);
@@ -1092,6 +1092,14 @@ namespace llarp::handlers
     void SessionEndpoint::initiate_remote_session(NetworkAddress remote, on_session_init_hook cb)
     {
         _router.loop()->call([this, remote = std::move(remote), cb = std::move(cb)]() mutable {
+            if (_sessions.have_session(remote))
+            {
+                // FIXME: this callback should probably pass a shared_ptr ref or something
+                // rather than making the caller call get_session
+                if (cb)
+                    cb(true);
+                return;
+            }
             if (pending_sessions.contains(remote))
             {
                 if (cb)

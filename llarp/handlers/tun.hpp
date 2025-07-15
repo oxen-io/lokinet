@@ -10,6 +10,14 @@
 #include <llarp/vpn/packet_router.hpp>
 #include <llarp/vpn/platform.hpp>
 
+namespace llarp::traffic_type
+{
+    constexpr uint8_t UDP = 0;
+    constexpr uint8_t TCP = 1;
+    constexpr uint8_t RAW = 2;
+    constexpr uint8_t TUNNELED_QUIC = 3;
+}  // namespace llarp::traffic_type
+
 namespace llarp::handlers
 {
     inline constexpr auto TUN = "tun"sv;
@@ -115,14 +123,14 @@ namespace llarp::handlers
         void rewrite_and_send_packet(IPPacket&& pkt, const ipv6& src, const ipv6& dest);
 
         // TESTNET: TODO: new inbound packet handling logic
-        void handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote) override;
+        void handle_inbound_packet(IPPacket pkt, uint8_t type, NetworkAddress remote) override;
 
         // Handles an inbound packet coming IN from the network
         // bool handle_inbound_packet(IPPacket pkt, NetworkAddress remote, bool is_exit_session, bool
         // is_outbound_session);
 
-        // Upon session creation, SessionHandler will instruct TunEndpoint to requisition a private IP through which to
-        // route session traffic
+        // Upon session creation, SessionHandler will instruct TunEndpoint to requisition a private IP through which
+        // to route session traffic
         std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote) override;
         // TODO:
         // std::optional<ipv6> map_session_to_local_ipv6(const NetworkAddress& remote);

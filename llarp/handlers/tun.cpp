@@ -1029,7 +1029,7 @@ namespace llarp::handlers
                     pkt.size(),
                     remote,
                     pkt.info_line());
-                session->send_path_data_message(pkt.span());
+                session->send_path_data_message(pkt.span(), pkt.protocol());
             }
             else
             {
@@ -1123,8 +1123,9 @@ namespace llarp::handlers
     // FIXME: replace session_tag with packet type flag (uint8_t), because session_tag is definitely
     // not the right thing.
     // FIXME 2: we need separate flags for to-exit and from-exit
-    void TunEndpoint::handle_inbound_packet(IPPacket pkt, session_tag tag, NetworkAddress remote)
+    void TunEndpoint::handle_inbound_packet(IPPacket pkt, uint8_t type, NetworkAddress remote)
     {
+        (void)type;              // TODO FIXME use this
         bool to_exit = false;    // TODO FIXME
         bool from_exit = false;  // TODO FIXME
 

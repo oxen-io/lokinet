@@ -114,7 +114,8 @@ namespace llarp
                 std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func);
 
             // NB: mutates data (encrypting in place)
-            virtual bool send_path_data_message(std::span<std::byte> data);
+            bool send_path_data_message(std::span<std::byte> data, net::IPProtocol proto);
+            virtual bool send_path_data_message(std::span<std::byte> data, uint8_t type);
 
             // NB: mutates data (decrypting in place)
             void recv_path_data_message(std::span<std::byte> data);
@@ -196,8 +197,6 @@ namespace llarp
                 std::span<const std::byte> body,
                 std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::span<std::byte> data) override;
-
             void build_more(size_t n = 0) override;
 
             void send_path_switch();
@@ -255,8 +254,6 @@ namespace llarp
                 std::span<const std::byte> body,
                 std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::span<std::byte> data) override;
-
             void update_outbound_remote_intros(sorted_intro_set intros) override;
 
             void build_more(size_t n = 0) override;
@@ -308,7 +305,7 @@ namespace llarp
                 std::span<const std::byte> body,
                 std::function<void(quic::message)> func) override;
 
-            bool send_path_data_message(std::span<std::byte> data) override;
+            bool send_path_data_message(std::span<std::byte> data, uint8_t type) override;
         };
 
     }  // namespace session
