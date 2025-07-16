@@ -419,7 +419,8 @@ namespace llarp
             }
             else
             {
-                assert(_listen_address.is_addressable());
+                assert(_config.links.listen_addr->is_addressable());
+                _listen_address = *_config.links.listen_addr;
             }
 
             if (auto_detect)
