@@ -776,7 +776,7 @@ namespace llarp
     void Router::_relay_tick([[maybe_unused]] std::chrono::milliseconds now)
     {
         assert(_config.relay());
-#ifdef LOKINET_EMBEDDED_ONLY
+#ifndef LOKINET_EMBEDDED_ONLY
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         const auto& local = local_rid();
