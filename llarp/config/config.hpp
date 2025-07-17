@@ -84,7 +84,7 @@ namespace llarp
     {
         /// in our hops what netmask will we use for unique ips for hops
         /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
-        uint8_t unique_hop_netmask;
+        uint8_t unique_hop_netmask{0};
 
         // TODO: some day, if we ever support routers using IPv6, there would need to be a different
         // ipv6 netmask value.
@@ -119,8 +119,8 @@ namespace llarp
 
     struct NetworkConfig
     {
-        bool enable_profiling;
-        bool save_profiles;
+        bool enable_profiling{false};
+        bool save_profiles{false};
         std::unordered_set<RouterID> pinned_edges;
 
         std::optional<fs::path> keyfile;
@@ -176,15 +176,15 @@ namespace llarp
         std::optional<net::ExitPolicy> traffic_policy;
 
         // TESTNET: move into ExitConfig!
-        bool enable_route_poker;
-        bool blackhole_routes;
+        bool enable_route_poker{false};
+        bool blackhole_routes{false};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
     struct DnsConfig
     {
-        bool l3_intercept;
+        bool l3_intercept{false};
 
         std::vector<fs::path> hostfiles;
 
@@ -237,7 +237,7 @@ namespace llarp
     struct BootstrapConfig
     {
         std::vector<fs::path> files;
-        bool seednode;
+        bool seednode{false};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };

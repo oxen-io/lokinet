@@ -77,6 +77,7 @@ namespace llarp::vpn
         if (b)
             it->second = std::make_unique<UDPPacketHandler>(_handler);
         else
+            // FIXME: this should probably throw
             log::info(logcat, "Packet router already holds registered UDP packet handler!");
 
         it->second->add_sub_handler(localport, std::move(func));

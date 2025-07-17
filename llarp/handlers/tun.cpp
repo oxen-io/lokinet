@@ -135,6 +135,7 @@ namespace llarp::handlers
 
         if (dns_config.l3_intercept)
         {
+            // FIXME: this entire if block is so broken...
             _dns = std::make_unique<TunDNS>(this, dns_config);
             auto* dns = static_cast<TunDNS*>(_dns.get());
 
