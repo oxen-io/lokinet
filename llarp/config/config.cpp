@@ -568,7 +568,7 @@ namespace llarp
             },
             [this](int arg) {
                 if (arg < 1 or arg > 8)
-                    throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
+                    throw std::invalid_argument("[network]:hops must be >= 1 and <= 8");
                 hops = arg;
             });
 
@@ -582,7 +582,7 @@ namespace llarp
             },
             [this](int arg) {
                 if (arg < 3 or arg > 8)
-                    throw std::invalid_argument("[endpoint]:paths must be >= 3 and <= 8");
+                    throw std::invalid_argument("[network]:paths must be >= 3 and <= 8");
                 paths = arg;
             });
 
