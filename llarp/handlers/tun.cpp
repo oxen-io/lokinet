@@ -327,7 +327,7 @@ namespace llarp::handlers
 
         log::info(logcat, "{} got network interface:{}", name(), _if_name);
 
-        auto pkt_hook = [this]() mutable {
+        auto pkt_hook = [this]() {
             for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
             {
                 log::trace(logcat, "packet router receiving {}", pkt.info_line());

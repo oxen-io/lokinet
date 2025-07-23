@@ -240,7 +240,7 @@ namespace llarp
 
             std::string build2(const std::shared_ptr<Path>& path);
 
-            void for_each_path(std::function<void(const Path&)> visit) const;
+            void for_each_path(std::function<void(Path&)> visit) const;
 
             /// pick a first hop
             std::optional<RemoteRC> select_first_hop(const std::unordered_set<RouterID>& exclude = {}) const;

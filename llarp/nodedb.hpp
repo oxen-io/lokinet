@@ -41,9 +41,9 @@ namespace llarp
 
     /*  RID Fetch Constants  */
     // the number of rid sources that we make rid fetch requests to
-    inline constexpr size_t RID_SOURCE_COUNT{8};
+    inline constexpr size_t RID_SOURCE_COUNT{5};
     // upper limit on how many rid fetch requests to rid sources can fail
-    inline constexpr int MAX_RID_ERRORS{2};
+    inline constexpr int MAX_RID_ERRORS{1};
     // each returned rid must appear this number of times across all responses
     inline constexpr int MIN_RID_FETCH_FREQ{6};  //  TESTNET:
 
@@ -154,11 +154,6 @@ namespace llarp
 
         void process_fetched_rcs(std::vector<RemoteRC> rcs);
 
-        void ingest_fetched_rids(
-            const RouterID& source, std::optional<std::unordered_set<RouterID>> ids = std::nullopt);
-
-        void process_fetched_rids();
-
         std::vector<RouterID> get_expired_rcs();
 
         bool is_bootstrapping() const { return _is_bootstrapping; }
@@ -166,11 +161,6 @@ namespace llarp
         bool bootstrap_completed() const { return not(_is_bootstrapping or _needs_bootstrap); }
         bool is_bootstrap_node(const RemoteRC& rc) const;
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
-
-        // Populate rid_sources with random sample from known_rids. A set of rids is passed
-        // if only specific RID's need to be re-selected; to re-select all, pass the member
-        // variable ::known_rids
-        void reselect_router_id_sources(std::unordered_set<RouterID> specific);
 
         void set_router_whitelist(const std::vector<RouterID>& whitelist);
 
@@ -272,6 +262,6 @@ namespace llarp
         /// remove any stored RCs matching the given predicate
         void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);
 
-        void process_unconfirmed_rids(std::set<RouterID> unconfirmed);
+        void handle_fetched_router_ids(const std::unordered_map<RouterID, std::set<RouterID>>& results);
     };
 }  // namespace llarp

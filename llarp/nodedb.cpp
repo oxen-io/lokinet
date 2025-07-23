@@ -6,6 +6,7 @@
 #include "util/time.hpp"
 
 #include <oxen/quic/btstream.hpp>
+#include <sodium/crypto_generichash.h>
 
 #include <algorithm>
 #include <functional>
@@ -231,118 +232,6 @@ namespace llarp
         }
     }
 
-    void NodeDB::process_unconfirmed_rids(std::set<RouterID> unconfirmed)
-    {
-        // before we add the unconfirmed set, we check to see if our local set of unconfirmed
-        // rcs/rids appeared in the latest unconfirmed set; if so, we will increment their
-        // number of verifications and reset the attempts counter. Once appearing in 3 different
-        // requests, the rc/rid will be "verified" and promoted to the known_{rcs,rids}
-        // container
-        for (auto itr = unconfirmed_rids.begin(); itr != unconfirmed_rids.end();)
-        {
-            auto [id, votes] = *itr;
-            if (auto found = unconfirmed.find(id); found != unconfirmed.end())
-            {
-                if (++votes >= CONFIRMATION_THRESHOLD)
-                {
-                    known_rids.insert(id);
-                    itr = unconfirmed_rids.erase(itr);
-                }
-                else
-                {
-                    // Not enough votes yet, so leave it and continue.
-                    ++itr;
-                }
-                unconfirmed.erase(found);
-            }
-            else if (--votes <= -CONFIRMATION_THRESHOLD)
-                itr = unconfirmed_rids.erase(itr);
-            else
-                ++itr;
-        }
-
-        // Anything still left in `unconfirmed` wasn't found in unconfirmed_rids and so is a new
-        // item we hadn't seen before; insert them into the unconfirmed map with an initial vote
-        // count of 1 for this observation.
-        for (const auto& id : unconfirmed)
-            unconfirmed_rids[id] = 1;
-    }
-
-    /** We only call into this function after ensuring two conditions:
-          1) We have received all 12 responses from the queried RouterID sources, whether that
-            response was a timeout or not
-          2) Of those responses, less than 4 were errors of any sorts
-
-        Upon receiving each response from the rid fetch sources, the returned rid's are incremented
-        in fetch_counters. This greatly simplifies the analysis required by this function to the
-        determine success or failure:
-          - If the frequency of each rid is above a threshold, it is accepted
-          - If the number of accepted rids is below a certain amount, the set is rejected
-
-        Logically, this function performs the following basic analysis of the returned RIDs:
-          1) All responses are coalesced into a union set with no repetitions
-          2) If we are bootstrapping:
-              - The routerID's returned
-    */
-    void NodeDB::process_fetched_rids()
-    {
-        std::set<RouterID> union_set, confirmed_set, unconfirmed_set;
-
-        for (const auto& [rid, count] : rid_result_counters)
-        {
-            log::trace(logcat, "RID: {}, Freq: {}", rid.short_string(), count);
-            if (count >= MIN_RID_FETCH_FREQ)
-                union_set.insert(rid);
-            else
-                unconfirmed_set.insert(rid);
-        }
-
-        // get the intersection of accepted rids and local rids
-        std::set_intersection(
-            known_rids.begin(),
-            known_rids.end(),
-            union_set.begin(),
-            union_set.end(),
-            std::inserter(confirmed_set, confirmed_set.begin()));
-
-        // the total number of rids received
-        const auto num_received = (double)(rid_result_counters.size());
-        // the total number of received AND accepted rids
-        const auto union_size = union_set.size();
-
-        const auto fetch_threshold = (double)union_size / num_received;
-
-        bool success = (fetch_threshold >= GOOD_RID_FETCH_THRESHOLD) and (union_size >= MIN_GOOD_RID_FETCH_TOTAL);
-
-        log::trace(
-            logcat,
-            "Num received: {}, union size: {}, known rid size: {}, fetch_threshold: {}, status: {}",
-            num_received,
-            union_size,
-            known_rids.size(),
-            fetch_threshold,
-            success ? "SUCCESS" : "FAIL");
-
-        /** We are checking 2 things here:
-            1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
-            This tells us how well the rid source's sets of rids "agree" with one another
-            2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
-            receiving a sufficient amount to make a comparison of any sorts
-        */
-        if (success)
-        {
-            log::info(logcat, "RID fetch was successful: accumulated RID's accepted by trust model");
-            process_unconfirmed_rids(std::move(unconfirmed_set));
-            known_rids.merge(confirmed_set);
-            post_rid_fetch(false);
-        }
-        else
-        {
-            log::warning(logcat, "Accumulated RID's rejected by trust model; reselecting RID fetch sources...");
-            reselect_router_id_sources(fail_sources);
-        }
-    }
-
     std::vector<RouterID> NodeDB::get_expired_rcs()
     {
         auto expired = known_rcs | std::views::filter([](const auto& id_rc) { return id_rc.second.is_outdated(); })
@@ -394,134 +283,123 @@ namespace llarp
     {
         if (_router.is_stopping() || not _router.is_running())
         {
-            log::debug(logcat, "NodeDB unable to continue RouterID fetch -- router is stopped!");
+            log::debug(logcat, "NodeDB skipping RouterID fetch -- router is stopped!");
             // FIXME: this *was* calling post_rid_fetch, but that seems wrong (and can segfault),
             //        might need to see *why* it was doing so, if for any logical reason
             return;
         }
 
-        if (rid_sources.empty())
-        {
-            log::debug(logcat, "Client reselecting RID sources...");
-            reselect_router_id_sources(rid_sources);
-        }
+        auto results = std::make_shared<std::unordered_map<RouterID, std::set<RouterID>>>();
+        auto result_count = std::make_shared<size_t>(0);
+        size_t try_count{0};
+        std::vector<path::Path*> selected_paths;
 
-        fetch_counter = 0;
-        response_counter = 0;
-        fail_counter = 0;
-        fail_sources.clear();
-        rid_result_counters.clear();
-
-        do
-            cycle_fetch_source();
-        while (rid_sources.contains(fetch_source));
-
-        auto& src = fetch_source;
-        log::debug(logcat, "New fetch source is {}", src);
-
-        auto send_hook = [this, src = src](quic::BTRequestStream& control) mutable {
-            for (const RouterID& target : rid_sources)
+        // In the future, we may want to make paths to selected sources for RID fetching,
+        // but for now just use the first N paths that we already have for simplicity.  If
+        // fetching fails from one, or not all results agree, we probably want to drop that
+        // path anyway.
+        _router.session_endpoint().for_each_path([&results, &try_count, &selected_paths](auto& path) mutable {
+            if (try_count >= RID_SOURCE_COUNT)
+                return;
+            auto [itr, inserted] = results->emplace(path.terminal_rid(), std::set<RouterID>{});
+            if (inserted)
             {
-                if (target == src)
-                    return;
-
-                log::trace(logcat, "Sending FetchRIDs request to {} via {}", target, src);
-                control.command(
-                    "fetch_rids",
-                    FetchRID::serialize(target),
-                    [&, source = src, target = target](quic::message msg) mutable {
-                        // Since we batch send this without going through link_manager, wrap the response handler
-                        // in loop-call from here
-                        _router.loop()->call([&, m = std::move(msg)]() mutable {
-                            response_counter++;
-                            if (not m)
-                            {
-                                log::warning(
-                                    logcat,
-                                    "RID fetch from {} via {} {}",
-                                    target,
-                                    source,
-                                    m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
-                                ingest_fetched_rids(source);
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    std::unordered_set<RouterID> router_ids;
-                                    oxenc::bt_dict_consumer btdc{m.body()};
-
-                                    btdc.required("r");
-
-                                    {
-                                        auto sublist = btdc.consume_list_consumer();
-
-                                        while (not sublist.is_finished())
-                                            router_ids.emplace(sublist.consume_span<uint8_t, 32>());
-                                    }
-
-                                    btdc.require_signature(
-                                        "~", [&target](std::span<const std::byte> msg, std::span<const std::byte> sig) {
-                                            if (sig.size() != SIGSIZE)
-                                                throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                                            if (not crypto::verify(target, msg, sig.first<SIGSIZE>()))
-                                                throw std::runtime_error{
-                                                    "Failed to verify signature for fetch RouterIDs response."};
-                                        });
-
-                                    ingest_fetched_rids(source, std::move(router_ids));
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    log::warning(logcat, "Error handling fetch RouterIDs response: {}", e.what());
-                                    ingest_fetched_rids(source);
-                                }
-                            }
-                        });
-                    });
-
-                fetch_counter++;
+                try_count++;
+                selected_paths.push_back(&path);
             }
-        };
+        });
+        if (try_count < RID_SOURCE_COUNT)
+            log::info(logcat, "Fetching RIDs from {} sources (want minimum {}, but not enough paths)",
+                    try_count,
+                    RID_SOURCE_COUNT);
 
-        _router.link_manager().fetch_router_ids(src, std::move(send_hook));
+        for (auto* path : selected_paths)
+        {
+            auto result_cb = [this, results, result_count, source = path->terminal_rid()](quic::message m) {
+                (*result_count)++;
+                if (not m)
+                {
+                    log::warning(
+                        logcat,
+                        "RID fetch from {} {}",
+                        source,
+                        m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
+                }
+                else
+                {
+                    try
+                    {
+                        auto& router_ids = results->at(source);
+                        oxenc::bt_dict_consumer btdc{m.body()};
+
+                        btdc.required("r");
+
+                        {
+                            auto sublist = btdc.consume_list_consumer();
+
+                            while (not sublist.is_finished())
+                                router_ids.emplace(sublist.consume_span<uint8_t, 32>());
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(logcat, "Error handling fetch RouterIDs response: {}", e.what());
+                        results->at(source).clear();
+                    }
+                }
+                if (*result_count == results->size())
+                {
+                    handle_fetched_router_ids(*results);
+                }
+            };
+            path->send_path_control_message("fetch_rids"sv, {}, std::move(result_cb));
+        }
     }
 
-    void NodeDB::ingest_fetched_rids(const RouterID& source, std::optional<std::unordered_set<RouterID>> rids)
+    void NodeDB::handle_fetched_router_ids(const std::unordered_map<RouterID, std::set<RouterID>>& results)
     {
-        log::trace(logcat, "Ingesting {} RID's from {}", rids ? rids->size() : 0, source);
-
-        if (rids)
-        {
-            for (const auto& rid : *rids)
-                rid_result_counters[rid]++;
+        std::unordered_map<const std::set<RouterID>*, int> freq;
+        int highest_count{0};
+        const std::set<RouterID>* highest_ptr{nullptr};
+        bool tie{true}; // if they're all empty, tie check below suffices to throw away results
+        for (const auto& [source, result] : results) {
+            log::debug(logcat, "processing RID fetch result from {} with {} entries", source, result.size());
+            if (result.empty()) continue;
+            bool found{false};
+            int new_count{0};
+            for (auto& [set, count] : freq) {
+                if (result.size() != set->size())
+                    continue;
+                if (result == *set) {
+                    new_count = count++;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                log::trace(logcat, "{} had a novel RID set", source);
+                freq[&result] = 1;
+                new_count = 1;
+            }
+            if (new_count > highest_count) {
+                highest_ptr = &result;
+                highest_count = new_count;
+                tie = false;
+                log::trace(logcat, "{} new high score RID set ({})", source, highest_count);
+            }
+            else if (new_count == highest_count) {
+                tie = true;
+                log::trace(logcat, "{} tied high score RID set ({})", source, highest_count);
+            }
         }
-        else
-        {
-            fail_sources.insert(source);
-            fail_counter++;
-            log::trace(logcat, "{} marked as a failed fetch source (currently: {})", source, fail_counter);
-        }
-
-        int n_fails = fail_counter.load();
-        int n_responses = response_counter.load();
-
-        if (n_responses < fetch_counter)
-        {
-            log::trace(logcat, "Received {}/{} fetch RID requests", n_responses, fetch_counter);
+        if (tie) {
+            log::warning(logcat, "Throwing away RID fetch results, tie for common set with {} members", highest_count);
             return;
         }
 
-        log::trace(logcat, "Received {}/{} fetch RID requests! Processing...", n_responses, fetch_counter);
-
-        if (n_fails <= MAX_RID_ERRORS)
-        {
-            log::debug(logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
-            return process_fetched_rids();
-        }
-
-        log::warning(logcat, "RID fetching found {} failures; reselecting failed RID fetch sources...", n_fails);
-        reselect_router_id_sources(fail_sources);
+        known_rids.clear();
+        for (const auto& rid : *highest_ptr)
+            known_rids.insert(rid);
     }
 
     bool NodeDB::is_bootstrap_node(const RemoteRC& rc) const { return _bootstraps.contains(rc.router_id()); }
@@ -756,16 +634,7 @@ namespace llarp
                 rng);
     }
 
-    void NodeDB::reselect_router_id_sources(std::unordered_set<RouterID> specific)
-    {
-        replace_subset(rid_sources, specific, known_rids, RID_SOURCE_COUNT, csrng);
-
-        if (auto sz = rid_sources.size(); sz < RID_SOURCE_COUNT)
-        {
-            log::warning(logcat, "Insufficient RID's (count: {}) held locally for fetching!", sz);
-        }
-    }
-
+    // FIXME: do we care about active vs decommissioned nodes?
     void NodeDB::set_router_whitelist(const std::vector<RouterID>& whitelist)
     {
         log::debug(logcat, "Oxend provided {} whitelisted routers", whitelist.size());

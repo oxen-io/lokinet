@@ -177,7 +177,7 @@ namespace llarp::path
         return NULL_PATH;
     }
 
-    void PathHandler::for_each_path(std::function<void(const Path&)> visit) const
+    void PathHandler::for_each_path(std::function<void(Path&)> visit) const
     {
         Lock_t lock{paths_mutex};
 
