@@ -333,55 +333,32 @@ namespace llarp
 
     void NodeDB::handle_fetched_router_ids(const std::unordered_map<RouterID, std::set<RouterID>>& results)
     {
-        std::unordered_map<const std::set<RouterID>*, int> freq;
-        int highest_count{0};
-        const std::set<RouterID>* highest_ptr{nullptr};
-        bool tie{true};  // if they're all empty, tie check below suffices to throw away results
-        for (const auto& [source, result] : results)
+        std::unordered_set<RouterID> accepted{};
+
+        auto itr = results.begin();
+        while (itr != results.end())
         {
-            log::debug(logcat, "processing RID fetch result from {} with {} entries", source, result.size());
-            if (result.empty())
-                continue;
-            bool found{false};
-            int new_count{0};
-            for (auto& [set, count] : freq)
+            for (const auto& rid : itr->second)
             {
-                if (result.size() != set->size())
-                    continue;
-                if (result == *set)
+                size_t count{0};
+                auto cur_itr = results.begin();
+                while (cur_itr != results.end())
                 {
-                    new_count = count++;
-                    found = true;
-                    break;
+                    if (cur_itr->second.contains(rid))
+                        count++;
+                    cur_itr++;
                 }
+                // FIXME: better than "half-rounded-up agree"
+                if (count > (results.size() / 2))
+                    accepted.insert(rid);
+                else
+                    log::info(logcat, "Received a RouterID that not enough nodes agree is correct: {}", rid);
             }
-            if (!found)
-            {
-                log::trace(logcat, "{} had a novel RID set", source);
-                freq[&result] = 1;
-                new_count = 1;
-            }
-            if (new_count > highest_count)
-            {
-                highest_ptr = &result;
-                highest_count = new_count;
-                tie = false;
-                log::trace(logcat, "{} new high score RID set ({})", source, highest_count);
-            }
-            else if (new_count == highest_count)
-            {
-                tie = true;
-                log::trace(logcat, "{} tied high score RID set ({})", source, highest_count);
-            }
-        }
-        if (tie)
-        {
-            log::warning(logcat, "Throwing away RID fetch results, tie for common set with {} members", highest_count);
-            return;
+            itr++;
         }
 
         known_rids.clear();
-        for (const auto& rid : *highest_ptr)
+        for (const auto& rid : accepted)
             known_rids.insert(rid);
     }
 
