@@ -145,6 +145,11 @@ namespace llarp::path
         return send_path_control_message("fetch_rcs", as_bspan(FetchRC::serialize({{needed}})), std::move(func));
     }
 
+    bool Path::fetch_relay_contacts(const std::vector<RouterID>& needed, std::function<void(quic::message)> func)
+    {
+        return send_path_control_message("fetch_rcs", as_bspan(FetchRC::serialize(needed)), std::move(func));
+    }
+
     bool Path::find_client_contact(const hash_key& location, std::function<void(quic::message)> func)
     {
         return send_path_control_message("find_cc", as_bspan(FindClientContact::serialize(location)), std::move(func));

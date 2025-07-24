@@ -190,55 +190,6 @@ namespace llarp
         return "{}/{}{}"_format(_root.native(), pubkey.to_string(), RC_FILE_EXT);
     }
 
-    void NodeDB::process_fetched_rcs(std::vector<RemoteRC> rcs)
-    {
-        int accepted = 0;
-        for (auto& rc : rcs)
-        {
-            auto& rid = rc.router_id();
-            if (_router.is_service_node())
-            {
-                if (!_registered_routers.contains(rid))
-                {
-                    log::debug(logcat, "Rejecting fetched RC router {}: not found in registered router list", rid);
-                    continue;
-                }
-            }
-            else
-            {
-                if (!known_rids.contains(rc.router_id()))
-                {
-                    log::debug(
-                        logcat,
-                        "Fetched RC list contains {} RID {}; discarding it.",
-                        unconfirmed_rids.contains(rc.router_id()) ? "unconfirmed" : "unknown",
-                        rc.router_id());
-                    continue;
-                }
-            }
-            accepted++;
-            put_rc(std::move(rc));
-        }
-
-        int rejected = static_cast<int>(rcs.size()) - accepted;
-        double fetch_threshold = rcs.empty() ? 0.0 : accepted / (double)rcs.size();
-
-        log::info(logcat, "RC fetch returned {} RCs ({} good, {} rejected)", rcs.size(), accepted, rejected);
-
-        if (accepted < MIN_GOOD_RC_FETCH_TOTAL or fetch_threshold < MIN_GOOD_RC_FETCH_THRESHOLD)
-        {
-            log::warning(logcat, "RC acceptance rate is too low; reselecting RC fetch source");
-            cycle_fetch_source();
-        }
-    }
-
-    std::vector<RouterID> NodeDB::get_expired_rcs()
-    {
-        auto expired = known_rcs | std::views::filter([](const auto& id_rc) { return id_rc.second.is_outdated(); })
-            | std::views::keys;
-        return {expired.begin(), expired.end()};
-    }
-
     void NodeDB::fetch_rcs()
     {
         if (_router.is_stopping() || not _router.is_running())
@@ -249,31 +200,49 @@ namespace llarp
             return;
         }
 
-        cycle_fetch_source();
+        size_t count{0};
+        std::vector<RouterID> to_fetch{};
+        for (const auto& rid : known_rids) {
+            if (!known_rcs.contains(rid)) {
+                to_fetch.push_back(rid);
+                count++;
+            }
+            if (count == RC_FETCH_COUNT)
+                break;
+        }
 
-        log::debug(logcat, "Dispatching FetchRC's request to {}!", fetch_source.short_string());
+        if (to_fetch.empty()) return;
 
-        _router.link_manager().fetch_rcs(
-            fetch_source,
-            FetchRC::serialize(get_expired_rcs()),
-            [this, source = fetch_source](quic::message m) mutable {
+        path::Path* selected_path = _router.session_endpoint().get_random_active_path();
+        if (!selected_path) {
+            log::debug(logcat, "NodeDB fetch rcs, skipping because we have no paths.");
+            return;
+        }
+
+
+        selected_path->fetch_relay_contacts(
+            to_fetch,
+            [this](quic::message m) mutable {
                 std::string error;
-                if (m)
+                if (m) {
                     try
                     {
                         auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
-                        log::trace(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
-                        return process_fetched_rcs(std::move(rcs));
+                        log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
+                        for (auto& rc : rcs) {
+                            const auto& rid = rc.router_id();
+                            if (!put_rc(std::move(rc)))
+                                log::debug(logcat, "Not inserting RC for {}, either it is newer or (if relay) ours", rid);
+                        }
                     }
                     catch (const std::exception& e)
                     {
                         error = e.what();
                     }
-                else
+                }
+                else {
                     error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
-
-                log::warning(logcat, "RC fetch from {} failed: {}; reselecting RC fetch source", source, error);
-                cycle_fetch_source();
+                }
             });
     }
 
@@ -431,7 +400,7 @@ namespace llarp
             if (not _needs_bootstrap)
             {
                 _router.loop()->call_later(
-                    uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rcs(); });
+                    uniform_duration_distribution{10s, 15s}(llarp::csrng), [this] { fetch_rcs(); });
                 _router.loop()->call_later(
                     uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
             }
@@ -845,18 +814,6 @@ namespace llarp
     size_t NodeDB::num_rcs() const { return known_rcs.size(); }
 
     size_t NodeDB::num_rids() const { return known_rids.size(); }
-
-    void NodeDB::cycle_fetch_source()
-    {
-        if (known_rids.empty())
-            return fetch_source.zero();
-
-        fetch_source = *std::next(
-            known_rids.begin(),
-            std::uniform_int_distribution{0, static_cast<int>(known_rids.size()) - 1}(llarp::csrng));
-
-        log::debug(logcat, "Updated RC fetch source to {}", fetch_source);
-    }
 
     void NodeDB::remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove)
     {

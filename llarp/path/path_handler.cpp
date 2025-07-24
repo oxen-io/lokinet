@@ -104,12 +104,21 @@ namespace llarp::path
         _router.path_context.drop_path(*p);
     }
 
-    const std::shared_ptr<Path>& PathHandler::get_random_path() const
+    Path* PathHandler::get_random_active_path() const
     {
         if (_paths.empty())
-            return NULL_PATH;
-        int i = std::uniform_int_distribution<int>{0, static_cast<int>(_paths.size()) - 1}(csrng);
-        return std::next(_paths.begin(), i)->second;
+            return nullptr;
+
+        auto i = std::rand() % num_active_paths();
+        size_t count{0};
+        for (const auto& [unused, p] : _paths) {
+            if (count == i && p->is_active())
+                return p.get();
+            if (p->is_active())
+                count++;
+        }
+
+        return nullptr;
     }
 
     const std::shared_ptr<Path>& PathHandler::find_path(std::function<bool(const Path&)> filter) const
@@ -182,8 +191,10 @@ namespace llarp::path
         Lock_t lock{paths_mutex};
 
         for (const auto& [_, p] : _paths)
-            if (p)
+            if (p) {
+                if (!p->is_active()) continue;
                 visit(*p);
+            }
     }
 
     sorted_intro_set PathHandler::get_local_client_intros() const

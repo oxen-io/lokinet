@@ -29,11 +29,9 @@ namespace llarp
     // max number of attempts we make in non-bootstrap fetch requests
     inline constexpr int MAX_FETCH_ATTEMPTS{10};
 
-    // TODO FIXME XXX: these are both zero right now which means we *never* rotate our RC source!
-    // the total number of returned rcs that are held locally should be at least this
-    inline constexpr int MIN_GOOD_RC_FETCH_TOTAL{};
-    // the ratio of returned rcs found locally to to total returned should be above this ratio
-    inline constexpr double MIN_GOOD_RC_FETCH_THRESHOLD{};
+    // when pro-actively fetching RCs, ask for this many for which we have RouterID but no RC
+    inline constexpr int RC_FETCH_COUNT{5};
+
     // the total number of accepted returned rids should be above this number
     inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
     // the ratio of accepted:rejected rids must be above this ratio
@@ -106,9 +104,6 @@ namespace llarp
         // if true, ONLY use pinned edges for first hop
         bool _strict_connect{false};
 
-        // source of "truth" for RC updating. This relay will also mediate requests to the
-        // 8 selected active RID's for RID fetching
-        RouterID fetch_source;
         // set of 8 randomly selected RID's from the client's set of routers
         std::unordered_set<RouterID> rid_sources{};
         // logs the RID's that resulted in an error during RID fetching
@@ -151,10 +146,6 @@ namespace llarp
         const std::set<RouterID>& get_known_rids() const { return known_rids; }
 
         const std::unordered_map<RouterID, RemoteRC>& get_known_rcs() const { return known_rcs; }
-
-        void process_fetched_rcs(std::vector<RemoteRC> rcs);
-
-        std::vector<RouterID> get_expired_rcs();
 
         bool is_bootstrapping() const { return _is_bootstrapping; }
         bool needs_bootstrap() const { return _needs_bootstrap; }
@@ -256,8 +247,6 @@ namespace llarp
         void post_rid_fetch(bool shutdown = false);
 
         void stop_bootstrap(bool success);
-
-        void cycle_fetch_source();
 
         /// remove any stored RCs matching the given predicate
         void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);

@@ -178,7 +178,7 @@ namespace llarp
             void add_path(std::shared_ptr<Path> path);
 
             // Returns a random path, or nullptr if there are no paths.
-            const std::shared_ptr<Path>& get_random_path() const;
+            Path* get_random_active_path() const;
 
             // Returns the first path that matches the filter, or nullptr if no paths match.  Note
             // that the iteration order of paths is not guaranteed so if the filter could match
