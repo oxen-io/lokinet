@@ -111,7 +111,8 @@ namespace llarp::path
 
         auto i = std::rand() % num_active_paths();
         size_t count{0};
-        for (const auto& [unused, p] : _paths) {
+        for (const auto& [unused, p] : _paths)
+        {
             if (count == i && p->is_active())
                 return p.get();
             if (p->is_active())
@@ -191,8 +192,10 @@ namespace llarp::path
         Lock_t lock{paths_mutex};
 
         for (const auto& [_, p] : _paths)
-            if (p) {
-                if (!p->is_active()) continue;
+            if (p)
+            {
+                if (!p->is_active())
+                    continue;
                 visit(*p);
             }
     }

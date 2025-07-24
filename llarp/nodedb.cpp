@@ -202,8 +202,10 @@ namespace llarp
 
         size_t count{0};
         std::vector<RouterID> to_fetch{};
-        for (const auto& rid : known_rids) {
-            if (!known_rcs.contains(rid)) {
+        for (const auto& rid : known_rids)
+        {
+            if (!known_rcs.contains(rid))
+            {
                 to_fetch.push_back(rid);
                 count++;
             }
@@ -211,39 +213,41 @@ namespace llarp
                 break;
         }
 
-        if (to_fetch.empty()) return;
+        if (to_fetch.empty())
+            return;
 
         path::Path* selected_path = _router.session_endpoint().get_random_active_path();
-        if (!selected_path) {
+        if (!selected_path)
+        {
             log::debug(logcat, "NodeDB fetch rcs, skipping because we have no paths.");
             return;
         }
 
-
-        selected_path->fetch_relay_contacts(
-            to_fetch,
-            [this](quic::message m) mutable {
-                std::string error;
-                if (m) {
-                    try
+        selected_path->fetch_relay_contacts(to_fetch, [this](quic::message m) mutable {
+            std::string error;
+            if (m)
+            {
+                try
+                {
+                    auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
+                    log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
+                    for (auto& rc : rcs)
                     {
-                        auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
-                        log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
-                        for (auto& rc : rcs) {
-                            const auto& rid = rc.router_id();
-                            if (!put_rc(std::move(rc)))
-                                log::debug(logcat, "Not inserting RC for {}, either it is newer or (if relay) ours", rid);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        error = e.what();
+                        const auto& rid = rc.router_id();
+                        if (!put_rc(std::move(rc)))
+                            log::debug(logcat, "Not inserting RC for {}, either it is newer or (if relay) ours", rid);
                     }
                 }
-                else {
-                    error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
+                catch (const std::exception& e)
+                {
+                    error = e.what();
                 }
-            });
+            }
+            else
+            {
+                error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
+            }
+        });
     }
 
     // FIXME: all of this RouterID and RC fetching code is pretty nasty and jank,
@@ -278,9 +282,11 @@ namespace llarp
             }
         });
         if (try_count < RID_SOURCE_COUNT)
-            log::info(logcat, "Fetching RIDs from {} sources (want minimum {}, but not enough paths)",
-                    try_count,
-                    RID_SOURCE_COUNT);
+            log::info(
+                logcat,
+                "Fetching RIDs from {} sources (want minimum {}, but not enough paths)",
+                try_count,
+                RID_SOURCE_COUNT);
 
         for (auto* path : selected_paths)
         {
@@ -330,38 +336,46 @@ namespace llarp
         std::unordered_map<const std::set<RouterID>*, int> freq;
         int highest_count{0};
         const std::set<RouterID>* highest_ptr{nullptr};
-        bool tie{true}; // if they're all empty, tie check below suffices to throw away results
-        for (const auto& [source, result] : results) {
+        bool tie{true};  // if they're all empty, tie check below suffices to throw away results
+        for (const auto& [source, result] : results)
+        {
             log::debug(logcat, "processing RID fetch result from {} with {} entries", source, result.size());
-            if (result.empty()) continue;
+            if (result.empty())
+                continue;
             bool found{false};
             int new_count{0};
-            for (auto& [set, count] : freq) {
+            for (auto& [set, count] : freq)
+            {
                 if (result.size() != set->size())
                     continue;
-                if (result == *set) {
+                if (result == *set)
+                {
                     new_count = count++;
                     found = true;
                     break;
                 }
             }
-            if (!found) {
+            if (!found)
+            {
                 log::trace(logcat, "{} had a novel RID set", source);
                 freq[&result] = 1;
                 new_count = 1;
             }
-            if (new_count > highest_count) {
+            if (new_count > highest_count)
+            {
                 highest_ptr = &result;
                 highest_count = new_count;
                 tie = false;
                 log::trace(logcat, "{} new high score RID set ({})", source, highest_count);
             }
-            else if (new_count == highest_count) {
+            else if (new_count == highest_count)
+            {
                 tie = true;
                 log::trace(logcat, "{} tied high score RID set ({})", source, highest_count);
             }
         }
-        if (tie) {
+        if (tie)
+        {
             log::warning(logcat, "Throwing away RID fetch results, tie for common set with {} members", highest_count);
             return;
         }
