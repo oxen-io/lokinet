@@ -15,7 +15,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const EncryptedClientContact& ecc, std::optional<RouterID> remote)
+        std::vector<std::byte> serialize(const EncryptedClientContact& ecc, std::optional<RouterID> remote)
         {
             oxenc::bt_dict_producer btdp;
 
@@ -23,7 +23,7 @@ namespace llarp
             if (remote)
                 btdp.append("i", remote->span());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         std::pair<EncryptedClientContact, std::optional<RouterID>> deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -58,13 +58,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const hash_key& location)
+        std::vector<std::byte> serialize(const hash_key& location)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("k", location.span());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         hash_key deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -89,13 +89,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedClientContact& ecc)
+        std::vector<std::byte> serialize_response(const EncryptedClientContact& ecc)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("x", ecc.bt_payload());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         EncryptedClientContact deserialize_response(oxenc::bt_dict_consumer&& btdc)
@@ -124,13 +124,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash)
+        std::vector<std::byte> serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("s", name_hash);
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         std::string deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -151,13 +151,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedSNSRecord& enc)
+        std::vector<std::byte> serialize_response(const EncryptedSNSRecord& enc)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("x", enc.bt_payload());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         EncryptedSNSRecord deserialize_response(oxenc::bt_dict_consumer&& btdc)

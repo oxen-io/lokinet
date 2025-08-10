@@ -125,6 +125,11 @@ namespace llarp
             undeclared_handlers.erase(itr);
     }
 
+    void ConfigDefinition::add_options_validator(std::function<void()> validator)
+    {
+        options_validators.push_back(std::move(validator));
+    }
+
     void ConfigDefinition::validate_required_fields()
     {
         visit_sections([&](const std::string& section, const DefinitionMap&) {
@@ -147,6 +152,12 @@ namespace llarp
                 def->try_accept();
             });
         });
+    }
+
+    void ConfigDefinition::validate_all_options()
+    {
+        for (auto& v : options_validators)
+            v();
     }
 
     void ConfigDefinition::add_section_comments(const std::string& section, std::vector<std::string> comments)

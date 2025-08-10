@@ -87,6 +87,13 @@ namespace llarp
         }
 
         static SymmNonce make_random();
+
+        // Creates a SymmNonce from a sequential value, encoded in little endian.  This value should
+        // never be reused!  This is intended for use with established sessions with an incrementing
+        // nonce.  The mid and high values can be specified, typically for flags for sequential
+        // nonce distinction (for instance: sessions set mid=1 for messages on inbound paths, and
+        // mid=0 for messages on outbound paths).
+        static SymmNonce sequential(uint64_t low, uint64_t mid = 0, uint64_t high = 0);
     };
 
     /// Holds all the data used for symmetric DH key-exchange (ex: path-build, session-init, etc)

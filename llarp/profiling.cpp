@@ -206,56 +206,55 @@ namespace llarp
         profile.last_update = llarp::time_now_ms();
     }
 
-    void Profiling::path_fail(path::Path* p)
+    void Profiling::path_fail(path::Path& p)
     {
         if (_profiling_disabled.load())
             return;
 
         util::Lock lock{_m};
         bool first = true;
-        for (const auto& hop : p->hops)
+        for (const auto& hop : p.hops)
         {
             // don't mark first hop as failure because we are connected to it directly
             if (first)
                 first = false;
             else
             {
-                auto& profile = _profiles[hop.router_id()];
+                auto& profile = _profiles[hop.router_id];
                 profile.path_fail += 1;
                 profile.last_update = llarp::time_now_ms();
             }
         }
     }
 
-    void Profiling::path_timeout(path::Path* p)
+    void Profiling::path_timeout(path::Path& p)
     {
         if (_profiling_disabled.load())
             return;
 
         util::Lock lock{_m};
-        for (const auto& hop : p->hops)
+        for (const auto& hop : p.hops)
         {
-            auto& profile = _profiles[hop.router_id()];
+            auto& profile = _profiles[hop.router_id];
             profile.path_timeout += 1;
             profile.last_update = llarp::time_now_ms();
         }
     }
 
-    void Profiling::path_success(path::Path* p)
+    void Profiling::path_success(path::Path& p)
     {
         if (_profiling_disabled.load())
             return;
 
         util::Lock lock{_m};
-        const auto sz = p->hops.size();
-        for (const auto& hop : p->hops)
+        for (const auto& hop : p.hops)
         {
-            auto& profile = _profiles[hop.router_id()];
+            auto& profile = _profiles[hop.router_id];
             // redeem previous fails by halfing the fail count and setting timeout to zero
             profile.path_fail /= 2;
             profile.path_timeout = 0;
             // mark success at hop
-            profile.path_success += sz;
+            profile.path_success += p.hops.size();
             profile.last_update = llarp::time_now_ms();
         }
     }
@@ -272,7 +271,7 @@ namespace llarp
 
     void Profiling::start_save_ticker(Router& r)
     {
-        _disk_saver = r.loop()->call_every(SAVE_INTERVAL, [this] {
+        _disk_saver = r.disk_loop.call_every(SAVE_INTERVAL, [this] {
             log::debug(logcat, "Writing router profiles to disk...");
             save_to_disk();
         });

@@ -34,14 +34,4 @@ namespace llarp
             throw std::invalid_argument{"Invalid pubkey passed to NetworkAddress constructor: {}"_format(arg)};
     }
 
-    RelayAddress::RelayAddress(std::string_view arg)
-    {
-        if (not arg.ends_with(TLD::SNODE))
-            throw std::invalid_argument{
-                "Invalid RelayAddress constructor: {} does not end with '{}'"_format(arg, TLD::SNODE)};
-        arg.remove_suffix(TLD::SNODE.size());
-        if (!_pubkey.from_base32z(arg))
-            throw std::invalid_argument{"Invalid pubkey passed to RelayAddress constructor: {}"_format(arg)};
-    }
-
 }  //  namespace llarp

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "llarp/constants/path.hpp"
+
 #include <llarp/address/address.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging/buffer.hpp>
@@ -8,19 +10,20 @@ namespace llarp
 {
     namespace ONION
     {
-        std::string serialize_frames(const std::vector<std::string>& frames);
+        /*
+        std::string serialize_frames(const std::array<std::string, path::BUILD_LENGTH>& frames);
 
-        std::vector<std::string> deserialize_frames(std::string_view buf);
+        std::array<std::string, path::BUILD_LENGTH> deserialize_frames(std::string_view buf);
+        */
 
-        std::string serialize_hop(
+        // Serializes a *non-data* message
+        std::vector<std::byte> serialize_stream_hop(
             std::span<const std::byte> key, const SymmNonce& nonce, std::span<const std::byte> encrypted);
 
-        std::pair<std::string, shared_kx_data> deserialize_decrypt(
+        std::tuple<std::string, SharedSecret, SymmNonce> deserialize_decrypt(
             oxenc::bt_dict_consumer&& btdc, const Ed25519SecretKey& local_sk);
 
-        std::tuple<RouterID, SymmNonce, std::string> deserialize(oxenc::bt_dict_consumer&& btdc);
-
-        std::tuple<HopID, SymmNonce, std::string> deserialize_hop(oxenc::bt_dict_consumer&& btdc);
+        std::tuple<HopID, SymmNonce, std::vector<std::byte>> deserialize_stream_hop(oxenc::bt_dict_consumer&& btdc);
 
     }  // namespace ONION
 
@@ -43,9 +46,9 @@ namespace llarp
 
         namespace CONTROL
         {
-            std::string serialize(std::string_view endpoint, std::span<const std::byte> payload);
+            std::vector<std::byte> serialize(std::string_view endpoint, std::span<const std::byte> payload);
 
-            std::string serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid);
+            std::vector<std::byte> serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid);
 
             std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc);
 
@@ -54,9 +57,6 @@ namespace llarp
         namespace DATA
         {
             std::string serialize(std::string_view payload, const RouterID& local);
-
-            std::string serialize_intermediate(
-                const session_tag& tag, std::span<const std::byte> payload, const HopID& pivot_txid);
 
             std::pair<NetworkAddress, std::span<const std::byte>> deserialize(oxenc::bt_dict_consumer&& btdc);
 

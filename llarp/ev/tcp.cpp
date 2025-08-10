@@ -195,30 +195,22 @@ namespace llarp
         log::info(logcat, "TCP connection closing with application error code: {}", ec);
     }
 
-    std::shared_ptr<TCPHandle> TCPHandle::make_server(
-        const std::shared_ptr<quic::Loop> &ev, tcpconn_hook cb, uint16_t port)
+    std::shared_ptr<TCPHandle> TCPHandle::make_server(quic::Loop &ev, tcpconn_hook cb, uint16_t port)
     {
         std::shared_ptr<TCPHandle> h{new TCPHandle(ev, std::move(cb), port)};
         return h;
     }
 
-    std::shared_ptr<TCPHandle> TCPHandle::make_client(const std::shared_ptr<quic::Loop> &ev, quic::Address connect)
+    std::shared_ptr<TCPHandle> TCPHandle::make_client(quic::Loop &ev, quic::Address connect)
     {
         std::shared_ptr<TCPHandle> h{new TCPHandle{ev, std::move(connect)}};
         return h;
     }
 
-    TCPHandle::TCPHandle(const std::shared_ptr<quic::Loop> &ev_loop, quic::Address connect)
-        : _ev{ev_loop}, _connect{std::move(connect)}
-    {
-        assert(_ev);
-    }
+    TCPHandle::TCPHandle(quic::Loop &ev_loop, quic::Address connect) : _ev{ev_loop}, _connect{std::move(connect)} {}
 
-    TCPHandle::TCPHandle(const std::shared_ptr<quic::Loop> &ev_loop, tcpconn_hook cb, uint16_t p)
-        : _ev{ev_loop}, _conn_maker{std::move(cb)}
+    TCPHandle::TCPHandle(quic::Loop &ev_loop, tcpconn_hook cb, uint16_t p) : _ev{ev_loop}, _conn_maker{std::move(cb)}
     {
-        assert(_ev);
-
         if (!_conn_maker)
             throw std::logic_error{"TCPSocket construction requires a non-empty receive callback"};
 
@@ -258,9 +250,9 @@ namespace llarp
         _tcp.sin_addr.s_addr = INADDR_ANY;
         _tcp.sin_port = htonl(port);
 
-        _tcp_listener = _ev->template shared_ptr<struct evconnlistener>(
+        _tcp_listener = _ev.template shared_ptr<struct evconnlistener>(
             evconnlistener_new_bind(
-                _ev->get_event_base(),
+                _ev.get_event_base(),
                 tcp_listen_cb,
                 this,
                 LEV_OPT_CLOSE_ON_FREE | LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE,

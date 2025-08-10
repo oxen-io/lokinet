@@ -1,53 +1,53 @@
 #include "path.hpp"
 
 #include "common.hpp"
+#include "llarp/constants/path.hpp"
+#include "llarp/crypto/crypto.hpp"
 
 #include <llarp/util/bspan.hpp>
+
+#include <ranges>
+#include <stdexcept>
 
 namespace llarp
 {
 
     static auto logcat = llarp::log::Cat("path.msgs");
 
+    // FIXME TODO: get rid of this file.  Serialization belongs with the thing being serialized, not
+    // in some header far removed.
     namespace ONION
     {
-        std::string serialize_frames(const std::vector<std::string>& frames)
-        {
-            return oxenc::bt_serialize(std::move(frames));
-        }
-
-        std::vector<std::string> deserialize_frames(std::string_view buf)
-        {
-            return oxenc::bt_deserialize<std::vector<std::string>>(buf);
-        }
-
-        /** Bt-encoded contents:
-            - 'k' : Next upstream HopID (path messages) OR shared pubkey (path builds)
+        /** Serializes a path non-data (i.e. stream message).  Bt-encoded contents:
+            - 'h' : Next upstream HopID
             - 'n' : Symmetric nonce used to encrypt the layer
             - 'x' : Encrypted payload transmitted to next recipient
         */
-        std::string serialize_hop(
-            std::span<const std::byte> key, const SymmNonce& nonce, std::span<const std::byte> encrypted)
+        std::vector<std::byte> serialize_stream_hop(
+            const HopID& hopid, const SymmNonce& nonce, std::span<const std::byte> encrypted)
         {
             oxenc::bt_dict_producer btdp;
-            btdp.append("k", key);
+            btdp.append("h", hopid.span());
             btdp.append("n", nonce.span());
             btdp.append("x", encrypted);
-
-            return std::move(btdp).str();
+            auto res = btdp.span<std::byte>();
+            return {res.begin(), res.end()};
         }
 
-        std::pair<std::string, shared_kx_data> deserialize_decrypt(
+        std::tuple<std::string, SharedSecret, SymmNonce> deserialize_decrypt(
             oxenc::bt_dict_consumer&& btdc, const Ed25519SecretKey& local_sk)
         {
-            std::pair<std::string, shared_kx_data> ret;
-            auto& [payload, kx_data] = ret;
+            std::tuple<std::string, SharedSecret, SymmNonce> ret;
+            auto& [payload, shared_secret, xor_nonce] = ret;
 
+            PubKey eph_pubkey;
+            SymmNonce dh_nonce;
             try
             {
-                kx_data.pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
-                kx_data.nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+                eph_pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+                dh_nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
                 payload = btdc.require<std::string>("x");
+                btdc.finish();
             }
             catch (const std::exception& e)
             {
@@ -59,50 +59,35 @@ namespace llarp
 
             try
             {
-                kx_data.server_dh(local_sk);
-                kx_data.decrypt(as_bspan(payload));
+                if (!crypto::dh_server(shared_secret, eph_pubkey, local_sk, dh_nonce))
+                    throw std::runtime_error{"Failed to derive hop path shared secret"};
+                crypto::xchacha20(as_bspan(payload), shared_secret, dh_nonce);
 
                 log::trace(logcat, "xchacha -> payload: {}", buffer_printer{payload});
 
-                kx_data.generate_xor();
+                xor_nonce.assign(crypto::shorthash(shared_secret).span().first<SymmNonce::SIZE>());
             }
             catch (const std::exception& e)
             {
-                log::warning(logcat, "Failed to derive and decrypt outer wrapping!");
+                log::warning(logcat, "Failed to derive and decrypt path build message: {}", e.what());
                 throw std::runtime_error{messages::ERROR_RESPONSE};
             }
 
             return ret;
         }
 
-        std::tuple<RouterID, SymmNonce, std::string> deserialize(oxenc::bt_dict_consumer&& btdc)
+        std::tuple<HopID, SymmNonce, std::vector<std::byte>> deserialize_stream_hop(oxenc::bt_dict_consumer&& btdc)
         {
-            std::tuple<RouterID, SymmNonce, std::string> ret;
-            auto& [rid, nonce, payload] = ret;
-
-            try
-            {
-                rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("k"));
-                nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
-                payload = btdc.require<std::string>("x");
-                return ret;
-            }
-            catch (const std::exception& e)
-            {
-                throw std::runtime_error{"Exception caught deserializing onion data: {}"_format(e.what())};
-            }
-        }
-
-        std::tuple<HopID, SymmNonce, std::string> deserialize_hop(oxenc::bt_dict_consumer&& btdc)
-        {
-            std::tuple<HopID, SymmNonce, std::string> ret;
+            std::tuple<HopID, SymmNonce, std::vector<std::byte>> ret;
             auto& [hop_id, nonce, payload] = ret;
 
             try
             {
-                hop_id.assign(btdc.require_span<std::byte, HopID::SIZE>("k"));
+                hop_id.assign(btdc.require_span<std::byte, HopID::SIZE>("h"));
                 nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
-                payload = btdc.require<std::string>("x");
+                auto enc = btdc.require_span<std::byte>("x");
+                payload.assign(enc.begin(), enc.end());
+                btdc.finish();
                 return ret;
             }
             catch (const std::exception& e)
@@ -122,98 +107,7 @@ namespace llarp
             const std::string BAD_LIFETIME = messages::serialize_status_response("BAD PATH LIFETIME (TOO LONG)"sv);
             const std::string BAD_FRAMES = messages::serialize_status_response("BAD FRAMES"sv);
             const std::string BAD_PATHID = messages::serialize_status_response("BAD PATH ID"sv);
-            const std::string BAD_CRYPTO = messages::serialize_status_response("BAD CRYPTO"sv);
 
-            /** For each hop:
-                - Generate an Ed keypair for the hop (`shared_key`)
-                - Generate a symmetric nonce for subsequent DH
-                - Derive the shared secret (`hop.shared`) for DH key-exchange using the Ed keypair, hop pubkey, and
-                    symmetric nonce
-                - Encrypt the hop info in-place using `hop.shared` and the generated symmetric nonce from DH
-                - Generate the XOR nonce by hashing the symmetric key from DH (`hop.shared`) and truncating
-
-                Bt-encoded contents:
-                - 'k' : shared pubkey used to derive symmetric key
-                - 'n' : symmetric nonce used for DH key-exchange
-                - 'x' : encrypted payload
-                    - 'r' : rxID (the path ID for messages going *to* the hop)
-                    - 't' : txID (the path ID for messages coming *from* the client/path origin)
-                    - 'u' : upstream hop RouterID
-
-                All of these 'frames' are inserted sequentially into the list and padded with any needed dummy frames
-            */
-            std::string serialize_hop(path::TransitHop& hop)
-            {
-                auto hop_payload = hop.bt_encode();
-
-                // client dh key derivation
-                hop.kx.client_dh(hop.router_id());
-                // encrypt payload
-                hop.kx.encrypt(as_bspan(hop_payload));
-                // generate nonceXOR value
-                hop.kx.generate_xor();
-
-                log::trace(
-                    logcat,
-                    "Hop serialized; nonce: {}, remote router_id: {}, shared pk: {}, shared secret: {}, payload: {}",
-                    hop.kx.nonce,
-                    hop.router_id(),
-                    hop.kx.pubkey,
-                    hop.kx.shared_secret,
-                    buffer_printer{hop_payload});
-
-                return ONION::serialize_hop(hop.kx.pubkey.span(), hop.kx.nonce, as_bspan(hop_payload));
-            }
-
-            std::shared_ptr<path::TransitHop> deserialize_hop(
-                oxenc::bt_dict_consumer&& btdc, Router& r, const RouterID& src)
-            {
-                std::string payload;
-                auto hop = std::make_shared<path::TransitHop>();
-
-                try
-                {
-                    hop->kx.pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
-                    hop->kx.nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
-                    payload = btdc.require<std::string_view>("x");
-                }
-                catch (const std::exception& e)
-                {
-                    log::warning(logcat, "Exception caught deserializing hop dict: {}", e.what());
-                    throw;
-                }
-
-                log::trace(
-                    logcat,
-                    "Hop deserialized; nonce: {}, remote pk: {}, payload: {}",
-                    hop->kx.nonce,
-                    hop->kx.pubkey,
-                    buffer_printer{payload});
-
-                try
-                {
-                    hop->kx.server_dh(r.identity());
-                    hop->kx.decrypt(as_bspan(payload));
-                    hop->kx.generate_xor();
-
-                    log::trace(
-                        logcat,
-                        "Hop decrypted; nonce: {}, remote pk: {}, payload: {}",
-                        hop->kx.nonce,
-                        hop->kx.pubkey,
-                        buffer_printer{payload});
-
-                    hop->deserialize(oxenc::bt_dict_consumer{std::move(payload)}, src, r);
-                }
-                catch (...)
-                {
-                    log::info(logcat, "Failed to derive and decrypt outer wrapping!");
-                    throw std::runtime_error{BAD_CRYPTO};
-                }
-
-                log::trace(logcat, "TransitHop data successfully deserialized: {}", *hop);
-                return hop;
-            }
         }  // namespace BUILD
 
         namespace CONTROL
@@ -222,18 +116,18 @@ namespace llarp
                 - 'e' : request endpoint being invoked
                 - 'p' : request payload
             */
-            std::string serialize(std::string_view endpoint, std::span<const std::byte> payload)
+            std::vector<std::byte> serialize(std::string_view endpoint, std::span<const std::byte> payload)
             {
                 oxenc::bt_dict_producer btdp;
                 btdp.append("e", endpoint);
                 btdp.append("p", payload);
-                return std::move(btdp).str();
+                return to_bytes(btdp);
             }
 
-            std::string serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid)
+            std::vector<std::byte> serialize_aligned(std::span<const std::byte> payload, const HopID& pivot_txid)
             {
-                auto pivot_payload = ONION::serialize_hop(pivot_txid, SymmNonce::make_random(), payload);
-                return serialize("path_control", as_bspan(pivot_payload));
+                return serialize(
+                    "path_control", ONION::serialize_stream_hop(pivot_txid, SymmNonce::make_random(), payload));
             }
 
             std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -266,15 +160,6 @@ namespace llarp
                 oxenc::bt_dict_producer btdp;
                 btdp.append("i", local.span());
                 btdp.append("p", payload);
-                return std::move(btdp).str();
-            }
-
-            std::string serialize_intermediate(
-                const session_tag& tag, std::span<const std::byte> payload, const HopID& pivot_txid)
-            {
-                oxenc::bt_dict_producer btdp;
-                btdp.append("i", pivot_txid.span());
-                btdp.append_concat("p", tag.span(), payload);
                 return std::move(btdp).str();
             }
 

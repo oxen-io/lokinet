@@ -33,20 +33,18 @@ namespace llarp
 
     struct session_path_interface
     {
-        virtual void link_session(session_tag t) = 0;
-        virtual bool unlink_session(session_tag t) = 0;
-        virtual bool is_linked() const = 0;
-
-        virtual bool send_path_control_message(
+        virtual void send_path_control_message(
             std::string_view method, std::span<const std::byte> payload, std::function<void(quic::message)> func) = 0;
-        // NB: mutates body
-        virtual bool send_path_data_message(std::span<std::byte> body) = 0;
+        virtual void send_path_data_message(
+            std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random()) = 0;
 
         virtual RouterID terminal_rid() const = 0;
-        virtual HopID terminal_txid() const = 0;
+        virtual HopID terminal_hopid() const = 0;
 
         virtual std::string to_string() const = 0;
         static constexpr bool to_string_formattable = true;
+
+        virtual ~session_path_interface() = default;
     };
 
 }  // namespace llarp

@@ -14,16 +14,22 @@ namespace llarp::crypto
     std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
     /// xchacha symmetric cipher
-    bool xchacha20(std::span<std::byte> buf, const SharedSecret&, const SymmNonce&);
-
-    SymmNonce onion(
-        std::span<std::byte> buf, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor);
+    void xchacha20(std::span<std::byte> buf, const SharedSecret&, const SymmNonce&);
 
     /// path dh creator's side
-    bool dh_client(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
+    ///
+    /// Note that the input "nonce" here is used domain separation in the shared secret generation,
+    /// but isn't used as an encryption nonce (i.e. the same nonce can be safely used for both
+    /// shared secret generation and an initial payload encryption).
+    bool dh_client(SharedSecret& out, const PubKey& server_pk, const Ed25519SecretKey& client_seckey, const SymmNonce& nonce);
+
+    /// Generates an ephemeral keypair and random nonce, calls dh_client, then returns the resulting
+    /// shared secret, the ephemeral pubkey, and the nonce.  Throws std::invalid_argument if the
+    /// server pk is not valid.
+    std::tuple<SharedSecret, PubKey, SymmNonce> dh_client_gen(const PubKey& server_pk);
 
     /// path dh relay side
-    bool dh_server(SharedSecret&, const PubKey&, const Ed25519SecretKey&, const SymmNonce&);
+    bool dh_server(SharedSecret& out, const PubKey& client_pk, const Ed25519SecretKey& server_seckey, const SymmNonce& nonce);
     bool dh_server(uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_sk, const uint8_t* nonce);
 
     /// blake2b 256 bit
@@ -68,9 +74,12 @@ namespace llarp::crypto
     /// testing ands key_n if given.
     bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root, uint64_t key_n);
 
-    Ed25519SecretKey generate_identity();
+    Ed25519SecretKey generate_ed25519();
 
-    bool check_identity_privkey(const Ed25519SecretKey&);
+    // Verifies that the cached pubkey embedded in `keys` correctly corresponds with the seed value
+    // in `keys`; effectively this checks for corruption of the keys value, such as when loading the
+    // keypair from disk.
+    bool check_pubkey(const Ed25519SecretKey& keys);
 
     bool check_passwd_hash(std::string pwhash, std::string challenge);
 

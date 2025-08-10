@@ -24,9 +24,12 @@ namespace llarp
 
         std::string_view view() const;
 
-        std::span<const std::byte, SIZE> span() const { return buf; }
+        std::byte* data() { return buf.data(); }
+        const std::byte* data() const { return buf.data(); }
 
         constexpr size_t size() const { return buf.size(); }
+
+        std::span<const std::byte, SIZE> span() const { return buf; }
 
         bool operator==(const session_tag& other) const { return buf == other.buf; }
 

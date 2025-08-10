@@ -8,39 +8,24 @@
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/path/path.hpp>
 
 #include <atomic>
+#include <chrono>
+#include <ranges>
 #include <unordered_map>
-#include <unordered_set>
-
-namespace std
-{
-    template <>
-    struct hash<std::pair<llarp::RouterID, llarp::HopID>>
-    {
-        size_t operator()(const std::pair<llarp::RouterID, llarp::HopID>& i) const noexcept
-        {
-            return hash<llarp::RouterID>{}(i.first) ^ hash<llarp::HopID>{}(i.second);
-        }
-    };
-}  // namespace std
 
 namespace llarp
 {
     class Router;
     namespace path
     {
-        // forward declare
-        struct Path;
-    }  // namespace path
+        /// We start delaying path builds once we hit this many consecutive path build failures:
+        inline constexpr int BACKOFF_THRESHOLD = 3;
 
-    using path_build_success_hook = std::function<void(const std::shared_ptr<path::Path>&)>;
-    using path_build_fail_hook = std::function<void(const std::shared_ptr<path::Path>&, int)>;
-
-    namespace path
-    {
-        // maximum number of paths a path-set can maintain
-        inline constexpr size_t MAX_PATHS{32};
+        /// Once we've met the above threshold, we apply a linear backoff starting with this delay
+        /// and then increase the delay by this amount again for each additional path build failure.
+        inline constexpr auto BACKOFF_INCREMENT = 1s;
 
         /// limiter for path builds
         /// prevents overload and such
@@ -81,14 +66,12 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
-        struct PathHandler : public std::enable_shared_from_this<PathHandler>
+        class PathHandler : public std::enable_shared_from_this<PathHandler>
         {
-            friend struct Path;
-
-          private:
-            std::unordered_map<RouterID, std::weak_ptr<Path>> path_cache;
-
             void path_build_backoff();
+
+          public:
+            Router& router;
 
           protected:
             std::shared_ptr<quic::Ticker> _path_rotater;
@@ -96,26 +79,56 @@ namespace llarp
             /// flag for ::Stop()
             std::atomic<bool> _running;
 
-            const size_t num_paths_desired;
+            int _num_hops;
+            int _target_paths;
             BuildStats _build_stats;
+            int64_t _path_counter = 0;
+
+            int _consecutive_failures = 0;
+            std::chrono::milliseconds _last_failure = 0ms;
+            std::chrono::milliseconds _last_build = 0ms;
 
             using Lock_t = util::NullLock;
             mutable util::NullMutex paths_mutex;
 
-            // key: upstream rxid
+            // Container of paths.  The key is the hopid used by the edge when relaying messages
+            // back to us along this path, i.e. the same as `value->edge().rxid`.
             std::unordered_map<HopID, std::shared_ptr<Path>> _paths;
 
-            /// return true if we hit our soft limit for building paths too fast on a first hop
-            bool build_cooldown_hit(RouterID edge) const;
+            // Returns true if we are currently in the cooldown period because of path build
+            // failures and thus should not currently be trying new path builds.
+            bool cooldown(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
-            void drop_path(const std::shared_ptr<Path>& p);
+            void drop_path(const Path& p);
 
-            virtual void path_died(const std::shared_ptr<Path>& p);
+            virtual void path_died(const Path& p);
 
-            virtual void path_build_failed(const std::shared_ptr<Path>& p, bool timeout = false);
+            /// Called when a path build fails.  The first argument is a unique non-zero integer as
+            /// returned by build() and can be used to disambiguate the path that fails.  `path` is
+            /// a pointer to the path object, but can be nullptr in the case of immediate failure
+            /// (see below).  `timeout` will be true if the path build timed out, false if there was
+            /// some other error.
+            ///
+            /// Note that this method can be called from within the build() call itself if a path
+            /// build cannot even be attempted (i.e. for some immediate failure).  In such a case,
+            /// the build_id will be 0 and the Path pointer will be nullptr.  For all other failure
+            /// cases, the build_id value will be non-zero and the pointer will be non-nullptr.
+            void path_build_failed(int64_t build_id, Path* path, bool timeout);
 
-            virtual void path_build_succeeded(const std::shared_ptr<Path>& p);
+            /// Called during path_build_failed after performing basic path handling for subclasses
+            /// to hook into path build failures.  The base class implementation does nothing.
+            virtual void on_path_build_failure(int64_t /*build_id*/, Path* /*path*/, bool /*timeout*/) {}
 
+            /// Called when a path build is successful and confirmed.  build_id is the non-zero
+            /// integer as returned by the build() call that initiated the path build.
+            void path_build_succeeded(int64_t build_id, Path& p);
+
+            /// Called during path_build_succeeded after performing basic path handling for
+            /// subclasses to hook into path build successes.  The base class implementation does
+            /// nothing.
+            virtual void on_path_build_success(int64_t /*build_id*/, Path& /*p*/) {}
+
+            /*
             void path_build_recursive(
                 sorted_intro_set intros,
                 NetworkAddress remote,
@@ -128,124 +141,125 @@ namespace llarp
                 NetworkAddress remote,
                 std::function<void(const std::shared_ptr<Path>&)> cb,
                 bool keep_path);
+*/
 
-            void path_build_onepass(
-                std::shared_ptr<Path> new_path, path_build_success_hook success, path_build_fail_hook fail);
+            //            virtual void rotate_paths() = 0;
 
-            virtual void rotate_paths() = 0;
-
-            void rotate_paths(std::vector<RemoteRC> hops);
-
+            /*
             virtual void path_rotation_succeeded(const std::shared_ptr<Path>& new_path);
 
             const std::shared_ptr<Path>& get_oldest_path() const;
 
             const std::shared_ptr<Path>& get_newest_path() const;
-
-            virtual void drop_oldest_path() = 0;
+            */
 
           public:
-            Router& _router;
-            int num_hops;
-            std::chrono::milliseconds last_build{0s};
-            std::chrono::milliseconds build_interval_limit{MIN_PATH_BUILD_INTERVAL};
-
-            /// construct
-            PathHandler(Router& _router, size_t num_paths, int num_hops = DEFAULT_LEN);
+            PathHandler(Router& router, int target_paths, int num_hops);
 
             virtual ~PathHandler() = default;
 
-            /// get a shared_ptr of ourself
-            virtual std::shared_ptr<PathHandler> get_self() = 0;
-
-            /// get a weak_ptr of ourself
-            virtual std::weak_ptr<PathHandler> get_weak() = 0;
-
-            const Router& router() const { return _router; }
-
-            Router& router() { return _router; }
-
-            const std::shared_ptr<Path>& get_path(HopID id) const;
-
-            sorted_intro_set get_local_client_intros() const;
+            Path* get_path_by_edge(const HopID& edge_hop_id);
+            Path* get_path_by_terminus(const HopID& terminal_hop_id);
 
             nlohmann::json ExtractStatus() const;
 
-            virtual size_t should_build_more() const;
-
             void expire_paths(std::chrono::milliseconds now);
 
-            void add_path(std::shared_ptr<Path> path);
+            void add_path(Path& path);
 
             // Returns a random path, or nullptr if there are no paths.
-            const std::shared_ptr<Path>& get_random_path() const;
+            // Path* get_random_path() const;
 
-            // Returns the first path that matches the filter, or nullptr if no paths match.  Note
-            // that the iteration order of paths is not guaranteed so if the filter could match
-            // multiple paths it is not determined which you get.
-            const std::shared_ptr<Path>& find_path(std::function<bool(const Path&)> filter) const;
+            /// get the number of ACTIVE paths
+            int num_active_paths() const;
 
-            /// return true if we hit our soft limit for building paths too fast
-            bool build_cooldown() const;
+            /// get the number of ALL unexpired paths (both active and those being currently built).
+            /// If an expiry value is given then this returns the number of paths that will not have
+            /// expired at that timestamp (i.e. passing in `llarp::time_now_ms() + 10s` will omit
+            /// any paths expiring within the next 10 seconds).
+            int num_paths(std::chrono::milliseconds expiry_ts = llarp::time_now_ms()) const;
 
-            /// get the number of ACTIVE paths in this status
-            size_t num_active_paths() const;
+            /// get the number of paths (active or currently building) to the given terminus relay
+            int num_paths_to(const RouterID& terminus) const;
 
-            /// get the number of ALL paths (both active and those being currently build)
-            size_t num_paths() const;
+            /// Returns the target number of paths we attempt to maintain
+            const int& target_paths() const { return _target_paths; }
+
+            /// Returns the number of hops used for paths built by this object
+            const int& num_hops() const { return _num_hops; }
 
             const BuildStats& build_stats() const { return _build_stats; }
 
             BuildStats& build_stats() { return _build_stats; }
 
-            virtual void stop(bool send_close = false);
+            // TODO FIXME: this seems like an entangled mess: I don't think *anything* ever calls
+            // this, except for Router calling SessionHandler::stop (which overrides this but then
+            // calls it from the override).  But "send_close" has no apparent meaning here, and is
+            // only in the base class because SessionHandler::stop's override uses it.
+            void stop();
 
             bool is_stopped() const;
 
-            bool should_remove() const;
-
             std::chrono::milliseconds now() const;
 
-            virtual void tick(std::chrono::milliseconds now);
+            /// Called each path handler tick to allow subclasses to perform path checks, updates,
+            /// rotations, start new paths, etc. as needed.  If not overridden this does nothing.
+            virtual void update_paths() {}
 
-            void tick_paths();
+            void tick(std::chrono::milliseconds now);
 
             void ping_paths(std::chrono::milliseconds now);
-
-            // This method should be overridden by deriving classes
-            virtual void build_more(size_t n = 0) = 0;
-
-            bool build_path_to_random();
 
             bool build_path_aligned_to_remote(const RouterID& remote);
 
             std::optional<std::vector<RemoteRC>> aligned_hops_to_remote(const RouterID& pivot);
 
-            // The build logic is segmented into functions designed to be called sequentially.
-            //  - pre_build() : This handles all checking of the vector of hops, verifying with buildlimiter, etc
-            //  - build1() : This can be re-implemented by inheriting classes that want to pass different parameters to
-            //      the created path. This is useful in cases like OutboundSessions; Paths are constructed with the
-            //      respective is_client and is_exit booleans set. Regardless, the implementation needs to return the
-            //      created shared_ptr to be passed by reference to build2(...). The implementation MUST
-            //      also check if the upstream rxid is already being used for a current path (very unlikely)
-            //  - build2() : This contains the bulk of the code that is identical across all instances of path building.
-            //      It returns the payload holding the encoded frames for each hop.
-            //  - build() : This function calls pre_build() + build{1,2}() in the correct order and is used for the
-            //      usual times that PathBuilder initiates a path build
-            void build(std::vector<RemoteRC> hops);
+            /// Attempts to build the given path and send it to the network, initiating the path
+            /// build.  When the build is done it calls either path_build_succeeded or
+            /// path_build_failed.  It is possible for path_build_failed to fire *before* this
+            /// function returns if the given path cannot currently be built (such as when shutting
+            /// down, or if the rate limiter is hit).
+            int64_t build(std::span<const RemoteRC> hops);
 
-            bool pre_build(const std::vector<RemoteRC>& hops);
+            /// Returns a view over all current paths (as `Path&` references)
+            auto paths()
+            {
+                return std::views::values(_paths)  //
+                    | std::views::filter(&std::shared_ptr<Path>::operator bool)
+                    | std::views::transform(&std::shared_ptr<Path>::operator*);
+            }
 
-            std::shared_ptr<Path> build1(const std::vector<RemoteRC>& hops);
+            /// Returns a view over all active paths (i.e. established and not expired)
+            auto active_paths(std::chrono::milliseconds now = llarp::time_now_ms())
+            {
+                return std::views::values(_paths)  //
+                    | std::views::filter([now](const std::shared_ptr<Path>& p) { return p && p->is_active(now); })
+                    | std::views::transform(&std::shared_ptr<Path>::operator*);
+            }
 
-            std::string build2(const std::shared_ptr<Path>& path);
+            /// pick a first hop; if predicate is given, only routers for which it returns true are
+            /// permitted.  (Note that the path build limiter and router profile are always checked,
+            /// regardless of the predicate).
+            std::optional<RemoteRC> select_first_hop(std::function<bool(const RouterID&)> pred = nullptr) const;
 
-            void for_each_path(std::function<void(const Path&)> visit) const;
+          private:
+            /// Checks whether we are currently able to build the given path (e.g. not stopped, the
+            /// path edge is not build limited, valid number of hops).
+            bool can_build(std::span<const RemoteRC> hops);
 
-            /// pick a first hop
-            std::optional<RemoteRC> select_first_hop(const std::unordered_set<RouterID>& exclude = {}) const;
+            /// Takes a set of path hops (edge, hop1, hop2, ..., pivot) and initializes a Path
+            /// following those hops, including generating path IDs that will be used along the
+            /// path.
+            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops);
 
-            virtual std::optional<std::vector<RemoteRC>> get_hops_to_random();
+            /// Takes a path as constructed by build_init_path and constructs an encoded network
+            /// path build message containing the frames required to build the path.
+            std::vector<std::byte> path_build_onion(Path& path);
+
+            /// Takes the path build (from encode_path_build) and fires it down the path.  When the
+            /// path build finishes it calls either path_build_succeeded on success, or
+            /// path_build_failed on failure.
+            void send_path_build(const std::shared_ptr<Path>& new_path, int64_t id);
         };
     }  // namespace path
 

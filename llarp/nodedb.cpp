@@ -1029,7 +1029,7 @@ namespace llarp
             files.push_back(get_path_by_pubkey(rid));
 
         // remove them from the disk via the diskio thread
-        _router.queue_disk_io([files = std::move(files)] {
+        _router.disk_loop.call_soon([files = std::move(files)] {
             for (const auto& p : files)
                 fs::remove(p);
         });

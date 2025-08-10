@@ -1,5 +1,7 @@
 #include "transit_hop.hpp"
 
+#include "llarp/crypto/crypto.hpp"
+
 #include <llarp/messages/common.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/router/router.hpp>
@@ -11,50 +13,77 @@ namespace llarp::path
 {
     static auto logcat = log::Cat("transit-hop");
 
-    void TransitHop::deserialize(oxenc::bt_dict_consumer&& btdc, const RouterID& src, const Router& r)
+    TransitHopError::TransitHopError(std::string err_code)
+        : std::runtime_error{"TransitHop construction failed: {}"_format(err_code)}, error_code{std::move(err_code)}
+    {}
+
+    std::pair<std::shared_ptr<TransitHop>, SymmNonce> TransitHop::deserialize(
+        oxenc::bt_dict_consumer&& btdc, const Router& r, const RouterID& src)
     {
+        std::pair<std::shared_ptr<TransitHop>, SymmNonce> ret;
+        auto& dh_nonce = ret.second;
+        auto& hop = *(ret.first = std::make_shared<TransitHop>());
+        hop.downstream = src;
+        hop.expiry = llarp::time_now_ms() + path::MAX_LIFETIME;
+
+        PubKey eph_pubkey;
+        std::vector<std::byte> payload;
         try
         {
-            bt_decode(std::move(btdc));
+            eph_pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+            dh_nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+            // Need to copy this because we decrypt in place below:
+            auto payld = btdc.require<std::span<const std::byte>>("x");
+            payload.assign(payld.begin(), payld.end());
+            btdc.finish();
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Exception caught deserializing hop dict: {}", e.what());
+            throw TransitHopError::INVALID_DATA();
+        }
+
+        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.identity(), dh_nonce))
+        {
+            log::warning(logcat, "Failed to derive shared secret!");
+            throw TransitHopError::DH_PUBKEY();
+        }
+
+        crypto::xchacha20(payload, hop.shared_secret, dh_nonce);
+        hop.xor_nonce.assign(crypto::shorthash(hop.shared_secret).first<SymmNonce::SIZE>());
+
+        try
+        {
+            oxenc::bt_dict_consumer inner{std::move(payload)};
+            hop.rxid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
+            hop.txid.assign(inner.require_span<std::byte, HopID::SIZE>("t"));
+            hop.upstream.assign(inner.require_span<std::byte, RouterID::SIZE>("u"));
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "TransitHop caught bt parsing exception: {}", e.what());
-            throw std::runtime_error{messages::ERROR_RESPONSE};
+            throw TransitHopError::INVALID_PAYLOAD();
         }
 
-        if (_rxid.is_zero() || _txid.is_zero())
-            throw std::runtime_error{PATH::BUILD::BAD_PATHID};
+        // If we are a terminal hop then two things must be true: upstream must be this router, and
+        // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
+        hop.terminal_hop = hop.upstream == r.local_rid();
+        bool terminal_mismatch = hop.terminal_hop != (hop.txid == hop.rxid);
+        if (hop.txid.is_zero() || hop.rxid.is_zero() || terminal_mismatch)
+            throw TransitHopError::INVALID_HOP_ID();
 
-        if (r.path_context.has_transit_hop(_rxid) || r.path_context.has_transit_hop(_txid))
-            throw std::runtime_error{PATH::BUILD::BAD_PATHID};
+        log::trace(logcat, "TransitHop data successfully deserialized: {}", hop);
 
-        _downstream = src;
-
-        if (_upstream == r.local_rid())
-            terminal_hop = true;
-
-        // generate hash of hop key for nonce mutation
-        kx.generate_xor();
-
-        log::trace(logcat, "TransitHop data successfully deserialized: {}", to_string());
-    }
-
-    void TransitHop::bt_decode(oxenc::bt_dict_consumer&& btdc)
-    {
-        _rxid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
-        _txid.assign(btdc.require_span<std::byte, HopID::SIZE>("t"));
-        _upstream.assign(btdc.require_span<std::byte, RouterID::SIZE>("u"));
-        expiry = llarp::time_now_ms() + path::DEFAULT_LIFETIME;
+        return ret;
     }
 
     std::string TransitHop::bt_encode() const
     {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("r", _rxid.to_view());
-        btdp.append("t", _txid.to_view());
-        btdp.append("u", _upstream.to_view());
+        btdp.append("r", rxid.to_view());
+        btdp.append("t", txid.to_view());
+        btdp.append("u", upstream.to_view());
 
         return std::move(btdp).str();
     }
@@ -63,10 +92,10 @@ namespace llarp::path
     {
         std::optional<std::pair<RouterID, HopID>> ret = std::nullopt;
 
-        if (h == _rxid)
-            ret = {_upstream, _txid};
-        else if (h == _txid)
-            ret = {_downstream, _rxid};
+        if (h == rxid)
+            ret = {upstream, txid};
+        else if (h == txid)
+            ret = {downstream, rxid};
 
         return ret;
     }
@@ -74,62 +103,45 @@ namespace llarp::path
     nlohmann::json TransitHop::ExtractStatus() const
     {
         return {
-            {"rid", router_id().ToHex()},
-            {"rxid", rxid().ToHex()},
-            {"txid", txid().ToHex()},
-            {"expiry", to_json(expiry)},
-            {"txid", _txid.ToHex()},
-            {"rxid", _rxid.ToHex()}};
+            {"rid", router_id.ToHex()}, {"rxid", rxid.ToHex()}, {"txid", txid.ToHex()}, {"expiry", to_json(expiry)}};
     }
 
     std::string TransitHop::to_string() const
     {
         return "TransitHop:[ Terminal:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
-            terminal_hop, _txid, _rxid, _upstream.short_string(), _downstream.short_string(), expiry.count());
+            terminal_hop, txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
     }
 
     SessionHop::SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p) : TransitHop{hop}, _parent{p} {}
 
-    void SessionHop::link_session(session_tag t)
-    {
-        _linked_sessions.insert(t);
-        log::trace(logcat, "Current SessionHop has {} linked sessions!", _linked_sessions.size());
-    }
-
-    bool SessionHop::unlink_session(session_tag t)
-    {
-        auto n = _linked_sessions.erase(t);
-        log::trace(logcat, "Current SessionHop has {} linked sessions!", _linked_sessions.size());
-        return n != 0;
-    }
-
-    bool SessionHop::send_path_control_message(
+    void SessionHop::send_path_control_message(
         std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(std::move(method), body);
-        return _parent._router.send_control_message(
-            _downstream,
+        auto inner_payload = PATH::CONTROL::serialize(method, body);
+        _parent.router.send_control_message(
+            downstream,
             "path_control",
-            ONION::serialize_hop(_rxid, SymmNonce::make_random(), as_bspan(inner_payload)),
+            ONION::serialize_stream_hop(rxid, SymmNonce::make_random(), as_bspan(inner_payload)),
             std::move(func));
     }
 
-    bool SessionHop::send_path_data_message(std::span<std::byte> body)
+    void SessionHop::send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce)
     {
-        auto nonce = SymmNonce::make_random() ^ kx.xor_nonce;
-        crypto::onion(body, kx.shared_secret, nonce, kx.xor_nonce);
+        body.resize(body.size() + Path::PATH_DATA_MESSAGE_OVERHEAD);
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(body);
+        assert(msgtype.size() == 1);
 
-        return _parent._router.send_data_message(_downstream, ONION::serialize_hop(_rxid, nonce, body));
+        nonce ^= xor_nonce;
+        crypto::xchacha20(inner_payload, shared_secret, nonce);
+        nonce.copy_to(bnonce);
+        rxid.copy_to(bhop);
+        msgtype[0] = std::byte{0x01};
+        _parent.router.send_data_message(downstream, std::move(body));
     }
 
     std::string SessionHop::to_string() const
     {
-        return "SessionHop:[ Num Sessions:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
-            _linked_sessions.size(),
-            _txid,
-            _rxid,
-            _upstream.short_string(),
-            _downstream.short_string(),
-            expiry.count());
+        return "SessionHop:[TX/RX:{}/{}; Up/Down:{}/{}; Exp:{}]"_format(
+            txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
     }
 }  // namespace llarp::path

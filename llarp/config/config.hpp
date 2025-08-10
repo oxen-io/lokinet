@@ -2,6 +2,7 @@
 
 #include "definition.hpp"
 #include "ini.hpp"
+#include "llarp/constants/path.hpp"
 
 #include <llarp/address/address.hpp>
 #include <llarp/address/ip_range.hpp>
@@ -73,21 +74,49 @@ namespace llarp
 
         bool is_relay = false;
 
-        std::optional<std::string> public_ip;
-        std::optional<uint16_t> public_port;
+        std::optional<quic::Address> public_addr;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
     /// config for path hop selection
-    struct PeerSelectionConfig
+    struct PathConfig
     {
+        /// Number of paths to maintain for inbound reachability and network queries (such as
+        /// looking up client contacts).
+        int inbound_paths = 4;
+
+        /// Length of the "inbound" paths we use for inbound connections and network queries.
+        /// If unset, use client_hops.
+        std::optional<int> inbound_hops_;
+
+        // Retrieves the above, with built-in fallback to the client_hops value if not set.
+        int inbound_hops() const { return inbound_hops_.value_or(client_hops); }
+
+        /// Number of paths to maintain to *each* outgoing remote (relay or snode).
+        int outbound_paths = 2;
+
+        /// Number of hops when establishing a session to a relay (i.e. to a .snode, not *through* a
+        /// relay to reach a client).
+        std::optional<int> relay_hops_;
+
+        /// Retrieves the working value for relay-hops: the value if explicitly set, else one more
+        /// than the configured client hops.
+        int relay_hops() const { return relay_hops_.value_or(std::min(client_hops + 1, path::BUILD_LENGTH)); }
+
+        /// Number of hops when building an aligned path to a relay to reach a client on the other
+        /// side.
+        int client_hops = 3;
+
         /// in our hops what netmask will we use for unique ips for hops
         /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
         uint8_t unique_hop_netmask{0};
 
         // TODO: some day, if we ever support routers using IPv6, there would need to be a different
         // ipv6 netmask value.
+
+        std::chrono::seconds min_expiry = 1min;
+        std::chrono::seconds acceptable_expiry = 5min;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
@@ -125,9 +154,6 @@ namespace llarp
 
         std::optional<fs::path> keyfile;
 
-        std::optional<int> hops;
-        std::optional<int> paths;
-
         bool enable_ipv6{false};
         bool is_reachable{false};
 
@@ -148,7 +174,7 @@ namespace llarp
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
 
-        std::optional<std::chrono::milliseconds> path_alignment_timeout;
+        std::chrono::milliseconds path_alignment_timeout{10s};
 
         /* TESTNET: Under modification */
 
@@ -207,10 +233,8 @@ namespace llarp
 
     struct LinksConfig
     {
-        // DEPRECATED -- use [Router]:public_addr
-        std::optional<std::string> public_addr;
-        // DEPRECATED -- use [Router]:public_port
-        std::optional<uint16_t> public_port;
+        // DEPRECATED -- use [router]:public_addr/port instead
+        std::optional<quic::Address> public_addr;
 
         std::optional<quic::Address> listen_addr;
 
@@ -284,7 +308,7 @@ namespace llarp
         RouterConfig router;
         ExitConfig exit;
         NetworkConfig network;
-        PeerSelectionConfig paths;
+        PathConfig paths;
         DnsConfig dns;
         LinksConfig links;
         ApiConfig api;

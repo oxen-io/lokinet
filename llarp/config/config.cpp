@@ -3,9 +3,11 @@
 #include "definition.hpp"
 #include "ini.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
 #include <llarp/contact/sns.hpp>
+#include <llarp/path/path_handler.hpp>
 #include <llarp/util/file.hpp>
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging/buffer.hpp>
@@ -52,8 +54,51 @@ namespace llarp
         return nullptr;
     }
 
+    static auto public_ip_loader(
+        std::optional<quic::Address>& into, std::string conf_name, std::string deprecated_for = ""s)
+    {
+        return [&into, conf_name = std::move(conf_name), deprecated_for = std::move(deprecated_for)](std::string ip) {
+            if (!deprecated_for.empty())
+                log::warning(logcat, "{} is deprecated; use {} instead", conf_name, deprecated_for);
+            try
+            {
+                quic::Address a{ip, into ? into->port() : uint16_t{0}};
+
+                if (!a.is_ipv4())
+                    throw std::invalid_argument{"IP must be an IPv4 address"};
+                if (!a.is_public_ip())
+                    throw std::invalid_argument{"IP is not public"};
+
+                into = std::move(a);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::invalid_argument{"Invalid {}: {}"_format(conf_name, e.what())};
+            }
+        };
+    }
+    static auto public_port_loader(
+        std::optional<quic::Address>& into, std::string conf_name, std::string deprecated_for = ""s)
+    {
+        return [&into, conf_name = std::move(conf_name), deprecated_for = std::move(deprecated_for)](uint16_t port) {
+            if (!deprecated_for.empty())
+                log::warning(logcat, "{} is deprecated; use {} instead", conf_name, deprecated_for);
+            if (port == 0)
+                throw std::invalid_argument{"{} cannot be 0"_format(conf_name)};
+            if (!into)
+                into.emplace();
+            into->set_port(port);
+        };
+    }
+
     void RouterConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
+        conf.add_section_comments(
+            "router",
+            {
+                "Configuration for routing activity.",
+            });
+
         conf.define_option<int>("router", "job-queue-size", Default{1024 * 8}, Hidden, [this](int arg) {
             if (arg < 1024)
                 throw std::invalid_argument("job-queue-size must be 1024 or greater");
@@ -77,7 +122,7 @@ namespace llarp
                 "Minimum number of routers lokinet client will attempt to maintain connections to.",
                 "If [network]:strict-connect is defined, the number of maintained client <-> router",
                 "connections set by [router]:relay-connections will be at MOST the number of pinned edges"},
-            [=, this](int arg) {
+            [this](int arg) {
                 if (arg < CLIENT_ROUTER_CONNECTIONS)
                     throw std::invalid_argument{
                         "Client relay connections must be >= {}"_format(CLIENT_ROUTER_CONNECTIONS)};
@@ -85,27 +130,9 @@ namespace llarp
                 client_router_connections = arg;
             });
 
-        conf.define_option<int>(
-            "router",
-            "min-connections",
-            Deprecated,
-            Comment{
-                "Minimum number of routers lokinet will attempt to maintain connections to.",
-            },
-            [=](int) {
-                log::warning(logcat, "Router min-connections is deprecated; use relay-connections for clients");
-            });
+        conf.define_option<int>("router", "min-connections", Deprecated);
 
-        conf.define_option<int>(
-            "router",
-            "max-connections",
-            Deprecated,
-            Comment{
-                "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
-            },
-            [=](int) {
-                log::warning(logcat, "Router max-connections is deprecated; use relay-connections for clients");
-            });
+        conf.define_option<int>("router", "max-connections", Deprecated);
 
         conf.define_option<std::string>("router", "nickname", Deprecated);
 
@@ -132,10 +159,9 @@ namespace llarp
             RelayOnly,
             Comment{
                 "For complex network configurations where the detected IP is incorrect or non-public",
-                "this setting specifies the public IP at which this router is reachable. When",
-                "provided the public-port option must also be specified.",
+                "this setting specifies the public IPv4 address at which this router reachable.",
             },
-            [this](std::string arg) { public_ip = std::move(arg); });
+            public_ip_loader(public_addr, "[router]:public-address"));
 
         conf.define_option<std::string>("router", "public-address", Hidden, [](std::string) {
             throw std::invalid_argument{
@@ -148,15 +174,15 @@ namespace llarp
             "public-port",
             RelayOnly,
             Comment{
-                "When specifying public-ip=, this specifies the public UDP port at which this "
-                "lokinet",
-                "router is reachable. Required when public-ip is used.",
+                "When specifying public-ip=, this specifies the public UDP port at which this lokinet",
+                "router is reachable. Defaults to the [bind]:listen port when public-ip is specified.",
             },
-            [this](uint16_t arg) {
-                if (arg == 0)
-                    throw std::invalid_argument("public-port cannot be 0");
-                public_port = arg;
-            });
+            public_port_loader(public_addr, "[router]:public-port"));
+
+        conf.add_options_validator([this] {
+            if (public_addr and not public_addr->is_public_ip())
+                throw std::invalid_argument{"[router]:public-ip is required when specifying [router]:public-port"};
+        });
 
         // FIXME: this option isn't currently used!
         conf.define_option<int>(
@@ -379,6 +405,12 @@ namespace llarp
 
     void NetworkConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
+        conf.add_section_comments(
+            "network",
+            {
+                "Network settings related to network devices and communications.",
+            });
+
         conf.define_option<bool>(
             "network",
             "save-profiles",
@@ -559,32 +591,19 @@ namespace llarp
                 "Determines whether we will pubish our service's ClientContact to the network (client default: TRUE)",
             });
 
-        conf.define_option<int>(
-            "network",
-            "hops",
-            Default{4},
-            Comment{
-                "Number of hops in a path. Min 1, max 8.",
-            },
-            [this](int arg) {
-                if (arg < 1 or arg > 8)
-                    throw std::invalid_argument("[network]:hops must be >= 1 and <= 8");
-                hops = arg;
-            });
+        conf.define_option<int>("network", "hops", ClientOnly, Hidden, [](int) {
+            log::warning(
+                logcat,
+                "[network]:hops is no longer supported; default path lengths applied. See the path options in the "
+                "[paths] section instead");
+        });
 
-        conf.define_option<int>(
-            "network",
-            "paths",
-            ClientOnly,
-            Default{4},
-            Comment{
-                "Number of paths to maintain at any given time.",
-            },
-            [this](int arg) {
-                if (arg < 3 or arg > 8)
-                    throw std::invalid_argument("[network]:paths must be >= 3 and <= 8");
-                paths = arg;
-            });
+        conf.define_option<int>("network", "paths", ClientOnly, Hidden, [](int) {
+            log::error(
+                logcat,
+                "[network]:paths is no longer supported; default path numbers applied. See the path options in the "
+                "[paths] section instead");
+        });
 
         conf.define_option<bool>(
             "network",
@@ -618,6 +637,11 @@ namespace llarp
             Comment{
                 "Interface name for lokinet traffic. If unset lokinet will look for a free name",
                 "matching 'lokitunN', starting at N=0 (e.g. lokitun0, lokitun1, ...).",
+#ifdef __linux__
+                "",
+                "On Linux, you can use '%d' in the name as a pattern to have the OS automatically choose",
+                "a device name by replacing '%d' with a number to construct an unused interface name",
+#endif
             },
             assignment_acceptor(_if_name));
 
@@ -762,20 +786,16 @@ namespace llarp
                 srv_records.emplace(std::move(*maybe_srv));
             });
 
-        conf.define_option<int>(
+        conf.define_option<std::chrono::seconds>(
             "network",
             "path-alignment-timeout",
             ClientOnly,
+            Default{10s},
             Comment{
-                "How long to wait (in seconds) for a path to align to a pivot router when "
-                "establishing",
+                "How long to wait (in seconds) for a path to align to a pivot router when establishing",
                 "a path through the network to a remote .loki address.",
             },
-            [this](int val) {
-                if (val <= 0)
-                    throw std::invalid_argument{"invalid path alignment timeout: " + std::to_string(val) + " <= 0"};
-                path_alignment_timeout = std::chrono::seconds{val};
-            });
+            bounded_assignment_acceptor(path_alignment_timeout, 1s, 1min, "[network]:path-alignment-timeout"));
 
         conf.define_option<fs::path>(
             "network",
@@ -923,6 +943,12 @@ namespace llarp
 
     void DnsConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
+        conf.add_section_comments(
+            "dns",
+            {
+                "DNS configuration",
+            });
+
         // Most non-linux platforms have loopback as 127.0.0.1/32, but linux uses 127.0.0.1/8 so
         // that we can bind to other 127.* IPs to avoid conflicting with something else that may be
         // listening on 127.0.0.1:53.
@@ -1080,40 +1106,14 @@ namespace llarp
             "public-ip",
             Hidden,
             RelayOnly,
-            Comment{
-                "The IP address to advertise to the network instead of the incoming= or "
-                "auto-detected",
-                "IP.  This is typically required only when incoming= is used to listen on an "
-                "internal",
-                "private range IP address that received traffic forwarded from the public IP.",
-            },
-            [this](std::string arg) {
-                public_addr = std::move(arg);
-                log::warning(
-                    logcat,
-                    "Using deprecated option; pass this value to [Router]:public-ip instead "
-                    "PLEASE");
-            });
+            public_ip_loader(public_addr, "[bind]:public-ip", "[router]:public-ip"));
 
         conf.define_option<uint16_t>(
             "bind",
             "public-port",
             Hidden,
             RelayOnly,
-            Comment{
-                "The port to advertise to the network instead of the incoming= (or default) port.",
-                "This is typically required only when incoming= is used to listen on an internal",
-                "private range IP address/port that received traffic forwarded from the public IP.",
-            },
-            [this](uint16_t arg) {
-                if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
-                    throw std::invalid_argument("public-port must be >= 0 and <= 65536");
-                public_port = arg;
-                log::warning(
-                    logcat,
-                    "Using deprecated option; pass this value to [Router]:public-port instead "
-                    "PLEASE");
-            });
+            public_port_loader(public_addr, "[bind]:public-port", "[router]:public-port"));
 
         auto parse_addr_for_link = [](std::string_view arg) {
             quic::Address a = quic::Address::parse(arg, 0);
@@ -1144,8 +1144,8 @@ namespace llarp
                 "    listen=:1234",
                 "",
                 "Note that, when running as a relay, a private range IP address (like the second example",
-                "above) requires also using the public-ip= and public-port= to specify the public IP address",
-                "at which this router can be reached, and requires that traffic on that port is redirected to",
+                "above) requires also using [router]:public-ip/-port to specify the public IP address at",
+                "which this router can be reached, and requires that traffic on that port is redirected to",
                 "the listening internal address.",
             },
             [this, parse_addr_for_link](const std::string& arg) {
@@ -1219,6 +1219,12 @@ namespace llarp
 
     void ApiConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
+        conf.add_section_comments(
+            "api",
+            {
+                "JSON API settings",
+            });
+
         constexpr std::array DefaultRPCBind{
             Default{"tcp://127.0.0.1:1190"},
 #ifndef _WIN32
@@ -1268,6 +1274,12 @@ namespace llarp
 
     void LokidConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters&)
     {
+        conf.add_section_comments(
+            "lokid",
+            {
+                "Settings for communicating with oxend",
+            });
+
         conf.define_option<bool>(
             "lokid",
             "disable-testing",
@@ -1315,6 +1327,12 @@ namespace llarp
 
     void BootstrapConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters&)
     {
+        conf.add_section_comments(
+            "bootstrap",
+            {
+                "Configure nodes that will bootstrap us onto the network",
+            });
+
         conf.define_option<bool>(
             "bootstrap",
             "seed-node",
@@ -1346,6 +1364,12 @@ namespace llarp
 
     void LoggingConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
+        conf.add_section_comments(
+            "logging",
+            {
+                "Logging settings",
+            });
+
         conf.define_option<std::string>(
             "logging",
             "type",
@@ -1396,14 +1420,99 @@ namespace llarp
             });
     }
 
-    void PeerSelectionConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters&)
+    void PathConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters&)
     {
+        conf.add_section_comments(
+            "paths",
+            {
+                "Settings related to path selection such as number of hops and selection criteria",
+            });
+
+        conf.define_option<int>(
+            "paths",
+            "outbound-paths",
+            ClientOnly,
+            Default{2},
+            Comment{
+                "Number of paths to maintain per active outbound connection to a remote client or relay.",
+                "Only one path is actively used at a time, but others are used for regular path rotation",
+                "and as a fallback for path failure.",
+                "",
+                "Note that this value applies to EACH outbound connection separately: if you have active",
+                "connections to 5 clients and 3 snodes, lokinet will maintain 16 outbound paths (at the",
+                "default setting of 2).",
+                "",
+                "Setting this value to 1 is allowed, but may result in occassional packet loss during",
+                "as paths expire and rotate.",
+            },
+            bounded_assignment_acceptor(inbound_paths, 1, 4, "[paths]:outbound-paths"));
+
+        conf.define_option<int>(
+            "paths",
+            "client-hops",
+            ClientOnly,
+            Default{3},
+            Comment{
+                "Number of hops to use when establishing a connection to a service node relay to",
+                "communicate through that relay to another client.",
+                "",
+                "The overall number of hops to the remote client is this value PLUS the number of inbound",
+                "hops the other client has configured for their inbound hops (via [paths]:inbound-hops).",
+            },
+            bounded_assignment_acceptor(client_hops, 1, path::BUILD_LENGTH, "[paths]:client-hops"));
+
+        conf.define_option<int>(
+            "paths",
+            "relay-hops",
+            ClientOnly,
+            Comment{
+                "Number of hops to use when establishing a connection to talk to a service node.",
+                "",
+                "A value of 1 results in establishing direct connection to the snode (i.e. only encryption",
+                "but no onion routing), 2 would select one intermediate snode to onion route through, 4",
+                "uses three intermediates, and so on.",
+                "",
+                "Additional hops increases privacy but reduces network performance through the path.",
+                "",
+                "If not set, this default to one greater than the value of [paths]:client-hops.",
+            },
+            bounded_assignment_acceptor(relay_hops_, 1, path::BUILD_LENGTH, "[paths]:relay-hops"));
+
+        conf.define_option<int>(
+            "paths",
+            "inbound-paths",
+            ClientOnly,
+            Default{4},
+            Comment{
+                "Number of local paths that Lokinet maintains for both network reachability (i.e. remote",
+                "clients connecting to this instance) and network communication such as looking up",
+                "client lto maintain for network reachability and for general network requests",
+                "",
+                "This value does NOT apply to paths that are built to reach external clients or relays.",
+            },
+            bounded_assignment_acceptor(inbound_paths, 1, 10, "[paths]:local-paths"));
+
+        conf.define_option<int>(
+            "paths",
+            "inbound-hops",
+            ClientOnly,
+            Comment{
+                "Number of hops to use for inbound and general request connections (see [paths]:inbound-paths).",
+                "",
+                "When a remote Lokinet is connecting to this instance, this controls the path length of the",
+                "local side of the full client-to-client path (i.e. from the common relay \"pivot\" to this",
+                "Lokinet instance).",
+                "",
+                "If not set, this value defaults to the same value as [paths]:client-hops.",
+            },
+            bounded_assignment_acceptor(inbound_hops_, 1, path::BUILD_LENGTH, "[paths]:inbound-hops"));
+
         conf.define_option<int>(
             "paths",
             "unique-range-size",
             Default{24},
             ClientOnly,
-            [=, this](int arg) {
+            [this](int arg) {
                 if (arg > 32 or (arg < 4 and arg != 0))
                     throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32, or 0"};
 
@@ -1419,19 +1528,51 @@ namespace llarp
                 "different Lokinet routers on the same IP)",
             });
 
+        conf.define_option<std::chrono::seconds>(
+            "paths",
+            "acceptable-expiry",
+            Default{300},
+            ClientOnly,
+            Comment{
+                "The minimum expiry time a path/pivot must have for it to be eligible when switching",
+                "to a new path.  Inactive paths older than this will be replaced with new paths.",
+            },
+            bounded_assignment_acceptor(acceptable_expiry, 0s, path::MAX_LIFETIME / 2, "[paths]:acceptable-expiry"));
+
+        conf.define_option<std::chrono::seconds>(
+            "paths",
+            "min-expiry",
+            Default{60},
+            ClientOnly,
+            Comment{
+                "The minimum allowed path/pivot expiry time (in seconds) of a currently active outbound path.",
+                "When an active path reaches an expiry less than this value then the path to the remote will",
+                "be rotated immediately to use a newer path.",
+                "",
+                "This value cannot be larger than acceptable-expiry.",
+            },
+            bounded_assignment_acceptor(min_expiry, 0s, path::MAX_LIFETIME / 2, "[paths]:min-expiry"));
+
+        conf.add_options_validator([this] {
+            if (min_expiry > acceptable_expiry)
+                throw std::invalid_argument{"[paths]:min-expiry cannot be longer than [paths]:acceptable-expiry"};
+        });
+
 #ifdef WITH_GEOIP
         conf.defineOption<std::string>(
             "paths",
             "exclude-country",
             ClientOnly,
             MultiValue,
-            [=](std::string arg) { m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg))); },
+            [this](std::string arg) { m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg))); },
             Comment{
                 "Exclude a country given its 2 letter country code from being used in path builds.",
                 "For example:",
                 "    exclude-country=DE",
                 "would avoid building paths through routers with IPs in Germany.",
-                "This option can be specified multiple times to exclude multiple countries"});
+                "This option can be specified multiple times to exclude multiple countries",
+                "Note that this option does not affect the final relay or pivot in outgoing paths",
+            });
 #endif
     }
 
@@ -1602,81 +1743,12 @@ namespace llarp
         log::info(logcat, "Generated new config (path: {})", confFile);
     }
 
-    void generate_common_config_comments(ConfigDefinition& def)
-    {
-        // router
-        def.add_section_comments(
-            "router",
-            {
-                "Configuration for routing activity.",
-            });
-
-        // logging
-        def.add_section_comments(
-            "logging",
-            {
-                "logging settings",
-            });
-
-        // api
-        def.add_section_comments(
-            "api",
-            {
-                "JSON API settings",
-            });
-
-        // dns
-        def.add_section_comments(
-            "dns",
-            {
-                "DNS configuration",
-            });
-
-        // bootstrap
-        def.add_section_comments(
-            "bootstrap",
-            {
-                "Configure nodes that will bootstrap us onto the network",
-            });
-
-        // network
-        def.add_section_comments(
-            "network",
-            {
-                "Network settings",
-            });
-    }
-
     std::string Config::generate_config_base()
     {
         auto params = make_gen_params();
 
         llarp::ConfigDefinition def{type};
         init_config(def, *params);
-        generate_common_config_comments(def);
-
-        if (type == config::Type::Relay)
-        {
-            def.add_section_comments(
-                "lokid",
-                {
-                    "Settings for communicating with oxend",
-                });
-        }
-        else
-        {
-            def.add_section_comments(
-                "paths",
-                {
-                    "path selection algorithm options",
-                });
-
-            def.add_section_comments(
-                "network",
-                {
-                    "Snapp settings",
-                });
-        }
 
         return def.generate_ini_config(true);
     }

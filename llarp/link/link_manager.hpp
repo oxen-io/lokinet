@@ -46,6 +46,7 @@ namespace llarp
 
             std::shared_ptr<quic::Endpoint> endpoint;
             LinkManager& link_manager;
+            Router& router;
 
             /** Connection containers:
                 - service_conns: holds all connections where the remote (from the perspective
@@ -80,13 +81,13 @@ namespace llarp
                 connection_established_callback on_open = nullptr,
                 connection_closed_callback on_close = nullptr);
 
-            bool establish_and_send_control(RemoteRC rc, std::function<void(quic::BTRequestStream&)> send_hook);
+            bool establish_and_send_control(const RemoteRC& rc, std::function<void(quic::BTRequestStream&)> send_hook);
 
             bool establish_and_send(
                 quic::RemoteAddress remote,
-                RouterID rid,
-                std::optional<std::string> endpoint,
-                std::string body,
+                const RouterID& rid,
+                std::string endpoint,
+                std::vector<std::byte> body,
                 std::function<void(quic::message)> func = nullptr);
 
             void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
@@ -97,9 +98,6 @@ namespace llarp
             void close_connection(RouterID rid);
 
             void close_all();
-
-          private:
-            const bool _is_service_node;
         };
     }  // namespace link
 
@@ -110,32 +108,25 @@ namespace llarp
       public:
         explicit LinkManager(Router& r);
 
-        bool send_control_message(
+        void send_control_message(
             const RouterID& remote,
             std::string endpoint,
-            std::string body,
+            std::vector<std::byte> body,
             std::function<void(quic::message)> = nullptr);
 
-        bool send_data_message(const RouterID& remote, std::string data);
+        bool send_data_message(const RouterID& remote, std::vector<std::byte> data);
 
-        Router& router() const { return _router; }
+        Router& router;
 
       private:
         friend struct link::Endpoint;
         friend class NodeDB;
 
-        // sessions to persist -> timestamp to end persist at
-        std::unordered_map<RouterID, std::chrono::milliseconds> persisting_conns;
-
-        util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
-
-        Router& _router;
+        util::DecayingHashSet<RouterID> clients{path::MAX_LIFETIME};
 
         std::shared_ptr<quic::Ticker> _gossip_ticker;
 
         quic::Address addr;
-
-        const bool _is_service_node;
 
         std::unique_ptr<quic::Loop> quic_loop;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
@@ -177,8 +168,8 @@ namespace llarp
 
         void connect_and_send(
             const RouterID& router,
-            std::optional<std::string> endpoint,
-            std::string body,
+            std::string endpoint,
+            std::vector<std::byte> body,
             std::function<void(quic::message)> func = nullptr);
 
         void connect_and_send(const RouterID& router, std::function<void(quic::BTRequestStream&)> send_hook);
@@ -189,17 +180,11 @@ namespace llarp
 
         void close_all_links();
 
-        void set_conn_persist(const RouterID& remote, std::chrono::milliseconds until);
-
         std::tuple<size_t, size_t, size_t, size_t> connection_stats() const;
 
         size_t get_num_connected_routers(bool active_only = true) const;
 
         size_t get_num_connected_clients() const;
-
-        bool is_service_node() const;
-
-        void check_persisting_conns(std::chrono::milliseconds now);
 
         nlohmann::json extract_status() const;
 
@@ -221,12 +206,12 @@ namespace llarp
         void gossip_rc(const RouterID& last_sender, const RemoteRC& rc);
         void handle_gossip_rc(quic::message);
 
-        void fetch_rcs(const RouterID& source, std::string payload, std::function<void(quic::message)> func);
+        void fetch_rcs(const RouterID& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
 
         void fetch_router_ids(const RouterID& via, std::function<void(quic::BTRequestStream&)> send_hook);
         void handle_fetch_router_ids(quic::message);
 
-        void fetch_bootstrap_rcs(const RemoteRC& source, std::string payload, std::function<void(quic::message)> func);
+        void fetch_bootstrap_rcs(const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
         void handle_fetch_bootstrap_rcs(quic::message);
 
         // Inner handlers for relayed requests
@@ -256,11 +241,10 @@ namespace llarp
             path_requests;
 
         // Path relaying
-        void handle_path_data_message(quic::datagram dgram);
+        void handle_path_data_message(std::vector<std::byte> msg);
         void handle_path_control(quic::message);
         void handle_path_request(quic::message, std::span<const std::byte> payload);
-        // NB: mutates payload
-        void handle_path_session_data(std::span<std::byte> payload);
+        void handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce);
 
         // Path responses
         void handle_path_latency_response(quic::message);

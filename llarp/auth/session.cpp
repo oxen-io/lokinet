@@ -14,7 +14,7 @@ namespace llarp::auth
         if (_is_snode_service)
             _session_key = _router.identity();
         else
-            _session_key = crypto::generate_identity();
+            _session_key = crypto::generate_ed25519();
     }
 
     std::optional<std::string_view> SessionAuthPolicy::fetch_auth_token()

@@ -91,7 +91,7 @@ namespace llarp
 
         return {
             {"instance",
-             {{"id", local_rid().to_network_address(_is_service_node)}, {"running", true}, {"exit_node", is_exit}}},
+             {{"id", local_rid().to_network_address(is_service_node)}, {"running", true}, {"exit_node", is_exit}}},
             {"links", {{"inbound", in}, {"outbound", out}, {"relay", relay}, {"client", client}}},
             {"sessions", {{"active", nsessions}}},
             {"nodedb", {{"RCs", rcs}, {"RIDs", rids}}},
@@ -195,8 +195,6 @@ namespace llarp
         return stats;
     }
 
-    void Router::queue_disk_io(std::function<void()> func) { _disk_loop.call_soon(std::move(func)); }
-
     void Router::start_tickers()
     {
         if (_tun)
@@ -212,7 +210,7 @@ namespace llarp
         _contact_db->start_tickers();
 
 #ifndef LOKINET_EMBEDDED_ONLY
-        if (is_service_node())
+        if (is_service_node)
         {
             _rpc_client->start_pings();
             _link_manager->start_tickers();
@@ -244,20 +242,15 @@ namespace llarp
 
     bool Router::is_fully_meshed() const { return num_router_connections() >= _node_db->num_rcs(); }
 
-    void Router::persist_connection_until(const RouterID& remote, std::chrono::milliseconds until)
+    void Router::send_data_message(const RouterID& remote, std::vector<std::byte> payload)
     {
-        _link_manager->set_conn_persist(remote, until);
+        _link_manager->send_data_message(remote, std::move(payload));
     }
 
-    bool Router::send_data_message(const RouterID& remote, std::string payload)
+    void Router::send_control_message(
+        const RouterID& remote, std::string ep, std::vector<std::byte> body, std::function<void(quic::message)> func)
     {
-        return _link_manager->send_data_message(remote, std::move(payload));
-    }
-
-    bool Router::send_control_message(
-        const RouterID& remote, std::string ep, std::string body, std::function<void(quic::message)> func)
-    {
-        return _link_manager->send_control_message(remote, std::move(ep), std::move(body), std::move(func));
+        _link_manager->send_control_message(remote, std::move(ep), std::move(body), std::move(func));
     }
 
     std::unordered_set<RouterID> Router::get_current_remotes() const { return _link_manager->get_current_remotes(); }
@@ -269,7 +262,7 @@ namespace llarp
 
     void Router::fetch_snode_identity()
     {
-        assert(_is_service_node);
+        assert(is_service_node);
 #ifndef LOKINET_EMBEDDED_ONLY
 
         our_rc_file = _config.router.data_dir / our_rc_filename;
@@ -351,38 +344,30 @@ namespace llarp
         // Router config
         min_client_outbounds = _config.router.client_router_connections;
 
-        if (_is_service_node && embedded())
+        if (is_service_node && embedded())
             throw std::runtime_error{"Invalid config: service node and embedded modes are incompatible!"};
 
-        if (_is_service_node)
+        if (is_service_node)
         {
-            auto paddr = _config.router.public_ip;
+            auto paddr = _config.router.public_addr;
             if (!paddr)
                 paddr = _config.links.public_addr;
-            auto pport = _config.router.public_port;
-            if (!pport)
-                pport = _config.links.public_port;
-
-            if (pport and not paddr)
-                throw std::runtime_error{"If public-port is specified, public-ip must be as well!"};
 
             // Treat 0.0.0.0:0 as not specified:
             if (_config.links.listen_addr && _config.links.listen_addr->is_any_addr()
                 && _config.links.listen_addr->is_any_port())
                 _config.links.listen_addr.reset();
 
-            // If we are given a public address but not port then set port to the listen port (if
+            // If our given public address has a port of 0 then set port to the listen port (if
             // one was explicitly given) or otherwise the default relay port.
-            if (paddr && !pport)
-            {
-                if (_config.links.listen_addr && !_config.links.listen_addr->is_any_port())
-                    pport = _config.links.listen_addr->port();
-                else
-                    pport = DEFAULT_RELAY_PORT;
-            }
             if (paddr)
             {
-                _public_address.emplace(*paddr, *pport);
+                if (paddr->is_any_port() && _config.links.listen_addr)
+                    paddr->set_port(_config.links.listen_addr->port());
+                if (paddr->is_any_port())
+                    paddr->set_port(DEFAULT_RELAY_PORT);
+
+                _public_address = paddr;
                 if (!_public_address->is_public())
                     throw std::runtime_error{"Invalid public-ip: given IP address is not a public IP address"};
             }
@@ -415,7 +400,7 @@ namespace llarp
                 // IP given but not port.  If we have a public port use that, otherwise use the
                 // default.
                 _listen_address = *_config.links.listen_addr;
-                _listen_address.set_port(pport.value_or(DEFAULT_RELAY_PORT));
+                _listen_address.set_port(paddr ? paddr->port() : DEFAULT_RELAY_PORT);
             }
             else
             {
@@ -430,8 +415,8 @@ namespace llarp
                     _public_address = _listen_address = std::move(*maybe_addr);
                 else
                     throw std::runtime_error{
-                        "Unable to determine a public IP on this system; you must set public-ip/public-port config "
-                        "settings"};
+                        "Unable to determine a public IP on this system; you likely need to set "
+                        "[router]:public-ip/public-port config settings"};
             }
 
             if (!_public_address)
@@ -516,7 +501,7 @@ namespace llarp
         // parse strict-connet pubkeys
         if (auto& conf_edges = conf.pinned_edges; not conf_edges.empty())
         {
-            if (is_service_node())
+            if (is_service_node)
                 throw std::runtime_error("cannot use strict-connect option as service node");
 
             auto n_edges = static_cast<int>(conf_edges.size());
@@ -560,7 +545,7 @@ namespace llarp
             sys::service_manager->starting();
 #endif
 
-        if (_is_exit_node and _is_service_node)
+        if (_is_exit_node and is_service_node)
             throw std::runtime_error{
                 "Lokinet cannot simultaneously operate as a service node and client-operated exit node service!"};
 
@@ -575,13 +560,13 @@ namespace llarp
         log::info(
             logcat,
             "Local instance operating in {} mode{}",
-            _is_service_node ? "relay" : "client",
+            is_service_node ? "relay" : "client",
             _is_exit_node ? " operating an exit node service!" : "!");
 
 #ifndef LOKINET_EMBEDDED_ONLY
         _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
 
-        if (_is_service_node)
+        if (is_service_node)
         {
             log::debug(logcat, "Starting RPC client");
             _rpc_client = std::make_shared<rpc::RPCClient>(*_omq, *this);
@@ -597,7 +582,7 @@ namespace llarp
         log::debug(logcat, "Starting OMQ server");
         _omq->start();
 
-        if (_is_service_node)
+        if (is_service_node)
         {
             log::trace(logcat, "RPC client connecting to RPC bind address");
             _rpc_client->connect_async(oxenmq::address(_config.lokid.rpc_addr));
@@ -606,10 +591,10 @@ namespace llarp
 
         log::debug(logcat, "Initializing key manager");
 
-        if (_is_service_node)
+        if (is_service_node)
             fetch_snode_identity();
         else
-            key_manager = KeyManager{_config, _is_service_node};
+            key_manager = KeyManager{_config, is_service_node};
 
         log::trace(logcat, "Initializing from configuration");
 
@@ -628,10 +613,9 @@ namespace llarp
 
         _node_db = std::make_unique<NodeDB>(*this);
 
-        relay_contact = {
-            identity(), _is_service_node and _public_address ? *_public_address : _listen_address, netid()};
+        relay_contact = {identity(), is_service_node and _public_address ? *_public_address : _listen_address, netid()};
 
-        if (_is_service_node and not relay_contact.addr().is_public())
+        if (is_service_node and not relay_contact.addr().is_public())
         {
             auto err =
                 "Router is configured as relay but '{}' is not a public IP; perhaps"
@@ -661,8 +645,6 @@ namespace llarp
             log::debug(logcat, "Not initializing TUN device; running as an embedded client");
     }
 
-    bool Router::is_service_node() const { return _is_service_node; }
-
     bool Router::is_exit_node() const { return _is_exit_node; }
 
     bool Router::insufficient_peers() const
@@ -684,17 +666,17 @@ namespace llarp
 
     bool Router::appears_decommed() const
     {
-        return _is_service_node and has_whitelist() and not node_db().registered_routers().count(local_rid());
+        return is_service_node and has_whitelist() and not node_db().registered_routers().count(local_rid());
     }
 
     bool Router::appears_funded() const
     {
-        return _is_service_node and has_whitelist() and node_db().is_connection_allowed(local_rid());
+        return is_service_node and has_whitelist() and node_db().is_connection_allowed(local_rid());
     }
 
     bool Router::appears_registered() const
     {
-        return _is_service_node and has_whitelist() and node_db().registered_routers().count(local_rid());
+        return is_service_node and has_whitelist() and node_db().registered_routers().count(local_rid());
     }
 
     bool Router::can_test_routers() const { return appears_funded() and not _testing_disabled; }
@@ -715,7 +697,7 @@ namespace llarp
 
     void Router::save_rc()
     {
-        queue_disk_io([&]() {
+        disk_loop.call([this] {
             log::info(logcat, "Saving RC file to {}", our_rc_file);
             relay_contact.write(our_rc_file);
         });
@@ -735,12 +717,12 @@ namespace llarp
         auto _ccs = _contact_db->num_ccs();
 
         return "{}RCs:{} | RIDs:{} | CCs:{} | {}:{} | sessions:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
-            _is_service_node ? "Full Mesh:{} | "_format(_relay == _rcs) : "",
+            is_service_node ? "Full Mesh:{} | "_format(_relay == _rcs) : "",
             _rcs,
             _rids,
             _ccs,
-            _is_service_node ? "hops" : "paths",
-            _is_service_node ? _nhops : _npaths,
+            is_service_node ? "hops" : "paths",
+            is_service_node ? _nhops : _npaths,
             _nsessions,
             _in,
             _out,
@@ -752,7 +734,7 @@ namespace llarp
     {
         const auto now = llarp::time_now_ms();
 
-        log::critical(logcat, "Local {}: [ {} ]", is_service_node() ? "Service Node" : "Client", _stats_line());
+        log::critical(logcat, "Local {}: [ {} ]", is_service_node ? "Service Node" : "Client", _stats_line());
 
         if (_last_stats_report > 0s)
             log::trace(logcat, "Last reported stats time {}", now - _last_stats_report);
@@ -764,13 +746,8 @@ namespace llarp
 
     std::string Router::status_line()
     {
-        auto line = "v{}{}: {}"_format(
-            fmt::join(llarp::LOKINET_VERSION, "."), (_is_service_node) ? " snode: " : " client: ", _stats_line());
-
-        if (is_service_node())
-            line += ", gossip interval={}"_format(_gossip_interval);
-
-        return line;
+        return "v{} {}: {}"_format(
+            fmt::join(llarp::LOKINET_VERSION, "."), is_service_node ? "snode" : "client", _stats_line());
     }
 
     void Router::_relay_tick([[maybe_unused]] std::chrono::milliseconds now)
@@ -796,8 +773,6 @@ namespace llarp
             log::trace(logcat, "Router awaiting NodeDB completion to proceed with ::tick() logic...");
             return;
         }
-
-        _link_manager->check_persisting_conns(now);
 
         const bool is_decommed = appears_decommed();
         // we want ALL router-connections, including in-progress connections because full-mesh
@@ -910,7 +885,7 @@ namespace llarp
             log::error(logcat, "Timeskip of {}ms detected, resetting network state!", delta.count());
         }
 
-        if (_is_service_node)
+        if (is_service_node)
             _relay_tick(now);
         else
             _client_tick(now);
@@ -931,7 +906,7 @@ namespace llarp
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (is_service_node())
+        if (is_service_node)
         {
             save_rc();
 
@@ -977,7 +952,7 @@ namespace llarp
         _started_at = now();
 
 #ifndef LOKINET_EMBEDDED_ONLY
-        if (is_service_node() and not _testing_disabled)
+        if (is_service_node and not _testing_disabled)
         {
             log::debug(logcat, "Creating reachability testing ticker...");
             // do service node testing if we are in service node whitelist mode
@@ -1051,7 +1026,7 @@ namespace llarp
             llarp::sys::service_manager->ready();
 #endif
 
-        log::info(logcat, "{} startup complete", local_rid().to_network_address(_is_service_node));
+        log::info(logcat, "{} startup complete", local_rid().to_network_address(is_service_node));
     }
 
     std::chrono::milliseconds Router::Uptime() const
@@ -1133,7 +1108,7 @@ namespace llarp
             if (!embedded())
                 llarp::sys::service_manager->stopping();
 #endif
-            _session_endpoint->stop();
+            _session_endpoint->stop(false);
             stop_outbounds();
             close();
         });
@@ -1166,7 +1141,7 @@ namespace llarp
 
             _session_endpoint->stop(true);
 
-            if (not _is_service_node)
+            if (not is_service_node)
                 _router_profiling.stop_save_ticker();
 
             _loop->call_later(200ms, [this] { cleanup(); });

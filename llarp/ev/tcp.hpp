@@ -63,7 +63,7 @@ namespace llarp
 #endif
             ;
 
-        std::shared_ptr<quic::Loop> _ev;
+        quic::Loop& _ev;
         std::shared_ptr<::evconnlistener> _tcp_listener;
 
         // The OutboundSession will set up an evconnlistener and set the listening socket address inside ::_bound
@@ -74,9 +74,9 @@ namespace llarp
 
         socket_t _sock;
 
-        explicit TCPHandle(const std::shared_ptr<quic::Loop>& ev, tcpconn_hook cb, uint16_t p);
+        explicit TCPHandle(quic::Loop& ev, tcpconn_hook cb, uint16_t p);
 
-        explicit TCPHandle(const std::shared_ptr<quic::Loop>& ev, quic::Address connect);
+        explicit TCPHandle(quic::Loop& ev, quic::Address connect);
 
       public:
         TCPHandle() = delete;
@@ -85,12 +85,11 @@ namespace llarp
 
         // The OutboundSession object will hold a server listening on some localhost:port, returning that port to the
         // application for it to make a TCP connection
-        static std::shared_ptr<TCPHandle> make_server(
-            const std::shared_ptr<quic::Loop>& ev, tcpconn_hook cb, uint16_t port = 0);
+        static std::shared_ptr<TCPHandle> make_server(quic::Loop& ev, tcpconn_hook cb, uint16_t port = 0);
 
         // The InboundSession object will hold a client that connects to some application configured
         // lokinet-primary-ip:port every time the OutboundSession opens a new stream over the tunneled connection
-        static std::shared_ptr<TCPHandle> make_client(const std::shared_ptr<quic::Loop>& ev, quic::Address connect);
+        static std::shared_ptr<TCPHandle> make_client(quic::Loop& ev, quic::Address connect);
 
         ~TCPHandle();
 

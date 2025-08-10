@@ -1,11 +1,10 @@
 #pragma once
 
+#include "llarp/path/transit_hop.hpp"
 #include <llarp/address/address.hpp>
-#include <llarp/address/map.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/contact/client_contact.hpp>
 #include <llarp/path/path_handler.hpp>
-#include <llarp/session/map.hpp>
 #include <llarp/session/session.hpp>
 
 #include <concepts>
@@ -31,14 +30,13 @@ namespace llarp
 
             bool should_publish_cc{false};
 
-            session_map _sessions;
-
-            address_map<quic::Address> _address_map;
+            std::unordered_map<NetworkAddress, std::shared_ptr<session::BaseSession>> _sessions;
+            std::unordered_map<session_tag, std::shared_ptr<session::BaseSession>> _session_tags;
 
             // this could probably map to a pair of vectors, or pending packets could
             // be wrapped in callbacks, but for now this works
-            std::unordered_map<NetworkAddress, std::vector<IPPacket>> pending_sessions;
-            std::unordered_map<NetworkAddress, std::vector<std::function<void(bool)>>> pending_session_hooks;
+            // std::unordered_map<NetworkAddress, std::vector<IPPacket>> pending_sessions;
+            // std::unordered_map<NetworkAddress, std::vector<std::function<void(bool)>>> pending_session_hooks;
 
             ClientContact client_contact;
             protocol_flag protocols;
@@ -54,28 +52,22 @@ namespace llarp
             void close_session(std::shared_ptr<session::BaseSession>& s, bool send_close);
 
           protected:
-            void rotate_paths() override;
+            // void path_rotation_succeeded(const std::shared_ptr<path::Path>& new_path) override;
 
-            void drop_oldest_path() override;
-
-            void path_rotation_succeeded(const std::shared_ptr<path::Path>& new_path) override;
-
-            std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
+            // std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
 
           public:
             SessionEndpoint(Router& r);
 
-            void stop(bool send_close = false) override;
+            void stop(bool send_close);
 
-            void build_more(size_t n = 0) override;
+            // Checks if we need more inbound paths and, if so, starts building them.
+            void update_paths() override;
 
-            const std::shared_ptr<quic::Loop>& loop();
+            // bool build_path_to_random(bool exclude_current_termini)
 
-            std::pair<size_t, bool> session_stats() const;
-
-            std::shared_ptr<path::PathHandler> get_self() override { return shared_from_this(); }
-
-            std::weak_ptr<path::PathHandler> get_weak() override { return weak_from_this(); }
+            /// Returns: {number of sessions, number of active sessions}
+            std::pair<size_t, size_t> session_stats() const;
 
             // quic::Address local_address() const { return _local_addr; }
 
@@ -90,32 +82,42 @@ namespace llarp
             template <std::derived_from<session::BaseSession> Session = session::BaseSession>
             std::shared_ptr<Session> get_session(const session_tag& tag) const
             {
-                auto s = _sessions.get_session(tag);
+                auto it = _session_tags.find(tag);
+                if (it == _session_tags.end())
+                    return nullptr;
+
                 if constexpr (!std::same_as<Session, session::BaseSession>)
-                    return std::dynamic_pointer_cast<Session>(std::move(s));
+                    return std::dynamic_pointer_cast<Session>(it->second);
                 else
-                    return s;
+                    return it->second;
             }
 
             template <std::derived_from<session::BaseSession> Session = session::BaseSession>
             std::shared_ptr<Session> get_session(const NetworkAddress& remote) const
             {
-                auto s = _sessions.get_session(remote);
+                auto it = _sessions.find(remote);
+                if (it == _sessions.end())
+                    return nullptr;
+
                 if constexpr (!std::same_as<Session, session::BaseSession>)
-                    return std::dynamic_pointer_cast<Session>(std::move(s));
+                    return std::dynamic_pointer_cast<Session>(it->second);
                 else
-                    return s;
+                    return it->second;
             }
 
             bool close_session(NetworkAddress remote, bool send_close = false);
 
             bool close_session(session_tag t, bool send_close = false);
 
-            void update_and_publish_localcc();
+            /// Called to perform CC publishing.  Does nothing if the current introsets are
+            /// unchanged since the last publish, unless the force option is given.  Returns true if
+            /// publishing succeeds, or is not currently needed (i.e. disabled or unchanged), false
+            /// if publishing fails.
+            bool update_and_publish_localcc(bool force = false);
 
             void start_tickers();
 
-            bool publish_client_contact(const EncryptedClientContact& ecc);
+            void publish_client_contact(const EncryptedClientContact& ecc);
 
             // SessionEndpoint can use either a whitelist or a static auth token list to  validate incomininbg requests
             // to initiate a session
@@ -123,17 +125,19 @@ namespace llarp
 
             // FIXME: should SessionEndpoint have these mappings at all?
             std::optional<std::variant<ipv4, ipv6>> map_session(const session::BaseSession& s);
-            void unmap_session(NetworkAddress remote);
             void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
             void unmap_remote_by_name(const std::string& name);
 
-            std::optional<session_tag> prefigure_session(
+            // Called when we receive a session_init from some client; we create either an
+            // InboundRelaySession (if we are a relay) or InboundClientSession (if we are a client).
+            // Returns nullopt if the session cannot be created, otherwise returns the random
+            // session tag we have associated with the inbound session.
+            std::optional<session_tag> create_inbound_session(
                 NetworkAddress initiator,
                 HopID remote_pivot_txid,
                 std::shared_ptr<session_path_interface> path,
-                shared_kx_data kx_data,
-                bool use_tun);
+                shared_kx_data kx_data);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client
             void resolve_sns(std::string name, std::function<void(std::optional<NetworkAddress>)> func);
@@ -148,37 +152,51 @@ namespace llarp
             // resolves any config mappings that parsed ONS addresses to their pubkey network address
             void resolve_sns_mappings();
 
+            // Initiates a session to the given remote client or snode address.  Calls
+            // `on_established` when the connection is established (or immediately, if a session to
+            // the target is already established).  If the session cannot be established within the
+            // given timeout then `on_established` will be called with the not-yet-established path
+            // and a `true` second argument.
+            //
+            // Note that this resulting session could be outbound or inbound: i.e. if the target is
+            // a client (.loki) that has already established a session to this lokinet instance then
+            // that existing session is used rather than building a new outbound one.
+            //
             // NB: this method can be called from outside the event loop (e.g. in embedded usage).
-            void initiate_remote_session(NetworkAddress remote, on_session_init_hook cb);
+            void initiate_remote_session(
+                const NetworkAddress& remote,
+                std::function<void(session::BaseSession& session, bool timeout)> on_established,
+                std::chrono::milliseconds timeout = 10s);
 
-            void tick(std::chrono::milliseconds now) override;
+            // More internal version of initiate_remote_session: this may only be called from inside
+            // the router loop, takes no callback, and returns the Session (which may be brand new
+            // if one did not already exist to the remote).
+            std::shared_ptr<session::BaseSession> remote_session(const NetworkAddress& remote);
 
-            bool have_pending_session(const NetworkAddress& remote);
+            void tick(std::chrono::milliseconds now);
 
             void queue_session_packet(const NetworkAddress& remote, IPPacket pkt);
 
           private:
-            void _localcc_update_fail();
-
             void _update_and_publish_localcc();
 
-            void _initiate_client_session(NetworkAddress remote, on_session_init_hook cb);
+            void _initiate_client_session(NetworkAddress remote, std::function<void(bool)> session_init_hook);
 
-            void _initiate_relay_session(NetworkAddress remote, on_session_init_hook cb);
+            void _initiate_relay_session(NetworkAddress remote, std::function<void(bool)> session_init_hook);
 
-            void _make_client_session_path(sorted_intro_set intros, NetworkAddress remote, on_session_init_hook cb);
+            void _make_client_session_path(sorted_intro_set intros, NetworkAddress remote, std::function<void(bool)> session_init_hook);
 
-            void _make_relay_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb);
+            void _make_relay_session_path(RemoteRC rc, NetworkAddress remote, std::function<void(bool)> session_init_hook);
 
             void _make_client_session(
-                sorted_intro_set remote_intros,
+                std::vector<ClientIntro> remote_intros,
                 NetworkAddress remote,
                 ClientIntro remote_intro,
                 std::shared_ptr<path::Path> path,
-                on_session_init_hook cb);
+                std::function<void(bool)> session_init_hook);
 
             void _make_relay_session(
-                RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, on_session_init_hook cb);
+                RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, std::function<void(bool)> session_init_hook);
         };
 
     }  // namespace handlers

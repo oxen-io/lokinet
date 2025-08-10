@@ -1,6 +1,7 @@
 #include "session.hpp"
 
 #include "common.hpp"
+#include "llarp/crypto/crypto.hpp"
 #include "path.hpp"
 
 #include <llarp/util/bspan.hpp>
@@ -15,27 +16,25 @@ namespace llarp
         const std::string BAD_ROUTE = messages::serialize_status_response("BAD ROUTE");
         const std::string BAD_ADDRESS = messages::serialize_status_response("BAD ADDRESS");
 
-        std::string serialize(
+        std::vector<std::byte> serialize(
             const RouterID& local,
             HopID local_pivot_txid,
             HopID remote_pivot_txid,
-            std::optional<std::string_view> auth_token,
-            bool use_tun)
+            std::optional<std::string_view> auth_token)
         {
             try
             {
                 oxenc::bt_dict_producer btdp;
 
                 btdp.append("i", local.span());
+                // TODO FIXME: include identity proof
                 btdp.append("p", local_pivot_txid.span());
                 btdp.append("r", remote_pivot_txid.span());
-                if (use_tun)
-                    btdp.append("t", use_tun);
                 // TOTHINK: this auth field
                 if (auth_token)
                     btdp.append("u", *auth_token);
 
-                return std::move(btdp).str();
+                return to_bytes(btdp);
             }
             catch (const std::exception& e)
             {
@@ -44,50 +43,49 @@ namespace llarp
             }
         }
 
-        std::pair<std::string, shared_kx_data> serialize_encrypt(
+        std::pair<std::vector<std::byte>, SharedSecret> serialize_encrypt(
             const RouterID& local,
             const RouterID& remote,
             HopID local_pivot_txid,
             HopID remote_pivot_txid,
-            std::optional<std::string_view> auth_token,
-            bool use_tun)
+            std::optional<std::string_view> auth_token)
         {
             try
             {
-                std::string payload =
-                    serialize(local, local_pivot_txid, remote_pivot_txid, std::move(auth_token), use_tun);
+                auto payload =
+                    serialize(local, local_pivot_txid, remote_pivot_txid, std::move(auth_token));
 
-                auto kx_data = shared_kx_data::generate();
+                auto [secret, eph_pk, dh_nonce] = crypto::dh_client_gen(remote);
+                crypto::xchacha20(payload, secret, dh_nonce);
 
-                kx_data.client_dh(remote);
-                kx_data.encrypt(as_bspan(payload));
-                kx_data.generate_xor();
+                oxenc::bt_dict_producer btdp;
 
-                auto new_payload = ONION::serialize_hop(kx_data.pubkey, kx_data.nonce, as_bspan(payload));
+                btdp.append("k", eph_pk.span());
+                btdp.append("n", dh_nonce.span());
+                btdp.append("x", payload);
 
-                return {PATH::CONTROL::serialize("session_init", as_bspan(new_payload)), std::move(kx_data)};
+                return {PATH::CONTROL::serialize("session_init", to_bytes(btdp)), secret};
             }
             catch (const std::exception& e)
             {
                 log::error(logcat, "Exception caught encrypting session initiation message: {}", e.what());
                 throw;
             }
-        };
+        }
 
-        std::tuple<NetworkAddress, HopID, HopID, bool, std::optional<std::string>> deserialize(
+        std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> deserialize(
             oxenc::bt_dict_consumer&& btdc)
         {
             try
             {
-                std::tuple<NetworkAddress, HopID, HopID, bool, std::optional<std::string>> result;
-                auto& [initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] = result;
+                std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> result;
+                auto& [initiator, local_pivot_txid, remote_pivot_txid, maybe_auth] = result;
 
                 RouterID init_rid;
                 init_rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("i"));
                 initiator = {init_rid, true};
                 remote_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
                 local_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
-                use_tun = btdc.maybe<bool>("t").value_or(false);
                 maybe_auth = btdc.maybe<std::string>("u");
 
                 return result;
@@ -99,11 +97,11 @@ namespace llarp
             }
         }
 
-        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, bool, std::optional<std::string>> decrypt_deserialize(
+        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> decrypt_deserialize(
             oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local)
         {
-            std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, bool, std::optional<std::string>> result;
-            auto& [kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] = result;
+            std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> result;
+            auto& [kx_data, initiator, local_pivot_txid, remote_pivot_txid, maybe_auth] = result;
             SymmNonce nonce;
             PubKey shared_pubkey;
             std::string payload;
@@ -121,7 +119,7 @@ namespace llarp
 
             try
             {
-                std::tie(initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
+                std::tie(initiator, local_pivot_txid, remote_pivot_txid, maybe_auth) =
                     deserialize(oxenc::bt_dict_consumer{payload});
                 return result;
             }

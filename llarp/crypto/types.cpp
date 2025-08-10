@@ -1,5 +1,7 @@
 #include "types.hpp"
 
+#include "oxenc/endian.h"
+
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/buffer.hpp>
@@ -111,6 +113,16 @@ namespace llarp
         return n;
     }
 
+    SymmNonce SymmNonce::sequential(uint64_t low, uint64_t mid, uint64_t high)
+    {
+        SymmNonce n;
+        oxenc::write_host_as_little(low, n.data());
+        oxenc::write_host_as_little(mid, n.data() + 8);
+        oxenc::write_host_as_little(high, n.data() + 16);
+        static_assert(n.SIZE == 24);
+        return n;
+    }
+
     shared_kx_data::shared_kx_data(Ed25519SecretKey&& sk) : ephemeral_key{std::move(sk)}
     {
         pubkey = ephemeral_key.to_pubkey();
@@ -122,7 +134,7 @@ namespace llarp
         xor_nonce.assign(xhash.span().first<SymmNonce::SIZE>());
     }
 
-    shared_kx_data shared_kx_data::generate() { return shared_kx_data{crypto::generate_identity()}; }
+    shared_kx_data shared_kx_data::generate() { return shared_kx_data{crypto::generate_ed25519()}; }
 
     // TESTNET: TODO: check if the libsodium functions ever actually fail...
 

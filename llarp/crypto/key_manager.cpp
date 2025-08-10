@@ -1,5 +1,6 @@
 #include "key_manager.hpp"
 
+#include "llarp/crypto/crypto.hpp"
 #include "types.hpp"
 
 #include <llarp/config/config.hpp>
@@ -20,7 +21,7 @@ namespace llarp
             else
             {
                 log::debug(logcat, "Client generating identity key...");
-                identity_key = crypto::generate_identity();
+                identity_key = crypto::generate_ed25519();
             }
 
             identity_data = identity_key.to_eddata();

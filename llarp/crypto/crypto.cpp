@@ -30,60 +30,22 @@ namespace llarp::crypto
         SharedSecret& out,
         const PubKey& client_pk,
         const PubKey& server_pk,
-        const uint8_t* themPub,
-        const Ed25519PrivateData& local_edhash)
+        bool we_are_client,
+        const Ed25519PrivateData& local_edhash,
+        const SymmNonce& nonce)
     {
         SharedSecret shared;
-        crypto_generichash_state h;
-
-        if (crypto_scalarmult_ed25519(shared.data(), local_edhash.scalar().data(), themPub))
-        {
+        if (crypto_scalarmult_ed25519(
+                shared.data(), local_edhash.scalar().data(), (we_are_client ? server_pk : client_pk).data()))
             return false;
-        }
 
-        log::trace(
-            logcat,
-            "client-pk: {}, server-pk: {}, shared secret: {}",
-            client_pk.to_string(),
-            server_pk.to_string(),
-            shared.to_string());
-
-        crypto_generichash_blake2b_init(&h, nullptr, 0U, shared.size());
+        crypto_generichash_blake2b_state h;
+        crypto_generichash_blake2b_init(&h, nonce.data(), nonce.size(), shared.size());
         crypto_generichash_blake2b_update(&h, client_pk.data(), client_pk.size());
         crypto_generichash_blake2b_update(&h, server_pk.data(), server_pk.size());
         crypto_generichash_blake2b_update(&h, shared.data(), shared.size());
         crypto_generichash_blake2b_final(&h, out.data(), out.size());
         return true;
-    }
-
-    static bool dh_client_priv(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
-    {
-        SharedSecret dh_result;
-
-        if (dh(dh_result, sk.to_pubkey(), pk, pk.data(), sk.to_eddata()))
-        {
-            return crypto_generichash_blake2b(
-                       shared.data(), shared.size(), n.data(), n.size(), dh_result.data(), dh_result.size())
-                != -1;
-        }
-
-        log::warning(logcat, "dh_client - dh failed");
-        return false;
-    }
-
-    static bool dh_server_priv(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
-    {
-        SharedSecret dh_result;
-
-        if (dh(dh_result, pk, sk.to_pubkey(), pk.data(), sk.to_eddata()))
-        {
-            return crypto_generichash_blake2b(
-                       shared.data(), shared.size(), n.data(), n.size(), dh_result.data(), dh_result.size())
-                != -1;
-        }
-
-        log::warning(logcat, "dh_server - dh failed");
-        return false;
     }
 
     std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view namestr)
@@ -125,31 +87,43 @@ namespace llarp::crypto
         return result;
     }
 
-    bool xchacha20(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
+    void xchacha20(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
-        auto ubuf = as_uspan(buf);
-        return crypto_stream_xchacha20_xor(ubuf.data(), ubuf.data(), ubuf.size(), nonce.data(), secret.data()) == 0;
-    }
-
-    // do a round of chacha for and return the nonce xor the given xor_factor
-    SymmNonce onion(
-        std::span<std::byte> buf, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor)
-    {
-        if (!xchacha20(buf, k, nonce))
-            throw std::runtime_error{"chacha failed during onion step"};
-
-        return nonce ^ xor_factor;
+        auto* d = reinterpret_cast<unsigned char*>(buf.data());
+        static_assert(SymmNonce::SIZE == crypto_stream_xchacha20_NONCEBYTES);
+        static_assert(SharedSecret::SIZE == crypto_stream_xchacha20_KEYBYTES);
+        crypto_stream_xchacha20_xor(d, d, buf.size(), nonce.data(), secret.data());
     }
 
     bool dh_client(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
-        return dh_client_priv(shared, pk, sk, n);
+        if (dh(shared, sk.to_pubkey(), pk, true, sk.to_eddata(), n))
+            return true;
+
+        log::warning(logcat, "dh_client - dh failed");
+        return false;
+    }
+
+    std::tuple<SharedSecret, PubKey, SymmNonce> dh_client_gen(const PubKey& server_pk) {
+        std::tuple<SharedSecret, PubKey, SymmNonce> result;
+        auto& [secret, eph_pk, nonce] = result;
+
+        auto eph_keys = generate_ed25519();
+        nonce = SymmNonce::make_random();
+        if (!dh_client(secret, server_pk, eph_keys, nonce))
+            throw std::invalid_argument{"shared secret generation failed: remote pubkey is not a valid Ed25519 pubkey"};
+        eph_pk.assign(eph_keys.pubkey_span());
+        return result;
     }
 
     /// path dh relay side
     bool dh_server(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
-        return dh_server_priv(shared, pk, sk, n);
+        if (dh(shared, pk, sk.to_pubkey(), false, sk.to_eddata(), n))
+            return true;
+
+        log::warning(logcat, "dh_server - dh failed");
+        return false;
     }
 
     void shorthash(std::span<std::byte, SHORTHASHSIZE> result, std::span<const std::byte> buf)
@@ -337,28 +311,21 @@ namespace llarp::crypto
         return 0 == crypto_scalarmult_ed25519_noclamp(derived, h.data(), root_pubkey.data());
     }
 
-    Ed25519SecretKey generate_identity()
+    Ed25519SecretKey generate_ed25519()
     {
         Ed25519SecretKey ret{};
         PubKey pk;
         [[maybe_unused]] int result = crypto_sign_ed25519_keypair(pk.data(), ret.data());
         assert(result != -1);
-        const PubKey sk_pk = ret.to_pubkey();
-        (void)sk_pk;
-        assert(pk == sk_pk);
         return ret;
     }
 
-    bool check_identity_privkey(const Ed25519SecretKey& keys)
+    bool check_pubkey(const Ed25519SecretKey& keys)
     {
-        AlignedBuffer<crypto_sign_SEEDBYTES> seed;
         PubKey pk;
         Ed25519SecretKey sk;
-        if (crypto_sign_ed25519_sk_to_seed(seed.data(), keys.data()) == -1)
-            return false;
-        if (crypto_sign_seed_keypair(pk.data(), sk.data(), seed.data()) == -1)
-            return false;
-        return keys.to_pubkey() == pk && sk == keys;
+        crypto_sign_seed_keypair(pk.data(), sk.data(), keys.data());
+        return keys.to_pubkey() == pk;
     }
 
 #ifdef LOKINET_HAVE_CRYPT

@@ -8,13 +8,12 @@
 namespace llarp
 {
     /** Fields for initiating sessions:
-        - 'k' : shared pubkey used to derive symmetric key
-        - 'n' : symmetric nonce
+        - 'k' : ephemeral pubkey used to derive shared secret
+        - 'n' : nonce used for key exchange 
         - 'x' : encrypted payload
             - 'i' : RouterID of initiator
             - 'p' : HopID at the pivot taken from local ClientIntro
             - 'r' : HopID at the pivot taken from remote's ClientIntro
-            - 't' : Use Tun interface (bool)
             - 'u' : Authentication field
                 - bt-encoded dict, values TBD
     */
@@ -24,25 +23,23 @@ namespace llarp
         extern const std::string BAD_ROUTE;
         extern const std::string BAD_ADDRESS;
 
-        std::string serialize(
+        std::vector<std::byte> serialize(
             const RouterID& local,
             HopID local_pivot_txid,
             HopID remote_pivot_txid,
-            std::optional<std::string_view> auth_token,
-            bool use_tun);
+            std::optional<std::string_view> auth_token);
 
-        std::pair<std::string, shared_kx_data> serialize_encrypt(
+        std::pair<std::vector<std::byte>, SharedSecret> serialize_encrypt(
             const RouterID& local,
             const RouterID& remote,
             HopID local_pivot_txid,
             HopID remote_pivot_txid,
-            std::optional<std::string_view> auth_token,
-            bool use_tun);
+            std::optional<std::string_view> auth_token);
 
-        std::tuple<NetworkAddress, HopID, HopID, bool, std::optional<std::string>> deserialize(
+        std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> deserialize(
             oxenc::bt_dict_consumer&& btdc);
 
-        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, bool, std::optional<std::string>> decrypt_deserialize(
+        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> decrypt_deserialize(
             oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local);
 
         std::string serialize_response(session_tag& t);

@@ -5,8 +5,6 @@
 
 #include <oxenc/bt.h>
 
-#include <set>
-
 namespace llarp
 {
     struct ClientIntro
@@ -21,7 +19,11 @@ namespace llarp
         ClientIntro(oxenc::bt_dict_consumer&&);
         ClientIntro(std::string_view buf);
 
-        bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return now >= expiry; }
+        std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const {
+            return expiry - now;
+        }
+
+        bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return expires_in(now) <= 0ms; }
 
         void bt_encode(oxenc::bt_dict_producer&& subdict) const;
 
@@ -42,14 +44,6 @@ namespace llarp
         std::string to_string() const;
         static constexpr bool to_string_formattable = true;
     };
-
-    struct ClientIntroExpComp
-    {
-        bool operator()(const ClientIntro& lhs, const ClientIntro& rhs) const { return lhs.expiry > rhs.expiry; }
-    };
-
-    // Sorted from newest to oldest (i.e. latest expiry first)
-    using sorted_intro_set = std::set<ClientIntro, ClientIntroExpComp>;
 
 }  //  namespace llarp
 

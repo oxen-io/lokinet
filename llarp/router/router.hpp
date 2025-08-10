@@ -93,7 +93,7 @@ namespace llarp
         void start();
 
         Config _config;
-        std::shared_ptr<quic::Loop> _loop;
+        const std::shared_ptr<quic::Loop> _loop;
         std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
@@ -106,8 +106,6 @@ namespace llarp
 
         std::atomic<bool> _is_stopping{false};
         std::atomic<bool> _is_running{false};
-
-        bool _is_service_node{_config.router.is_relay};
 
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
@@ -138,9 +136,6 @@ namespace llarp
         // Might not be set/used, depending on the platform:
         std::shared_ptr<quic::Ticker> _service_stat_ticker;
         std::shared_ptr<quic::Ticker> _reachability_ticker;
-
-        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
-        quic::Loop _disk_loop;
 
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
@@ -189,6 +184,8 @@ namespace llarp
       public:
         path::PathContext path_context{*this};
         KeyManager key_manager;
+
+        const bool is_service_node{_config.router.is_relay};
 
         bool is_fully_meshed() const;
 
@@ -252,7 +249,10 @@ namespace llarp
 
         Profiling& router_profiling() { return _router_profiling; }
 
-        const std::shared_ptr<quic::Loop>& loop() const { return _loop; }
+        quic::Loop& loop{*_loop};
+
+        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
+        quic::Loop disk_loop;
 
         std::chrono::milliseconds gossip_interval() const { return _gossip_interval; }
 
@@ -267,8 +267,6 @@ namespace llarp
         nlohmann::json ExtractStatus() const;
 
         nlohmann::json ExtractSummaryStatus() const;
-
-        void queue_disk_io(std::function<void()> func);
 
         const std::unordered_set<RouterID>& get_whitelist() const;
 
@@ -312,8 +310,6 @@ namespace llarp
 
         bool is_stopping() const { return _is_stopping; }
 
-        bool is_service_node() const;
-
         bool is_exit_node() const;
 
         std::optional<std::string> OxendErrorState() const;
@@ -329,16 +325,14 @@ namespace llarp
         /// close all sessions and shutdown all links
         void stop_outbounds();
 
-        void persist_connection_until(const RouterID& remote, std::chrono::milliseconds until);
-
         void fetch_snode_identity();
 
-        bool send_data_message(const RouterID& remote, std::string payload);
+        void send_data_message(const RouterID& remote, std::vector<std::byte> payload);
 
-        bool send_control_message(
+        void send_control_message(
             const RouterID& remote,
             std::string endpoint,
-            std::string body,
+            std::vector<std::byte> body,
             std::function<void(quic::message)> func = nullptr);
 
         // bool is_bootstrap_node(RouterID rid) const;

@@ -48,6 +48,9 @@ namespace llarp
         inline static constexpr uint8_t VERSION{0};
 
         ClientContact() = default;
+
+        /// Constructs a ClientContact by parsing a serialized client contact value.  Throws if
+        /// invalid.
         explicit ClientContact(std::span<const std::byte> buf);
 
         /** Parameters:
@@ -66,13 +69,20 @@ namespace llarp
 
         EncryptedClientContact encrypt_and_sign() const;
 
-        void update_intros(sorted_intro_set intros);
+        /// Replaces the client intros in the current introset with the given values.  It is not
+        /// necessary for the given values to be pre-sorted (i.e. this functions sorts them as
+        /// required).
+        void update_intros(std::vector<ClientIntro> intros);
 
         const PubKey& pubkey() const { return _pubkey; }
-        const sorted_intro_set& intros() const& { return _intros; }
-        sorted_intro_set&& intros() && { return std::move(_intros); }
+        // Returns the current intros; these will always be sorted in descending expiry order (i.e.
+        // last entry is the first to expire).
+        std::span<const ClientIntro> intros() const& { return _intros; }
+
         const std::unordered_set<dns::SRVData>& SRVs() const { return _srv; }
+
         protocol_flag protocols() const { return _protos; }
+
         const std::optional<net::ExitPolicy>& exit_policy() const { return _exit_policy; }
 
         bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const;
@@ -82,7 +92,7 @@ namespace llarp
 
         PubKey _pubkey;
 
-        sorted_intro_set _intros;
+        std::vector<ClientIntro> _intros;
         std::unordered_set<dns::SRVData> _srv;
 
         protocol_flag _protos;
@@ -91,12 +101,6 @@ namespace llarp
         std::optional<net::ExitPolicy> _exit_policy;
 
         std::vector<std::byte> bt_encode() const;
-
-        // Throws on failure to parse
-        void bt_decode(std::string_view buf);
-
-        // Throws if unsuccessful
-        void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
         session_tag generate_session_tag() const;
 

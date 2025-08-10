@@ -951,7 +951,7 @@ namespace llarp::handlers
         return get_next_local_ipvX(*_local_ipv6_range_iterator, *_local_ipv6_net, _local_ipv6_mapping);
     }
 
-    std::optional<ipv4> TunEndpoint::map_session_to_local_ip(const NetworkAddress& remote)
+    std::optional<ipv4> TunEndpoint::map(const NetworkAddress& remote)
     {
         std::optional<ipv4> ret = std::nullopt;
 
@@ -969,12 +969,12 @@ namespace llarp::handlers
             _local_ipv4_mapping.insert_or_assign(*maybe_next_ip, remote);
         }
         else
-            log::critical(logcat, "TUN device failed to assign local private IP for session to remote: {}", remote);
+            log::error(logcat, "TUN device failed to assign local private IP for remote: {}", remote);
 
         return ret;
     }
 
-    void TunEndpoint::unmap_session_to_local_ip(const NetworkAddress& remote)
+    void TunEndpoint::unmap(const NetworkAddress& remote)
     {
         if (_local_ipv4_mapping.has_remote(remote))
         {

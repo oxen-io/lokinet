@@ -7,6 +7,7 @@
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
+#include <algorithm>
 #include <type_traits>
 
 namespace llarp
@@ -26,14 +27,43 @@ namespace llarp
           _exit_policy{std::move(policy)}
     {}
 
-    ClientContact::ClientContact(std::span<const std::byte> buf) { bt_decode(oxenc::bt_dict_consumer{buf}); }
+    ClientContact::ClientContact(std::span<const std::byte> buf)
+    {
+        oxenc::bt_dict_consumer btdc{buf};
 
-    void ClientContact::update_intros(sorted_intro_set iset)
+        auto version = btdc.require<uint8_t>("");
+
+        if (version != VERSION)
+            throw std::runtime_error{
+                "Deserialized ClientContact with unsupported version {} (expected {})!"_format(version, VERSION)};
+
+        _pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("a"));
+
+        if (btdc.skip_until("e"))
+            _exit_policy.emplace().bt_decode(btdc.consume_dict_consumer());
+
+        for (auto sublist = btdc.require<oxenc::bt_list_consumer>("i"); not sublist.is_finished();)
+            _intros.emplace_back(sublist.consume_dict_consumer());
+
+        if (!std::ranges::is_sorted(_intros, std::ranges::greater{}, &ClientIntro::expiry))
+            throw std::runtime_error{"Invalid ClientContact: intros expiries are non-descending"};
+
+        _protos = static_cast<protocol_flag>(btdc.require<std::underlying_type_t<protocol_flag>>("p"));
+
+        if (auto sublist = btdc.maybe<oxenc::bt_list_consumer>("s"))
+            while (not sublist->is_finished())
+                _srv.emplace(sublist->consume_dict_consumer());
+
+        btdc.finish();
+    }
+
+    void ClientContact::update_intros(std::vector<ClientIntro> iset)
     {
         if (iset.empty())
-            throw std::invalid_argument{"Cannot publish ClientContact with no ClientIntros!"};
+            throw std::invalid_argument{"Cannot update ClientContact with no ClientIntros!"};
         _intros = std::move(iset);
-        log::debug(logcat, "ClientContact stored updated ClientIntros (n={})...", _intros.size());
+        std::ranges::stable_sort(_intros, std::ranges::greater{}, &ClientIntro::expiry);
+        log::debug(logcat, "ClientContact updated with {} ClientIntros", _intros.size());
     }
 
 #ifdef __cpp_lib_to_underlying
@@ -78,38 +108,13 @@ namespace llarp
         return ret;
     }
 
-    void ClientContact::bt_decode(oxenc::bt_dict_consumer&& btdc)
-    {
-        auto version = btdc.require<uint8_t>("");
-
-        if (version != VERSION)
-            throw std::runtime_error{
-                "Deserialized ClientContact with unsupported version {} (expected {})!"_format(version, VERSION)};
-
-        _pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("a"));
-
-        if (btdc.skip_until("e"))
-            _exit_policy.emplace().bt_decode(btdc.consume_dict_consumer());
-
-        for (auto sublist = btdc.require<oxenc::bt_list_consumer>("i"); not sublist.is_finished();)
-            _intros.emplace(sublist.consume_dict_consumer());
-
-        _protos = static_cast<protocol_flag>(btdc.require<std::underlying_type_t<protocol_flag>>("p"));
-
-        if (auto sublist = btdc.maybe<oxenc::bt_list_consumer>("s"))
-            while (not sublist->is_finished())
-                _srv.emplace(sublist->consume_dict_consumer());
-    }
-
     session_tag ClientContact::generate_session_tag() const { return session_tag{_protos}; }
 
     bool ClientContact::is_expired(std::chrono::milliseconds now) const
     {
-        // We want to check the first one, because this is sorted newest-to-oldest
-        auto it = _intros.begin();
-        if (it == _intros.end())
-            return true;
-        return it->is_expired(now);
+        // We only need to check the first one, because this is sorted newest-to-oldest and so if
+        // the first is expired they all are.
+        return _intros.empty() || _intros.front().is_expired(now);
     }
 
     EncryptedClientContact ClientContact::encrypt_and_sign() const

@@ -2,9 +2,11 @@
 
 #include <llarp/util/str.hpp>
 
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 
 #include <cassert>
+#include <concepts>
 #include <filesystem>
 #include <functional>
 #include <initializer_list>
@@ -122,27 +124,43 @@ namespace llarp
             return [&ref](T arg) { ref = std::move(arg); };
         }
 
-        // C++20 backport:
-        template <typename T>
-        using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+        /// Returns a value acceptor that accepts any value within a range of values.
+        template <std::totally_ordered T, std::convertible_to<T> Min, std::convertible_to<T> Max>
+        auto bounded_assignment_acceptor(T& ref, Min min, Max max, std::string setting_name)
+        {
+            return [&ref, min = std::move(min), max = std::move(max), name = std::move(setting_name)](T arg) {
+                if (arg < min || arg > max)
+                    throw std::invalid_argument{fmt::format("{} must be >= {} and <= {}", name, min, max)};
+                ref = std::move(arg);
+            };
+        }
+        template <std::totally_ordered T, std::convertible_to<T> Min, std::convertible_to<T> Max>
+        auto bounded_assignment_acceptor(std::optional<T>& ref, Min min, Max max, std::string setting_name)
+        {
+            return [&ref, min = std::move(min), max = std::move(max), name = std::move(setting_name)](T arg) {
+                if (arg < min || arg > max)
+                    throw std::invalid_argument{fmt::format("{} must be >= {} and <= {}", name, min, max)};
+                ref = std::move(arg);
+            };
+        }
 
         template <typename T>
         constexpr bool is_default = false;
         template <typename T>
         constexpr bool is_default<Default<T>> = true;
         template <typename U>
-        constexpr bool is_default<U&> = is_default<remove_cvref_t<U>>;
+        constexpr bool is_default<U&> = is_default<std::remove_cvref_t<U>>;
 
         template <typename T>
         constexpr bool is_default_array = false;
         template <typename T, size_t N>
         constexpr bool is_default_array<std::array<Default<T>, N>> = true;
         template <typename U>
-        constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
+        constexpr bool is_default_array<U&> = is_default_array<std::remove_cvref_t<U>>;
 
         template <typename Option, typename T>
-        concept is_option = std::is_base_of_v<flag::opt, remove_cvref_t<Option>> or std::is_same_v<Comment, Option>
-            or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
+        concept is_option = std::is_base_of_v<flag::opt, std::remove_cvref_t<Option>> or std::is_same_v<Comment, Option>
+            or is_default<Option> or is_default_array<Option> or std::is_invocable_v<std::remove_cvref_t<Option>, T>;
     }  // namespace config
 
     /// A base class for specifying config options and their constraints. The basic to/from string
@@ -206,9 +224,17 @@ namespace llarp
         std::vector<std::string> comments;
     };
 
+    template <typename T>
+    constexpr bool is_chrono_option = false;
+    // Duration options require an integer representation with at least seconds precision:
+    template <typename R, typename P>
+    constexpr bool is_chrono_option<std::chrono::duration<R, P>> =
+        std::is_convertible_v<std::chrono::seconds, std::chrono::duration<R, P>>;
+
     /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
     /// for implementations which can use fmt::format for conversion to string and
-    /// std::istringstream for input from string.
+    /// std::istringstream for input from string.  For chrono types of seconds or larger, we treat
+    /// raw integers as seconds, and otherwise allow an integer followed by a s/m/min/h/d suffix.
     ///
     /// Note that types (T) used as template parameters here must be used verbatim when calling
     /// ConfigDefinition::getConfigValue(). Similar types such as uint32_t and int32_t cannot be
@@ -232,9 +258,8 @@ namespace llarp
             : OptionDefinitionBase(section_, name_, opts...)
         {
             constexpr bool has_default = ((config::is_default_array<Options> || config::is_default<Options>) || ...);
-            constexpr bool has_required =
-                (std::is_same_v<config::remove_cvref_t<Options>, config::flag::REQUIRED> || ...);
-            constexpr bool has_hidden = (std::is_same_v<config::remove_cvref_t<Options>, config::flag::HIDDEN> || ...);
+            constexpr bool has_required = (std::is_same_v<std::remove_cvref_t<Options>, config::flag::REQUIRED> || ...);
+            constexpr bool has_hidden = (std::is_same_v<std::remove_cvref_t<Options>, config::flag::HIDDEN> || ...);
             static_assert(not(has_default and has_required), "Default{...} and Required are mutually exclusive");
             static_assert(not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
 
@@ -280,7 +305,7 @@ namespace llarp
         template <typename U>
         void extract_comments(U&& comment)
         {
-            if constexpr (std::is_same_v<config::remove_cvref_t<U>, config::Comment>)
+            if constexpr (std::is_same_v<std::remove_cvref_t<U>, config::Comment>)
                 comments = std::forward<U>(comment).comments;
         }
 
@@ -341,6 +366,31 @@ namespace llarp
             {
                 return input;
             }
+            else if constexpr (is_chrono_option<T>)
+            {
+                using namespace std::literals;
+                std::chrono::seconds unit = 1s;
+                std::string_view in{input};
+                if (in.ends_with("h"))
+                {
+                    unit = 1h;
+                    in.remove_suffix(1);
+                }
+                else if (bool min = in.ends_with("min"); min || in.ends_with("m"))
+                {
+                    unit = 1min;
+                    in.remove_suffix(min ? 3 : 1);
+                }
+                else if (in.ends_with("s"))
+                {
+                    in.remove_suffix(1);
+                }
+
+                if (int x; parse_int(in, x))
+                    return x * unit;
+
+                throw std::invalid_argument{"{} is not a valid duration; expected value such as 123s, 5min, 2h"};
+            }
             else
             {
                 std::istringstream iss(input);
@@ -354,14 +404,22 @@ namespace llarp
 
         std::vector<std::string> values_as_string() override
         {
+            using namespace std::literals;
             if (parsed_values.empty())
                 return {};
             std::vector<std::string> result;
             result.reserve(parsed_values.size());
             for (const auto& v : parsed_values)
             {
-                if constexpr (std::is_same_v<bool, T>)
-                    result.push_back(fmt::format("{}", (bool)v));
+                if constexpr (is_chrono_option<T>)
+                {
+                    if (v >= 1h && v % 1h == 0s)
+                        result.push_back(fmt::format("{}h", v / 1h));
+                    else if (v >= 1min && v % 1min == 0s)
+                        result.push_back(fmt::format("{}min", v / 1min));
+                    else
+                        result.push_back(fmt::format("{}s", std::chrono::seconds{v}.count()));
+                }
                 else
                     result.push_back(fmt::format("{}", v));
             }
@@ -456,7 +514,7 @@ namespace llarp
         /// @throws std::invalid_argument if the option already exists
         ConfigDefinition& define_option(std::unique_ptr<OptionDefinitionBase> def);
 
-        /// Convenience function which calls defineOption with a OptionDefinition of the specified
+        /// Convenience function which calls define_option with a OptionDefinition of the specified
         /// type and with parameters passed through to OptionDefinition's constructor.
         template <typename T, typename... Params>
         ConfigDefinition& define_option(Params&&... args)
@@ -525,6 +583,11 @@ namespace llarp
         /// @throws std::invalid_argument if configuration constraints are not met
         void validate_required_fields();
 
+        /// Adds an options validator that runs after all options have been parsed and can be used
+        /// to check for conflicting or invalid option combinations or other checks that cannot be
+        /// performed when processing an individual item.
+        void add_options_validator(std::function<void()> validator);
+
         /// Accept all options. This will call the acceptor (if present) on each option. Note that
         /// this should only be called if all required fields are present (that is,
         /// validateRequiredFields() has been or could be called without throwing).
@@ -532,11 +595,17 @@ namespace llarp
         /// @throws if any option's acceptor throws
         void accept_all_options();
 
+        /// Runs any options validators to check that accepted options are not conflicting.  For
+        /// example, if option A must be larger than B, this is where that check would be carried
+        /// out.
+        void validate_all_options();
+
         /// validates and accept all parsed options
-        inline void process()
+        void process()
         {
             validate_required_fields();
             accept_all_options();
+            validate_all_options();
         }
 
         /// Add comments for a given section. Comments are replayed in-order during config file
@@ -592,6 +661,9 @@ namespace llarp
         // track insertion order. the vector<string>s are ordered list of section/option names.
         std::vector<std::string> section_ordering;
         std::unordered_map<std::string, std::vector<std::string>> definition_ordering;
+
+        // Post-parsing validators
+        std::vector<std::function<void()>> options_validators;
 
         // comments for config file generation
         using CommentList = std::vector<std::string>;

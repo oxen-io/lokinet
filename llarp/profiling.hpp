@@ -80,11 +80,11 @@ namespace llarp
 
         void connect_succeess(const RouterID& r);
 
-        void path_timeout(path::Path* p);
+        void path_timeout(path::Path& p);
 
-        void path_fail(path::Path* p);
+        void path_fail(path::Path& p);
 
-        void path_success(path::Path* p);
+        void path_success(path::Path& p);
 
         void hop_fail(const RouterID& r);
 
