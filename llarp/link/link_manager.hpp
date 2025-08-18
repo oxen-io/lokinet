@@ -53,7 +53,7 @@ namespace llarp
                   of the local lokinet instance) is a service node. This means all relay to
                   relay connections are held here; clients will also hold their connections to
                   relays here as well
-                - client_conns: holds all connections wehre the remote is a client. This is only
+                - client_conns: holds all connections where the remote is a client. This is only
                   used by service nodes to store their client connections
             */
             std::unordered_map<RouterID, std::shared_ptr<link::Connection>> service_conns;

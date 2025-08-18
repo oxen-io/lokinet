@@ -300,10 +300,17 @@ namespace llarp::path
         exclude(*pivot_rc);
 
         // First hop selection has its own distinct criteria:
-        if (auto maybe = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); }))
+        auto maybe_first = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); });
+        // If that failed, retry first hop selection *without* the IP range exclusion being applied:
+        // this is so that if the pivot happens to be in the same range as all your current (or
+        // allowed) edges, you can still connect to it.
+        if (!maybe_first)
+            maybe_first = select_first_hop();
+
+        if (maybe_first)
         {
             --hops_needed;
-            hops->push_back(std::move(*maybe));
+            hops->push_back(std::move(*maybe_first));
             exclude(hops->back());
         }
         else
