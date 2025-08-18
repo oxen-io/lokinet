@@ -73,61 +73,36 @@ namespace llarp
             }
         }
 
-        std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> deserialize(
-            oxenc::bt_dict_consumer&& btdc)
-        {
-            try
-            {
-                std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> result;
-                auto& [initiator, local_pivot_txid, remote_pivot_txid, maybe_auth] = result;
-
-                RouterID init_rid;
-                init_rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("i"));
-                initiator = {init_rid, true};
-                remote_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
-                local_pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("r"));
-                maybe_auth = btdc.maybe<std::string>("u");
-
-                return result;
-            }
-            catch (const std::exception& e)
-            {
-                log::warning(logcat, "Exception caught decrypting session initiation message:{}", e.what());
-                throw;
-            }
-        }
-
-        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> decrypt_deserialize(
+        Parameters decrypt_deserialize(
             oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local)
         {
-            std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> result;
-            auto& [kx_data, initiator, local_pivot_txid, remote_pivot_txid, maybe_auth] = result;
-            SymmNonce nonce;
-            PubKey shared_pubkey;
-            std::string payload;
-            SharedSecret shared;
+            Parameters ret;
 
-            try
-            {
-                std::tie(payload, kx_data) = ONION::deserialize_decrypt(std::move(outer_btdc), local);
-            }
-            catch (const std::exception& e)
-            {
-                log::warning(logcat, "Exception caught deserializing/decrypting hop dict: {}", e.what());
-                throw;
-            }
+            PubKey eph_pubkey;
+            SymmNonce dh_nonce;
+            std::vector<std::byte> payload;
+            eph_pubkey.assign(outer_btdc.require_span<std::byte, PubKey::SIZE>("k"));
+            dh_nonce.assign(outer_btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+            auto payld = outer_btdc.require<std::span<const std::byte>>("x");
+            payload.assign(payld.begin(), payld.end());
+            outer_btdc.finish();
 
-            try
-            {
-                std::tie(initiator, local_pivot_txid, remote_pivot_txid, maybe_auth) =
-                    deserialize(oxenc::bt_dict_consumer{payload});
-                return result;
-            }
-            catch (const std::exception& e)
-            {
-                log::warning(logcat, "Exception caught decrypting session initiation message:{}", e.what());
-                throw;
-            }
+            crypto::dh_server(ret.session_key, eph_pubkey, local, dh_nonce);
+            crypto::xchacha20(payload, ret.session_key, dh_nonce);
+
+            oxenc::bt_dict_consumer inner{std::move(payload)};
+
+            RouterID remote;
+            remote.assign(inner.require_span<std::byte, RouterID::SIZE>("i"));
+            ret.remote = {remote, true};
+
+            // inverted from serialization order; their local is our remote and vice-versa
+            ret.remote_pivot_txid.assign(inner.require_span<std::byte, HopID::SIZE>("p"));
+            ret.local_pivot_txid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
+            ret.auth_token = inner.maybe<std::string>("u");
+            inner.finish();
+
+            return ret;
         }
 
         std::string serialize_response(session_tag& t)

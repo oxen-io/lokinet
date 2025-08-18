@@ -1243,7 +1243,7 @@ namespace llarp
 
             NetworkAddress sender_addr{*sender, true};
             auto session = router.session_endpoint().get_session(sender_addr);
-            if (!session || !session->is_outbound())
+            if (!session || !session->is_outbound)
             {
                 log::warning(logcat, "Ignoring pushed ClientContact from {}: no outbound session found", sender_addr);
                 return m.respond(messages::ERROR_RESPONSE, true);
@@ -1257,7 +1257,7 @@ namespace llarp
             log::debug(logcat, "Storing ClientContact for remote {}", sender_addr);
             router.contact_db().put_cc(std::move(enc));
 
-            session->update_outbound_remote_intros(std::move(*intro).intros());
+            // FIXME: this should probably come encrypted.  Need to encrypt it and also handle it here.
 
             return m.respond(messages::OK_RESPONSE);
         }
@@ -1873,20 +1873,17 @@ namespace llarp
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        NetworkAddress initiator;
-        HopID remote_pivot_txid;
-        HopID local_pivot_txid;
-        std::optional<std::string> maybe_auth = std::nullopt;
+        InitiateSession::Parameters params;
 
         try
         {
             if (inner_body)
             {
-                std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, maybe_auth) =
+                params =
                     InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.identity());
             }
             else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
-                std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, maybe_auth) =
+                params =
                     InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.identity());
         }
         catch (const std::exception& e)
@@ -1895,15 +1892,15 @@ namespace llarp
             return;
         }
 
-        if (initiator.router_id() == router.local_rid())
+        if (params.remote.router_id() == router.local_rid())
         {
             log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
             return m.respond(InitiateSession::BAD_ADDRESS, true);
         }
 
-        if (maybe_auth and not router.session_endpoint().validate(initiator, maybe_auth))
+        if (params.auth_token and not router.session_endpoint().validate(params.remote, params.auth_token))
         {
-            log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", initiator);
+            log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", params.remote);
             return m.respond(InitiateSession::AUTH_ERROR, true);
         }
 
@@ -1911,17 +1908,17 @@ namespace llarp
 
         if (router.is_service_node)
         {
-            if (local_pivot_txid != remote_pivot_txid)
+            if (params.local_pivot_txid != params.remote_pivot_txid)
             {
                 log::warning(logcat, "Received misrouted path-request to initiate client<->client session...");
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            auto hop = router.path_context.get_transit_hop(local_pivot_txid);
+            auto hop = router.path_context.get_transit_hop(params.local_pivot_txid);
             if (not hop)
             {
                 log::warning(
-                    logcat, "Received path-request to initiate session with unknown hop (ID: {})", local_pivot_txid);
+                    logcat, "Received path-request to initiate session with unknown hop (ID: {})", params.local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
@@ -1930,33 +1927,31 @@ namespace llarp
                 log::warning(
                     logcat,
                     "Received path-request to initiate session and we are NOT terminal hop (ID: {})",
-                    local_pivot_txid);
+                    params.local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
-
-            kx_data = hop->kx;
 
             // TODO: The existence of SessionHop seems pointless: we could just give the TransitHop to
             // InboundRelaySession and let it take care of the very few things that SessionHop does
             // (because IRS is the only thing that uses SessionHop at all!)
-            tag = router.session_endpoint().create_inbound_relay_session(
-                initiator,
-                remote_pivot_txid,
+            tag = router.session_endpoint().create_inbound_session(
+                params.remote,
+                params.remote_pivot_txid,
                 std::make_shared<path::SessionHop>(*hop, router.session_endpoint()),
-                std::move(kx_data));
+                std::move(params.session_key));
         }
         else
         {
-            auto* path = router.path_context.get_path(local_pivot_txid);
+            auto* path = router.path_context.get_path(params.local_pivot_txid);
             if (not path)
             {
                 log::warning(
-                    logcat, "Failed to find local path for new inbound session over pivot txid: {}", local_pivot_txid);
+                    logcat, "Failed to find local path for new inbound session over pivot txid: {}", params.local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            tag = router.session_endpoint().create_inbound_client_session(
-                initiator, remote_pivot_txid, path->shared_from_this(), std::move(kx_data));
+            tag = router.session_endpoint().create_inbound_session(
+                params.remote, params.remote_pivot_txid, path->shared_from_this(), std::move(params.session_key));
         }
 
         if (tag)
@@ -1966,6 +1961,7 @@ namespace llarp
                 "Inbound{}Session (tag:{}) created successfully!",
                 router.is_service_node ? "Relay" : "Client",
                 *tag);
+            // FIXME: encryption
             return m.respond(InitiateSession::serialize_response(*tag));
         }
 
@@ -2006,7 +2002,7 @@ namespace llarp
                 return m.respond(SessionPathSwitch::BAD_ID, true);
             }
 
-            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), std::move(path)))
+            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), path->terminal_hopid()))
                 return m.respond(messages::OK_RESPONSE);
         }
         else

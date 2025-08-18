@@ -23,7 +23,7 @@ namespace llarp
     {
       public:
         EventTrigger(
-            const std::shared_ptr<quic::Loop>& _loop,
+            quic::Loop& _loop,
             std::chrono::microseconds _cooldown,
             std::function<void()> task,
             int _n,

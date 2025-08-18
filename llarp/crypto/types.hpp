@@ -96,34 +96,6 @@ namespace llarp
         static SymmNonce sequential(uint64_t low, uint64_t mid = 0, uint64_t high = 0);
     };
 
-    /// Holds all the data used for symmetric DH key-exchange (ex: path-build, session-init, etc)
-    struct shared_kx_data
-    {
-        shared_kx_data() = default;
-
-      private:
-        shared_kx_data(Ed25519SecretKey&& sk);
-
-      public:
-        Ed25519SecretKey ephemeral_key;
-        PubKey pubkey{};
-        SharedSecret shared_secret{};
-        SymmNonce nonce{SymmNonce::make_random()};
-        SymmNonce xor_nonce{SymmNonce::make_random()};
-
-        void generate_xor();
-
-        static shared_kx_data generate();
-
-        void client_dh(const RouterID& remote);
-
-        void server_dh(const Ed25519SecretKey& local_sk);
-
-        void encrypt(std::span<std::byte> data);
-
-        void decrypt(std::span<std::byte> enc);
-    };
-
     struct hash_key : public AlignedBuffer<32>
     {
         using AlignedBuffer<32>::AlignedBuffer;

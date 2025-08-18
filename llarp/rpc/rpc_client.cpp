@@ -25,7 +25,7 @@ namespace llarp::rpc
 
     void RPCClient::connect_async(oxenmq::address url)
     {
-        if (not _router.is_service_node())
+        if (not _router.is_service_node)
         {
             throw std::runtime_error("we cannot talk to lokid while not a service node");
         }
@@ -37,7 +37,7 @@ namespace llarp::rpc
             [](oxenmq::ConnectionID) {},
             [this, url](oxenmq::ConnectionID, std::string_view f) {
                 log::info(logcat, "Failed to connect to oxend at {}", f);
-                _router.loop()->call([this, url]() { connect_async(url); });
+                _router.loop.call([this, url]() { connect_async(url); });
             });
     }
 
@@ -171,7 +171,7 @@ namespace llarp::rpc
 
         log::info(logcat, "Starting RPCClient ping ticker...");
         ping();
-        _ping_ticker = _router.loop()->call_every(PING_INTERVAL, [this] { ping(); });
+        _ping_ticker = _router.loop.call_every(PING_INTERVAL, [this] { ping(); });
     }
 
     void RPCClient::handle_new_service_node_list(const nlohmann::json& j)
@@ -210,7 +210,7 @@ namespace llarp::rpc
             return;
         }
 
-        _router.loop()->call([this, active = std::move(active_list), keymap = std::move(keymap)]() mutable {
+        _router.loop.call([this, active = std::move(active_list), keymap = std::move(keymap)]() mutable {
             _key_map = std::move(keymap);
             _router.set_router_whitelist(std::move(active));
         });
@@ -218,7 +218,7 @@ namespace llarp::rpc
 
     void RPCClient::inform_connection(RouterID router, bool success)
     {
-        _router.loop()->call([router, success, this]() {
+        _router.loop.call([router, success, this]() {
             if (auto itr = _key_map.find(router); itr != _key_map.end())
             {
                 const nlohmann::json req = {{"passed", success}, {"pubkey", itr->second.ToHex()}, {"type", "lokinet"}};
@@ -305,7 +305,7 @@ namespace llarp::rpc
                         log::error(logcat, "Failed to parse response from ONS lookup: {}", ex.what());
                     }
                 }
-                _router.loop()->call([resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
+                _router.loop.call([resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
             },
             req.dump());
     }

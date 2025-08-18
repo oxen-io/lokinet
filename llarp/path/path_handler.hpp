@@ -206,7 +206,7 @@ namespace llarp
             /// rotations, start new paths, etc. as needed.  If not overridden this does nothing.
             virtual void update_paths() {}
 
-            void tick(std::chrono::milliseconds now);
+            virtual void tick(std::chrono::milliseconds now);
 
             void ping_paths(std::chrono::milliseconds now);
 

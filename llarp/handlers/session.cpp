@@ -56,7 +56,7 @@ namespace llarp::handlers
     {
         return {
             _sessions.size(),
-            std::ranges::count_if(std::views::values(_sessions), [](const auto& s) { return s->is_active(); }),
+            std::ranges::count_if(std::views::values(_sessions), [](const auto& s) { return s->is_established(); }),
         };
     }
 
@@ -102,12 +102,13 @@ namespace llarp::handlers
 
     bool SessionEndpoint::recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid)
     {
+        // FIXME: this needs to be encrypted
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (auto s = get_session<session::InboundClientSession>(t))
         {
             // only OutboundSessions send path switch messages
-            assert(s && !s->is_outbound());
+            assert(s && !s->is_outbound);
 
             // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
             if (auto* path = get_path_by_terminus(local_pivot_txid))
@@ -116,8 +117,7 @@ namespace llarp::handlers
                     logcat,
                     "Successfully matched path-switch request to InboundSession over path:{}",
                     path->to_string());
-                s->set_remote_pivot_tx(remote_pivot_txid);
-                s->set_new_current_path(path->shared_from_this());
+                s->recv_path_switch(remote_pivot_txid, path->shared_from_this());
                 return true;
             }
 
@@ -721,7 +721,7 @@ namespace llarp::handlers
         NetworkAddress initiator,
         HopID remote_pivot_txid,
         std::shared_ptr<session_path_interface> path,
-        shared_kx_data kx_data)
+        SharedSecret session_key)
     {
         // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
         // Rather we should be retrying until we find one that isn't in _session_tags so that it
@@ -731,10 +731,10 @@ namespace llarp::handlers
         std::shared_ptr<session::Session> session;
         if (router.is_service_node)
             session = std::make_shared<session::InboundRelaySession>(
-                initiator, std::move(path), *this, remote_pivot_txid, tag, std::move(kx_data));
+                initiator, *this, tag, std::move(session_key), std::move(path), remote_pivot_txid);
         else
             session = std::make_shared<session::InboundClientSession>(
-                initiator, std::move(path), *this, remote_pivot_txid, tag, std::move(kx_data));
+                initiator, *this, tag, std::move(session_key), std::move(path), remote_pivot_txid);
 
         if (!map_session(*session))
         {
@@ -809,7 +809,7 @@ namespace llarp::handlers
         for (const auto& [addr, session] : _sessions)
         {
             // don't publish client contact to other end of outbound session
-            if (session->is_outbound())
+            if (session->is_outbound)
                 return;
             log::debug(logcat, "Publishing ClientContact to remote on inbound session (remote:{})", session->remote());
 
@@ -851,359 +851,46 @@ namespace llarp::handlers
         return ret;
     }
 
-    /** Client Session Initiation Message Structure:
-        - 'k' : next HopID
-        - 'n' : symmetric nonce
-        - 'x' : encrypted payload
-            PATH MESSAGE ONION LAYER ('outer payload')
-            - 'e' : request endpoint ('path_control')
-            - 'p' : request payload
-                - 'k' : next HopID
-                - 'n' : symmetric nonce
-                - 'x' : encrypted payload
-                    PIVOT RELAY LAYER ('intermediate payload')
-                    - 'e' : request endpoint ('path_control')
-                    - 'p' : request payload
-                        - 'k' : remote client intro pivot txid, (NOT rx)
-                        - 'n' : symmetric nonce
-                        - 'x' : encrypted payload
-                            REMOTE CLIENT LAYER ('inner payload')
-                            - 'e' : request endpoint ('session_init')
-                            - 'p' : request payload
-                                - 'k' : shared pubkey used to derive symmetric key
-                                - 'n' : symmetric nonce
-                                - 'x' : encrypted payload
-                                    - 'i' : RouterID of initiator
-                                    - 'p' : HopID at the pivot taken from remote ClientIntro
-                                    - 's' : session_tag for current session
-                                    - 't' : Use Tun interface (bool)
-                                    - 'u' : Authentication field
-                                        - bt-encoded dict, values TBD
-    */
-    // TESTNET: TODO: DRY out the following two functions
-    void SessionEndpoint::_make_client_session(
-        std::vector<ClientIntro> intros,
-        NetworkAddress remote,
-        ClientIntro remote_intro,
-        std::shared_ptr<path::Path> path,
-        std::function<void(bool)> cb)
-    {
-        auto pivot_txid = remote_intro.pivot_txid;
-        // intros.emplace(std::move(remote_intro));
-
-        // internal payload for remote client
-        auto [inner_payload, shared_secret] = InitiateSession::serialize_encrypt(
-            router.local_rid(), remote.router_id(), path->terminal_hopid(), pivot_txid, fetch_auth_token(remote));
-        log::trace(logcat, "inner payload: {}", buffer_printer{inner_payload});
-
-        auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), pivot_txid);
-
-        path->send_path_control_message(
-            "path_control",
-            intermediate_payload,
-            [this,
-             remote,
-             path,
-             remote_pivot_txid = pivot_txid,
-             remote_intros = std::move(intros),
-             hook = std::move(cb),
-             session_keys = std::move(kx_data)](quic::message m) mutable {
-                auto pending_packets = std::move(pending_sessions[remote]);
-                auto pending_hooks = std::move(pending_session_hooks[remote]);
-                pending_sessions.erase(remote);
-                pending_session_hooks.erase(remote);
-                if (m)
-                {
-                    log::debug(logcat, "Call to initiate OutboundClientSession succeeded!");
-                    session_tag tag;
-
-                    try
-                    {
-                        tag = InitiateSession::deserialize_response(oxenc::bt_dict_consumer{m.body()});
-                    }
-                    catch (const std::exception& e)
-                    {
-                        // TESTNET: TODO: close session here?
-                        log::warning(logcat, "Exception: {}", e.what());
-                        return;
-                    }
-
-                    log::debug(logcat, "Remote client has provided session tag: {}", tag);
-
-                    auto session = std::make_shared<session::OutboundClientSession>(
-                        remote,
-                        *this,
-                        std::move(path),
-                        std::move(remote_pivot_txid),
-                        std::move(tag),
-                        std::move(remote_intros),
-                        std::move(session_keys));
-
-                    auto [s, _] = _sessions.insert_or_assign(std::move(remote), session);
-                    assert(s->is_active());
-
-                    log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
-
-                    if (pending_packets.size())
-                    {
-                        log::debug(
-                            logcat,
-                            "Session to {} established, sending {} pending packets.",
-                            session->remote(),
-                            pending_packets.size());
-                        for (auto& pkt : pending_packets)
-                            session->send_path_data_message(pkt.span(), pkt.protocol());
-                    }
-                    if (hook)
-                        hook(true);
-                    for (auto& h : pending_hooks)
-                        h(true);
-                    return;
-                }
-                else
-                {
-                    std::optional<std::string> status = std::nullopt;
-                    try
-                    {
-                        oxenc::bt_dict_consumer btdc{m.body()};
-
-                        if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
-                            status = s;
-                    }
-                    catch (const std::exception& e)
-                    {
-                        log::warning(logcat, "Exception: {}", e.what());
-                    }
-
-                    log::critical(
-                        logcat,
-                        "Call to initiate OutboundClientSession FAILED; reason: {}",
-                        status.value_or("<none given>"));
-                    if (hook)
-                        hook(false);
-                    for (auto& h : pending_hooks)
-                        h(true);
-                }
-            });
-
-        log::debug(logcat, "message sent...");
-    }
-
-    void SessionEndpoint::_make_relay_session(
-        RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, std::function<void(bool)> cb)
-    {
-        const auto& pivot_txid = path->pivot().txid;
-        std::string payload = InitiateSession::serialize(
-            _router.local_rid(), pivot_txid, pivot_txid, fetch_auth_token(remote), !_router.embedded());
-
-        log::trace(logcat, "payload: {}", buffer_printer{payload});
-
-        path->send_path_control_message(
-            "session_init",
-            as_bspan(payload),
-            [this,
-             rc = std::move(rc),
-             remote,
-             path,
-             pivot_txid,
-             hook = std::move(cb),
-             session_keys = path->hops.back().kx](quic::message m) mutable {
-                auto pending_packets = std::move(pending_sessions[remote]);
-                auto pending_hooks = std::move(pending_session_hooks[remote]);
-                pending_sessions.erase(remote);
-                pending_session_hooks.erase(remote);
-
-                if (m)
-                {
-                    log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
-                    session_tag tag;
-
-                    try
-                    {
-                        tag = InitiateSession::deserialize_response(oxenc::bt_dict_consumer{m.body()});
-                    }
-                    catch (const std::exception& e)
-                    {
-                        // TESTNET: TODO: close session here?
-                        log::warning(logcat, "Exception: {}", e.what());
-                        return;
-                    }
-
-                    log::debug(logcat, "Remote relay has provided session tag: {}", tag);
-
-                    auto session = std::make_shared<session::OutboundRelaySession>(
-                        remote, *this, std::move(path), std::move(tag), std::move(pivot_txid), std::move(session_keys));
-
-                    auto [s, _] = _sessions.insert_or_assign(std::move(remote), session);
-                    assert(s->is_active());
-
-                    log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
-
-                    if (pending_packets.size())
-                    {
-                        log::debug(
-                            logcat,
-                            "Session to {} established, sending {} pending packets.",
-                            session->remote(),
-                            pending_packets.size());
-                        for (auto& pkt : pending_packets)
-                            session->send_path_data_message(pkt.span(), pkt.protocol());
-                    }
-                    if (hook)
-                        hook(true);
-                    for (auto& h : pending_hooks)
-                        h(true);
-                }
-                else
-                {
-                    std::optional<std::string> status = std::nullopt;
-                    try
-                    {
-                        oxenc::bt_dict_consumer btdc{m.body()};
-
-                        if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
-                            status = s;
-                    }
-                    catch (const std::exception& e)
-                    {
-                        log::warning(logcat, "Exception: {}", e.what());
-                    }
-
-                    log::critical(
-                        logcat,
-                        "Call to initiate OutboundRelaySession FAILED; reason: {}",
-                        status.value_or("<none given>"));
-                    if (hook)
-                        hook(false);
-                    for (auto& h : pending_hooks)
-                        h(false);
-                }
-            });
-
-        log::debug(logcat, "message sent...");
-    }
-
-    void SessionEndpoint::_make_relay_session_path(RemoteRC rc, NetworkAddress remote, std::function<void(bool)> cb)
-    {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        path_build_recursive(
-            SESSION_PATH_BUILD_ATTEMPTS,
-            rc,
-            remote,
-            [this, rc, remote, cb](std::shared_ptr<path::Path> new_path) {
-                log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
-                _make_relay_session(std::move(rc), std::move(remote), std::move(new_path), std::move(cb));
-            },
-            false);
-    }
-
-    void SessionEndpoint::_make_client_session_path(
-        sorted_intro_set intros, NetworkAddress remote, std::function<void(bool)> cb)
-    {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        path_build_recursive(
-            intros,
-            remote,
-            [this, intros, remote, cb](std::shared_ptr<path::Path> new_path, ClientIntro remote_intro) mutable {
-                log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
-                return _make_client_session(
-                    std::move(intros), std::move(remote), std::move(remote_intro), std::move(new_path), std::move(cb));
-            },
-            false);
-    }
     std::shared_ptr<session::Session> SessionEndpoint::remote_session(const NetworkAddress& remote)
     {
         assert(router.loop.inside());
 
-        if (auto it = _session_by_addr.find(remote); it != _session_by_addr.end())
+        if (auto it = _sessions.find(remote); it != _sessions.end())
             return it->second;
     }
 
-    void SessionEndpoint::initiate_remote_session(
-        const NetworkAddress& remote, std::function<void(bool timeout)> on_established)
+    std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(
+        const NetworkAddress& remote, std::function<void(session::Session& session, bool timeout)> on_established, std::chrono::milliseconds timeout)
     {
-        std::function<void(const OutboundSession& s)> on_est;
+        std::function<void(session::Session& s)> on_est;
         if (on_established)
-            on_est = [cb = std::move(on_established)](const OutboundSession& s) { cb(s.is_established()); };
+            on_est = [cb = std::move(on_established)](session::Session& s) { cb(s, !s.is_established()); };
         router.loop.call_get([this, &remote, &on_est] {
             auto& s = _sessions[remote];
             if (s && !s->is_closed())
             {
                 if (on_est)
+                {
                     if (s->is_established())
-                        on_est(true);
+                        on_est(*s);
                     else
                     {
-                        assert(s->is_outbound());  // Inbound sessions are always established
+                        assert(s->is_outbound);  // Inbound sessions are always established
                         // We have an already-in-progress but not-yet-established session, so just
                         // hook the callback up to it to be fired when it finishes establishing:
-                        static_cast<OutboundSession*>(s.get())->on_established(std::move(on_est));
+                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_est));
                     }
+                }
+                return;
             }
 
-            std::shared_ptr<session::Session> sess;
-            if (remote.is_client())
-                sesh = router.loop.make_shared<OutboundClientSession>(remote, *this, std::move(on_est));
+            std::shared_ptr<session::Session> sesh;
+            if (remote.client())
+                sesh = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_est));
             else
-                sesh = router.loop.make_shared<OutboundRelaySession>(remote, *this, std::move(on_est));
+                sesh = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_est));
             _sessions[remote] = std::move(sesh);
         });
-    }
-
-    void SessionEndpoint::_initiate_client_session(NetworkAddress remote, std::function<void(bool)> cb)
-    {
-        _router.loop()->call([this, remote, cb = std::move(cb)]() mutable {
-            lookup_client_intro(
-                remote.router_id(), [this, remote, cb = std::move(cb)](std::optional<ClientContact> cc) mutable {
-                    if (cc)
-                    {
-                        log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_client_session_path(std::move(*cc).intros(), remote, std::move(cb));
-                    }
-                    else
-                    {
-                        log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);
-                        cb(false);
-                    }
-                });
-        });
-    }
-
-    void SessionEndpoint::_initiate_relay_session(NetworkAddress remote, std::function<void(bool)> cb)
-    {
-        _router.loop()->call([this, remote, cb = std::move(cb)]() mutable {
-            lookup_relay_contact(
-                remote.router_id(), [this, remote, cb = std::move(cb)](std::optional<RemoteRC> rc) mutable {
-                    if (rc)
-                    {
-                        log::debug(logcat, "Session initiation returned RC: {}", rc->to_string());
-                        _make_relay_session_path(std::move(*rc), remote, std::move(cb));
-                    }
-                    else
-                    {
-                        log::warning(logcat, "Failed to initiate session at `fetch_rcs` (target:{})", remote);
-                        cb(false);
-                    }
-                });
-        });
-    }
-
-    bool SessionEndpoint::have_pending_session(const NetworkAddress& remote)
-    {
-        return pending_sessions.contains(remote);
-    }
-
-    void SessionEndpoint::queue_session_packet(const NetworkAddress& remote, IPPacket pkt)
-    {
-        if (pending_sessions.contains(remote))
-        {
-            // FIXME: Perhaps we should keep the *last* 100 (dropping older ones) instead of the first
-            // 100 (dropping new ones)?
-            if (pending_sessions[remote].size() < 100)  // FIXME: constant
-                pending_sessions[remote].push_back(std::move(pkt));
-        }
     }
 
 }  //  namespace llarp::handlers

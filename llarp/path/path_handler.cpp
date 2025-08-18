@@ -18,7 +18,6 @@
 
 #include <chrono>
 #include <functional>
-#include <random>
 
 namespace llarp::path
 {
@@ -87,7 +86,7 @@ namespace llarp::path
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l(paths_mutex);
 
-        _paths.insert_or_assign(p.edge().rxid, p);
+        _paths.insert_or_assign(p.edge().rxid, p.shared_from_this());
         router.path_context.add_path(p.shared_from_this());
     }
 
@@ -549,6 +548,7 @@ namespace llarp::path
         return result;
     }
 
+    // TODO FIXME: investigate return type?
     int64_t PathHandler::build(std::span<const RemoteRC> hops)
     {
         Lock_t lock{paths_mutex};
@@ -566,6 +566,7 @@ namespace llarp::path
         }
 
         path_build_failed(0, nullptr, false);
+        return 0;
     }
 
     /*

@@ -264,11 +264,10 @@ namespace llarp::session
     };
 
     Session::Session(
-        Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, const SharedSecret& secret)
+        Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote)
         : _r{r},
           _parent{parent},
           _remote{remote},
-          _shared_secret{secret},
           is_outbound{true},
           is_relay_session{_remote.relay()}
     {
@@ -342,7 +341,7 @@ namespace llarp::session
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         auto path = _current_path.lock();
-        if (!path)
+        if (!path || !is_established())
         {
             // TODO FIXME: queue traffic?  (Perhaps only if `is_outbound` and we have no path?)
             log::warning(logcat, "Dropping session data message: session has no current path");
@@ -644,11 +643,10 @@ namespace llarp::session
     OutboundSession::OutboundSession(
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
-        const SharedSecret& secret,
         int num_hops,
         std::function<void(OutboundSession& session)> active_cb)
         : PathHandler{parent.router, parent.router.config().paths.outbound_paths, num_hops},
-          Session{router, parent, remote, secret}
+          Session{router, parent, remote}
     {
         if (active_cb)
             on_established(std::move(active_cb));
@@ -657,9 +655,7 @@ namespace llarp::session
 
     std::shared_ptr<path::Path> OutboundSession::current_path()
     {
-        // TODO FIXME: Is there any possible way that this *isn't* a path::Path when set?  If not,
-        // this should be a static_pointer_cast
-        return std::dynamic_pointer_cast<path::Path>(_current_path.lock());
+        return std::static_pointer_cast<path::Path>(_current_path.lock());
     }
 
     void OutboundSession::fire_waiting(std::chrono::milliseconds now)
@@ -683,7 +679,6 @@ namespace llarp::session
 
     void OutboundSession::tick(std::chrono::milliseconds now)
     {
-        Session::tick(now);
         path::PathHandler::tick(now);
         fire_waiting(now);
     }
@@ -691,9 +686,8 @@ namespace llarp::session
     OutboundRelaySession::OutboundRelaySession(
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
-        const SharedSecret& secret,
         std::function<void(OutboundSession& session)> on_est)
-        : OutboundSession{remote, parent, secret, parent.router.config().paths.relay_hops(), std::move(on_est)}
+        : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), std::move(on_est)}
     {}
 
     bool OutboundRelaySession::send_session_control_message(
@@ -702,6 +696,9 @@ namespace llarp::session
         // TODO FIXME: why do we bypass Session's send_path_control_message here?
         if (auto p = _current_path.lock())
             p->send_path_control_message(method, body, std::move(func));
+
+        // FIXME: why is this bool return?
+        return true;
     }
 
     void OutboundSession::select_new_current_impl(
@@ -776,9 +773,8 @@ namespace llarp::session
     OutboundClientSession::OutboundClientSession(
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
-        const SharedSecret& secret,
         std::function<void(OutboundSession& session)> on_established)
-        : OutboundSession{remote, parent, secret, parent.router.config().paths.client_hops, std::move(on_established)}
+        : OutboundSession{remote, parent, parent.router.config().paths.client_hops, std::move(on_established)}
     {
         assert(!is_relay_session);
 
@@ -815,7 +811,6 @@ namespace llarp::session
             _pivots.insert(i.pivot_rid);
 
         update_paths();
-        //_make_client_session_path(std::move(*cc).intros(), remote, std::move(cb));
     }
 
     void OutboundClientSession::update_paths()
@@ -906,64 +901,105 @@ namespace llarp::session
         bool had_no_path = _current_path.expired();
         _current_path = path.weak_from_this();
 
-        if (had_no_path && !_is_established)
+        if (_is_established && had_no_path)
+        {
+            log::error(logcat, "Somehow a session had no path, but is established?");
+            return;
+        }
+        if (!_is_established)
         {
             log::debug(logcat, "Aligned path for remote ({}) established, initiating session", _remote);
 
-            /////////////////////////////////////////
-            // HUGE TODO FIXME TESTNET TOTHINK XXX //
-            /////////////////////////////////////////
-            //
-            // We need to fire the session_init message down the path right here!  This is mostly
-            // going to just be moving the _make_client_session code from handlers/session.cpp to
-            // this file:
-            log::critical(
-                logcat,
-                "TODO FIXME: we built a path for the session, now we need to fire the session_init message down it");
-            assert(false);
+            const auto& local_pivot_txid = path.terminal_hopid();
+            const auto& remote_pivot_txid = path.aligned_hopid ? *path.aligned_hopid : local_pivot_txid;
+            auto [payload, session_key] = InitiateSession::serialize_encrypt(
+                _r.local_rid(), _remote.router_id(), local_pivot_txid, remote_pivot_txid, std::nullopt);
 
-            /// TODO FIXME: and inside the session_init response handler, upon success, we need to to these:
-            if (true /* FIXME this needs to be inside this session_init success handler! */)
-            {
-                _is_established = true;
-                fire_waiting(llarp::time_now_ms());
-            }
+
+            _shared_secret = session_key;
+            path.send_path_control_message(
+                "session_init",
+                payload,
+                // FIXME: what if this Session (`this`) is gone when the response comes?
+                [this](quic::message m) mutable {
+
+                    if (m)
+                    {
+                        log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
+
+                        try
+                        {
+                            _tag = InitiateSession::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                        }
+                        catch (const std::exception& e)
+                        {
+                            // TESTNET: TODO: close session here?
+                            log::warning(logcat, "Exception: {}", e.what());
+                            return;
+                        }
+
+                        log::debug(logcat, "Remote relay has provided session tag: {}", _tag);
+
+                        log::trace(logcat, "Outbound session to {} successfully created.", remote());
+                        _is_established = true;
+                        fire_waiting(llarp::time_now_ms());
+                    }
+                    else
+                    {
+                        std::optional<std::string> status = std::nullopt;
+                        try
+                        {
+                            oxenc::bt_dict_consumer btdc{m.body()};
+
+                            if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
+                                status = s;
+                        }
+                        catch (const std::exception& e)
+                        {
+                            log::warning(logcat, "Exception: {}", e.what());
+                        }
+
+                        log::info(
+                            logcat,
+                            "Call to initiate OutboundRelaySession FAILED; reason: {}",
+                            status.value_or("<none given>"));
+                    }
+                });
         }
+        else
+        {
+            log::debug(
+                logcat,
+                "Dispatching path-switch request to remote {} to use hopid {} (for path {})",
+                _remote,
+                _remote_pivot_txid,
+                path);
+            send_session_control_message(
+                "path_switch",
+                as_bspan(SessionPathSwitch::serialize(_tag, path.terminal_hopid(), _remote_pivot_txid)),
+                [](quic::message m) {
+                    if (m)
+                    {
+                        log::info(logcat, "Session path switch was successful!");
+                        return;
+                    }
 
-        // TODO FIXME: is it harmless to send this path switch even if this is a brand new session
-        // that we just finished building a path to?
+                    std::optional<std::string> status = std::nullopt;
+                    try
+                    {
+                        oxenc::bt_dict_consumer btdc{m.body()};
 
-        log::debug(
-            logcat,
-            "Dispatching path-switch request to remote {} to use hopid {} (for path {})",
-            _remote,
-            _remote_pivot_txid,
-            path);
-        send_session_control_message(
-            "path_switch",
-            as_bspan(SessionPathSwitch::serialize(_tag, path.terminal_hopid(), _remote_pivot_txid)),
-            [](quic::message m) {
-                if (m)
-                {
-                    log::info(logcat, "Session path switch was successful!");
-                    return;
-                }
+                        if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
+                            status = s;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(logcat, "Exception: {}", e.what());
+                    }
 
-                std::optional<std::string> status = std::nullopt;
-                try
-                {
-                    oxenc::bt_dict_consumer btdc{m.body()};
-
-                    if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
-                        status = s;
-                }
-                catch (const std::exception& e)
-                {
-                    log::warning(logcat, "Exception: {}", e.what());
-                }
-
-                log::warning(logcat, "Session path switch failed: {}", status.value_or("(no reason given)"));
-            });
+                    log::warning(logcat, "Session path switch failed: {}", status.value_or("(no reason given)"));
+                });
+        }
     }
 
     void OutboundClientSession::select_new_current()
@@ -1097,7 +1133,7 @@ namespace llarp::session
         handlers::SessionEndpoint& parent,
         const session_tag& t,
         const SharedSecret& secret,
-        std::weak_ptr<path::Path> p,
+        std::weak_ptr<session_path_interface> p,
         const HopID& remote_pivot_txid)
         : Session{parent.router, parent, remote, secret, t, std::move(p), remote_pivot_txid}
     {

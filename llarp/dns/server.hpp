@@ -134,7 +134,7 @@ namespace llarp::dns
       public:
         virtual ~Server() = default;
 
-        explicit Server(std::shared_ptr<quic::Loop> loop, llarp::DnsConfig conf, unsigned int netif_index);
+        explicit Server(quic::Loop& loop, llarp::DnsConfig conf, unsigned int netif_index);
 
         /// returns all sockaddr we have from all of our PacketSources
         std::vector<quic::Address> bound_packet_source_addrs() const;
@@ -180,7 +180,7 @@ namespace llarp::dns
         void set_dns_mode(bool all_queries);
 
       protected:
-        std::shared_ptr<quic::Loop> _loop;
+        quic::Loop& _loop;
         llarp::DnsConfig _conf;
         std::shared_ptr<I_Platform> _platform;
 

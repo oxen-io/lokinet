@@ -92,7 +92,7 @@ namespace llarp
             std::weak_ptr<bool> canary() { return _destructor_canary; }
 
             Session(
-                Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, const SharedSecret& secret);
+                Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote);
 
             Session(
                 Router& r,
@@ -156,7 +156,7 @@ namespace llarp
 
             // Returns true if this session has been closed, i.e. it is in the middle of shutting
             // down.
-            bool is_closed() const;
+            bool is_closed() const { return _is_closed; }
 
             // Called to close this session.  If the bool is true then the session will attempt to
             // send a session_close control message down the active path.
@@ -168,7 +168,7 @@ namespace llarp
 
             // Called periodically (somewhere under Router::tick) to handle anything needed on the
             // session.
-            virtual void tick(std::chrono::milliseconds now);
+            virtual void tick([[maybe_unused]] std::chrono::milliseconds now) {};
         };
 
         class OutboundSession : public path::PathHandler, public Session
@@ -177,7 +177,6 @@ namespace llarp
             OutboundSession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                const SharedSecret& secret,
                 int num_hops,
                 std::function<void(OutboundSession& session)> on_established);
 
@@ -237,7 +236,6 @@ namespace llarp
             OutboundRelaySession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                const SharedSecret& secret,
                 std::function<void(OutboundSession& session)> on_active);
 
             bool send_session_control_message(
@@ -260,7 +258,6 @@ namespace llarp
             OutboundClientSession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                const SharedSecret& secret,
                 std::function<void(OutboundSession& session)> on_established);
 
           private:
@@ -298,13 +295,15 @@ namespace llarp
 
         class InboundSession : public Session
         {
-          protected:
+          public:
+            // FIXME: this was protected, but I guess the compiler doesn't like exposing it as
+            // public in the calls below via a `using` declaration?
             InboundSession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
                 const session_tag& t,
                 const SharedSecret& secret,
-                std::weak_ptr<path::Path> p,
+                std::weak_ptr<session_path_interface> p,
                 const HopID& remote_pivot_txid);
         };
 

@@ -200,6 +200,7 @@ namespace llarp::crypto
             != -1;
     }
 
+    // FIXME: the following two functions are nearly identical, but different in stupid ways
     void derive_encrypt_outer_wrapping(
         const Ed25519SecretKey& shared_key,
         SharedSecret& secret,
@@ -216,12 +217,7 @@ namespace llarp::crypto
         }
 
         // encrypt hop_info (mutates in-place)
-        if (!xchacha20(payload, secret, nonce))
-        {
-            auto err = "Payload symmetric encryption failed!"s;
-            log::warning(logcat, "{}", err);
-            throw std::runtime_error{err};
-        }
+        xchacha20(payload, secret, nonce);
     }
 
     void derive_decrypt_outer_wrapping(
@@ -240,12 +236,7 @@ namespace llarp::crypto
         }
 
         // decrypt hop_info (mutates in-place)
-        if (!xchacha20(encrypted, shared, nonce))
-        {
-            auto err = "Payload symmetric decryption failed!"s;
-            log::warning(logcat, "{}", err);
-            throw std::runtime_error{err};
-        }
+        xchacha20(encrypted, shared, nonce);
 
         log::trace(logcat, "Shared secret: {}", shared.to_string());
     }

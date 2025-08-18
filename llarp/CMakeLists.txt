@@ -51,7 +51,6 @@ lokinet_add_library(lokinet-core
   router/router.cpp
 
   session/session.cpp
-  session/map.cpp
 )
 
 if (LOKINET_FULL)

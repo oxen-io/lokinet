@@ -26,18 +26,12 @@ namespace llarp
 
     void ContactDB::start_tickers()
     {
-        // FIXME: we do we delay this 5-10s?
-        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
-            purge_ccs();
-            log::trace(logcat, "ContactDB starting purge ticker..");
-            _purge_ticker = _router.loop()->call_every(5min, [this] { purge_ccs(); });
-        });
+        //FIXME: this class is dumb...
     }
 
     void ContactDB::purge_ccs(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        assert(_router.loop()->inside());
 
         if (_router.is_stopping() || not _router.is_running())
         {

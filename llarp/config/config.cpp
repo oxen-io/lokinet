@@ -264,7 +264,7 @@ namespace llarp
                 try
                 {
                     NetworkAddress exit{addr};
-                    if (!exit.is_client())
+                    if (!exit.client())
                         throw std::invalid_argument{"only .loki addresses can be used for exits"};
                     auth_tokens.emplace(std::move(exit), std::move(auth));
                 }
@@ -1531,18 +1531,18 @@ namespace llarp
         conf.define_option<std::chrono::seconds>(
             "paths",
             "acceptable-expiry",
-            Default{300},
+            Default{300s},
             ClientOnly,
             Comment{
                 "The minimum expiry time a path/pivot must have for it to be eligible when switching",
                 "to a new path.  Inactive paths older than this will be replaced with new paths.",
             },
-            bounded_assignment_acceptor(acceptable_expiry, 0s, path::MAX_LIFETIME / 2, "[paths]:acceptable-expiry"));
+            bounded_assignment_acceptor(acceptable_expiry, 0s, path::MAX_LIFETIME / 2, "acceptable-expiry"));
 
         conf.define_option<std::chrono::seconds>(
             "paths",
             "min-expiry",
-            Default{60},
+            Default{60s},
             ClientOnly,
             Comment{
                 "The minimum allowed path/pivot expiry time (in seconds) of a currently active outbound path.",
@@ -1551,7 +1551,7 @@ namespace llarp
                 "",
                 "This value cannot be larger than acceptable-expiry.",
             },
-            bounded_assignment_acceptor(min_expiry, 0s, path::MAX_LIFETIME / 2, "[paths]:min-expiry"));
+            bounded_assignment_acceptor(min_expiry, 0s, path::MAX_LIFETIME / 2, "min-expiry"));
 
         conf.add_options_validator([this] {
             if (min_expiry > acceptable_expiry)

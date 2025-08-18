@@ -90,9 +90,6 @@ namespace llarp
             void send_path_data_message(
                 std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random()) override;
 
-            // Makes a control message to send down a stream.  NB: mutates payload!
-            std::string make_path_message(std::span<std::byte> payload);
-
             inline static constexpr size_t PATH_DATA_MESSAGE_OVERHEAD = SymmNonce::SIZE + HopID::SIZE + 1;
 
             // Takes a payload and encrypts and extends it in-place to make it suitable for sending

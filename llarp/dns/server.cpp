@@ -35,9 +35,9 @@ namespace llarp::dns
         quic::Address _local_addr;
 
       public:
-        explicit UDPReader(Server& dns, const std::shared_ptr<quic::Loop>& loop, quic::Address bind) : _dns{dns}
+        explicit UDPReader(Server& dns, quic::Loop& loop, quic::Address bind) : _dns{dns}
         {
-            _udp = std::make_unique<quic::UDPSocket>(loop->get_event_base(), bind, [this](quic::Packet&& pkt) {
+            _udp = std::make_unique<quic::UDPSocket>(loop.get_event_base(), bind, [this](quic::Packet&& pkt) {
                 auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
                 if (src == _local_addr)
                 {
@@ -116,7 +116,7 @@ namespace llarp::dns
         class Resolver final : public Resolver_Base, public std::enable_shared_from_this<Resolver>
         {
             ub_ctx* m_ctx = nullptr;
-            std::weak_ptr<quic::Loop> _loop;
+            quic::Loop& _loop;
 #ifdef _WIN32
             // windows is dumb so we do ub mainloop in a thread
             std::thread runner;
@@ -299,7 +299,7 @@ namespace llarp::dns
             llarp::DnsConfig m_conf;
 
           public:
-            explicit Resolver(const std::shared_ptr<quic::Loop>& loop, llarp::DnsConfig conf)
+            explicit Resolver(quic::Loop& loop, llarp::DnsConfig conf)
                 : _loop{loop}, m_conf{std::move(conf)}
             {
                 up(m_conf);
@@ -356,18 +356,14 @@ namespace llarp::dns
                     }
                 }};
 #else
-                if (auto loop = _loop.lock())
-                {
-                    // TODO: replace uvw shim shit with new libev stuff
-                    // if (auto loop_ptr = loop->MaybeGetUVWLoop())
-                    // {
-                    //     _poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx));
-                    //     _poller->on<uvw::PollEvent>([this](auto&, auto&) { ub_process(m_ctx); });
-                    //     _poller->start(uvw::PollHandle::Event::READABLE);
-                    //     return;
-                    // }
-                }
-                throw std::runtime_error{"no uvw loop"};
+                // TODO: replace uvw shim shit with new libev stuff
+                // if (auto loop_ptr = loop->MaybeGetUVWLoop())
+                // {
+                //     _poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx));
+                //     _poller->on<uvw::PollEvent>([this](auto&, auto&) { ub_process(m_ctx); });
+                //     _poller->start(uvw::PollHandle::Event::READABLE);
+                //     return;
+                // }
 #endif
             }
 
@@ -415,10 +411,7 @@ namespace llarp::dns
             template <typename Callable>
             void call(Callable&& f)
             {
-                if (auto loop = _loop.lock())
-                    loop->call(std::forward<Callable>(f));
-                else
-                    log::critical(logcat, "no mainloop?");
+                _loop.call(std::forward<Callable>(f));
             }
 
             bool maybe_hook_dns(
@@ -527,8 +520,8 @@ namespace llarp::dns
         }
     }  // namespace libunbound
 
-    Server::Server(std::shared_ptr<quic::Loop> loop, llarp::DnsConfig conf, unsigned int netif)
-        : _loop{std::move(loop)}, _conf{std::move(conf)}, _platform{create_platform()}, m_NetIfIndex{std::move(netif)}
+    Server::Server(quic::Loop& loop, llarp::DnsConfig conf, unsigned int netif)
+        : _loop{loop}, _conf{std::move(conf)}, _platform{create_platform()}, m_NetIfIndex{std::move(netif)}
     {}
 
     std::vector<std::weak_ptr<Resolver_Base>> Server::get_all_resolvers() const

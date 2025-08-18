@@ -36,10 +36,17 @@ namespace llarp
             HopID remote_pivot_txid,
             std::optional<std::string_view> auth_token);
 
-        std::tuple<NetworkAddress, HopID, HopID, std::optional<std::string>> deserialize(
-            oxenc::bt_dict_consumer&& btdc);
+        struct Parameters {
+            // FIXME: need some signature to prove remote owns this pubkey
+            NetworkAddress remote;
+            HopID local_pivot_txid;
+            HopID remote_pivot_txid;
+            SharedSecret session_key;
+            std::optional<std::string> auth_token;
+            // FIXME: need client's session tag here once that's implemented
+        };
 
-        std::tuple<shared_kx_data, NetworkAddress, HopID, HopID, std::optional<std::string>> decrypt_deserialize(
+        Parameters decrypt_deserialize(
             oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local);
 
         std::string serialize_response(session_tag& t);

@@ -10,7 +10,7 @@ namespace llarp
     static auto logcat = log::Cat("ev-trigger");
 
     EventTrigger::EventTrigger(
-        const std::shared_ptr<quic::Loop>& loop,
+        quic::Loop& loop,
         std::chrono::microseconds cooldown,
         std::function<void()> task,
         int n,
@@ -18,7 +18,7 @@ namespace llarp
         : n{n}, _cooldown{loop_time_to_timeval(cooldown)}, f{std::move(task)}
     {
         ev.reset(event_new(
-            loop->get_event_base(),
+            loop.get_event_base(),
             -1,
             0,
             [](evutil_socket_t, short, void* s) {
@@ -56,7 +56,7 @@ namespace llarp
             this));
 
         cv.reset(event_new(
-            loop->get_event_base(),
+            loop.get_event_base(),
             -1,
             0,
             [](evutil_socket_t, short, void* s) {

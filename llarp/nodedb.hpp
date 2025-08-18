@@ -11,7 +11,6 @@
 #include <optional>
 #include <set>
 #include <unordered_set>
-#include <utility>
 
 namespace llarp
 {

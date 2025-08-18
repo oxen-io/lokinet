@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <random>
 #include <unordered_map>
 #include <utility>
 
@@ -71,7 +70,7 @@ namespace llarp
                     log::trace(
                         logcat,
                         "{} awaiting bstrap connect attempt...",
-                        _router.is_service_node() ? "Relay" : "Client");
+                        _router.is_service_node ? "Relay" : "Client");
                     return false;
                 }
 
@@ -81,7 +80,7 @@ namespace llarp
                 log::critical(
                     logcat,
                     "{} has 0 router connections; connecting to bootstrap {}...",
-                    _router.is_service_node() ? "Relay" : "Client",
+                    _router.is_service_node ? "Relay" : "Client",
                     bsrc);
 
                 _router.link_manager().connect_to(
@@ -107,7 +106,7 @@ namespace llarp
                 log::warning(
                     logcat,
                     "{} has {} of {} minimum RCs; initiating bootstrap RC fetch...",
-                    _router.is_service_node() ? "Relay" : "Client",
+                    _router.is_service_node ? "Relay" : "Client",
                     num_rcs(),
                     MIN_ACTIVE_RCS);
                 _bootstrap_handler->start();
@@ -155,7 +154,7 @@ namespace llarp
             // clients have no notion of a whilelist
             // we short circuit logic here so we dont remove
             // routers that are not whitelisted for first hops
-            if (not _router.is_service_node())
+            if (not _router.is_service_node)
             {
                 log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.router_id());
                 return false;
@@ -195,7 +194,7 @@ namespace llarp
         for (auto& rc : rcs)
         {
             auto& rid = rc.router_id();
-            if (_router.is_service_node())
+            if (_router.is_service_node)
             {
                 if (!_registered_routers.contains(rid))
                 {
@@ -432,7 +431,7 @@ namespace llarp
                     [&, source = src, target = target](quic::message msg) mutable {
                         // Since we batch send this without going through link_manager, wrap the response handler
                         // in loop-call from here
-                        _router.loop()->call([&, m = std::move(msg)]() mutable {
+                        _router.loop.call([&, m = std::move(msg)]() mutable {
                             response_counter++;
                             if (not m)
                             {
@@ -534,27 +533,27 @@ namespace llarp
         // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
         // purge-then-save?
 
-        _flush_ticker = _router.loop()->call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
-        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
+        _flush_ticker = _router.loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
+        _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
-        _purge_ticker = _router.loop()->call_every(PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
+        _purge_ticker = _router.loop.call_every(PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
         if (not _needs_bootstrap)
-            _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
+            _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
 
-        if (not _router.is_service_node())
+        if (not _router.is_service_node)
         {
             // start these immediately if we do not need to bootstrap
             _rc_fetch_ticker =
-                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
+                _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
 
             _rid_fetch_ticker =
-                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
+                _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
 
             if (not _needs_bootstrap)
             {
-                _router.loop()->call_later(
+                _router.loop.call_later(
                     uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rcs(); });
-                _router.loop()->call_later(
+                _router.loop.call_later(
                     uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
             }
         }
@@ -612,15 +611,15 @@ namespace llarp
         if (success)
         {
             log::debug(
-                logcat, "{} completed processing BootstrapRC fetch!", _router.is_service_node() ? "Relay" : "Client");
+                logcat, "{} completed processing BootstrapRC fetch!", _router.is_service_node ? "Relay" : "Client");
 
             if (not _purge_ticker->is_running())
             {
-                log::trace(logcat, "{} activating NodeDB purge ticker", _router.is_service_node() ? "Relay" : "Client");
+                log::trace(logcat, "{} activating NodeDB purge ticker", _router.is_service_node ? "Relay" : "Client");
                 _purge_ticker->start();
             }
 
-            if (not _router.is_service_node())
+            if (not _router.is_service_node)
             {
                 if (not _rid_fetch_ticker->is_running())
                 {
@@ -639,7 +638,7 @@ namespace llarp
             log::critical(
                 logcat,
                 "{} stopping bootstrap without a successful fetch!",
-                _router.is_service_node() ? "Relay" : "Client");
+                _router.is_service_node ? "Relay" : "Client");
     }
 
     void NodeDB::bootstrap()
@@ -658,12 +657,12 @@ namespace llarp
         log::debug(logcat, "Dispatching BootstrapRC to {}", source.short_string());
 
         auto num_needed =
-            _router.is_service_node() ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
+            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
         _router.link_manager().fetch_bootstrap_rcs(
             rc,
             BootstrapFetch::serialize(
-                _router.is_service_node() ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
+                _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
             [this, source](quic::message m) {
                 log::debug(logcat, "Received response to BootstrapRC fetch request...");
 
@@ -710,7 +709,7 @@ namespace llarp
                     log::info(
                         logcat,
                         "{} BootstrapRC fetch successfully produced {} RCs ({} minimum needed) with {} accepted",
-                        _router.is_service_node() ? "Relay" : "Client",
+                        _router.is_service_node ? "Relay" : "Client",
                         num,
                         MIN_ACTIVE_RCS,
                         accepted);
@@ -792,7 +791,7 @@ namespace llarp
 
     bool NodeDB::is_connection_allowed(const RouterID& remote) const
     {
-        if (not _router.is_service_node())
+        if (not _router.is_service_node)
         {
             if (_pinned_edges.size() && _pinned_edges.count(remote) == 0 && not _bootstraps.contains(remote))
                 return false;
@@ -837,8 +836,8 @@ namespace llarp
             counter,
             _bootstraps.size());
 
-        _bootstrap_handler = _router.loop()->make_shared<EventTrigger>(
-            _router.loop(), FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
+        _bootstrap_handler = _router.loop.make_shared<EventTrigger>(
+            _router.loop, FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
     }
 
     void NodeDB::load_from_disk()
@@ -992,7 +991,7 @@ namespace llarp
     void NodeDB::remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove)
     {
         // only called from within event loop ticker
-        assert(_router.loop()->inside());
+        assert(_router.loop.inside());
 
         std::vector<RouterID> removed;
 

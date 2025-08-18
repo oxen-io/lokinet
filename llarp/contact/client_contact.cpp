@@ -126,9 +126,7 @@ namespace llarp
             enc.blinded_pubkey.assign(derived_privatekey.to_pubkey().span());
             enc.encrypted = bt_encode();
 
-            if (not crypto::xchacha20(enc.encrypted, _pubkey, enc.nonce))
-                throw std::runtime_error{"Failed to encrypt ClientContact bt-payload!"};
-
+            crypto::xchacha20(enc.encrypted, _pubkey, enc.nonce);
             enc.signed_at = llarp::time_now_ms();
 
             auto btdp = enc.bt_encode_for_signing();
@@ -210,13 +208,10 @@ namespace llarp
     {
         std::optional<ClientContact> cc;
         auto plaintext = encrypted;
-        if (crypto::xchacha20(plaintext, root, nonce))
-        {
-            log::debug(logcat, "EncryptedClientContact decrypted successfully...");
-            cc.emplace(plaintext);
-        }
-        else
-            log::warning(logcat, "Failed to decrypt EncryptedClientContact!");
+        // FIXME: either ClientContact::emplace needs to throw if decryption fails, or we need
+        // to catch some actual failure here.  Need some authentication.
+        crypto::xchacha20(plaintext, root, nonce);
+        cc.emplace(plaintext);
 
         return cc;
     }
@@ -248,6 +243,6 @@ namespace llarp
 
     bool EncryptedClientContact::is_expired(std::chrono::milliseconds now) const
     {
-        return now >= signed_at + path::DEFAULT_LIFETIME;
+        return now >= signed_at;
     }
 }  //  namespace llarp

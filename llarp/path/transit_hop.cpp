@@ -121,7 +121,7 @@ namespace llarp::path
         _parent.router.send_control_message(
             downstream,
             "path_control",
-            ONION::serialize_stream_hop(rxid, SymmNonce::make_random(), as_bspan(inner_payload)),
+            ONION::serialize_stream_hop(rxid, SymmNonce::make_random(), inner_payload),
             std::move(func));
     }
 

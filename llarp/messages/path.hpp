@@ -18,7 +18,7 @@ namespace llarp
 
         // Serializes a *non-data* message
         std::vector<std::byte> serialize_stream_hop(
-            std::span<const std::byte> key, const SymmNonce& nonce, std::span<const std::byte> encrypted);
+            const HopID& hopid, const SymmNonce& nonce, std::span<const std::byte> encrypted);
 
         std::tuple<std::string, SharedSecret, SymmNonce> deserialize_decrypt(
             oxenc::bt_dict_consumer&& btdc, const Ed25519SecretKey& local_sk);

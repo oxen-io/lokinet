@@ -92,35 +92,22 @@ namespace llarp::path
 
     void Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
     {
-        send_path_control_message("fetch_rcs", as_bspan(FetchRC::serialize({{needed}})), std::move(func));
+        send_path_control_message("fetch_rcs", FetchRC::serialize({{needed}}), std::move(func));
     }
 
     void Path::find_client_contact(const hash_key& location, std::function<void(quic::message)> func)
     {
-        send_path_control_message("find_cc", as_bspan(FindClientContact::serialize(location)), std::move(func));
+        send_path_control_message("find_cc", FindClientContact::serialize(location), std::move(func));
     }
 
     void Path::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
-        send_path_control_message("publish_cc", as_bspan(PublishClientContact::serialize(ecc)), std::move(func));
+        send_path_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
     }
 
     void Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)
     {
-        send_path_control_message("resolve_sns", as_bspan(ResolveSNS::serialize(name_hash)), std::move(func));
-    }
-
-    std::string Path::make_path_message(std::span<std::byte> inner_payload)
-    {
-        auto nonce = SymmNonce::make_random();
-
-        for (const auto& hop : std::ranges::reverse_view(hops))
-        {
-            crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
-            nonce ^= hop.xor_nonce;
-        }
-
-        return ONION::serialize_hop(edge().rxid, nonce, std::move(inner_payload));
+        send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
 
     void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce)

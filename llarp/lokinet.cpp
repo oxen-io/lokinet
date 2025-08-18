@@ -85,22 +85,11 @@ namespace lokinet
              port,
              netaddr,
              on_established = std::move(on_established),
-             failure = std::move(failure)](bool success) {
-                if (!success)
+             failure = std::move(failure)](llarp::session::Session& s, bool success) {
+                if (!success || !s.is_established())
                 {
                     auto err = "Failed to establish remote session to {} for UDP tunnel[port={}]"_format(netaddr, port);
                     llarp::log::warning(logcat, "{}", err);
-                    failure(std::move(err));
-                    return;
-                }
-
-                auto session = r.session_endpoint().get_session(netaddr);
-                if (!session)
-                {
-                    auto err =
-                        "Unexpected error: successful remote session callback, but not session was found for {}!"_format(
-                            netaddr);
-                    llarp::log::error(logcat, "{}", err);
                     failure(std::move(err));
                     return;
                 }
@@ -109,7 +98,7 @@ namespace lokinet
                 // something better!
                 tunnel_info ti{.remote = netaddr.to_string(), .remote_port = port, .suggested_mtu = 1200};
 
-                ti.local_port = session->setup_udp_mapping(port);
+                ti.local_port = s.setup_udp_mapping(port);
                 llarp::log::info(
                     logcat,
                     "Session established to {}, with local port {} mapped to remote {}",
