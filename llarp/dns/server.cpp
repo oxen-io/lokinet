@@ -37,20 +37,21 @@ namespace llarp::dns
       public:
         explicit UDPReader(Server& dns, quic::Loop& loop, quic::Address bind) : _dns{dns}
         {
-            _udp = std::make_unique<quic::UDPSocket>(loop.get_event_base(), bind, [this](quic::Packet&& pkt) {
-                auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
-                if (src == _local_addr)
-                {
-                    log::debug(logcat, "DNS packet received, not handling because we're the packet source", src);
-                    return;
-                }
+            _udp = std::make_unique<quic::UDPSocket>(
+                loop.get_event_base(), bind, /*gso=*/false, [this](quic::Packet&& pkt) {
+                    auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
+                    if (src == _local_addr)
+                    {
+                        log::debug(logcat, "DNS packet received, not handling because we're the packet source", src);
+                        return;
+                    }
 
-                if (not _dns.maybe_handle_payload(shared_from_this(), _local_addr, src, pkt.data()))
-                {
-                    log::warning(logcat, "did not handle dns packet from {} to {}", src, _local_addr);
-                }
-                log::trace(logcat, "Handled DNS packet from {} to {}", src, _local_addr);
-            });
+                    if (not _dns.maybe_handle_payload(shared_from_this(), _local_addr, src, pkt.data()))
+                    {
+                        log::warning(logcat, "did not handle dns packet from {} to {}", src, _local_addr);
+                    }
+                    log::trace(logcat, "Handled DNS packet from {} to {}", src, _local_addr);
+                });
 
             if (auto maybe_addr = bound_on())
             {
@@ -299,8 +300,7 @@ namespace llarp::dns
             llarp::DnsConfig m_conf;
 
           public:
-            explicit Resolver(quic::Loop& loop, llarp::DnsConfig conf)
-                : _loop{loop}, m_conf{std::move(conf)}
+            explicit Resolver(quic::Loop& loop, llarp::DnsConfig conf) : _loop{loop}, m_conf{std::move(conf)}
             {
                 up(m_conf);
             }

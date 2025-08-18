@@ -573,7 +573,7 @@ namespace llarp::session
         quic::Address src{"127.0.0.1"s, 0};
         quic::Address dest{"127.0.0.1"s, dest_port};
         auto udp_handle = std::make_unique<quic::UDPSocket>(
-            _r.loop.get_event_base(), src, [this, dest = std::move(dest)](quic::Packet&& pkt) {
+            _r.loop.get_event_base(), src, /*gso=*/false, [this, dest = std::move(dest)](quic::Packet&& pkt) {
                 auto client_port = pkt.path.remote.port();
                 if (!udp_client_ports.contains(client_port))
                 {

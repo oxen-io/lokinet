@@ -267,7 +267,7 @@ add_subdirectory(external)
 # interface library for setting common includes, linkage and flags
 add_library(lokinet-base INTERFACE)
 target_include_directories(lokinet-base INTERFACE . include)
-target_link_libraries(lokinet-base INTERFACE quic nlohmann_json::nlohmann_json)
+target_link_libraries(lokinet-base INTERFACE oxen::quic nlohmann_json::nlohmann_json)
 
 target_compile_features(lokinet-base INTERFACE cxx_std_20)
 
