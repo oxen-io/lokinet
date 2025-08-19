@@ -190,6 +190,10 @@ namespace llarp
 
             void tick(std::chrono::milliseconds now) override;
 
+            // Closes non-active paths that are close to expiry, i.e. any paths that we would not
+            // select if we need to switch paths.
+            void close_old_paths(std::chrono::milliseconds now);
+
             // TODO FIXME: these were doing nothing useful, but I think we need them to do something
             // useful.
             //

@@ -50,11 +50,11 @@ namespace llarp
         {
             static constexpr double THRESHOLD{0.25};
 
-            uint64_t attempts{};
-            uint64_t success{};
-            uint64_t build_fails{};  // path build failures
-            uint64_t path_fails{};   // path failures post-build
-            uint64_t timeouts{};
+            uint64_t attempts{0};
+            uint64_t success{0};
+            uint64_t build_fails{0};  // path build failures
+            uint64_t path_fails{0};   // path failures post-build
+            uint64_t timeouts{0};
 
             std::chrono::milliseconds last_warn_time{0s};
 
@@ -128,31 +128,6 @@ namespace llarp
             /// nothing.
             virtual void on_path_build_success(int64_t /*build_id*/, Path& /*p*/) {}
 
-            /*
-            void path_build_recursive(
-                sorted_intro_set intros,
-                NetworkAddress remote,
-                std::function<void(const std::shared_ptr<Path>&, ClientIntro)> cb,
-                bool keep_path);
-
-            void path_build_recursive(
-                int n_tries,
-                RemoteRC rc,
-                NetworkAddress remote,
-                std::function<void(const std::shared_ptr<Path>&)> cb,
-                bool keep_path);
-*/
-
-            //            virtual void rotate_paths() = 0;
-
-            /*
-            virtual void path_rotation_succeeded(const std::shared_ptr<Path>& new_path);
-
-            const std::shared_ptr<Path>& get_oldest_path() const;
-
-            const std::shared_ptr<Path>& get_newest_path() const;
-            */
-
           public:
             PathHandler(Router& router, int target_paths, int num_hops);
 
@@ -219,6 +194,10 @@ namespace llarp
             /// path_build_failed.  It is possible for path_build_failed to fire *before* this
             /// function returns if the given path cannot currently be built (such as when shutting
             /// down, or if the rate limiter is hit).
+            ///
+            /// The return value is a unique id for the path that is passed into the
+            /// path_build_failed/_succeeded methods to uniquely identify the path, or 0 if the path
+            /// build is not currently possible.
             int64_t build(std::span<const RemoteRC> hops);
 
             /// Returns a view over all current paths (as `Path&` references)

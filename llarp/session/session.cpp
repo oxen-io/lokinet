@@ -675,8 +675,69 @@ namespace llarp::session
 
     void OutboundSession::tick(std::chrono::milliseconds now)
     {
+        close_old_paths(now);
         path::PathHandler::tick(now);
         fire_waiting(now);
+    }
+
+    void OutboundSession::close_old_paths(std::chrono::milliseconds now)
+    {
+        // cf. select_new_current
+        //
+        // When selecting a new path, we select from all active paths that meet the
+        // [paths]:acceptable-expiry threshold, but if we don't find any, select from any that
+        // satisfy [paths]:min-expiry, and so we replicate that logic here so that we don't close
+        // any paths that select_new_current could choose if it was called right now.
+
+        auto current = current_path();
+
+        std::vector<std::pair<path::Path*, std::chrono::milliseconds>> close_me, maybe_close;
+        bool found_acceptable_exp = false;
+        for (auto& path : active_paths())
+        {
+            if (current.get() == &path)
+                continue;  // never close the current path
+
+            auto expires_in = path.expires_in(now);
+            if (expires_in >= router.config().paths.acceptable_expiry)
+                found_acceptable_exp = true;
+
+            else if (expires_in < router.config().paths.min_expiry)
+                close_me.emplace_back(&path, expires_in);
+
+            // Otherwise this is between min and acceptable, and so is a "maybe": we'll close it
+            // only if there are some paths above acceptable, but not if all paths are in-between.
+            else if (not found_acceptable_exp)
+                maybe_close.emplace_back(&path, expires_in);
+        }
+
+        int drops = 0;
+        for (auto [path, in] : close_me)
+        {
+            log::debug(logcat, "Dropping {} unused path {} with imminent expiry (in {})", *this, *path, in);
+            drop_path(*path);
+            drops++;
+        }
+
+        if (found_acceptable_exp)
+        {
+            for (auto [path, in] : maybe_close)
+            {
+                log::debug(
+                    logcat,
+                    "Dropping {} unused path {} because it expires relative soon (in {})"
+                    " and we have preferable newer paths",
+                    *this,
+                    *path,
+                    in);
+                drop_path(*path);
+                drops++;
+            }
+        }
+        if (drops)
+            log::debug(logcat, "{} dropped {} paths; have {} remaining", *this, drops, num_paths(now));
+        else
+            log::trace(logcat, "{} found no close-to-expiry paths to drop", *this);
     }
 
     OutboundRelaySession::OutboundRelaySession(
@@ -1070,14 +1131,13 @@ namespace llarp::session
         auto now = llarp::time_now_ms();
         std::unordered_set<RouterID> select_from;
         int min_path_count = std::numeric_limits<int>::max();
-        for (size_t i = 0; i < _intros.size(); i++)
+        for (auto& intro : _intros)
         {
-            auto& intro = _intros[i];
             if (intro.expiry < now + router.config().paths.acceptable_expiry)
                 continue;
 
-            const int existing_count = std::ranges::count_if(
-                paths(), [&intro](const path::Path& p) { return p.terminal_rid() == intro.pivot_rid; });
+            const int existing_count = static_cast<int>(std::ranges::count_if(
+                paths(), [&intro](const path::Path& p) { return p.terminal_rid() == intro.pivot_rid; }));
 
             if (existing_count > min_path_count)
                 // We already found a pivot with fewer paths, so we don't want this one
