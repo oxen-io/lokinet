@@ -138,13 +138,13 @@ namespace llarp
             bool is_established() const { return _is_established; }
 
             // Marks a path as built.  This is primary used as a way to ensure we only build a Path
-            // object once.  Returns true if the state was changed (i.e. a false return means the
-            // path was already built).
+            // object once.  Returns true if the state was successfully changed (i.e. a false return
+            // means the path was already built).
             bool set_built()
             {
-                bool ret = _is_built;
+                bool was_built = _is_built;
                 _is_built = true;
-                return ret;
+                return not was_built;
             }
 
             // Returns true if a path has been marked as built.
