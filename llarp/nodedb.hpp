@@ -251,10 +251,28 @@ namespace llarp
         std::vector<std::reference_wrapper<const RemoteRC>> get_n_random_rcs(
             int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
-        /// put (or replace) the RC if has a known valid RouterID, and we either don't have an RC,
-        /// or the given rc is newer than what we have.  Returns true if put.
-        bool put_rc(RemoteRC rc);
+        /// Stores an RC broadcast to the network.  The return value indicates whether this RC
+        /// should be re-broadcast to all connected relays (true) or not (false).  In particular,
+        /// false does *not* necessarily mean that the RC was not updated, but could also simply
+        /// mean that the RC update was not significant enough to warrant rebroadcasting.
+        ///
+        /// This function does *not* check that the RC's router ID is actually a valid service node:
+        /// call `verify_store_gossip_rc` instead of this to also do that check.
+        ///
+        /// In particular, RC re-gossipping is determined by:
+        /// - The RC must be for a relay we haven't recently received an RC for (i.e. we didn't have
+        ///   it, or what we had was declared outdated (more than 12h old)).
+        /// - Alternatively, an RC will also be gossipped if it is an important update for
+        ///   reachability (i.e. changed IP or port, or other important RC properties).
+        /// - Gossips will not be accepted if the currently stored RC for the relay is not at least
+        ///   a minute older than the incoming one.
+        bool put_rc(const RemoteRC& rc);
 
+        /// Checks of the router in the given rc is a known network router (either active or
+        /// decommissioned) and, if so, calls and returns put_rc with it.
+        ///
+        /// Returns true if the router ID is known *and* the rc was update *and* the RC should be
+        /// re-gossipped; returns false otherwise.
         bool verify_store_gossip_rc(const RemoteRC& rc);
 
       private:

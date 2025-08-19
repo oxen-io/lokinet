@@ -39,8 +39,6 @@ namespace llarp
     */
     struct RelayContact
     {
-        using time_point = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
-
         static constexpr uint8_t VERSION{0};
 
         /// Unit tests disable this to allow private IP ranges in RCs, which normally get rejected.
@@ -57,6 +55,10 @@ namespace llarp
         /// How long before an RC becomes invalid (and thus deleted).
         static constexpr auto LIFETIME{30 * 24h};
 
+        /// Minimum age difference between an existing RC and a new, gossipped RC from the same
+        /// relay.  We ignore RCs that are not more than this amount older than the current one.
+        static constexpr auto MIN_GOSSIP_RC_AGE = 1min;
+
         std::string_view view() const { return _payload; }
 
         /// Getters for private attributes
@@ -66,18 +68,18 @@ namespace llarp
 
         const RouterID& router_id() const { return _router_id; }
 
-        const time_point& timestamp() const { return _timestamp; }
+        const std::chrono::sys_seconds& timestamp() const { return _timestamp; }
 
         NetID netid() const { return _netid; }
 
       protected:
         // advertised addresses
-        quic::Address _addr;                  // refactor all 15 uses to use addr() method
+        quic::Address _addr;
         std::optional<quic::Address> _addr6;  // optional ipv6
         // public signing public key
         RouterID _router_id;
 
-        time_point _timestamp{};
+        std::chrono::sys_seconds _timestamp{};
         NetID _netid = NetID::MAINNET;
 
         // Lokinet version at the time the RC was produced
@@ -128,7 +130,18 @@ namespace llarp
         /// get the age of this RC in ms
         std::chrono::milliseconds age(std::chrono::milliseconds now) const;
 
-        bool other_is_newer(const RelayContact& other) const { return _timestamp < other._timestamp; }
+        // Returns true if this RC is at least `at_least` newer than `other`.  (By default threshold
+        // is 1s, which is the minimum precision of RCs, and so this returns true if this is at all
+        // newer than other).
+        bool newer_than(const RelayContact& other, std::chrono::seconds at_least = 1s) const
+        {
+            return _timestamp - other._timestamp >= at_least;
+        }
+
+        // Returns true if this RC has a different contact address (IP/port) from `other`.  This is
+        // used when deciding how important an RC update is when deciding whether to gossip (minor
+        // updates are only gossipped if they change this contact info).
+        bool address_changed(const RelayContact& other) const;
 
         bool is_obsolete() const;
 
@@ -154,7 +167,7 @@ namespace llarp
         LocalRC() = default;
         LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid);
 
-        RemoteRC to_remote();
+        RemoteRC to_remote() const;
 
         void resign();
 

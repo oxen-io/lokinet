@@ -96,35 +96,31 @@ namespace llarp
         }
 
         void Endpoint::for_each_service_conn(
-            std::function<void(RouterID, std::shared_ptr<link::Connection>)> func, bool active_only)
+            std::function<void(const RouterID&, link::Connection&)> func, bool active_only)
         {
             assert(router.loop.inside());
 
-            std::ranges::for_each(service_conns.begin(), service_conns.end(), [&](auto c) mutable {
-                if (c.second and (active_only ? c.second->is_active.load() : true))
-                    func(c.first, c.second);
-            });
+            for (const auto& [rid, conn] : service_conns)
+                if (conn and (not active_only or conn->is_active.load()))
+                    func(rid, *conn);
         }
 
         void Endpoint::for_each_connection(std::function<void(const RouterID&, link::Connection&)> func)
         {
-            router.loop.call([this, func = std::move(func)]() mutable {
-                for (auto& [rid, conn] : service_conns)
-                    if (conn)
-                        func(rid, *conn);
+            assert(router.loop.inside());
 
-                if (router.is_service_node)
-                {
-                    for (auto& [rid, conn] : client_conns)
-                        if (conn)
-                            func(rid, *conn);
-                }
-            });
+            for (auto& [rid, conn] : service_conns)
+                if (conn)
+                    func(rid, *conn);
+
+            for (auto& [rid, conn] : client_conns)
+                if (conn)
+                    func(rid, *conn);
         }
 
-        void Endpoint::close_connection(RouterID _rid)
+        void Endpoint::close_connection(const RouterID& rid)
         {
-            router.loop.call([this, rid = _rid]() {
+            router.loop.call([this, rid] {
                 if (auto itr = service_conns.find(rid); itr != service_conns.end())
                 {
                     log::info(logcat, "Closing connection to relay RID:{}", rid);
@@ -351,16 +347,6 @@ namespace llarp
         });
 
         log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
-    }
-
-    void LinkManager::start_tickers()
-    {
-        log::debug(logcat, "Starting gossip ticker...");
-
-        router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
-            regenerate_and_gossip_rc();
-            _gossip_ticker = router.loop.call_every(router.gossip_interval(), [this] { regenerate_and_gossip_rc(); });
-        });
     }
 
     LinkManager::LinkManager(Router& r)
@@ -887,37 +873,30 @@ namespace llarp
             log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
     }
 
-    void LinkManager::regenerate_and_gossip_rc()
+    int LinkManager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
     {
-        log::info(logcat, "Regenerating and gossiping RC...");
-        gossip_rc(router.local_rid(), router.update_rc_for_gossiping());
-    }
-
-    void LinkManager::gossip_rc(const RouterID& last_sender, const RemoteRC& rc)
-    {
+        int count = 0;
         ep->for_each_service_conn(
-            [last_sender = last_sender, gossip_src = rc.router_id(), payload = GossipRC::serialize(last_sender, rc)](
-                RouterID rid, std::shared_ptr<link::Connection> conn) mutable {
-                if (rid == gossip_src or rid == last_sender)
+            [&rc, &sender, &count](const RouterID& rid, link::Connection& conn) {
+                // Don't gossip this to RC's origin, or back along the connection that sent it to us:
+                if (rid == rc.router_id() or (sender && *sender == conn.conn->reference_id()))
                     return;
 
-                conn->control_stream->command("gossip_rc", payload, [](auto) {});
-            });
+                conn.control_stream->command("gossip_rc", rc.view());
+                ++count;
+            },
+            false /* !active_only: inactive relays still want RCs */);
+
+        return count;
     }
 
     void LinkManager::handle_gossip_rc(quic::message m)
     {
-        // RemoteRC constructor wraps deserialization in a try/catch
         RemoteRC rc;
-        RouterID src;
 
         try
         {
-            oxenc::bt_dict_consumer btdc{m.body()};
-
-            btdc.required("r");
-            rc = RemoteRC{btdc.consume_dict_data(), router.netid()};
-            src.from_relay_address(btdc.require<std::string>("s"));
+            rc = RemoteRC{m.body(), router.netid()};
         }
         catch (const std::exception& e)
         {
@@ -925,12 +904,13 @@ namespace llarp
             return;
         }
 
-        log::trace(logcat, "Handling GossipRC request (sender:{}, rc:{})...", src, rc);
-
         if (router.node_db().verify_store_gossip_rc(rc))
         {
-            log::info(logcat, "Received updated RC (rid:{}), forwarding to peers", rc.router_id().short_string());
-            gossip_rc(router.local_rid(), rc);
+            log::debug(
+                logcat,
+                "Received new or significantly changed RC for {}; gossipping to peers",
+                rc.router_id().short_string());
+            gossip_rc(rc, &m.conn_rid());
         }
         else
             log::trace(logcat, "Received known or old RC, not storing or forwarding.");
@@ -1468,8 +1448,10 @@ namespace llarp
             random_fill(std::span{frames}.last(path::BUILD_FRAME_SIZE));
 
             // De-onion the remaining frames (not including the known junk frame at the end) for the next hop
-            crypto::xchacha20(std::span{frames}.first((path::BUILD_LENGTH - 1) * path::BUILD_FRAME_SIZE),
-                    hop->shared_secret, dh_nonce ^ hop->xor_nonce);
+            crypto::xchacha20(
+                std::span{frames}.first((path::BUILD_LENGTH - 1) * path::BUILD_FRAME_SIZE),
+                hop->shared_secret,
+                dh_nonce ^ hop->xor_nonce);
 
             send_control_message(
                 hop->upstream,
@@ -1879,12 +1861,10 @@ namespace llarp
         {
             if (inner_body)
             {
-                params =
-                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.identity());
+                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.identity());
             }
             else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
-                params =
-                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.identity());
+                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.identity());
         }
         catch (const std::exception& e)
         {
@@ -1918,7 +1898,9 @@ namespace llarp
             if (not hop)
             {
                 log::warning(
-                    logcat, "Received path-request to initiate session with unknown hop (ID: {})", params.local_pivot_txid);
+                    logcat,
+                    "Received path-request to initiate session with unknown hop (ID: {})",
+                    params.local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
@@ -1946,7 +1928,9 @@ namespace llarp
             if (not path)
             {
                 log::warning(
-                    logcat, "Failed to find local path for new inbound session over pivot txid: {}", params.local_pivot_txid);
+                    logcat,
+                    "Failed to find local path for new inbound session over pivot txid: {}",
+                    params.local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 

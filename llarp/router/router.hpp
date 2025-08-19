@@ -54,10 +54,8 @@ namespace llarp
     // inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
     // inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{(INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
-    // TESTNET: these constants are shortened for testing purposes
-    inline uniform_duration_distribution TESTNET_GOSSIP_INTERVAL{5min, 5min + 30s};
-    inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
-    inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
+    inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{10min};
+
     // as we advance towards full mesh, we try to connect to this number per tick
     inline constexpr int FULL_MESH_ITERATION{1};
     inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
@@ -137,6 +135,8 @@ namespace llarp
         std::shared_ptr<quic::Ticker> _service_stat_ticker;
         std::shared_ptr<quic::Ticker> _reachability_ticker;
 
+        std::shared_ptr<quic::Ticker> _gossip_ticker;
+
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
         std::chrono::milliseconds _next_decomm_warning{time_now_ms() + 15s};
@@ -170,8 +170,6 @@ namespace llarp
         void process_routerconfig();
 
         void process_netconfig();
-
-        std::chrono::milliseconds _gossip_interval;
 
         void _relay_tick(std::chrono::milliseconds now);
 
@@ -254,13 +252,10 @@ namespace llarp
         // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
         quic::Loop disk_loop;
 
-        std::chrono::milliseconds gossip_interval() const { return _gossip_interval; }
-
         const LocalRC& rc() const { return relay_contact; }
 
-        // Updates and resigns the local RC, saves it, then returns it converted to a RemoteRC for
-        // gossipping.
-        RemoteRC update_rc_for_gossiping();
+        // Updates and re-signs the local RC and queues it for saving to disk.
+        void update_rc();
 
         quic::Address listen_addr() const;
 

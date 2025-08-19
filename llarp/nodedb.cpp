@@ -68,9 +68,7 @@ namespace llarp
                 if (_is_connecting_bstrap)
                 {
                     log::trace(
-                        logcat,
-                        "{} awaiting bstrap connect attempt...",
-                        _router.is_service_node ? "Relay" : "Client");
+                        logcat, "{} awaiting bstrap connect attempt...", _router.is_service_node ? "Relay" : "Client");
                     return false;
                 }
 
@@ -536,25 +534,24 @@ namespace llarp
         _flush_ticker = _router.loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
         _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
-        _purge_ticker = _router.loop.call_every(PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
+        _purge_ticker = _router.loop.call_every(
+            PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
         if (not _needs_bootstrap)
             _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
 
         if (not _router.is_service_node)
         {
             // start these immediately if we do not need to bootstrap
-            _rc_fetch_ticker =
-                _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
+            _rc_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
 
-            _rid_fetch_ticker =
-                _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
+            _rid_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
 
             if (not _needs_bootstrap)
             {
-                _router.loop.call_later(
-                    uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rcs(); });
-                _router.loop.call_later(
-                    uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
+                _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rcs(); });
+                _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
             }
         }
     }
@@ -656,8 +653,7 @@ namespace llarp
 
         log::debug(logcat, "Dispatching BootstrapRC to {}", source.short_string());
 
-        auto num_needed =
-            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
+        auto num_needed = _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
         _router.link_manager().fetch_bootstrap_rcs(
             rc,
@@ -952,24 +948,40 @@ namespace llarp
         return it != known_rcs.end() ? &it->second : nullptr;
     }
 
-    bool NodeDB::put_rc(RemoteRC rc)
+    bool NodeDB::put_rc(const RemoteRC& rc)
     {
         Lock_t l{nodedb_mutex};
 
-        const auto& rid = rc.router_id();
-
-        if (rid == _router.local_rid())
+        if (rc.router_id() == _router.local_rid())
             return false;
 
-        auto [it, inserted] = known_rcs.try_emplace(rc.router_id(), std::move(rc));
-        if (inserted)
-            return true;
-        if (it->second.other_is_newer(rc))
+        auto it = known_rcs.find(rc.router_id());
+        if (it == known_rcs.end())
         {
-            it->second = std::move(rc);
-            return true;
+            known_rcs.emplace(rc.router_id(), rc);
+            return true;  // New RC hurray, gossip the good news!
         }
-        return false;
+
+        auto& stored = it->second;
+        if (!rc.newer_than(stored, RemoteRC::MIN_GOSSIP_RC_AGE))
+            return false;
+
+        // This RC is an update of one we already had: we only gossip if this RC indicates a changed
+        // address (e.g. port or IP change) or was the first RC from this node in a long time, both
+        // of which are updates we want to waste a little extra network bandwidth for to get out
+        // everywhere ASAP via gossipping.
+        bool significant = rc.newer_than(stored, RemoteRC::OUTDATED_AGE) || rc.address_changed(stored);
+
+        stored = rc;
+
+        return significant;
+    }
+
+    bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
+    {
+        if (!_registered_routers.contains(rc.router_id()))
+            return false;
+        return put_rc(rc);
     }
 
     size_t NodeDB::num_rcs() const { return known_rcs.size(); }
@@ -1009,11 +1021,6 @@ namespace llarp
 
         if (not removed.empty())
             remove_many_from_disk_async(std::move(removed));
-    }
-
-    bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
-    {
-        return registered_routers().contains(rc.router_id()) && put_rc(rc);
     }
 
     void NodeDB::remove_many_from_disk_async(const std::vector<RouterID>& remove) const

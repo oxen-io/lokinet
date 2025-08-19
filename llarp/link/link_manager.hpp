@@ -93,9 +93,9 @@ namespace llarp
             void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
 
             void for_each_service_conn(
-                std::function<void(RouterID, std::shared_ptr<link::Connection>)> func, bool active_only = true);
+                std::function<void(const RouterID&, link::Connection&)> func, bool active_only = true);
 
-            void close_connection(RouterID rid);
+            void close_connection(const RouterID& rid);
 
             void close_all();
         };
@@ -124,8 +124,6 @@ namespace llarp
 
         util::DecayingHashSet<RouterID> clients{path::MAX_LIFETIME};
 
-        std::shared_ptr<quic::Ticker> _gossip_ticker;
-
         quic::Address addr;
 
         std::unique_ptr<quic::Loop> quic_loop;
@@ -149,11 +147,7 @@ namespace llarp
         void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
 
       public:
-        void start_tickers();
-
         const quic::Address& local() { return addr; }
-
-        void regenerate_and_gossip_rc();
 
         bool have_connection_to(const RouterID& remote) const;
 
@@ -202,8 +196,12 @@ namespace llarp
         /// always maintain this many client connections to other routers
         int client_router_connections = 4;
 
+        // Sends the given RC to all our relay peers, excluding connections to the RC pubkey itself,
+        // and (if not-nullptr) the given quic connection.  Returns the number of relay connections
+        // we sent it to.
+        int gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender = nullptr);
+
       private:
-        void gossip_rc(const RouterID& last_sender, const RemoteRC& rc);
         void handle_gossip_rc(quic::message);
 
         void fetch_rcs(const RouterID& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
@@ -211,7 +209,8 @@ namespace llarp
         void fetch_router_ids(const RouterID& via, std::function<void(quic::BTRequestStream&)> send_hook);
         void handle_fetch_router_ids(quic::message);
 
-        void fetch_bootstrap_rcs(const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
+        void fetch_bootstrap_rcs(
+            const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
         void handle_fetch_bootstrap_rcs(quic::message);
 
         // Inner handlers for relayed requests

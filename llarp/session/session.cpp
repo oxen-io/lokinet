@@ -263,13 +263,8 @@ namespace llarp::session
         }
     };
 
-    Session::Session(
-        Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote)
-        : _r{r},
-          _parent{parent},
-          _remote{remote},
-          is_outbound{true},
-          is_relay_session{_remote.relay()}
+    Session::Session(Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote)
+        : _r{r}, _parent{parent}, _remote{remote}, is_outbound{true}, is_relay_session{_remote.relay()}
     {
         // Maybe we should make this on demand rather than on construction?
         tcp_tunnel = std::make_unique<TCPTunnel>(*this);
@@ -915,14 +910,12 @@ namespace llarp::session
             auto [payload, session_key] = InitiateSession::serialize_encrypt(
                 _r.local_rid(), _remote.router_id(), local_pivot_txid, remote_pivot_txid, std::nullopt);
 
-
             _shared_secret = session_key;
             path.send_path_control_message(
                 "session_init",
                 payload,
                 // FIXME: what if this Session (`this`) is gone when the response comes?
                 [this](quic::message m) mutable {
-
                     if (m)
                     {
                         log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");

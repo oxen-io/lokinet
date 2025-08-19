@@ -6,6 +6,7 @@
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
+#include <chrono>
 #include <unordered_set>
 
 namespace llarp
@@ -69,7 +70,7 @@ namespace llarp
             throw std::runtime_error{"Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
         std::memcpy(_router_id.data(), pubkey.data(), 32);
 
-        _timestamp = time_point{std::chrono::seconds{btdc.require<uint64_t>("t")}};
+        _timestamp = std::chrono::sys_seconds{std::chrono::seconds{btdc.require<uint64_t>("t")}};
 
         auto ver = btdc.require<std::span<const uint8_t>>("v");
 
@@ -166,6 +167,11 @@ namespace llarp
 
     bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.ToHex()); }
 
+    bool RelayContact::address_changed(const RelayContact& other) const
+    {
+        return std::tie(_addr, _addr6) != std::tie(other._addr, other._addr6);
+    }
+
     LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid) : _secret_key{std::move(secret)}
     {
         _router_id.assign(_secret_key.pubkey_span());
@@ -176,7 +182,7 @@ namespace llarp
         resign();
     }
 
-    RemoteRC LocalRC::to_remote() { return RemoteRC{_payload, _netid}; }
+    RemoteRC LocalRC::to_remote() const { return RemoteRC{_payload, _netid}; }
 
     void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
     {

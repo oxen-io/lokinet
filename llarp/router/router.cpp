@@ -14,6 +14,8 @@
 
 #include <oxen/log.hpp>
 
+#include <chrono>
+
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/handlers/tun.hpp>
 #include <llarp/rpc/rpc_client.hpp>
@@ -51,7 +53,6 @@ namespace llarp
           _contact_db{std::make_unique<ContactDB>(*this)},
           // TODO FIXME: what about non-testnet?  And do we really want a fixed random interval,
           // or do we want a randomized interval on each node's gossip?
-          _gossip_interval{TESTNET_GOSSIP_INTERVAL(llarp::csrng)},
           _last_tick{llarp::time_now_ms()}
     {
 #ifndef LOKINET_EMBEDDED_ONLY
@@ -213,7 +214,20 @@ namespace llarp
         if (is_service_node)
         {
             _rpc_client->start_pings();
-            _link_manager->start_tickers();
+
+            auto delay = uniform_duration_distribution{10s, 15s}(llarp::csrng);
+            log::debug(logcat, "Delaying initial RC broadcast for {}", delay);
+            loop.call_later(delay, [this] {
+                update_rc();
+                int count = _link_manager->gossip_rc(rc().to_remote());
+
+                log::debug(logcat, "Sent initial RC to {} peers; starting RC regen ticker", count);
+                _gossip_ticker = loop.call_every(RC_UPDATE_INTERVAL, [this] {
+                    update_rc();
+                    int count = _link_manager->gossip_rc(rc().to_remote());
+                    log::debug(logcat, "Updated RC broadcast to {} peers", count);
+                });
+            });
 
             if (not _testing_disabled)
             {
@@ -688,11 +702,10 @@ namespace llarp
 
     size_t Router::num_client_connections() const { return _link_manager->get_num_connected_clients(); }
 
-    RemoteRC Router::update_rc_for_gossiping()
+    void Router::update_rc()
     {
         relay_contact.resign();
         save_rc();
-        return relay_contact.to_remote();
     }
 
     void Router::save_rc()

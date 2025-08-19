@@ -4,19 +4,6 @@
 
 namespace llarp
 {
-    namespace GossipRC
-    {
-        std::vector<std::byte> serialize(const RouterID& last_sender, const RemoteRC& rc)
-        {
-            oxenc::bt_dict_producer btdp;
-
-            btdp.append_encoded("r", rc.view());
-            btdp.append("s", last_sender.span());
-
-            return to_bytes(btdp);
-        }
-    }  // namespace GossipRC
-
     namespace BootstrapFetch
     {
         // the LocalRC is converted to a RemoteRC type to send to the bootstrap seed
