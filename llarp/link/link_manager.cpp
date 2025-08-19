@@ -252,6 +252,7 @@ namespace llarp
             {"publish_cc"sv, &LinkManager::_handle_publish_cc},
             {"find_cc"sv, &LinkManager::_handle_find_cc},
             {"fetch_rcs"sv, &LinkManager::_handle_fetch_rcs},
+            {"fetch_rids"sv, &LinkManager::_handle_fetch_router_ids},
             {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
             {"session_init"sv, &LinkManager::_handle_initiate_session},
             {"session_close"sv, &LinkManager::_handle_close_session},
@@ -324,10 +325,6 @@ namespace llarp
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
             router.loop.call([this, msg = std::move(m)]() mutable { _handle_fetch_rcs(std::move(msg)); });
-        });
-
-        s.register_handler("fetch_rids"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
         });
 
         s.register_handler("gossip_rc"s, [this](quic::message m) {
@@ -1082,40 +1079,13 @@ namespace llarp
         });
     }
 
-    void LinkManager::handle_fetch_router_ids(quic::message m)
+    void LinkManager::_handle_fetch_router_ids(quic::message m, std::optional<std::string>)
     {
         log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
         assert(router.is_service_node);
 
-        RouterID source;
-        RouterID local = router.local_rid();
-
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            source.assign(btdc.require_span<std::byte, RouterID::SIZE>("s"));
-        }
-        catch (const std::exception& e)
-        {
-            log::critical(logcat, "Error fulfilling FetchRIDs request: {}; body: {}", e.what(), m.body());
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-
-        if (source != local)
-        {
-            log::trace(logcat, "Relaying FetchRID request (body: {}) to intended target RID:{}", m.body(), source);
-
-            auto payload = FetchRID::serialize(source);
-            send_control_message(
-                source, "fetch_rids", std::move(payload), [original = std::move(m)](quic::message msg) mutable {
-                    original.respond(msg.body(), msg.is_error());
-                });
-            return;
-        }
-
-        const auto& known_rids = router.node_db().get_known_rids();
+        const auto& known_rids = router.node_db().registered_routers();
         oxenc::bt_dict_producer btdp;
 
         {
@@ -1124,15 +1094,6 @@ namespace llarp
             for (const auto& rid : known_rids)
                 btlp.append(rid.to_view());
         }
-
-        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
-            std::array<std::byte, SIGSIZE> sig;
-
-            if (!crypto::sign(sig, router.identity(), to_sign))
-                throw std::runtime_error{"Failed to sign fetch RouterIDs response"};
-
-            return sig;
-        });
 
         log::debug(logcat, "Returning ALL ({}) locally held RIDs to FetchRIDs request!", known_rids.size());
         m.respond(std::move(btdp).str());

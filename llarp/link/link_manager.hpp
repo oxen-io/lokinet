@@ -207,7 +207,6 @@ namespace llarp
         void fetch_rcs(const RouterID& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
 
         void fetch_router_ids(const RouterID& via, std::function<void(quic::BTRequestStream&)> send_hook);
-        void handle_fetch_router_ids(quic::message);
 
         void fetch_bootstrap_rcs(
             const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
@@ -217,6 +216,7 @@ namespace llarp
         void _handle_path_control(quic::message, std::optional<std::string> = std::nullopt);
         void _handle_publish_cc(quic::message, std::optional<std::string> = std::nullopt);
         void _handle_fetch_rcs(quic::message, std::optional<std::string> = std::nullopt);
+        void _handle_fetch_router_ids(quic::message, std::optional<std::string> = std::nullopt);
         void _handle_find_cc(quic::message, std::optional<std::string> = std::nullopt);
         void _handle_resolve_sns(quic::message, std::optional<std::string> = std::nullopt);
         void _handle_initiate_session(quic::message, std::optional<std::string> = std::nullopt);

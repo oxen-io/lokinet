@@ -24,7 +24,7 @@ namespace llarp
     {
         const std::string INVALID_REQUEST = messages::serialize_status_response("Invalid relay ID requested");
 
-        std::vector<std::byte> serialize(const std::vector<RouterID>& explicit_ids)
+        std::vector<std::byte> serialize(std::span<const RouterID> explicit_ids)
         {
             oxenc::bt_dict_producer btdp;
 

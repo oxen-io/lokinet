@@ -78,6 +78,8 @@ namespace llarp
 
             void fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
 
+            void fetch_relay_contacts(std::span<const RouterID> needed, std::function<void(quic::message)> func);
+
             void find_client_contact(const hash_key& location, std::function<void(quic::message)> func);
 
             void publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);

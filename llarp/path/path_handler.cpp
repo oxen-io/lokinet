@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <functional>
+#include <random>
 
 namespace llarp::path
 {
@@ -99,16 +100,14 @@ namespace llarp::path
         router.path_context.drop_path(p);
     }
 
-    /*
-    Path* PathHandler::get_random_path() const
+    Path* PathHandler::get_random_active_path() const
     {
-        if (_paths.empty())
+        int n_paths = num_active_paths();
+        if (!n_paths)
             return nullptr;
-        return _paths
-        int i = std::uniform_int_distribution<int>{0, static_cast<int>(_paths.size()) - 1}(csrng);
-        return std::next(_paths.begin(), i)->second;
+
+        return &*std::next(active_paths().begin(), std::uniform_int_distribution<int>{0, n_paths - 1}(llarp::csrng));
     }
-    */
 
     void PathHandler::ping_paths(std::chrono::milliseconds now)
     {

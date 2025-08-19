@@ -23,7 +23,7 @@ namespace llarp
     {
         extern const std::string INVALID_REQUEST;
 
-        std::vector<std::byte> serialize(const std::vector<RouterID>& explicit_ids);
+        std::vector<std::byte> serialize(std::span<const RouterID> explicit_ids);
 
         std::vector<RemoteRC> deserialize_response(NetID netid, oxenc::bt_dict_consumer&& btdc);
 

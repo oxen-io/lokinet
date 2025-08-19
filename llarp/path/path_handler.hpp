@@ -143,7 +143,7 @@ namespace llarp
             void add_path(Path& path);
 
             // Returns a random path, or nullptr if there are no paths.
-            // Path* get_random_path() const;
+            Path* get_random_active_path() const;
 
             /// get the number of ACTIVE paths
             int num_active_paths() const;
@@ -201,7 +201,7 @@ namespace llarp
             int64_t build(std::span<const RemoteRC> hops);
 
             /// Returns a view over all current paths (as `Path&` references)
-            auto paths()
+            auto paths() const
             {
                 return std::views::values(_paths)  //
                     | std::views::filter(&std::shared_ptr<Path>::operator bool)
@@ -209,7 +209,7 @@ namespace llarp
             }
 
             /// Returns a view over all active paths (i.e. established and not expired)
-            auto active_paths(std::chrono::milliseconds now = llarp::time_now_ms())
+            auto active_paths(std::chrono::milliseconds now = llarp::time_now_ms()) const
             {
                 return std::views::values(_paths)  //
                     | std::views::filter([now](const std::shared_ptr<Path>& p) { return p && p->is_active(now); })
