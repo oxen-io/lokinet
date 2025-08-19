@@ -860,12 +860,14 @@ namespace llarp::handlers
     }
 
     std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(
-        const NetworkAddress& remote, std::function<void(session::Session& session, bool timeout)> on_established, std::chrono::milliseconds timeout)
+        const NetworkAddress& remote,
+        std::function<void(session::Session& session, bool timeout)> on_established,
+        std::chrono::milliseconds timeout)
     {
-        std::function<void(session::Session& s)> on_est;
+        std::function<void(session::Session&)> on_est;
         if (on_established)
             on_est = [cb = std::move(on_established)](session::Session& s) { cb(s, !s.is_established()); };
-        router.loop.call_get([this, &remote, &on_est] {
+        return router.loop.call_get([this, &remote, &on_est] {
             auto& s = _sessions[remote];
             if (s && !s->is_closed())
             {
@@ -881,7 +883,7 @@ namespace llarp::handlers
                         static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_est));
                     }
                 }
-                return;
+                return s;
             }
 
             std::shared_ptr<session::Session> sesh;
@@ -889,7 +891,8 @@ namespace llarp::handlers
                 sesh = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_est));
             else
                 sesh = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_est));
-            _sessions[remote] = std::move(sesh);
+            s = std::move(sesh);
+            return s;
         });
     }
 
