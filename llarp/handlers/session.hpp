@@ -1,10 +1,10 @@
 #pragma once
 
-#include "llarp/path/transit_hop.hpp"
 #include <llarp/address/address.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/contact/client_contact.hpp>
 #include <llarp/path/path_handler.hpp>
+#include <llarp/path/transit_hop.hpp>
 #include <llarp/session/session.hpp>
 
 #include <concepts>
@@ -24,7 +24,7 @@ namespace llarp
         class SessionEndpoint final : public path::PathHandler
         {
             friend class rpc::RPCServer;
-            friend struct session::Session;
+            friend class session::Session;
 
             std::unordered_set<dns::SRVData> _srv_records;
 
@@ -156,7 +156,8 @@ namespace llarp
             // `on_established` when the connection is established (or immediately, if a session to
             // the target is already established).  If the session cannot be established within the
             // given timeout then `on_established` will be called with the not-yet-established
-            // session and a `true` second argument.
+            // session and a `true` second argument.  If omitted/nullopt the timeout defaults to the
+            // [paths]build-timeout config option.
             //
             // Note that this resulting session could be outbound or inbound: i.e. if the target is
             // a client (.loki) that has already established a session to this lokinet instance then
@@ -166,31 +167,16 @@ namespace llarp
             std::shared_ptr<session::Session> initiate_remote_session(
                 const NetworkAddress& remote,
                 std::function<void(session::Session& session, bool timeout)> on_established,
-                std::chrono::milliseconds timeout = 10s);
+                std::optional<std::chrono::milliseconds> timeout = std::nullopt);
 
             // More internal version of initiate_remote_session: this may only be called from inside
             // the router loop, takes no callback, and returns the Session (which may be brand new
             // if one did not already exist to the remote).
             std::shared_ptr<session::Session> remote_session(const NetworkAddress& remote);
 
-            void tick(std::chrono::milliseconds now);
+            void tick(std::chrono::milliseconds now) override;
 
             void queue_session_packet(const NetworkAddress& remote, IPPacket pkt);
-
-          private:
-            void _update_and_publish_localcc();
-
-            void _make_relay_session_path(RemoteRC rc, NetworkAddress remote, std::function<void(bool)> session_init_hook);
-
-            void _make_client_session(
-                std::vector<ClientIntro> remote_intros,
-                NetworkAddress remote,
-                ClientIntro remote_intro,
-                std::shared_ptr<path::Path> path,
-                std::function<void(bool)> session_init_hook);
-
-            void _make_relay_session(
-                RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, std::function<void(bool)> session_init_hook);
         };
 
     }  // namespace handlers

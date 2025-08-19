@@ -6,6 +6,7 @@
 #include <fmt/core.h>
 
 #include <cassert>
+#include <chrono>
 #include <concepts>
 #include <filesystem>
 #include <functional>
@@ -226,10 +227,8 @@ namespace llarp
 
     template <typename T>
     constexpr bool is_chrono_option = false;
-    // Duration options require an integer representation with at least seconds precision:
     template <typename R, typename P>
-    constexpr bool is_chrono_option<std::chrono::duration<R, P>> =
-        std::is_convertible_v<std::chrono::seconds, std::chrono::duration<R, P>>;
+    constexpr bool is_chrono_option<std::chrono::duration<R, P>> = true;
 
     /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
     /// for implementations which can use fmt::format for conversion to string and
@@ -369,7 +368,8 @@ namespace llarp
             else if constexpr (is_chrono_option<T>)
             {
                 using namespace std::literals;
-                std::chrono::seconds unit = 1s;
+                using dseconds = std::chrono::duration<double>;
+                dseconds unit = 1s;
                 std::string_view in{input};
                 if (in.ends_with("h"))
                 {
@@ -381,15 +381,30 @@ namespace llarp
                     unit = 1min;
                     in.remove_suffix(min ? 3 : 1);
                 }
+                else if (in.ends_with("ms"))
+                {
+                    unit = 1ms;
+                    in.remove_suffix(2);
+                }
+                else if (in.ends_with("us"))
+                {
+                    unit = 1us;
+                    in.remove_suffix(2);
+                }
+                else if (in.ends_with("ns"))
+                {
+                    unit = 1ns;
+                    in.remove_suffix(2);
+                }
                 else if (in.ends_with("s"))
                 {
                     in.remove_suffix(1);
                 }
 
                 if (int x; parse_int(in, x))
-                    return x * unit;
+                    return std::chrono::round<T>(x * unit);
 
-                throw std::invalid_argument{"{} is not a valid duration; expected value such as 123s, 5min, 2h"};
+                throw std::invalid_argument{"{} is not a valid duration; expected value such as 10s, 2000ms, 5min, 2h"};
             }
             else
             {
@@ -413,12 +428,20 @@ namespace llarp
             {
                 if constexpr (is_chrono_option<T>)
                 {
-                    if (v >= 1h && v % 1h == 0s)
+                    if (v == 0s)
+                        result.push_back(fmt::format("{}s", 0));
+                    else if (v >= 1h && v % 1h == 0s)
                         result.push_back(fmt::format("{}h", v / 1h));
                     else if (v >= 1min && v % 1min == 0s)
                         result.push_back(fmt::format("{}min", v / 1min));
+                    else if (v >= 1s && v % 1s == 0s)
+                        result.push_back(fmt::format("{}s", v / 1s));
+                    else if (v >= 1ms && v % 1ms == 0s)
+                        result.push_back(fmt::format("{}ms", v / 1s));
+                    else if (v >= 1us && v % 1us == 0s)
+                        result.push_back(fmt::format("{}us", v / 1us));
                     else
-                        result.push_back(fmt::format("{}s", std::chrono::seconds{v}.count()));
+                        result.push_back(fmt::format("{}ns", std::chrono::nanoseconds{v}.count()));
                 }
                 else
                     result.push_back(fmt::format("{}", v));

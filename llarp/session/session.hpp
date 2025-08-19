@@ -91,8 +91,7 @@ namespace llarp
             std::shared_ptr<bool> _destructor_canary{std::make_shared<bool>(true)};
             std::weak_ptr<bool> canary() { return _destructor_canary; }
 
-            Session(
-                Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote);
+            Session(Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote);
 
             Session(
                 Router& r,
@@ -168,7 +167,7 @@ namespace llarp
 
             // Called periodically (somewhere under Router::tick) to handle anything needed on the
             // session.
-            virtual void tick([[maybe_unused]] std::chrono::milliseconds now) {};
+            virtual void tick([[maybe_unused]] std::chrono::milliseconds now) {}
         };
 
         class OutboundSession : public path::PathHandler, public Session
@@ -178,7 +177,8 @@ namespace llarp
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
                 int num_hops,
-                std::function<void(OutboundSession& session)> on_established);
+                std::function<void(OutboundSession& session)> on_established,
+                std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
             void select_new_current_impl(
                 std::vector<std::pair<path::Path*, HopID>>&& good,
@@ -236,7 +236,8 @@ namespace llarp
             OutboundRelaySession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                std::function<void(OutboundSession& session)> on_active);
+                std::function<void(OutboundSession& session)> on_established,
+                std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
             bool send_session_control_message(
                 std::string_view method,
@@ -258,7 +259,8 @@ namespace llarp
             OutboundClientSession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                std::function<void(OutboundSession& session)> on_established);
+                std::function<void(OutboundSession& session)> on_established,
+                std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
           private:
             std::vector<ClientIntro> _intros;

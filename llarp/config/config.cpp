@@ -786,16 +786,7 @@ namespace llarp
                 srv_records.emplace(std::move(*maybe_srv));
             });
 
-        conf.define_option<std::chrono::seconds>(
-            "network",
-            "path-alignment-timeout",
-            ClientOnly,
-            Default{10s},
-            Comment{
-                "How long to wait (in seconds) for a path to align to a pivot router when establishing",
-                "a path through the network to a remote .loki address.",
-            },
-            bounded_assignment_acceptor(path_alignment_timeout, 1s, 1min, "[network]:path-alignment-timeout"));
+        conf.define_option<int>("network", "path-alignment-timeout", Deprecated);
 
         conf.define_option<fs::path>(
             "network",
@@ -1552,6 +1543,17 @@ namespace llarp
                 "This value cannot be larger than acceptable-expiry.",
             },
             bounded_assignment_acceptor(min_expiry, 0s, path::MAX_LIFETIME / 2, "min-expiry"));
+
+        conf.define_option<std::chrono::milliseconds>(
+            "paths",
+            "build-timeout",
+            ClientOnly,
+            Default{10s},
+            Comment{
+                "How long to wait for a session or path to establish before timing out the attempt.",
+                "Value is in seconds, or milliseconds with an ms suffix (e.g. 2500ms).",
+            },
+            bounded_assignment_acceptor(build_timeout, 1ms, 1min, "[paths]:build-timeout"));
 
         conf.add_options_validator([this] {
             if (min_expiry > acceptable_expiry)

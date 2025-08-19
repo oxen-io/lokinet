@@ -857,17 +857,19 @@ namespace llarp::handlers
 
         if (auto it = _sessions.find(remote); it != _sessions.end())
             return it->second;
+
+        return nullptr;
     }
 
     std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(
         const NetworkAddress& remote,
         std::function<void(session::Session& session, bool timeout)> on_established,
-        std::chrono::milliseconds timeout)
+        std::optional<std::chrono::milliseconds> timeout)
     {
         std::function<void(session::Session&)> on_est;
         if (on_established)
             on_est = [cb = std::move(on_established)](session::Session& s) { cb(s, !s.is_established()); };
-        return router.loop.call_get([this, &remote, &on_est] {
+        return router.loop.call_get([this, &remote, &on_est, &timeout] {
             auto& s = _sessions[remote];
             if (s && !s->is_closed())
             {
@@ -880,18 +882,15 @@ namespace llarp::handlers
                         assert(s->is_outbound);  // Inbound sessions are always established
                         // We have an already-in-progress but not-yet-established session, so just
                         // hook the callback up to it to be fired when it finishes establishing:
-                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_est));
+                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_est), timeout);
                     }
                 }
-                return s;
             }
-
-            std::shared_ptr<session::Session> sesh;
-            if (remote.client())
-                sesh = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_est));
+            else if (remote.client())
+                s = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_est), timeout);
             else
-                sesh = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_est));
-            s = std::move(sesh);
+                s = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_est), timeout);
+
             return s;
         });
     }

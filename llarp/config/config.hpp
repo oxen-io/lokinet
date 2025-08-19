@@ -118,6 +118,8 @@ namespace llarp
         std::chrono::seconds min_expiry = 1min;
         std::chrono::seconds acceptable_expiry = 5min;
 
+        std::chrono::milliseconds build_timeout{10s};
+
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
@@ -173,8 +175,6 @@ namespace llarp
         std::vector<fs::path> auth_files;
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
-
-        std::chrono::milliseconds path_alignment_timeout{10s};
 
         /* TESTNET: Under modification */
 

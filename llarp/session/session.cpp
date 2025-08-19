@@ -639,12 +639,13 @@ namespace llarp::session
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
         int num_hops,
-        std::function<void(OutboundSession& session)> active_cb)
+        std::function<void(OutboundSession& session)> on_est,
+        std::optional<std::chrono::milliseconds> est_timeout)
         : PathHandler{parent.router, parent.router.config().paths.outbound_paths, num_hops},
           Session{router, parent, remote}
     {
-        if (active_cb)
-            on_established(std::move(active_cb));
+        if (on_est)
+            on_established(std::move(on_est), est_timeout);
         // TODO: kick off path builds immediately
     }
 
@@ -669,7 +670,7 @@ namespace llarp::session
         std::function<void(OutboundSession&)> callback, std::optional<std::chrono::milliseconds> timeout)
     {
         _on_established.emplace(
-            llarp::time_now_ms() + timeout.value_or(_r.config().network.path_alignment_timeout), std::move(callback));
+            llarp::time_now_ms() + timeout.value_or(_r.config().paths.build_timeout), std::move(callback));
     }
 
     void OutboundSession::tick(std::chrono::milliseconds now)
@@ -681,8 +682,9 @@ namespace llarp::session
     OutboundRelaySession::OutboundRelaySession(
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
-        std::function<void(OutboundSession& session)> on_est)
-        : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), std::move(on_est)}
+        std::function<void(OutboundSession& session)> on_est,
+        std::optional<std::chrono::milliseconds> on_est_timeout)
+        : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), std::move(on_est), on_est_timeout}
     {}
 
     bool OutboundRelaySession::send_session_control_message(
@@ -768,8 +770,9 @@ namespace llarp::session
     OutboundClientSession::OutboundClientSession(
         const NetworkAddress& remote,
         handlers::SessionEndpoint& parent,
-        std::function<void(OutboundSession& session)> on_established)
-        : OutboundSession{remote, parent, parent.router.config().paths.client_hops, std::move(on_established)}
+        std::function<void(OutboundSession& session)> on_est,
+        std::optional<std::chrono::milliseconds> timeout)
+        : OutboundSession{remote, parent, parent.router.config().paths.client_hops, std::move(on_est), timeout}
     {
         assert(!is_relay_session);
 
