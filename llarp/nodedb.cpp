@@ -266,7 +266,7 @@ namespace llarp
         for (auto& path : _router.session_endpoint().active_paths())
         {
             if (try_count >= RID_SOURCE_COUNT)
-                return;
+                break;
             auto [itr, inserted] = results->emplace(path.terminal_rid(), std::set<RouterID>{});
             if (inserted)
             {
