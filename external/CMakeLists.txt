@@ -62,7 +62,7 @@ system_or_submodule(OXENLOGGING oxen-logging oxen::logging liboxen-logging>=1.2.
 if(LOKINET_FULL)
     system_or_submodule(OXENMQ oxenmq oxenmq::oxenmq liboxenmq>=1.2.22 oxen-mq)
 endif()
-
+system_or_submodule(FMT fmt fmt::fmt fmt>=10 oxen-libquic/external/oxen-logging/fmt)
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
