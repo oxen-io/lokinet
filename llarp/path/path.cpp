@@ -26,13 +26,15 @@ namespace llarp::path
 
         for (size_t i = 0; i < hop_rcs.size(); ++i)
         {
+            const bool last = i + 1 == hop_rcs.size();
             auto& hop = hops[i];
             hop.router_id = hop_rcs[i].router_id();
-            hop.txid = HopID::make_random();
             // First hop RXID is unique, the rest are the previous hop TXID
             hop.rxid = i == 0 ? HopID::make_random() : hops[i - 1].txid;
+            // Pivot hop TXID is not useful, and so is simply set equal to the pivot RXID.
+            hop.txid = last ? hop.rxid : HopID::make_random();
             // Last hop upstream is it's own RID, the rest are the next hop RID
-            hop.upstream = i == hop_rcs.size() - 1 ? hop.router_id : hop_rcs[i + 1].router_id();
+            hop.upstream = last ? hop.router_id : hop_rcs[i + 1].router_id();
             // First hop downstream is client's RID, the rest are the previous hop RID
             hop.downstream = i == 0 ? _router.local_rid() : hops[i - 1].router_id;
 

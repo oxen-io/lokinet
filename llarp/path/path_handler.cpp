@@ -432,7 +432,7 @@ namespace llarp::path
             return nullptr;
         }
 
-        log::debug(logcat, "Building -> {}", path->to_string());
+        log::debug(logcat, "Building -> {}", *path);
 
         return path;
     }
