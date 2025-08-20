@@ -330,7 +330,7 @@ namespace llarp
             // calculate icmp checksum
             *checksum = utils::ip_checksum(icmp_begin, std::distance(icmp_begin, itr));
 
-            log::debug(logcat, "ICMP unreachable pkt configured");
+            log::debug(logcat, "Constructed ICMP unreachable packet");
             return pkt;
         }
 
