@@ -1411,8 +1411,9 @@ namespace llarp
                 hop->shared_secret,
                 dh_nonce ^ hop->xor_nonce);
 
+            const auto& upstream = hop->upstream;
             send_control_message(
-                hop->upstream,
+                upstream,
                 "path_build",
                 std::move(frames),
                 [this, transit_hop = std::move(hop), prev_message = std::move(m)](quic::message m) mutable {
