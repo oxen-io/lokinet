@@ -199,12 +199,25 @@ namespace llarp::path
         auto* out = std::ranges::sample(
             current_remotes | std::views::filter([this, &pred](const RouterID& rid) {
                 if (pred && !pred(rid))
+                {
+                    log::trace(
+                        logcat,
+                        "Not considering {} for first hop selection because it failed the given predicate",
+                        rid);
                     return false;
+                }
                 if (router.pathbuild_limiter().Limited(rid))
+                {
+                    log::trace(logcat, "Not considering {} for first hop because of path build limiter", rid);
                     return false;
+                }
                 // always returns false on testnet builds
                 if (router.router_profiling().is_bad_for_path(rid))
+                {
+                    log::trace(logcat, "Not considering {} for first hop because of router profiling", rid);
                     return false;
+                }
+                log::trace(logcat, "Router {} is an acceptable first hop", rid);
                 return true;
             }),
             &edge,
@@ -212,9 +225,17 @@ namespace llarp::path
             csrng);
 
         if (out != (&edge + 1))
+        {
+            log::debug(logcat, "Failed to select first hop: no acceptable candidates found");
             return std::nullopt;
+        }
         if (auto* rc = router.node_db().get_rc(edge))
+        {
+            log::debug(logcat, "Selected {} as edge router", edge);
             return *rc;
+        }
+
+        log::debug(logcat, "Selected {} as edge router, but no RC found for that relay", edge);
         return std::nullopt;
     }
 
@@ -300,6 +321,7 @@ namespace llarp::path
 
         // First hop selection has its own distinct criteria:
         auto maybe_first = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); });
+
         // If that failed, retry first hop selection *without* the IP range exclusion being applied:
         // this is so that if the pivot happens to be in the same range as all your current (or
         // allowed) edges, you can still connect to it.
