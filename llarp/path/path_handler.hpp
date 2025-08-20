@@ -185,9 +185,9 @@ namespace llarp
 
             void ping_paths(std::chrono::milliseconds now);
 
-            bool build_path_aligned_to_remote(const RouterID& remote);
+            bool build_path_to_remote(const RouterID& remote);
 
-            std::optional<std::vector<RemoteRC>> aligned_hops_to_remote(const RouterID& pivot);
+            std::optional<std::vector<RemoteRC>> select_hops_to_remote(const RouterID& pivot);
 
             /// Attempts to build the given path and send it to the network, initiating the path
             /// build.  When the build is done it calls either path_build_succeeded or

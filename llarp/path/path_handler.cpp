@@ -261,7 +261,7 @@ namespace llarp::path
 
     bool PathHandler::is_stopped() const { return !_running.load(); }
 
-    std::optional<std::vector<RemoteRC>> PathHandler::aligned_hops_to_remote(const RouterID& pivot)
+    std::optional<std::vector<RemoteRC>> PathHandler::select_hops_to_remote(const RouterID& pivot)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         assert(_num_hops);
@@ -273,7 +273,7 @@ namespace llarp::path
         auto* pivot_rc = router.node_db().get_rc(pivot);
         if (!pivot_rc)
         {
-            log::warning(logcat, "Failed to select aligned hops: no RC found for requested pivot {}", pivot);
+            log::warning(logcat, "Failed to select path hops: no RC found for requested pivot {}", pivot);
             return std::nullopt;
         }
 
@@ -314,7 +314,7 @@ namespace llarp::path
         }
         else
         {
-            log::warning(logcat, "No first hop candidate for aligned hops!");
+            log::warning(logcat, "No suitable first hop candidate for path to {}", pivot);
             return std::nullopt;
         }
 
@@ -368,11 +368,11 @@ namespace llarp::path
         return hops;
     }
 
-    bool PathHandler::build_path_aligned_to_remote(const RouterID& remote)
+    bool PathHandler::build_path_to_remote(const RouterID& remote)
     {
         Lock_t l(paths_mutex);
 
-        if (auto maybe_hops = aligned_hops_to_remote(remote))
+        if (auto maybe_hops = select_hops_to_remote(remote))
         {
             build(*maybe_hops);
             return true;

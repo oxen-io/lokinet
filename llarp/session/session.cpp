@@ -816,7 +816,7 @@ namespace llarp::session
             _target_paths);
 
         int count = 0;
-        while (count < needed && build_path_aligned_to_remote(_remote.router_id()))
+        while (count < needed && build_path_to_remote(_remote.router_id()))
             count++;
 
         if (count == needed)
@@ -941,7 +941,7 @@ namespace llarp::session
         while (count < needed)
         {
             auto p = select_pivot();
-            if (p && build_path_aligned_to_remote(*p))
+            if (p && build_path_to_remote(*p))
                 count++;
             else
                 break;

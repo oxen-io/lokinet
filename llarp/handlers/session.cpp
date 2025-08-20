@@ -267,7 +267,7 @@ namespace llarp::handlers
             for (const llarp::RemoteRC& rc : new_pivots)
             {
                 log::debug(logcat, "Selected new inbound path terminus {}", rc.router_id().short_string());
-                auto hops = aligned_hops_to_remote(rc.router_id());
+                auto hops = select_hops_to_remote(rc.router_id());
                 if (!hops)
                     continue;  // No need to warn: the call above should already if it fails
 
