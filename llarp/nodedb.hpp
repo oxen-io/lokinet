@@ -185,7 +185,7 @@ namespace llarp
 
         void bootstrap_init();
 
-        size_t num_bootstraps() const { return _bootstraps.size(); }
+        int num_bootstraps() const { return static_cast<int>(_bootstraps.size()); }
 
         bool has_bootstraps() const { return _bootstraps.empty(); }
 
@@ -203,9 +203,9 @@ namespace llarp
         void cleanup();
 
         /// the number of known RC's currently held
-        size_t num_rcs() const;
+        int num_rcs() const;
 
-        size_t num_rids() const;
+        int num_rids() const;
 
         /// do periodic tasks like flush to disk and expiration
         bool tick(std::chrono::milliseconds now);

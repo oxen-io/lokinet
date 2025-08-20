@@ -17,6 +17,7 @@
 #include <llarp/util/bspan.hpp>
 
 #include <cstddef>
+#include <ranges>
 
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/rpc/rpc_client.hpp>
@@ -174,21 +175,17 @@ namespace llarp
             });
         }
 
-        size_t Endpoint::num_client_conns() const
+        int Endpoint::num_client_conns() const
         {
-            return router.loop.call_get([this]() { return client_conns.size(); });
+            return router.loop.call_get([this] { return static_cast<int>(client_conns.size()); });
         }
 
-        size_t Endpoint::num_router_conns(bool active_only) const
+        int Endpoint::num_router_conns(bool active_only) const
         {
-            return router.loop.call_get([&]() {
-                size_t n{};
-
-                for (const auto& [_, conn] : service_conns)
-                    if (conn and (active_only ? conn->is_active.load() : true))
-                        ++n;
-
-                return n;
+            return router.loop.call_get([&] {
+                return static_cast<int>(std::ranges::count_if(
+                    std::views::values(service_conns),
+                    [&active_only](const auto& conn) { return conn and (not active_only or conn->is_active.load()); }));
             });
         }
 
@@ -261,9 +258,9 @@ namespace llarp
 
     std::tuple<size_t, size_t, size_t, size_t> LinkManager::connection_stats() const { return ep->connection_stats(); }
 
-    size_t LinkManager::get_num_connected_routers(bool active_only) const { return ep->num_router_conns(active_only); }
+    int LinkManager::get_num_connected_routers(bool active_only) const { return ep->num_router_conns(active_only); }
 
-    size_t LinkManager::get_num_connected_clients() const { return ep->num_client_conns(); }
+    int LinkManager::get_num_connected_clients() const { return ep->num_client_conns(); }
 
     std::unordered_set<RouterID> LinkManager::get_current_remotes() const
     {

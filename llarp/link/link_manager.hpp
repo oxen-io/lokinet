@@ -71,9 +71,9 @@ namespace llarp
 
             std::tuple<size_t, size_t, size_t, size_t> connection_stats() const;
 
-            size_t num_client_conns() const;
+            int num_client_conns() const;
 
-            size_t num_router_conns(bool active_only = true) const;
+            int num_router_conns(bool active_only = true) const;
 
             bool establish_connection(
                 quic::RemoteAddress remote,
@@ -176,9 +176,9 @@ namespace llarp
 
         std::tuple<size_t, size_t, size_t, size_t> connection_stats() const;
 
-        size_t get_num_connected_routers(bool active_only = true) const;
+        int get_num_connected_routers(bool active_only = true) const;
 
-        size_t get_num_connected_clients() const;
+        int get_num_connected_clients() const;
 
         nlohmann::json extract_status() const;
 

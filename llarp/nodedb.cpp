@@ -809,9 +809,9 @@ namespace llarp
         return put_rc(rc);
     }
 
-    size_t NodeDB::num_rcs() const { return known_rcs.size(); }
+    int NodeDB::num_rcs() const { return static_cast<int>(known_rcs.size()); }
 
-    size_t NodeDB::num_rids() const { return known_rids.size(); }
+    int NodeDB::num_rids() const { return static_cast<int>(known_rids.size()); }
 
     void NodeDB::remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove)
     {

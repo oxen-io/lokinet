@@ -695,12 +695,12 @@ namespace llarp
 
     bool Router::can_test_routers() const { return appears_funded() and not _testing_disabled; }
 
-    size_t Router::num_router_connections(bool active_only) const
+    int Router::num_router_connections(bool active_only) const
     {
         return _link_manager->get_num_connected_routers(active_only);
     }
 
-    size_t Router::num_client_connections() const { return _link_manager->get_num_connected_clients(); }
+    int Router::num_client_connections() const { return _link_manager->get_num_connected_clients(); }
 
     void Router::update_rc()
     {
