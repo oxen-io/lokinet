@@ -1490,7 +1490,7 @@ namespace llarp
 
         if (not hop)
         {
-            log::warning(logcat, "Received path control with unknown next hop (ID: {})", hop_id);
+            log::warning(logcat, "Received path control for unknown path (hop ID: {})", hop_id);
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }

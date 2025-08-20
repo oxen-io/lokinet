@@ -70,22 +70,57 @@ namespace llarp::path
                 return;
             std::chrono::milliseconds now = llarp::time_now_ms();
             auto time_taken = now - start_time;
-            if (m && m.body() == messages::OK_RESPONSE)
+            if (m)
             {
-                log::trace(
-                    logcat, "Ping response for path TXID={} response received in {}", self->edge().txid, time_taken);
+                if (m.body() == messages::OK_RESPONSE)
+                    log::debug(
+                        logcat,
+                        "Ping response for path {} (txid={}) response received in {}",
+                        *self,
+                        self->edge().txid,
+                        time_taken);
+                else
+                    log::warning(
+                        logcat,
+                        "Path {} ping was successful (in {}) but had unexpected response body: {}",
+                        *self,
+                        time_taken,
+                        buffer_printer(m.body()));
+
                 self->recent_ping_failures = 0;
                 self->ping_average = std::chrono::milliseconds{
                     ((self->ping_average * self->ping_count) + time_taken) / ++self->ping_count};
             }
             else
             {
-                log::debug(logcat, "Ping response for path TXID={} timed out in {}", self->edge().txid, time_taken);
-                if (++self->recent_ping_failures > 5)
+                bool expire = true;
+                if (m.timed_out)
                 {
-                    log::debug(logcat, "Path TXID={} had too many ping timeouts, expiring.", self->edge().txid);
-                    self->intro.expiry = start_time;
+                    log::debug(
+                        logcat,
+                        "Ping response for path {} (txid={}) timed out after {}",
+                        *self,
+                        self->edge().txid,
+                        time_taken);
+                    expire = ++self->recent_ping_failures > 5;
+                    if (expire)
+                        log::warning(
+                            logcat,
+                            "Path {} (txid={}) had too many ping timeouts ({}); expiring path.",
+                            *self,
+                            self->edge().txid,
+                            self->recent_ping_failures);
                 }
+                else
+                    log::warning(
+                        logcat,
+                        "{} path_ping returned a path error (in {}): {}",
+                        *self,
+                        time_taken,
+                        buffer_printer(m.body()));
+
+                if (expire)
+                    self->intro.expiry = start_time;
             }
         });
     }
