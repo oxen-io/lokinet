@@ -88,10 +88,7 @@ namespace llarp::handlers
 
         if (auto s = get_session<session::InboundClientSession>(t))
         {
-            log::debug(
-                logcat,
-                "Successfully matched path-switch request to InboundSession over path:{}",
-                new_path->to_string());
+            log::debug(logcat, "Successfully matched path-switch request to InboundSession over path:{}", *new_path);
 
             s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_path));
             return true;
@@ -113,10 +110,7 @@ namespace llarp::handlers
             // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
             if (auto* path = get_path_by_terminus(local_pivot_txid))
             {
-                log::debug(
-                    logcat,
-                    "Successfully matched path-switch request to InboundSession over path:{}",
-                    path->to_string());
+                log::debug(logcat, "Successfully matched path-switch request to InboundSession over path:{}", *path);
                 s->recv_path_switch(remote_pivot_txid, path->shared_from_this());
                 return true;
             }
@@ -385,10 +379,7 @@ namespace llarp::handlers
                     if (client_addr)
                     {
                         log::debug(
-                            logcat,
-                            "Successfully decrypted SNS record (name: {}, address: {})",
-                            sns,
-                            client_addr->to_string());
+                            logcat, "Successfully decrypted SNS record (name: {}, address: {})", sns, *client_addr);
                     }
                     else
                         log::warning(logcat, "Failed to decrypt SNS record (name: {})", sns);
