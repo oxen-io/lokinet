@@ -196,35 +196,29 @@ namespace llarp::path
             router.node_db().strict_connect_enabled() ? router.node_db().pinned_edges() : router.get_current_remotes();
 
         RouterID edge;
-        auto* out = std::ranges::sample(
-            current_remotes | std::views::filter([this, &pred](const RouterID& rid) {
-                if (pred && !pred(rid))
-                {
-                    log::trace(
-                        logcat,
-                        "Not considering {} for first hop selection because it failed the given predicate",
-                        rid);
-                    return false;
-                }
-                if (router.pathbuild_limiter().Limited(rid))
-                {
-                    log::trace(logcat, "Not considering {} for first hop because of path build limiter", rid);
-                    return false;
-                }
-                // always returns false on testnet builds
-                if (router.router_profiling().is_bad_for_path(rid))
-                {
-                    log::trace(logcat, "Not considering {} for first hop because of router profiling", rid);
-                    return false;
-                }
+        int acceptable = 0;
+        for (auto& rid : current_remotes)
+        {
+            if (pred && !pred(rid))
+                log::trace(
+                    logcat, "Not considering {} for first hop selection because it failed the given predicate", rid);
+            else if (router.pathbuild_limiter().Limited(rid))
+                log::trace(logcat, "Not considering {} for first hop because of path build limiter", rid);
+            else if (router.router_profiling().is_bad_for_path(rid))  // always returns false on testnet
+                log::trace(logcat, "Not considering {} for first hop because of router profiling", rid);
+            else
+            {
                 log::trace(logcat, "Router {} is an acceptable first hop", rid);
-                return true;
-            }),
-            &edge,
-            1,
-            csrng);
 
-        if (out != (&edge + 1))
+                // DIY reservoir sample because doing this with a filter and a view calls the filter
+                // code multiple times, which we don't want.
+                if (acceptable == 0 || std::uniform_int_distribution<int>{0, acceptable - 1}(llarp::csrng) == 0)
+                    edge = rid;
+                acceptable++;
+            }
+        }
+
+        if (acceptable == 0)
         {
             log::debug(logcat, "Failed to select first hop: no acceptable candidates found");
             return std::nullopt;
