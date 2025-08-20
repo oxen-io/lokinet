@@ -1452,19 +1452,29 @@ namespace llarp
         std::vector<std::byte> payload;
         SymmNonce nonce;
 
-        auto body = inner_body ? *inner_body : m.body();
+        auto body = inner_body ? as_bspan(*inner_body) : m.body<std::byte>();
 
-        try
+        if (body.size() <= path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD)
         {
-            std::tie(hop_id, nonce, payload) = ONION::deserialize_stream_hop(oxenc::bt_dict_consumer{body});
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            log::trace(logcat, "Payload: {}", buffer_printer{body});
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }
+
+        payload.assign(body.begin(), body.end());
+        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
+
+        if (msgtype[0] != std::byte{0x01})
+        {
+            log::warning(
+                logcat, "Invalid/unknown path_control encrypted message type {}", static_cast<int>(msgtype[0]));
+            log::trace(logcat, "Failed path_control payload: {}", buffer_printer{body});
+            m.respond(messages::ERROR_RESPONSE, true);
+            return;
+        }
+
+        nonce.assign(bnonce);
+        hop_id.assign(bhop);
 
         if (not router.is_service_node)
         {
@@ -1477,12 +1487,12 @@ namespace llarp
                 return;
             }
 
-            log::trace(logcat, "Received path control for local client: {}", buffer_printer{payload});
+            log::trace(logcat, "Received path control for local client: {}", buffer_printer{inner_payload});
 
             for (auto& hop : path->hops)
-                crypto::xchacha20(payload, hop.shared_secret, nonce);
+                crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
 
-            handle_path_request(std::move(m), payload);
+            handle_path_request(std::move(m), inner_payload);
             return;
         }
 
@@ -1496,40 +1506,46 @@ namespace llarp
         }
 
         nonce ^= hop->xor_nonce;
-        crypto::xchacha20(payload, hop->shared_secret, nonce);
+        crypto::xchacha20(inner_payload, hop->shared_secret, nonce);
 
         if (not inner_body)
         {
             // if terminal hop, payload should contain a request (e.g. "sns_resolve"); handle and respond.
             if (hop->terminal_hop)
             {
-                log::debug(logcat, "We are terminal hop for path request: {}", hop->to_string());
-                return handle_path_request(std::move(m), payload);
+                log::debug(logcat, "We are terminal hop for path request: {}", *hop);
+                handle_path_request(std::move(m), inner_payload);
+                return;
             }
 
-            log::debug(logcat, "We are intermediate hop for path request: {}", hop->to_string());
+            log::debug(logcat, "We are intermediate hop for path request: {}", *hop);
         }
         else
         {
-            log::info(
-                logcat, "We are bridge node for aligned path request ({})! Forwarding downstream", hop->to_string());
+            log::debug(logcat, "We are bridge node for aligned path request ({})! Forwarding downstream", *hop);
             log::trace(logcat, "Payload: {}", buffer_printer{*inner_body});
         }
 
-        auto next_ids = hop->next_id(hop_id);
+        auto next = hop->next_id(hop_id);
 
-        if (not next_ids)
+        if (not next)
         {
-            log::error(logcat, "Failed to query hop ({}) for next ids (input: {})", hop->to_string(), hop_id);
+            log::warning(logcat, "Failed to query hop ({}) for next ids (input: {})", *hop, hop_id);
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        auto new_payload = ONION::serialize_stream_hop(next_ids->second, nonce, payload);
+        const auto& [next_rid, next_hopid] = *next;
+
+        // We're relaying this message down a path, and we've already done our decryption to the
+        // inner_payload so now we just need to replace the nonce and next hop ID in the outer
+        // payload before passing it along:
+        nonce.copy_to(bnonce);
+        next_hopid.copy_to(bhop);
 
         send_control_message(
-            next_ids->first,
+            next_rid,
             "path_control",
-            std::move(new_payload),
+            std::move(payload),
             [hop_weak = std::weak_ptr{hop}, hop_id, prev_message = std::move(m)](quic::message response) mutable {
                 auto hop = hop_weak.lock();
                 if (not hop)
@@ -1573,7 +1589,7 @@ namespace llarp
 
     // FIXME: overhead for session MAC?
     static constexpr size_t MIN_PATH_DATA_MESSAGE_SIZE = 0 /*payload*/ + 1 /*packet type*/ + sizeof(HopID) /*pivot*/
-        + path::Path::PATH_DATA_MESSAGE_OVERHEAD /*nonce, hop, type*/;
+        + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD /*nonce, hop, type*/;
 
     // Removes the message type byte, HopID, and SymmNonce from the end of a path message, returning
     // the hopid and nonce.  The vector is resized to drop the loaded values (and thus will contain
@@ -1591,7 +1607,7 @@ namespace llarp
 
         // Deliberately break compilation if data message overhead changes in path without getting
         // updated here as well:
-        static_assert(path::Path::PATH_DATA_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
 
         // For the detailed structure of this encoding, see description in session/session.cpp
         std::byte msgtype = message.back();
@@ -1725,13 +1741,13 @@ namespace llarp
             // relay->client path, so drop it off the back of the message, leaving the session-encrypted-payload +
             // session tag in place.  However, we *also* need to bebuild this into a path message suitable for sending
             // down the back path, so we also need to add the path encryption bits:
-            message.resize(message.size() - HopID::SIZE + path::Path::PATH_DATA_MESSAGE_OVERHEAD);
+            message.resize(message.size() - HopID::SIZE + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
 
             // This is essentially a single-iteration version of Path::encrypt_path_data_message,
             // except that because this is going "backwards" (from the perspective of a client), the
             // xor happens *before* the xchacha.
 
-            static_assert(path::Path::PATH_DATA_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+            static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
             auto [session_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(message);
 
             nonce ^= trans_hop->xor_nonce;
@@ -1761,8 +1777,8 @@ namespace llarp
         // the new ones back on to make it suitable for the next hop.  (We're just resizing a vector
         // down and back up, so there's no reallocation or copying happening by the resizing and
         // little point in trying to avoid it).
-        static_assert(path::Path::PATH_DATA_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
-        message.resize(message.size() + path::Path::PATH_DATA_MESSAGE_OVERHEAD);
+        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+        message.resize(message.size() + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
         auto [enc_data, bnonce, bhop, bmsgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(message);
         nonce.copy_to(bnonce);
         next_hopid.copy_to(bhop);
@@ -1872,13 +1888,13 @@ namespace llarp
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            // TODO: The existence of SessionHop seems pointless: we could just give the TransitHop to
-            // InboundRelaySession and let it take care of the very few things that SessionHop does
-            // (because IRS is the only thing that uses SessionHop at all!)
+            // TODO: The existence of InboundRelayPath seems pointless: we could just give the TransitHop to
+            // InboundRelaySession and let it take care of the very few things that InboundRelayPath does
+            // (because IRS is the only thing that uses InboundRelayPath at all!)
             tag = router.session_endpoint().create_inbound_session(
                 params.remote,
                 params.remote_pivot_txid,
-                std::make_shared<path::SessionHop>(*hop, router.session_endpoint()),
+                std::make_shared<path::InboundRelayPath>(*hop, router.session_endpoint()),
                 std::move(params.session_key));
         }
         else
@@ -1962,7 +1978,7 @@ namespace llarp
             if (router.session_endpoint().recv_path_switch(
                     tag,
                     std::move(remote_pivot_txid),
-                    std::make_shared<path::SessionHop>(*hop, router.session_endpoint())))
+                    std::make_shared<path::InboundRelayPath>(*hop, router.session_endpoint())))
                 return m.respond(messages::OK_RESPONSE);
         }
 

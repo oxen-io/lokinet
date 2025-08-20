@@ -34,9 +34,15 @@ namespace llarp
     struct session_path_interface
     {
         virtual void send_path_control_message(
-            std::string_view method, std::span<const std::byte> payload, std::function<void(quic::message)> func) = 0;
+            std::string_view method,
+            std::span<const std::byte> payload,
+            std::function<void(quic::message)> func,
+            std::byte type = std::byte{0x01}) = 0;
+
         virtual void send_path_data_message(
-            std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random()) = 0;
+            std::vector<std::byte>&& body,
+            SymmNonce&& nonce = SymmNonce::make_random(),
+            std::byte type = std::byte{0x01}) = 0;
 
         virtual RouterID terminal_rid() const = 0;
         virtual HopID terminal_hopid() const = 0;

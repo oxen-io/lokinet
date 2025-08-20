@@ -152,16 +152,17 @@ namespace llarp::path
         send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
 
-    void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce)
+    void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type)
     {
         auto& hopid = edge().rxid;
-        data.resize(data.size() + PATH_DATA_MESSAGE_OVERHEAD);
+        auto inner_size = data.size();
+        data.resize(inner_size + ENCRYPT_PATH_MESSAGE_OVERHEAD);
 
         static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
         static_assert(sizeof(HopID) == HopID::SIZE);
 
         auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(data);
-        assert(msgtype.size() == 1);
+        assert(inner_payload.size() == inner_size);
 
         for (const auto& hop : std::ranges::reverse_view(hops))
         {
@@ -171,24 +172,27 @@ namespace llarp::path
 
         nonce.copy_to(bnonce);
         hopid.copy_to(bhop);
-        msgtype[0] = std::byte{0x01};
+        msgtype[0] = type;
     }
 
-    void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce, std::byte type)
     {
-        encrypt_path_message(data, std::move(nonce));
+        encrypt_path_message(data, std::move(nonce), type);
         _router.send_data_message(edge().router_id, std::move(data));
     }
 
     void Path::send_path_control_message(
-        std::string_view endpoint, std::span<const std::byte> body, std::function<void(quic::message)> func)
+        std::string_view endpoint,
+        std::span<const std::byte> body,
+        std::function<void(quic::message)> func,
+        std::byte type)
     {
         auto inner_payload = PATH::CONTROL::serialize(endpoint, body);
         std::vector<std::byte> payload;
-        payload.reserve(inner_payload.size() + PATH_DATA_MESSAGE_OVERHEAD);
+        payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD);
         payload.resize(inner_payload.size());
         std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
-        encrypt_path_message(payload);
+        encrypt_path_message(payload, SymmNonce::make_random(), type);
         _router.send_control_message(edge().router_id, "path_control", std::move(payload), std::move(func));
     }
 

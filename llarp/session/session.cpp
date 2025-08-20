@@ -308,10 +308,7 @@ namespace llarp::session
             return false;
         }
 
-        auto inner_payload = PATH::CONTROL::serialize(method, body);
-        auto intermediate_payload = PATH::CONTROL::serialize_aligned(inner_payload, _remote_pivot_txid);
-
-        path->send_path_control_message("path_control", intermediate_payload, std::move(func));
+        log::critical(logcat, "FIXME: session control messages unimplemented (WIP)");
         return true;
     }
 
@@ -451,7 +448,7 @@ namespace llarp::session
 
         std::vector<std::byte> everything;
         auto target_size = data.size() + 1 + _tag.size() + (relay_session_return ? _remote_pivot_txid.size() : 0);
-        everything.reserve(target_size + path::Path::PATH_DATA_MESSAGE_OVERHEAD);
+        everything.reserve(target_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
         everything.resize(target_size);
         auto [ciphertext, tag, pivot] = split_span(everything, data.size() + 1, _tag.size());
         assert(pivot.size() == (relay_session_return ? _remote_pivot_txid.size() : 0));

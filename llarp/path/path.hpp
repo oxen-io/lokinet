@@ -87,12 +87,20 @@ namespace llarp
             void send_path_control_message(
                 std::string_view method,
                 std::span<const std::byte> body,
-                std::function<void(quic::message)> func) override;
+                std::function<void(quic::message)> func,
+                std::byte type = std::byte{0x01}) override;
 
             void send_path_data_message(
-                std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random()) override;
+                std::vector<std::byte>&& body,
+                SymmNonce&& nonce = SymmNonce::make_random(),
+                std::byte type = std::byte{0x01}) override;
 
-            inline static constexpr size_t PATH_DATA_MESSAGE_OVERHEAD = SymmNonce::SIZE + HopID::SIZE + 1;
+            // The overhead added to encrypted path messages (either data messages or path control
+            // messages) by the `encrypt_path_message` function.  This is the amount that the
+            // `payload` needs to be extended to add encryption metadata, and so callers can use
+            // this value to reserve the vector to be able to store the overhead without additional
+            // allocations.
+            inline static constexpr size_t ENCRYPT_PATH_MESSAGE_OVERHEAD = SymmNonce::SIZE + HopID::SIZE + 1;
 
             // Takes a payload and encrypts and extends it in-place to make it suitable for sending
             // down either the datagram channel (carrying traffic) or stream (carrying network
@@ -102,11 +110,18 @@ namespace llarp
             // The given vector will be extended as part of this operation (to add nonce, hop,
             // packet type info).  To avoid a need for memory reallocation and copy, the caller
             // should optimally reserve enough space in the payload vector to ensure it has at least
-            // PATH_DATA_MESSAGE_OVERHEAD additional bytes.
+            // ENCRYPT_PATH_MESSAGE_OVERHEAD additional bytes.
             //
             // nonce will be used if given, otherwise a random nonce is generated and used.  (It is
             // typically given when this is a session data message; see session.cpp).
-            void encrypt_path_message(std::vector<std::byte>& payload, SymmNonce&& nonce = SymmNonce::make_random());
+            //
+            // `type` must be a single byte, currently always equal to 0x01.  All other values are
+            // reserved for future versions of the protocol that may need to change the fundamental
+            // structure of encrypted data.
+            void encrypt_path_message(
+                std::vector<std::byte>& payload,
+                SymmNonce&& nonce = SymmNonce::make_random(),
+                std::byte type = std::byte{0x01});
 
             bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const
             {

@@ -96,26 +96,35 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
-        // SessionHop is a path-like object, used only by InboundRelaySession, containing the
+        // InboundRelayPath is a path-like object, used only by InboundRelaySession, containing the
         // locally visibility end of a path through the router (i.e. it just sees one hop in each
         // direction along the path, but unlike a client path, does know anything beyond that).
         //
         // TODO FIXME: this class seems unnecessary: this is only used for an InboundRelaySession,
         // and it seems like that class could just absorb this to make life easier everywhere.
-        struct SessionHop final : public TransitHop, public session_path_interface
+        struct InboundRelayPath final : public TransitHop, public session_path_interface
         {
-          protected:
+          private:
             handlers::SessionEndpoint& _parent;
 
+            void encrypt_path_message(
+                std::vector<std::byte>& payload,
+                SymmNonce&& nonce = SymmNonce::make_random(),
+                std::byte type = std::byte{0x01});
+
           public:
-            SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p);
+            InboundRelayPath(const TransitHop& hop, handlers::SessionEndpoint& p);
 
             void send_path_control_message(
                 std::string_view method,
                 std::span<const std::byte> body,
-                std::function<void(quic::message)> func) override;
+                std::function<void(quic::message)> func,
+                std::byte type = std::byte{0x01}) override;
+
             void send_path_data_message(
-                std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random()) override;
+                std::vector<std::byte>&& body,
+                SymmNonce&& nonce = SymmNonce::make_random(),
+                std::byte type = std::byte{0x01}) override;
 
             RouterID terminal_rid() const override { return router_id; }
             HopID terminal_hopid() const override { return txid; }

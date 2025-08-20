@@ -112,36 +112,45 @@ namespace llarp::path
             terminal_hop, txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
     }
 
-    SessionHop::SessionHop(const TransitHop& hop, handlers::SessionEndpoint& p) : TransitHop{hop}, _parent{p} {}
+    InboundRelayPath::InboundRelayPath(const TransitHop& hop, handlers::SessionEndpoint& p)
+        : TransitHop{hop}, _parent{p}
+    {}
 
-    void SessionHop::send_path_control_message(
-        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
+    void InboundRelayPath::encrypt_path_message(std::vector<std::byte>& payload, SymmNonce&& nonce, std::byte type)
     {
-        auto inner_payload = PATH::CONTROL::serialize(method, body);
-        _parent.router.send_control_message(
-            downstream,
-            "path_control",
-            ONION::serialize_stream_hop(rxid, SymmNonce::make_random(), inner_payload),
-            std::move(func));
-    }
-
-    void SessionHop::send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce)
-    {
-        body.resize(body.size() + Path::PATH_DATA_MESSAGE_OVERHEAD);
-        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(body);
-        assert(msgtype.size() == 1);
+        auto orig_size = payload.size();
+        payload.resize(orig_size + Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
+        static_assert(Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
+        assert(inner_payload.size() == orig_size);
 
         nonce ^= xor_nonce;
         crypto::xchacha20(inner_payload, shared_secret, nonce);
         nonce.copy_to(bnonce);
         rxid.copy_to(bhop);
-        msgtype[0] = std::byte{0x01};
+        msgtype[0] = type;
+    }
+
+    void InboundRelayPath::send_path_control_message(
+        std::string_view method,
+        std::span<const std::byte> body,
+        std::function<void(quic::message)> func,
+        std::byte type)
+    {
+        auto payload = PATH::CONTROL::serialize(method, body);
+        encrypt_path_message(payload, SymmNonce::make_random(), type);
+        _parent.router.send_control_message(downstream, "path_control", std::move(payload), std::move(func));
+    }
+
+    void InboundRelayPath::send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce, std::byte type)
+    {
+        encrypt_path_message(body, std::move(nonce), type);
         _parent.router.send_data_message(downstream, std::move(body));
     }
 
-    std::string SessionHop::to_string() const
+    std::string InboundRelayPath::to_string() const
     {
-        return "SessionHop:[TX/RX:{}/{}; Up/Down:{}/{}; Exp:{}]"_format(
+        return "InboundRelayPath:[TX/RX:{}/{}; Up/Down:{}/{}; Exp:{}]"_format(
             txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
     }
 }  // namespace llarp::path
