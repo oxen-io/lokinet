@@ -24,12 +24,6 @@ namespace llarp::path
 {
     static auto logcat = log::Cat("pathhandler");
 
-    bool BuildLimiter::Attempt(const RouterID& router) { return _edge_limiter.Insert(router); }
-
-    void BuildLimiter::Decay(std::chrono::milliseconds now) { _edge_limiter.Decay(now); }
-
-    bool BuildLimiter::Limited(const RouterID& router) const { return _edge_limiter.Contains(router); }
-
     nlohmann::json BuildStats::ExtractStatus() const
     {
         return nlohmann::json{
@@ -166,8 +160,6 @@ namespace llarp::path
 
         Lock_t l{paths_mutex};
 
-        router.pathbuild_limiter().Decay(now);
-
         expire_paths(now);
 
         if (!is_stopped())
@@ -202,8 +194,6 @@ namespace llarp::path
             if (pred && !pred(rid))
                 log::trace(
                     logcat, "Not considering {} for first hop selection because it failed the given predicate", rid);
-            else if (router.pathbuild_limiter().Limited(rid))
-                log::trace(logcat, "Not considering {} for first hop because of path build limiter", rid);
             else if (router.router_profiling().is_bad_for_path(rid))  // always returns false on testnet
                 log::trace(logcat, "Not considering {} for first hop because of router profiling", rid);
             else
@@ -423,13 +413,6 @@ namespace llarp::path
         }
 
         _last_build = llarp::time_now_ms();
-        const auto& edge = hops[0].router_id();
-
-        if (not router.pathbuild_limiter().Attempt(edge))
-        {
-            log::warning(logcat, "Building too quickly to edge router {}", edge);
-            return false;
-        }
 
         return true;
     }

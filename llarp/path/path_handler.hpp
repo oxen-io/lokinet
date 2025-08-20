@@ -27,24 +27,6 @@ namespace llarp
         /// and then increase the delay by this amount again for each additional path build failure.
         inline constexpr auto BACKOFF_INCREMENT = 1s;
 
-        /// limiter for path builds
-        /// prevents overload and such
-        class BuildLimiter
-        {
-            util::DecayingHashSet<RouterID> _edge_limiter;
-
-          public:
-            /// attempt a build
-            /// return true if we are allowed to continue
-            bool Attempt(const RouterID& router);
-
-            /// decay limit entries
-            void Decay(std::chrono::milliseconds now);
-
-            /// return true if this router is currently limited
-            bool Limited(const RouterID& router) const;
-        };
-
         /// Stats about all our path builds
         struct BuildStats
         {

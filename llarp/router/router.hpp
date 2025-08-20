@@ -100,7 +100,6 @@ namespace llarp
         // our router contact
         LocalRC relay_contact;
         std::shared_ptr<oxenmq::OxenMQ> _omq{};
-        path::BuildLimiter _pathbuild_limiter;
 
         std::atomic<bool> _is_stopping{false};
         std::atomic<bool> _is_running{false};
@@ -233,8 +232,6 @@ namespace llarp
         NetID netid() const { return _config.router.net_id; }
 
         bool embedded() const { return _config.embedded(); }
-
-        path::BuildLimiter& pathbuild_limiter() { return _pathbuild_limiter; }
 
         oxenmq::OxenMQ* omq() { return _omq.get(); }
         const oxenmq::OxenMQ* omq() const { return _omq.get(); }

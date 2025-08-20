@@ -830,7 +830,6 @@ namespace llarp
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        _pathbuild_limiter.Decay(now);
         _router_profiling.tick();
 
         if (now > _last_path_ping + 1s)
