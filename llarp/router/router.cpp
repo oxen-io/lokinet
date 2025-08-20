@@ -850,7 +850,8 @@ namespace llarp
 
         // TODO: make "use_pinned_edges" boolean to only connect to pinned edges
         // if we need more sessions to routers we shall connect out to others
-        if (auto n_conns = static_cast<int>(num_router_connections()); n_conns < min_client_outbounds)
+        if (auto n_conns = static_cast<int>(num_router_connections(/*active_only=*/false));
+            n_conns < min_client_outbounds)
         {
             // result could maybe be negative with this subtraction, so we HAVE to check nconns < min in the conditional
             auto num_needed = min_client_outbounds - n_conns;
