@@ -1558,12 +1558,21 @@ namespace llarp
                     return prev_message.respond(messages::ERROR_RESPONSE, true);
                 }
 
+                if (response.timed_out)
+                {
+                    log::warning(logcat, "Path control message response timed out");
+                    // There's no real point in sending a failure response here because the
+                    // originator is using the same timeout and is going to time out right around
+                    // the same time, so any response we might sent isn't going to be useful (and
+                    // would be treated no differently than the originator hitting their own
+                    // timeout).
+                    return;
+                }
+
                 if (response)
-                    log::debug(logcat, "Path control message returned successfully!");
-                else if (response.timed_out)
-                    log::warning(logcat, "Path control message returned as time out!");
+                    log::debug(logcat, "Path control message returned successfully");
                 else
-                    log::warning(logcat, "Path control message returned as error!");
+                    log::warning(logcat, "Path control message returned an error!");
 
                 prev_message.respond(response.body(), response.is_error());
 
