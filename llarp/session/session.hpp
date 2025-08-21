@@ -272,8 +272,10 @@ namespace llarp
             bool _intro_update_processed = false;
 
             // Chooses the next router id to pivot to, based on introset and current paths.  Returns
-            // nullopt if no pivot is available right now.
-            std::optional<RouterID> select_pivot();
+            // nullopt if no pivot is available right now, otherwise the router id and the lifetime
+            // of paths to that pivot (so that we avoid creating paths that will become stale paths
+            // living beyond the expiry of the pivot).
+            std::optional<std::pair<RouterID, std::chrono::seconds>> select_pivot();
 
             void select_new_current();
 

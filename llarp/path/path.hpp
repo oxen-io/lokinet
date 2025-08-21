@@ -39,10 +39,13 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
-        /// A path we made
         struct Path final : public session_path_interface, public std::enable_shared_from_this<Path>
         {
-            Path(Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler);
+            Path(
+                Router& rtr,
+                std::span<const RemoteRC> hop_rcs,
+                PathHandler& handler,
+                std::chrono::milliseconds expiry_ts);
 
             // hops on constructed path
             std::vector<TransitHop> hops;
@@ -52,7 +55,9 @@ namespace llarp
             std::optional<HopID> aligned_hopid;
 
             std::weak_ptr<PathHandler> handler;
-            ClientIntro intro{};
+
+            // Constructs a ClientInfo from this path, i.e. for including in a client contact.
+            ClientIntro make_intro() const;
 
             nlohmann::json ExtractStatus() const;
 
@@ -66,10 +71,10 @@ namespace llarp
 
             std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const
             {
-                return intro.expires_in(now);
+                return expiry - now;
             }
 
-            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return expires_in(now) < 0s; }
+            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return expiry < now; }
 
             void Tick(std::chrono::milliseconds now);
 
@@ -146,10 +151,7 @@ namespace llarp
             // outbound sessions.
             HopID terminal_hopid() const override { return terminus().txid; }
 
-            // Marks a path as established and sets its expiry to now + the given lifetime
-            // (typically left at the default of max lifetime).  Does nothing (including not
-            // resetting expiry) if the path was already established.
-            void set_established(std::chrono::milliseconds lifetime = path::MAX_LIFETIME);
+            void set_established();
 
             // Returns true if a path has been marked established.
             bool is_established() const { return _is_established; }
@@ -176,6 +178,7 @@ namespace llarp
 
             Router& _router;
 
+            std::chrono::milliseconds expiry{0s};
             std::chrono::milliseconds last_recv_msg{0s};
             std::chrono::milliseconds last_latency_test{0s};
             uint64_t last_latency_test_id{};

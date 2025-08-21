@@ -1383,8 +1383,12 @@ namespace llarp
                 return;
             }
 
-            auto [hop, dh_nonce] = path::TransitHop::deserialize(
-                oxenc::bt_dict_consumer{frames_in.first<path::BUILD_FRAME_SIZE>()}, router, from);
+            auto now = llarp::time_now_ms();
+            auto [hop, dh_nonce] =
+                path::PathHandler::decrypt_build_frame(frames_in.first<path::BUILD_FRAME_SIZE>(), router, from, now);
+
+            if (hop->expiry > now + path::MAX_LIFETIME || hop->expiry <= now)
+                throw path::TransitHopError::INVALID_LIFETIME();
 
             if (router.path_context.has_transit_hop(hop->rxid) || router.path_context.has_transit_hop(hop->txid))
                 throw path::TransitHopError::HOP_ID_UNAVAILABLE();
@@ -1416,22 +1420,22 @@ namespace llarp
                 upstream,
                 "path_build",
                 std::move(frames),
-                [this, transit_hop = std::move(hop), prev_message = std::move(m)](quic::message m) mutable {
+                [this, hop = std::move(hop), prev_message = std::move(m)](quic::message m) mutable {
                     if (m)
                     {
                         log::info(
                             logcat,
                             "Upstream returned successful path build response; locally storing Hop ({}) and "
                             "relaying",
-                            *transit_hop);
-                        router.path_context.put_transit_hop(std::move(transit_hop));
+                            *hop);
+                        router.path_context.put_transit_hop(std::move(hop));
                         return prev_message.respond(messages::OK_RESPONSE, false);
                     }
 
                     log::info(
                         logcat,
                         "Upstream ({}) returned path build {}; relaying...",
-                        transit_hop->upstream,
+                        hop->upstream,
                         m.timed_out ? "time out" : "failure");
 
                     return prev_message.respond(m.body(), m.is_error());

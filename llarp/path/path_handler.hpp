@@ -5,10 +5,10 @@
 #include <llarp/address/address.hpp>
 #include <llarp/contact/client_intro.hpp>
 #include <llarp/ev/types.hpp>
+#include <llarp/path/path.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/path/path.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -167,7 +167,7 @@ namespace llarp
 
             void ping_paths(std::chrono::milliseconds now);
 
-            bool build_path_to_remote(const RouterID& remote);
+            bool build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime = path::MAX_LIFETIME);
 
             std::optional<std::vector<RemoteRC>> select_hops_to_remote(const RouterID& pivot);
 
@@ -180,7 +180,7 @@ namespace llarp
             /// The return value is a unique id for the path that is passed into the
             /// path_build_failed/_succeeded methods to uniquely identify the path, or 0 if the path
             /// build is not currently possible.
-            int64_t build(std::span<const RemoteRC> hops);
+            int64_t build(std::span<const RemoteRC> hops, std::chrono::seconds lifetime = path::MAX_LIFETIME);
 
             /// Returns a view over all current paths (as `Path&` references)
             auto paths() const
@@ -211,7 +211,7 @@ namespace llarp
             /// Takes a set of path hops (edge, hop1, hop2, ..., pivot) and initializes a Path
             /// following those hops, including generating path IDs that will be used along the
             /// path.
-            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops);
+            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops, std::chrono::seconds lifetime);
 
             /// Takes a path as constructed by build_init_path and constructs an encoded network
             /// path build message containing the frames required to build the path.
@@ -221,6 +221,16 @@ namespace llarp
             /// path build finishes it calls either path_build_succeeded on success, or
             /// path_build_failed on failure.
             void send_path_build(const std::shared_ptr<Path>& new_path, int64_t id);
+
+          public:
+            // Counterpart to path_build_onion that decrypts a single path build frame; this is only
+            // actually called from link_manager.cpp, but is here to be alongside the
+            // path_build_onion that builds the frames.
+            static std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> decrypt_build_frame(
+                std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
+                const Router& r,
+                const RouterID& src,
+                std::chrono::milliseconds now);
         };
     }  // namespace path
 

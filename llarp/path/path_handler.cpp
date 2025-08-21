@@ -374,13 +374,13 @@ namespace llarp::path
         return hops;
     }
 
-    bool PathHandler::build_path_to_remote(const RouterID& remote)
+    bool PathHandler::build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime)
     {
         Lock_t l(paths_mutex);
 
         if (auto maybe_hops = select_hops_to_remote(remote))
         {
-            build(*maybe_hops);
+            build(*maybe_hops, lifetime);
             return true;
         }
 
@@ -417,9 +417,9 @@ namespace llarp::path
         return true;
     }
 
-    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops)
+    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::seconds lifetime)
     {
-        auto path = std::make_shared<path::Path>(router, hops, *this);
+        auto path = std::make_shared<path::Path>(router, hops, *this, llarp::time_now_ms() + lifetime);
 
         Lock_t l{paths_mutex};
 
@@ -467,6 +467,8 @@ namespace llarp::path
         auto& path_hops = path.hops;
         int n_hops = static_cast<int>(path.num_hops());
 
+        auto path_expiry = std::chrono::round<std::chrono::seconds>(path.expires_in());
+
         if (n_hops < BUILD_LENGTH)
         {
             // append junk data when our path is shorter than the max path length: path build
@@ -499,6 +501,7 @@ namespace llarp::path
                 - 'k' : ephemeral pubkey used to derive DH shared secret for this hop
                 - 'n' : nonce used for DH secret calculation *and* for the encrypted payload (next item)
                 - 'x' : encrypted payload
+                    - 'l' : path lifetime (integer seconds); if omitted then path::MAX_LIFETIME is implied.
                     - 'r' : rxID (the path ID for messages going *to* the hop)
                     - 't' : txID (the path ID for messages coming *from* the client/path origin)
                     - 'u' : upstream hop RouterID
@@ -507,7 +510,17 @@ namespace llarp::path
             */
             // TODO FIXME: poly1305 MAC for path build encryption
             auto& hop = path_hops[i];
-            auto hop_payload = hop.bt_encode();
+
+            std::string hop_payload;
+            {
+                oxenc::bt_dict_producer info;
+                if (path_expiry != path::MAX_LIFETIME)
+                    info.append("l", path_expiry.count());
+                info.append("r", hop.rxid.to_view());
+                info.append("t", hop.txid.to_view());
+                info.append("u", hop.upstream.to_view());
+                hop_payload = std::move(info).str();
+            }
 
             auto dh_nonce = SymmNonce::make_random();
             auto eph_key = crypto::generate_ed25519();
@@ -553,15 +566,87 @@ namespace llarp::path
         return result;
     }
 
+    // Constructs a TransitHop from a serialized path build frame, i.e. undoing one layer of the
+    // path build onioning, above.  Returns the constructed TransitHop and the dh_nonce for the path
+    // build.
+    std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> PathHandler::decrypt_build_frame(
+        std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
+        const Router& r,
+        const RouterID& src,
+        std::chrono::milliseconds now)
+    {
+        std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> ret;
+        auto& [hop_ptr, dh_nonce] = ret;
+        auto& hop = *(hop_ptr = std::make_shared<path::TransitHop>());
+        hop.downstream = src;
+
+        PubKey eph_pubkey;
+        std::vector<std::byte> payload;
+        try
+        {
+            oxenc::bt_dict_consumer btdc{frame};
+            eph_pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+            dh_nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+            // Need to copy this because we decrypt in place below:
+            auto payld = btdc.require<std::span<const std::byte>>("x");
+            payload.assign(payld.begin(), payld.end());
+            btdc.finish();
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Exception caught deserializing hop dict: {}", e.what());
+            throw path::TransitHopError::INVALID_DATA();
+        }
+
+        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.identity(), dh_nonce))
+        {
+            log::warning(logcat, "Failed to derive shared secret!");
+            throw path::TransitHopError::DH_PUBKEY();
+        }
+
+        crypto::xchacha20(payload, hop.shared_secret, dh_nonce);
+        hop.xor_nonce.assign(crypto::shorthash(hop.shared_secret).first<SymmNonce::SIZE>());
+
+        try
+        {
+            oxenc::bt_dict_consumer inner{std::move(payload)};
+
+            if (auto life = inner.maybe<int>("l"))
+                hop.expiry = now + std::chrono::seconds{*life};
+            else
+                hop.expiry = now + path::MAX_LIFETIME;
+
+            hop.rxid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
+            hop.txid.assign(inner.require_span<std::byte, HopID::SIZE>("t"));
+            hop.upstream.assign(inner.require_span<std::byte, RouterID::SIZE>("u"));
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "TransitHop caught bt parsing exception: {}", e.what());
+            throw path::TransitHopError::INVALID_PAYLOAD();
+        }
+
+        // If we are a terminal hop then two things must be true: upstream must be this router, and
+        // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
+        hop.terminal_hop = hop.upstream == r.local_rid();
+        bool terminal_mismatch = hop.terminal_hop != (hop.txid == hop.rxid);
+        if (hop.txid.is_zero() || hop.rxid.is_zero() || terminal_mismatch)
+            throw path::TransitHopError::INVALID_HOP_ID();
+
+        log::trace(logcat, "TransitHop data successfully decrypted/deserialized: {}", hop);
+
+        return ret;
+    }
+
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RemoteRC> hops)
+    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::seconds lifetime)
     {
         Lock_t lock{paths_mutex};
 
         // error message logs in function scope
         if (can_build(hops))
         {
-            if (auto new_path = build_init_path(hops))
+            if (auto new_path = build_init_path(hops, lifetime))
             {
                 auto id = ++_path_counter;
                 send_path_build(std::move(new_path), id);

@@ -30,20 +30,9 @@ namespace llarp::path
     void PathContext::expire_hops(std::chrono::milliseconds now)
     {
         assert(_r.loop.inside());
-        size_t n = 0;
+        auto n = std::erase_if(_transit_hops, [&now](const auto& x) { return x.second->is_expired(now); });
 
-        for (auto itr = _transit_hops.begin(); itr != _transit_hops.end();)
-        {
-            if (itr->second->is_expired(now))
-            {
-                itr = _transit_hops.erase(itr);
-                n += 1;
-            }
-            else
-                ++itr;
-        }
-
-        if (n)
+        if (n > 0)
             log::debug(logcat, "{} expired TransitHops purged!", n);
     }
 
@@ -76,7 +65,7 @@ namespace llarp::path
     {
         assert(_r.loop.inside());
         _transit_hops.emplace(hop->rxid, hop);
-        _transit_hops.emplace(hop->txid, hop);
+        _transit_hops.emplace(hop->txid, std::move(hop));
     }
 
     template <typename T>

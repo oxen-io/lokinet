@@ -25,6 +25,7 @@ namespace llarp
             inline static TransitHopError INVALID_PAYLOAD() { return "INVALID TRANSIT HOP PAYLOAD"s; }
             inline static TransitHopError INVALID_HOP_ID() { return "INVALID TRANSIT HOP IDS"s; }
             inline static TransitHopError HOP_ID_UNAVAILABLE() { return "TRANSIT HOP ID ALREADY IN USE"s; }
+            inline static TransitHopError INVALID_LIFETIME() { return "INVALID PATH LIFETIME"s; }
         };
 
         // TransitHop holds the raw data associated with a single hop in a path, e.g. hop ids, keys,
@@ -56,12 +57,6 @@ namespace llarp
 
             TransitHop() = default;
 
-            // Constructs a TransitHop from a serialized path build frame.  Returns the constructed
-            // TransitHop along with the dh_nonce (as that is also needed during the path build but
-            // not kept in the TransitHop itself).
-            static std::pair<std::shared_ptr<TransitHop>, SymmNonce> deserialize(
-                oxenc::bt_dict_consumer&& btdc, const Router& r, const RouterID& src);
-
             // Shared secret between the client and this hop used for this hop's onion encryption
             SharedSecret shared_secret;
 
@@ -75,10 +70,6 @@ namespace llarp
             uint8_t version;
             std::chrono::milliseconds last_activity{0s};
             bool terminal_hop{false};
-
-            void bt_decode(oxenc::bt_dict_consumer&& btdc);
-
-            std::string bt_encode() const;
 
             std::optional<std::pair<RouterID, HopID>> next_id(const HopID& h) const;
 

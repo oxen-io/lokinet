@@ -631,7 +631,7 @@ namespace llarp::handlers
         std::vector<ClientIntro> intros;
         for (const auto& [hopid, p] : _paths)
             if (p and p->is_active(now))
-                intros.push_back(p->intro);
+                intros.push_back(p->make_intro());
         if (intros.empty())
         {
             log::warning(logcat, "Unable to publish ClientContact: we have no usable paths/intros");

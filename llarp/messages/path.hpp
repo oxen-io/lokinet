@@ -6,33 +6,24 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
-namespace llarp
+namespace llarp::PATH
 {
-    namespace PATH
+    namespace BUILD
     {
-        namespace BUILD
-        {
-            extern const std::string NO_TRANSIT;
-            extern const std::string BAD_LIFETIME;
-            extern const std::string BAD_FRAMES;
-            extern const std::string BAD_PATHID;
-            extern const std::string BAD_CRYPTO;
+        extern const std::string NO_TRANSIT;
+        extern const std::string BAD_LIFETIME;
+        extern const std::string BAD_FRAMES;
+        extern const std::string BAD_PATHID;
+        extern const std::string BAD_CRYPTO;
 
-            std::string serialize_hop(path::TransitHop& hop);
+    }  // namespace BUILD
 
-            std::shared_ptr<path::TransitHop> deserialize_hop(
-                oxenc::bt_dict_consumer&& btdc, Router& r, const RouterID& src);
+    namespace CONTROL
+    {
+        std::vector<std::byte> serialize(std::string_view endpoint, std::span<const std::byte> payload);
 
-        }  // namespace BUILD
+        std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc);
 
-        namespace CONTROL
-        {
-            std::vector<std::byte> serialize(std::string_view endpoint, std::span<const std::byte> payload);
+    }  // namespace CONTROL
 
-            std::pair<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc);
-
-        }  // namespace CONTROL
-
-    }  // namespace PATH
-
-}  // namespace llarp
+}  // namespace llarp::PATH

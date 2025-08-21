@@ -19,8 +19,9 @@ namespace llarp::path
 
     size_t Path::next_path_log_id = 0;
 
-    Path::Path(Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler)
-        : handler{handler.weak_from_this()}, _router{rtr}, path_log_id{++next_path_log_id}
+    Path::Path(
+        Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
+        : handler{handler.weak_from_this()}, _router{rtr}, expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
         hops.resize(hop_rcs.size());
 
@@ -48,14 +49,16 @@ namespace llarp::path
 
         log::trace(logcat, "Path populated with hops: {}", hop_string());
 
-        // initialize parts of the clientintro
+        log::debug(logcat, "Path successfully constructed: {}", *this);
+    }
+
+    ClientIntro Path::make_intro() const
+    {
+        ClientIntro intro;
         intro.pivot_rid = hops.back().router_id;
         intro.pivot_txid = hops.back().txid;
-
-        log::trace(
-            logcat, "Path client intro holding pivot_rid ({}) and pivot_txid ({})", intro.pivot_rid, intro.pivot_txid);
-
-        log::debug(logcat, "Path successfully constructed: {}", *this);
+        intro.expiry = expiry;
+        return intro;
     }
 
     void Path::do_ping(std::chrono::milliseconds start_time)
@@ -120,7 +123,7 @@ namespace llarp::path
                         buffer_printer(m.body()));
 
                 if (expire)
-                    self->intro.expiry = start_time;
+                    self->expiry = start_time;
             }
         });
     }
@@ -224,16 +227,13 @@ namespace llarp::path
         return obj;
     }
 
-    void Path::set_established(std::chrono::milliseconds lifetime)
+    void Path::set_established()
     {
         if (_is_established)
             return;
 
         log::trace(logcat, "Path marked as successfully established!");
         _is_established = true;
-        // TODO FIXME: if we received this intro from the network then *altering* it here seems very
-        // wrong:
-        intro.expiry = llarp::time_now_ms() + lifetime;
     }
 
     std::string Path::name() const { return "[ TX={} | RX={} ]"_format(edge().txid, edge().rxid); }

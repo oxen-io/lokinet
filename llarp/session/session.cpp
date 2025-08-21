@@ -871,7 +871,8 @@ namespace llarp::session
 
     void OutboundClientSession::update_paths()
     {
-        // - If we have any current path to a pivot that is not in the new introset, kill it.
+        // - If we have any current path to a pivot that is no longer in the client contact, kill
+        //   it.
         // - If we killed our currently active path then switch to another.
         // - If we end up with too few paths then start some builds.
 
@@ -908,11 +909,6 @@ namespace llarp::session
         auto now = llarp::time_now_ms();
         auto acceptable_ts = now + pathconf.acceptable_expiry;
 
-        // TODO FIXME: there's a mismatch here between *path* expiry times and *intro* expiry times.
-        // Path itself *has* an Intro field, but we don't use it for outbound client sessions --
-        // perhaps we should, so that aligned paths expire when the pivot they were building to
-        // expires?
-
         // To figure out how many new paths we ought to build we only consider existing paths that
         // are within our acceptable_paths window: anything older than that is due for replacement,
         // and will be dropped (but only once a replacement path is built).
@@ -941,7 +937,7 @@ namespace llarp::session
         while (count < needed)
         {
             auto p = select_pivot();
-            if (p && build_path_to_remote(*p))
+            if (p && build_path_to_remote(p->first, p->second))
                 count++;
             else
                 break;
@@ -1112,7 +1108,7 @@ namespace llarp::session
         return obj;
     }
 
-    std::optional<RouterID> OutboundClientSession::select_pivot()
+    std::optional<std::pair<RouterID, std::chrono::seconds>> OutboundClientSession::select_pivot()
     {
         // We've been asked to select a new pivot to build a path to.  We select using various
         // criteria:
@@ -1126,11 +1122,12 @@ namespace llarp::session
         // start doubling up on a pivot if we need to maintain more paths than there are pivots.
 
         auto now = llarp::time_now_ms();
-        std::unordered_set<RouterID> select_from;
+        std::unordered_map<RouterID, std::chrono::seconds> select_from;
         int min_path_count = std::numeric_limits<int>::max();
+        auto acceptable_cutoff = now + router.config().paths.acceptable_expiry;
         for (auto& intro : _intros)
         {
-            if (intro.expiry < now + router.config().paths.acceptable_expiry)
+            if (intro.expiry < acceptable_cutoff)
                 continue;
 
             const int existing_count = static_cast<int>(std::ranges::count_if(
@@ -1146,15 +1143,20 @@ namespace llarp::session
                 select_from.clear();
                 min_path_count = existing_count;
             }
-            select_from.insert(intro.pivot_rid);
+            // In the case of duplicate router ids, choose the later implied lifetime so that paths
+            // we might build are good for either hopid on the pivot.
+            auto exp = std::min<std::chrono::seconds>(
+                std::chrono::floor<std::chrono::seconds>(intro.expires_in(now)), path::MAX_LIFETIME);
+            if (auto [it, inserted] = select_from.emplace(intro.pivot_rid, exp); not inserted and it->second < exp)
+                it->second = exp;
         }
 
         if (select_from.empty())
             return std::nullopt;
 
-        RouterID result;
-        std::ranges::sample(select_from, &result, 1, llarp::csrng);
-        return result;
+        return *std::next(
+            select_from.begin(),
+            std::uniform_int_distribution<int>{0, static_cast<int>(select_from.size()) - 1}(llarp::csrng));
     }
 
     void OutboundClientSession::on_path_build_success(int64_t /*build_id*/, path::Path& p)

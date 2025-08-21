@@ -10,16 +10,15 @@ namespace llarp
     struct ClientIntro
     {
         RouterID pivot_rid;
-
-        HopID pivot_txid;  // TXID at the pivot
+        HopID pivot_txid;
         std::chrono::milliseconds expiry{0s};
-        uint64_t version{llarp::constants::proto_version};
 
         ClientIntro() = default;
         ClientIntro(oxenc::bt_dict_consumer&&);
         ClientIntro(std::string_view buf);
 
-        std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const {
+        std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const
+        {
             return expiry - now;
         }
 
@@ -30,31 +29,14 @@ namespace llarp
         // Does not throw, returns true/false
         bool bt_decode(std::string_view buf);
 
-      protected:
-        // Throws if unsuccessful, must take BTDC in invocation
-        void bt_decode(oxenc::bt_dict_consumer&& btdc);
-
-      public:
-        bool operator==(const ClientIntro& other) const
-        {
-            return std::tie(pivot_rid, pivot_txid, expiry, version)
-                == std::tie(other.pivot_rid, other.pivot_txid, other.expiry, other.version);
-        }
+        bool operator==(const ClientIntro& other) const = default;
 
         std::string to_string() const;
         static constexpr bool to_string_formattable = true;
+
+      protected:
+        // Throws if unsuccessful, must take BTDC in invocation
+        void bt_decode(oxenc::bt_dict_consumer&& btdc);
     };
 
 }  //  namespace llarp
-
-namespace std
-{
-    template <>
-    struct hash<llarp::ClientIntro>
-    {
-        size_t operator()(const llarp::ClientIntro& i) const noexcept
-        {
-            return std::hash<llarp::PubKey>{}(i.pivot_rid) ^ ((std::hash<llarp::HopID>{}(i.pivot_txid) << 9) >> 5);
-        }
-    };
-}  //  namespace std
