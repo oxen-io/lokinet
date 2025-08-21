@@ -14,11 +14,7 @@ namespace llarp::path
 
     bool PathContext::is_transit_allowed() const { return _allow_transit; }
 
-    void PathContext::add_path(std::shared_ptr<Path> path)
-    {
-        _path_map.emplace(path->edge().rxid, path);
-        _path_map.emplace(path->terminus().txid, std::move(path));
-    }
+    void PathContext::add_path(std::shared_ptr<Path> path) { _path_map.emplace(path->edge().rxid, std::move(path)); }
 
     void PathContext::drop_paths(std::vector<HopID> droplist)
     {
@@ -40,7 +36,6 @@ namespace llarp::path
     {
         assert(_r.loop.inside());
         _drop_path(path.edge().rxid);
-        _drop_path(path.terminus().txid);
     }
 
     std::tuple<size_t, size_t> PathContext::path_ctx_stats() const
@@ -103,12 +98,6 @@ namespace llarp::path
             return itr->second.get();
 
         return nullptr;
-    }
-
-    bool PathContext::has_path(const HopID& hop_id) const
-    {
-        assert(_r.loop.inside());
-        return _path_map.contains(hop_id);
     }
 
 }  // namespace llarp::path

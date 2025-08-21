@@ -125,7 +125,6 @@ namespace llarp::path
             if (itr->second and itr->second->is_established() and itr->second->is_expired(now))
             {
                 to_drop.push_back(itr->second->edge().rxid);
-                to_drop.push_back(itr->second->terminus().txid);
                 itr = _paths.erase(itr);
             }
             else
