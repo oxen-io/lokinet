@@ -122,7 +122,7 @@ namespace llarp::path
 
         for (auto itr = _paths.begin(); itr != _paths.end();)
         {
-            if (itr->second and itr->second->is_established() and itr->second->is_expired(now))
+            if (itr->second and itr->second->is_expired(now))
             {
                 to_drop.push_back(itr->second->edge().rxid);
                 itr = _paths.erase(itr);
