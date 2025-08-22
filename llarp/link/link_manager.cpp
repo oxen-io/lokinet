@@ -1429,16 +1429,16 @@ namespace llarp
                             "relaying",
                             *hop);
                         router.path_context.put_transit_hop(std::move(hop));
-                        return prev_message.respond(messages::OK_RESPONSE, false);
+                        prev_message.respond(messages::OK_RESPONSE, false);
+                        return;
                     }
 
                     log::info(
-                        logcat,
-                        "Upstream ({}) returned path build {}; relaying...",
-                        hop->upstream,
-                        m.timed_out ? "time out" : "failure");
+                        logcat, "Upstream ({}) path build {}", hop->upstream, m.timed_out ? "timed out" : "failed");
 
-                    return prev_message.respond(m.body(), m.is_error());
+                    if (m.is_error())
+                        prev_message.respond(m.body(), m.is_error());
+                    // else leave it unanswered so that it times out at the request origin
                 });
         }
         catch (const path::TransitHopError& e)

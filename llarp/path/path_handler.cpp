@@ -649,6 +649,7 @@ namespace llarp::path
                 if (m)
                 {
                     log::info(logcat, "PATH ESTABLISHED: {}", *new_path);
+                    log::trace(logcat, "path build response: {}", buffer_printer{m.body()});
                     return path_build_succeeded(id, *new_path);
                 }
 
