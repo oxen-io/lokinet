@@ -770,7 +770,7 @@ namespace llarp::handlers
     {
         if (m)
         {
-            log::debug(logcat, "Call to PublishClientContact succeeded!");
+            log::debug(logcat, "Client contact publish succeeded");
         }
         else
         {
@@ -784,7 +784,7 @@ namespace llarp::handlers
             }
             catch (const std::exception& e)
             {
-                log::warning(logcat, "Exception: {}", e.what());
+                log::warning(logcat, "Failed to parse CC publish response: {}", e.what());
             }
 
             log::critical(logcat, "Call to PublishClientContact FAILED; reason: {}", status.value_or("<none given>"));

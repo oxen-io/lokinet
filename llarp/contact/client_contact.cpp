@@ -1,5 +1,6 @@
 #include "client_contact.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
@@ -243,6 +244,6 @@ namespace llarp
 
     bool EncryptedClientContact::is_expired(std::chrono::milliseconds now) const
     {
-        return now >= signed_at;
+        return now >= signed_at + path::MAX_LIFETIME;
     }
 }  //  namespace llarp

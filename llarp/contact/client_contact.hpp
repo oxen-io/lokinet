@@ -119,8 +119,8 @@ namespace llarp
     // check that when we generate & sign as well to make sure we don't exceed it.
     //
     /** EncryptedClientContact
-            "i" blinded local PubKey (routerID)
-            "n" nounce
+            "i" blinded local Ed25519 pubkey
+            "n" nonce
             "t" signing time
             "x" encrypted payload
             "~" signature   (signed with blinded derived scalar `b`)
