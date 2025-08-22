@@ -6,42 +6,25 @@ namespace llarp
 {
     static auto logcat = log::Cat("client-intro");
 
-    ClientIntro::ClientIntro(oxenc::bt_dict_consumer&& btdc) { bt_decode(std::move(btdc)); }
+    ClientIntro::ClientIntro(oxenc::bt_dict_consumer&& btdc)
+    {
+        expiry = std::chrono::sys_seconds{std::chrono::seconds{btdc.require<int64_t>("e")}};
+        hop.assign(btdc.require_span<std::byte, HopID::SIZE>("h"));
+        relay.assign(btdc.require_span<std::byte, RouterID::SIZE>("r"));
+    }
 
     ClientIntro::ClientIntro(std::string_view buf) : ClientIntro{oxenc::bt_dict_consumer{buf}} {}
 
     void ClientIntro::bt_encode(oxenc::bt_dict_producer&& subdict) const
     {
-        subdict.append("k", pivot_rid.to_view());
-        subdict.append("p", pivot_txid.to_view());
-        subdict.append("x", expiry.count());
-    }
-
-    bool ClientIntro::bt_decode(std::string_view buf)
-    {
-        try
-        {
-            bt_decode(oxenc::bt_dict_consumer{buf});
-        }
-        catch (const std::exception& e)
-        {
-            log::critical(logcat, "ClientIntro deserialization failed: {}", e.what());
-            return false;
-        }
-
-        return true;
-    }
-
-    void ClientIntro::bt_decode(oxenc::bt_dict_consumer&& btdc)
-    {
-        pivot_rid.assign(btdc.require_span<std::byte, RouterID::SIZE>("k"));
-        pivot_txid.assign(btdc.require_span<std::byte, HopID::SIZE>("p"));
-        expiry = std::chrono::milliseconds{btdc.require<int64_t>("x")};
+        subdict.append("e", expiry.time_since_epoch().count());
+        subdict.append("h", hop.to_view());
+        subdict.append("r", relay.to_view());
     }
 
     std::string ClientIntro::to_string() const
     {
-        return "CI:[ Pivot RID:{} | Pivot TX:{} | Expiry:{} ]"_format(
-            pivot_rid.short_string(), pivot_txid, expiry.count());
+        return "Intro[{}, hop={}, exp={}]"_format(
+            relay.short_string(), hop.short_string(), expiry.time_since_epoch().count());
     }
 }  //  namespace llarp

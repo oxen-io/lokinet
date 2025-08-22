@@ -803,7 +803,7 @@ namespace llarp::session
         select_new_current_impl(std::move(good), std::move(fallback));
     }
 
-    void OutboundRelaySession::update_paths()
+    void OutboundRelaySession::update_paths(std::chrono::milliseconds /*now*/)
     {
         int needed = _target_paths - num_paths();
         if (needed <= 0)
@@ -864,12 +864,12 @@ namespace llarp::session
         log::trace(logcat, "New client intros: {}", fmt::join(_intros, ", "));
         _pivots.clear();
         for (auto& i : _intros)
-            _pivots.insert(i.pivot_rid);
+            _pivots.insert(i.relay);
 
-        update_paths();
+        update_paths(llarp::time_now_ms());
     }
 
-    void OutboundClientSession::update_paths()
+    void OutboundClientSession::update_paths(std::chrono::milliseconds now)
     {
         // - If we have any current path to a pivot that is no longer in the client contact, kill
         //   it.
@@ -906,7 +906,6 @@ namespace llarp::session
         }
 
         const auto& pathconf = router.config().paths;
-        auto now = llarp::time_now_ms();
         auto acceptable_ts = now + pathconf.acceptable_expiry;
 
         // To figure out how many new paths we ought to build we only consider existing paths that
@@ -1082,7 +1081,7 @@ namespace llarp::session
 
             for (auto& intro : _intros)
             {
-                if (intro.pivot_rid != path.terminal_rid())
+                if (intro.relay != path.terminal_rid())
                     continue;
                 auto intro_expires_in = intro.expires_in(now);
                 if (intro_expires_in < min_exp)
@@ -1091,7 +1090,7 @@ namespace llarp::session
                 auto expires_in = std::min(path_expires_in, intro_expires_in);
                 auto& container = expires_in >= acceptable_exp ? good : fallback;
 
-                container.emplace_back(&path, intro.pivot_txid);
+                container.emplace_back(&path, intro.hop);
             }
         }
 
@@ -1124,14 +1123,14 @@ namespace llarp::session
         auto now = llarp::time_now_ms();
         std::unordered_map<RouterID, std::chrono::seconds> select_from;
         int min_path_count = std::numeric_limits<int>::max();
-        auto acceptable_cutoff = now + router.config().paths.acceptable_expiry;
+        auto acceptable_cutoff = std::chrono::sys_time{now + router.config().paths.acceptable_expiry};
         for (auto& intro : _intros)
         {
             if (intro.expiry < acceptable_cutoff)
                 continue;
 
             const int existing_count = static_cast<int>(std::ranges::count_if(
-                paths(), [&intro](const path::Path& p) { return p.terminal_rid() == intro.pivot_rid; }));
+                paths(), [&intro](const path::Path& p) { return p.terminal_rid() == intro.relay; }));
 
             if (existing_count > min_path_count)
                 // We already found a pivot with fewer paths, so we don't want this one
@@ -1147,7 +1146,7 @@ namespace llarp::session
             // we might build are good for either hopid on the pivot.
             auto exp = std::min<std::chrono::seconds>(
                 std::chrono::floor<std::chrono::seconds>(intro.expires_in(now)), path::MAX_LIFETIME);
-            if (auto [it, inserted] = select_from.emplace(intro.pivot_rid, exp); not inserted and it->second < exp)
+            if (auto [it, inserted] = select_from.emplace(intro.relay, exp); not inserted and it->second < exp)
                 it->second = exp;
         }
 

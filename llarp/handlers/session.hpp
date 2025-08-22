@@ -12,8 +12,6 @@
 
 namespace llarp
 {
-    inline constexpr size_t NUM_SESSION_PATHS{4};
-
     namespace rpc
     {
         class RPCServer;
@@ -28,7 +26,11 @@ namespace llarp
 
             std::unordered_set<dns::SRVData> _srv_records;
 
-            bool should_publish_cc{false};
+            // Inbound path lifetimes within a slot are always determined relative to this base
+            // value, so that if we need a path in the (15,20] minute range, we will always pick the
+            // same value in that slot by using this basis value.
+            const std::chrono::seconds path_expiry_basis = std::chrono::floor<
+                std::chrono::seconds>(llarp::time_now_ms());
 
             std::unordered_map<NetworkAddress, std::shared_ptr<session::Session>> _sessions;
             std::unordered_map<session_tag, std::shared_ptr<session::Session>> _session_tags;
@@ -41,8 +43,6 @@ namespace llarp
             ClientContact client_contact;
             protocol_flag protocols;
 
-            std::shared_ptr<quic::Ticker> _cc_publisher;
-
             // auth tokens for making outbound sessions; some of these are copied at construction,
             // some (with ONS names) get looked up and populated later.
             std::unordered_map<NetworkAddress, std::string> _auth_tokens;
@@ -52,9 +52,8 @@ namespace llarp
             void close_session(std::shared_ptr<session::Session>& s, bool send_close);
 
           protected:
-            // void path_rotation_succeeded(const std::shared_ptr<path::Path>& new_path) override;
-
-            // std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
+            void on_path_build_failure(int64_t build_id, path::Path* path, bool timeout) override;
+            void on_path_build_success(int64_t build_id, path::Path& p) override;
 
           public:
             SessionEndpoint(Router& r);
@@ -62,7 +61,7 @@ namespace llarp
             void stop(bool send_close);
 
             // Checks if we need more inbound paths and, if so, starts building them.
-            void update_paths() override;
+            void update_paths(std::chrono::milliseconds now) override;
 
             // bool build_path_to_random(bool exclude_current_termini)
 
@@ -109,13 +108,10 @@ namespace llarp
 
             bool close_session(session_tag t, bool send_close = false);
 
-            /// Called to perform CC publishing.  Does nothing if the current introsets are
-            /// unchanged since the last publish, unless the force option is given.  Returns true if
-            /// publishing succeeds, or is not currently needed (i.e. disabled or unchanged), false
-            /// if publishing fails.
-            bool update_and_publish_localcc(bool force = false);
-
-            void start_tickers();
+            /// Called to perform CC publishing.  This is called upon inbound path build completion
+            /// if that completion results in a full set of target paths, so that we effectively
+            /// republish whenever inbound paths change.
+            void update_and_publish_localcc();
 
             void publish_client_contact(const EncryptedClientContact& ecc);
 

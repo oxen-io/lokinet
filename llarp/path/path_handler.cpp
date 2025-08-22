@@ -51,31 +51,6 @@ namespace llarp::path
 
     static const std::shared_ptr<Path> NULL_PATH{nullptr};
 
-    /*
-    static constexpr auto path_expiry_cmp = [](const auto& a, const auto& b) {
-        return a.second->intro.expiry < b.second->intro.expiry;
-    };
-    const std::shared_ptr<Path>& PathHandler::get_oldest_path() const
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        Lock_t l{paths_mutex};
-        if (_paths.empty())
-            return NULL_PATH;
-        return std::ranges::min_element(_paths, path_expiry_cmp)->second;
-    }
-
-    const std::shared_ptr<Path>& PathHandler::get_newest_path() const
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        Lock_t l{paths_mutex};
-        if (_paths.empty())
-            return NULL_PATH;
-        return std::ranges::max_element(_paths, path_expiry_cmp)->second;
-    }
-    */
-
     void PathHandler::add_path(Path& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -162,7 +137,7 @@ namespace llarp::path
         expire_paths(now);
 
         if (!is_stopped())
-            update_paths();
+            update_paths(now);
 
         _build_stats.update(now);
     }
@@ -416,9 +391,9 @@ namespace llarp::path
         return true;
     }
 
-    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::seconds lifetime)
+    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry)
     {
-        auto path = std::make_shared<path::Path>(router, hops, *this, llarp::time_now_ms() + lifetime);
+        auto path = std::make_shared<path::Path>(router, hops, *this, expiry);
 
         Lock_t l{paths_mutex};
 
@@ -447,8 +422,8 @@ namespace llarp::path
         BUILD_FRAME_SIZE
         == 2 /*de*/ + bt_pair_bytes(PubKey::SIZE) /*k*/ + bt_pair_bytes(SymmNonce::SIZE) /*n*/ + /*x*/
             bt_pair_bytes(
-                2 /*de*/ + bt_pair_bytes(HopID::SIZE) /*r*/ + bt_pair_bytes(HopID::SIZE) /*t*/
-                + bt_pair_bytes(RouterID::SIZE) /*u*/));
+                2 /*de*/ + bt_pair_bytes(sizeof(uint32_t)) /*l*/ + bt_pair_bytes(HopID::SIZE) /*r*/
+                + bt_pair_bytes(HopID::SIZE) /*t*/ + bt_pair_bytes(RouterID::SIZE) /*u*/));
 
     std::vector<std::byte> PathHandler::path_build_onion(Path& path)
     {
@@ -466,7 +441,10 @@ namespace llarp::path
         auto& path_hops = path.hops;
         int n_hops = static_cast<int>(path.num_hops());
 
-        auto path_expiry = std::chrono::round<std::chrono::seconds>(path.expires_in());
+        auto path_expiry = oxenc::host_to_little(
+            static_cast<uint32_t>(std::chrono::round<std::chrono::seconds>(path.expires_in()).count()));
+        std::span<const std::byte, 4> path_expiry_encoded{
+            reinterpret_cast<const std::byte*>(&path_expiry), sizeof(path_expiry)};
 
         if (n_hops < BUILD_LENGTH)
         {
@@ -500,7 +478,8 @@ namespace llarp::path
                 - 'k' : ephemeral pubkey used to derive DH shared secret for this hop
                 - 'n' : nonce used for DH secret calculation *and* for the encrypted payload (next item)
                 - 'x' : encrypted payload
-                    - 'l' : path lifetime (integer seconds); if omitted then path::MAX_LIFETIME is implied.
+                    - 'l' : path lifetime in seconds, as a 4-byte, little-endian encoded integer (because we require an
+               exact size)
                     - 'r' : rxID (the path ID for messages going *to* the hop)
                     - 't' : txID (the path ID for messages coming *from* the client/path origin)
                     - 'u' : upstream hop RouterID
@@ -513,8 +492,7 @@ namespace llarp::path
             std::string hop_payload;
             {
                 oxenc::bt_dict_producer info;
-                if (path_expiry != path::MAX_LIFETIME)
-                    info.append("l", path_expiry.count());
+                info.append("l", path_expiry_encoded);
                 info.append("r", hop.rxid.to_view());
                 info.append("t", hop.txid.to_view());
                 info.append("u", hop.upstream.to_view());
@@ -610,11 +588,12 @@ namespace llarp::path
         {
             oxenc::bt_dict_consumer inner{std::move(payload)};
 
-            if (auto life = inner.maybe<int>("l"))
-                hop.expiry = now + std::chrono::seconds{*life};
-            else
-                hop.expiry = now + path::MAX_LIFETIME;
-
+            std::chrono::seconds lifetime{
+                oxenc::load_little_to_host<uint32_t>(inner.require_span<std::byte, sizeof(uint32_t)>("l").data())};
+            if (lifetime >= path::MAX_LIFETIME)
+                throw std::runtime_error{
+                    "Path lifetime {} exceeds maximum allowed path lifetime {}"_format(lifetime, path::MAX_LIFETIME)};
+            hop.expiry = now + lifetime;
             hop.rxid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
             hop.txid.assign(inner.require_span<std::byte, HopID::SIZE>("t"));
             hop.upstream.assign(inner.require_span<std::byte, RouterID::SIZE>("u"));
@@ -638,14 +617,14 @@ namespace llarp::path
     }
 
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::seconds lifetime)
+    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry)
     {
         Lock_t lock{paths_mutex};
 
         // error message logs in function scope
         if (can_build(hops))
         {
-            if (auto new_path = build_init_path(hops, lifetime))
+            if (auto new_path = build_init_path(hops, expiry))
             {
                 auto id = ++_path_counter;
                 send_path_build(std::move(new_path), id);
@@ -706,10 +685,10 @@ namespace llarp::path
         {
             if (p)
                 router.router_profiling().path_timeout(*p);
-            _build_stats.timeouts += 1;
+            _build_stats.timeouts++;
         }
         else
-            _build_stats.build_fails += 1;
+            _build_stats.build_fails++;
 
         _last_failure = llarp::time_now_ms();
         _consecutive_failures++;
@@ -724,14 +703,12 @@ namespace llarp::path
         p.set_established();
         add_path(p);
         router.router_profiling().path_success(p);
-        _build_stats.success += 1;
+        _build_stats.success++;
 
         _consecutive_failures = 0;
 
         on_path_build_success(build_id, p);
     }
-
-    static constexpr auto MaxBuildInterval = 15s;
 
     bool PathHandler::cooldown(std::chrono::milliseconds now) const
     {

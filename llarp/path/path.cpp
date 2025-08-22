@@ -11,6 +11,7 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 
+#include <chrono>
 #include <ranges>
 
 namespace llarp::path
@@ -21,7 +22,7 @@ namespace llarp::path
 
     Path::Path(
         Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
-        : handler{handler.weak_from_this()}, _router{rtr}, expiry{expiry_ts}, path_log_id{++next_path_log_id}
+        : handler{handler.weak_from_this()}, _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
         hops.resize(hop_rcs.size());
 
@@ -55,10 +56,24 @@ namespace llarp::path
     ClientIntro Path::make_intro() const
     {
         ClientIntro intro;
-        intro.pivot_rid = hops.back().router_id;
-        intro.pivot_txid = hops.back().txid;
-        intro.expiry = expiry;
+        intro.relay = hops.back().router_id;
+        intro.hop = hops.back().txid;
+        intro.expiry = std::chrono::sys_seconds{std::chrono::floor<std::chrono::seconds>(_expiry)};
         return intro;
+    }
+
+    std::string Path::ping_stats_printer::to_string() const
+    {
+        if (p.ping_responses == 0)
+            return "0.0%";
+
+        double mean = (double)p.ping_cumulative.count() / p.ping_responses;
+        double success_pct = p.ping_responses / (double)(p.ping_responses + p.ping_timeouts) * 100.0;
+        if (p.ping_responses == 1)
+            return "{:.1f}%, {:.0f}ms avg"_format(success_pct, mean);
+
+        double sd = std::sqrt(((double)p.ping_sq_cumulative - p.ping_responses * mean * mean) / (p.ping_responses - 1));
+        return "{:.1f}%, {:.0f}ms avg, {:.1f}ms s.d."_format(success_pct, mean, sd);
     }
 
     void Path::do_ping(std::chrono::milliseconds start_time)
@@ -67,63 +82,67 @@ namespace llarp::path
             return;
 
         log::trace(logcat, "Pinging path TXID={}", edge().txid);
-        send_path_control_message("path_ping", {}, [wself = weak_from_this(), start_time](quic::message m) {
-            auto self = wself.lock();
-            if (!self)
+        send_path_control_message("path_ping", {}, [this, wself = weak_from_this(), start_time](quic::message m) {
+            auto sself = wself.lock();
+            if (!sself)
                 return;
             std::chrono::milliseconds now = llarp::time_now_ms();
             auto time_taken = now - start_time;
             if (m)
             {
+                ping_responses++;
+                ping_recent_timeouts = 0;
+                ping_cumulative += time_taken;
+                ping_sq_cumulative += time_taken.count() * time_taken.count();
+
                 if (m.body() == messages::OK_RESPONSE)
                     log::debug(
                         logcat,
-                        "Ping response for path {} (txid={}) response received in {}",
-                        *self,
-                        self->edge().txid,
-                        time_taken);
+                        "Ping response for path {} (txid={}) response received in {} ({})",
+                        *this,
+                        edge().txid,
+                        time_taken,
+                        printable_ping_stats());
                 else
                     log::warning(
                         logcat,
                         "Path {} ping was successful (in {}) but had unexpected response body: {}",
-                        *self,
+                        *this,
                         time_taken,
                         buffer_printer(m.body()));
-
-                self->recent_ping_failures = 0;
-                self->ping_average = std::chrono::milliseconds{
-                    ((self->ping_average * self->ping_count) + time_taken) / ++self->ping_count};
             }
             else
             {
                 bool expire = true;
                 if (m.timed_out)
                 {
+                    ping_timeouts++;
                     log::debug(
                         logcat,
-                        "Ping response for path {} (txid={}) timed out after {}",
-                        *self,
-                        self->edge().txid,
-                        time_taken);
-                    expire = ++self->recent_ping_failures > 5;
+                        "Ping response for path {} (txid={}) timed out after {} ({})",
+                        *this,
+                        edge().txid,
+                        time_taken,
+                        printable_ping_stats());
+                    expire = ++ping_recent_timeouts > 5;
                     if (expire)
                         log::warning(
                             logcat,
                             "Path {} (txid={}) had too many ping timeouts ({}); expiring path.",
-                            *self,
-                            self->edge().txid,
-                            self->recent_ping_failures);
+                            *this,
+                            edge().txid,
+                            ping_recent_timeouts);
                 }
                 else
                     log::warning(
                         logcat,
                         "{} path_ping returned a path error (in {}): {}",
-                        *self,
+                        *this,
                         time_taken,
                         buffer_printer(m.body()));
 
                 if (expire)
-                    self->expiry = start_time;
+                    _expiry = start_time;
             }
         });
     }

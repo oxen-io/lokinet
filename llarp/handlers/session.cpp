@@ -20,7 +20,7 @@
 
 namespace llarp::handlers
 {
-    static auto logcat = log::Cat("SessionHandler");
+    static auto logcat = log::Cat("session_ep");
 
     SessionEndpoint::SessionEndpoint(Router& r)
         : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()}
@@ -48,8 +48,6 @@ namespace llarp::handlers
             netconf.srv_records,
             protocols,
             netconf.traffic_policy};
-
-        should_publish_cc = netconf.is_reachable;
     }
 
     std::pair<size_t, size_t> SessionEndpoint::session_stats() const
@@ -166,15 +164,6 @@ namespace llarp::handlers
 
         _running = false;
 
-        if (_cc_publisher)
-        {
-            if (_cc_publisher->is_running())
-                _cc_publisher->stop();
-
-            _cc_publisher.reset();
-            log::trace(logcat, "ClientContact publish ticker stopped!");
-        }
-
         if (_path_rotater)
         {
             if (_path_rotater->is_running())
@@ -196,7 +185,7 @@ namespace llarp::handlers
         path::PathHandler::stop();
     }
 
-    void SessionEndpoint::update_paths()
+    void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
         int have = num_paths();
         int needed = _target_paths - have;
@@ -238,6 +227,131 @@ namespace llarp::handlers
             return not router.router_profiling().is_bad_for_path(rid, 1);
         };
 
+        // Path lifetime selection
+        // -----------------------
+        //
+        // We want our CC path expiries to be spread out temporally because if we have them
+        // clustered together, we can end up in a situation where all our inbound paths expire at
+        // the same time, and so someone connected to us cannot stay connected, because they have
+        // no other paths to rotate to.
+        //
+        // To solve this, we try to ensure that paths are always spread out across expiries.  For
+        // example, with 4 target inbound paths, we ideally want paths that expire at
+        //
+        // [P1: t₀+5min, P2: t₀+10min, P3: t₀+15min, P4: t₀+20min]
+        //
+        // and when we reach t₁ = t₀+5min, the first expires, and we build a new one for t₁+20min
+        // (== t₀ + 25min), thus ending up with:
+        //
+        // [P2: t₁+5min, P3: t₁+10min, P4: t₁+15min, P5: t₁+20min]
+        //
+        // and so on over time.
+        //
+        // The problem, however, is that paths can die.  Suppose, for instance, that P4 dies at
+        // t₂ = t₁+1min.  That means just before processing the path death we have:
+        //
+        // [P2: t₂+4min, P3: t₂+9min, P4: t₂+14min, P5: t₂+19min]
+        //
+        // and then after processing we have:
+        //
+        // [P2: t₂+4min, P3: t₂+9min, P5: t₂+19min]
+        //
+        // If we construct a new, full-lifetime path at this point we'll have:
+        //
+        // [P2: t₂+4min, P3: t₂+9min, P5: t₂+19min, P6: t₂+20min]
+        //
+        // which is okay for now, but will lead to us having a perpetual 1min gap between P5 and P6
+        // (and then also between the P9 and P10 replacements when P5/6 expire), and a 9min gap
+        // between P4/P5 (and between its replacements).
+        //
+        // Worse, if all your paths die at once (for instance, because your local internet died
+        // temporarily) you would rebuild all 4 paths at once, and could end up with all expiring at
+        // the same time.
+        //
+        // So it isn't enough to just spread them out initially: we have to create new paths with a
+        // lifetime that slots them into the expiry time the path they are replacing would have had.
+        // E.g. rather than the above lumpy distribution, we want the paths with P6 to look like:
+        //
+        // [P2: t₂+4min, P3: t₂+9min, P6: t₂+14min, P5: t₂+19min]
+        //
+        // so that "re-slotting" the path with the earlier timestamp keeps the distribution nice and
+        // spread out, preventing unwanted clustering of expiries.
+        //
+        // For 2 or 3 paths, we space things out proportionally, e.g.:
+        //
+        // 2: [P1: t+10m, P2: t+20m]
+        // 3: [P1: t+6m40s, P2: t+13m20s, P3: t+20m]
+        //
+        // Beyond 4, we use the same 5m spacing as with 4, but double up some slots.  For example,
+        // with 7 paths:
+        //
+        // 7: [P1: t+5m, P2&P5: t+10m, P3&P6: t+15m, P4&P7: t+20m]
+        //
+        // This is somewhat lopsided for non-multiples of 4, but there's still lots of spread in
+        // there so that even with multiple paths expiring at the same time, there are still lots of
+        // alternatives for remotes to switch to.
+
+        std::vector<std::chrono::seconds> expiries;
+        expiries.reserve(needed);
+        {
+            const int slots = std::min(_target_paths, path::MAX_LIFETIME_SLOTS);
+
+            // Our expiry slot size.  Generally 5min, but longer if you use fewer than 4 paths:
+            const std::chrono::seconds slot_size = path::MAX_LIFETIME / slots;
+            assert(path::MAX_LIFETIME % slots == 0s);
+
+            std::array<int, path::MAX_LIFETIME_SLOTS> slot_count_a = {0};
+            auto slot_count = std::span{slot_count_a}.first(slots);
+
+            // The base slot, as a multiple of the slot_size since our fixes basis: we consider
+            // other path expiries relative to this.  We add 1 because the slot for the *current*
+            // time (after truncation) will be an expired slot time, and so we only expect to see
+            // path slots strictly greater than that.
+            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now)- path_expiry_basis) / slot_size + 1;
+
+            // First count up all the slots we are already using with existing paths:
+            int path_count = 0;
+            for (auto& path : paths())
+            {
+                path_count++;
+                auto slot = (path.expiry() - path_expiry_basis) / slot_size;
+                if (slot < 0)
+                {
+                    log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
+                    continue;  // Path is expired/expiring, so ignore it.
+                }
+                slot -= slot0;
+                if (slot >= slots)
+                {
+                    log::warning(logcat, "Found inbound path with unexpected future expiry, this should not happen!");
+                    continue;
+                }
+                slot_count[slot]++;
+            }
+
+            log::trace(
+                logcat, "Current {} path expiry slots (oldest-newest): {}", path_count, fmt::join(slot_count, "-"));
+
+            // Now we select new ones by looking for the slot with the fewest paths in it, preferring
+            // later slots (i.e. longer expiries) in case of a tie, and keep repeating this for
+            // however many paths we need:
+            for (int i = 0; i < needed; i++)
+            {
+                size_t best = 0;
+                for (size_t j = 1; j < slot_count.size(); j++)
+                {
+                    if (slot_count[j] <= slot_count[best])
+                        best = j;
+                }
+                expiries.emplace_back(path_expiry_basis + (slot0 + best) * slot_size);
+                slot_count[best]++;
+            }
+
+            log::trace(logcat, "Select new path expiries: {}", fmt::join(expiries, ", "));
+        }
+
+        auto next_expiry = expiries.begin();
+
         if (num_hops() == 1)
         {
             // In single-hop mode the edge and pivot are the same thing, and so we need to select
@@ -252,7 +366,7 @@ namespace llarp::handlers
                     log::warning(logcat, "Unable to build a new inbound single-hop path: no eligible edges");
                     return;
                 }
-                build(std::span{&*only_hop, 1});
+                build(std::span{&*only_hop, 1}, *next_expiry++);
             }
         }
         else
@@ -271,32 +385,41 @@ namespace llarp::handlers
                 if (!hops)
                     continue;  // No need to warn: the call above should already if it fails
 
-                build(*hops);
+                build(*hops, *next_expiry++);
             }
         }
-
-        // FIXME TODO: do I know how many path builds are currently in progress, so that I don't end
-        // up building too many paths (e.g. if one tick builds then the next tick fires before the
-        // first builds finish?)
     }
 
-    void SessionEndpoint::start_tickers()
+    void SessionEndpoint::on_path_build_success(int64_t /*build_id*/, path::Path& p)
     {
-        if (!router.is_service_node and should_publish_cc)
-        {
-            log::trace(logcat, "Starting ClientContact publish ticker...");
+        log::debug(logcat, "Successfully built path {}", p);
 
-            router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
-                update_and_publish_localcc();
-                _cc_publisher = router.loop.call_every(CC_PUBLISH_INTERVAL, [this] {
-                    log::critical(logcat, "TESTNET: Skipping ClientContact publish!");
-                    // TODO FIXME
-                    // update_and_publish_localcc();
-                });
-            });
-        }
+        if (not router.config().network.is_reachable)
+            return;
+
+        // else we publish an introset, so check if we need to publish it now.
+
+        // We just built a new path: if that path brings our active paths to the target number of
+        // paths then we want to publish the introset.  *Typically* this will just end up on a
+        // regular timer (i.e. paths expire naturally, we rebuild them, and once all expired ones
+        // are rebuilt we end up here to republish), but in case of premature path death we might
+        // also end up here (and also need to republish so that clients in the wild don't try
+        // aligning to the dead path).
+
+        if (num_active_paths() < _target_paths)
+            return;  // We haven't met our target yet (or they are still building), so wait for them
+                     // to finish rebuilding before we publish.
+
+        log::info(logcat, "Inbound active paths changed; re-publishing client contact");
+        update_and_publish_localcc();
+    }
+
+    void SessionEndpoint::on_path_build_failure(int64_t /*build_id*/, path::Path* path, bool timeout)
+    {
+        if (path)
+            log::warning(logcat, "Path build for {} {}", *path, timeout ? "timed out" : "failed");
         else
-            log::info(logcat, "SessionEndpoint configured to NOT publish ClientContact...");
+            log::warning(logcat, "Path build failed: cannot construct a new path right now");
     }
 
     void SessionEndpoint::resolve_sns_mappings()
@@ -615,14 +738,12 @@ namespace llarp::handlers
         }
     }
 
-    bool SessionEndpoint::update_and_publish_localcc(bool force)
+    void SessionEndpoint::update_and_publish_localcc()
     {
-        // TODO FIXME: implement force
-
-        if (!should_publish_cc)
+        if (!router.config().network.is_reachable)
         {
-            log::debug(logcat, "Nothing to publish: ClientContact publishing is disabled");
-            return true;
+            log::debug(logcat, "Not publishing CC: publishing is disabled by config");
+            return;
         }
 
         log::debug(logcat, "Updating and publishing ClientContact...");
@@ -632,13 +753,10 @@ namespace llarp::handlers
         for (const auto& [hopid, p] : _paths)
             if (p and p->is_active(now))
                 intros.push_back(p->make_intro());
-        if (intros.empty())
-        {
-            log::warning(logcat, "Unable to publish ClientContact: we have no usable paths/intros");
-            return false;
-        }
 
         client_contact.update_intros(std::move(intros));
+
+        log::trace(logcat, "New ClientContact: {}", client_contact);
 
         try
         {
@@ -659,7 +777,6 @@ namespace llarp::handlers
         {
             log::warning(logcat, "ClientContact encryption/signing exception: {}", e.what());
         }
-        return false;
     }
 
     bool SessionEndpoint::validate(const NetworkAddress& remote, std::optional<std::string> maybe_auth)
@@ -787,14 +904,12 @@ namespace llarp::handlers
                 log::warning(logcat, "Failed to parse CC publish response: {}", e.what());
             }
 
-            log::critical(logcat, "Call to PublishClientContact FAILED; reason: {}", status.value_or("<none given>"));
+            log::error(logcat, "Failed to publish client contact: {}", status.value_or("<no reason given>"));
         }
     }
 
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
     {
-        log::trace(logcat, "Publishing new EncryptedClientContact: {}", ecc.bt_payload());
-
         // Send our CC down each inbound session so that everyone who is already connected to us
         // gets it pushed to them without having to always poll the network for updates.
         for (const auto& [addr, session] : _sessions)
@@ -826,7 +941,7 @@ namespace llarp::handlers
 
             for (auto& p : active_paths())
             {
-                log::debug(logcat, "Publishing ClientContact on {}", p);
+                log::debug(logcat, "Publishing ClientContact via {}", p);
                 p.publish_client_contact(ecc, publish_cc_cb);
             }
         }

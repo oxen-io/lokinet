@@ -18,9 +18,17 @@ namespace llarp::path
     inline constexpr int BUILD_LENGTH = 8;
 
     /// Length of each frame of a path build.
-    inline constexpr size_t BUILD_FRAME_SIZE = 160;
+    inline constexpr size_t BUILD_FRAME_SIZE = 169;
 
-    inline constexpr auto MAX_LIFETIME = 20min;
+    inline constexpr std::chrono::seconds MAX_LIFETIME = 20min;
+
+    /// The minimum expiry time slots for inbound paths.  See detailed comments in
+    /// SessionEndpoint::update_paths().
+    inline constexpr auto MAX_LIFETIME_SLOTS = 4;
+
+    static_assert(
+        std::chrono::seconds{MAX_LIFETIME} % MAX_LIFETIME_SLOTS == 0s,
+        "MAX_LIFETIME_SLOTS must evenly divide MAX_LIFETIME seconds");
 
     /// How many locations a client contact gets published to.  The contact gets published to the
     /// "closest" [this number] relays, using a metric based on the CC and relay IDs, for short term

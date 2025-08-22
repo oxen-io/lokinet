@@ -69,14 +69,14 @@ namespace llarp
 
             size_t num_hops() const { return hops.size(); }
 
+            const std::chrono::milliseconds& expiry() const { return _expiry; }
+
             std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const
             {
-                return expiry - now;
+                return _expiry - now;
             }
 
-            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return expiry < now; }
-
-            void Tick(std::chrono::milliseconds now);
+            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return _expiry < now; }
 
             void resolve_sns(
                 std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
@@ -169,6 +169,15 @@ namespace llarp
             // Returns true if a path has been marked as built.
             bool is_built() const { return _is_built; }
 
+            struct ping_stats_printer {
+                Path& p;
+                std::string to_string() const;
+                static constexpr bool to_string_formattable = true;
+            };
+
+            // Returns ping stats: response rate (0.0-1.0), and average (successful) ping response time
+            ping_stats_printer printable_ping_stats() { return ping_stats_printer{*this}; }
+
           protected:
             /// call obtained exit hooks
             bool InformExitResult(std::chrono::milliseconds b);
@@ -178,7 +187,7 @@ namespace llarp
 
             Router& _router;
 
-            std::chrono::milliseconds expiry{0s};
+            std::chrono::milliseconds _expiry{0s};
             std::chrono::milliseconds last_recv_msg{0s};
             std::chrono::milliseconds last_latency_test{0s};
             uint64_t last_latency_test_id{};
@@ -187,9 +196,11 @@ namespace llarp
             const size_t path_log_id;  // Only used for log output
 
           private:
-            uint64_t ping_count{0};
-            uint64_t recent_ping_failures{0};
-            std::chrono::milliseconds ping_average{0s};
+            int ping_responses{0}, ping_timeouts{0};
+            int ping_recent_timeouts{0};
+            // Cumulative time of all `ping_responses` pings (divide by ping_responses for an average).
+            std::chrono::milliseconds ping_cumulative{0s};
+            int64_t ping_sq_cumulative{0};
         };
 
     }  // namespace path

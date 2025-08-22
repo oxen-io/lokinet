@@ -13,6 +13,7 @@
 #include <oxen/quic/connection.hpp>
 #include <oxen/quic/endpoint.hpp>
 
+#include <chrono>
 #include <queue>
 
 namespace llarp
@@ -248,7 +249,7 @@ namespace llarp
                 std::span<const std::byte> body,
                 std::function<void(quic::message)> func) override;
 
-            void update_paths() override;
+            void update_paths(std::chrono::milliseconds now) override;
 
             // void stop(bool send_close = false) override;
 
@@ -294,7 +295,7 @@ namespace llarp
             // when receiving intro updates through an existing session).
             void update_intros(const ClientContact& cc);
 
-            void update_paths() override;
+            void update_paths(std::chrono::milliseconds now) override;
 
             nlohmann::json ExtractStatus() const;
 

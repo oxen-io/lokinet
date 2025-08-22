@@ -174,7 +174,7 @@ namespace llarp
 
     /** EncryptedClientContact
             "i" blinded local routerID
-            "n" nounce
+            "n" nonce
             "t" signing time
             "x" encrypted payload
             "~" signature
