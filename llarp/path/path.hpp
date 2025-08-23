@@ -87,7 +87,7 @@ namespace llarp
 
             void find_client_contact(const hash_key& location, std::function<void(quic::message)> func);
 
-            void publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
+            void publish_client_contact(const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func);
 
             void send_path_control_message(
                 std::string_view method,

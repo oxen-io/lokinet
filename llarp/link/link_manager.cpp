@@ -1140,14 +1140,12 @@ namespace llarp
         log::trace(logcat, "Received request to publish client contact!");
 
         EncryptedClientContact enc;
-        std::optional<RouterID> sender = std::nullopt;
+        std::optional<int> location;
 
         try
         {
-            if (inner_body)
-                std::tie(enc, sender) = PublishClientContact::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                std::tie(enc, sender) = PublishClientContact::deserialize(oxenc::bt_dict_consumer{m.body()});
+            std::tie(enc, location) =
+                PublishClientContact::deserialize(oxenc::bt_dict_consumer{inner_body ? *inner_body : m.body()});
         }
         catch (const std::exception& e)
         {
@@ -1172,6 +1170,15 @@ namespace llarp
             // If we aren't a service node then this message is presumably a pushed introset update
             // pushed to us by someone who we should already have an outbound connection with.
 
+            // TODO FIXME: This previously included an optional "i" key containing the sender for
+            // these send-over-session messages, but that seems dumb because 1) it isn't
+            // authenticated, and 2) we should already *know* the sender based on the session the
+            // message arived on.
+
+            log::critical(logcat, "TODO FIXME STAGENET TOTHINK: fix incoming session CC handling");
+            m.respond("FIXME!", true);
+
+#if 0
             if (not sender.has_value())
             {
                 log::warning(logcat, "Received new EncryptedClientContact from path control with no sender!");
@@ -1198,72 +1205,101 @@ namespace llarp
             // FIXME: this should probably come encrypted.  Need to encrypt it and also handle it here.
 
             return m.respond(messages::OK_RESPONSE);
+#endif
         }
 
         auto dht_key = enc.key();
 
-        // If the optional was nullopt, then this was a relay <-> relay request. As a result, we should NOT
-        // allow it to continue propagating
-        if (not inner_body)
+        // These messages have two steps: the client sends each message down a path with a 0-3
+        // location value indicating which of the 4 closest locations it should be published to.
+        // The relay receiving it then determines the target relay (based on the input) and forwards
+        // it along.  (Or, if it got lucky and is the requested index, stores it directly).
+        //
+        // The forwarded step here does *not* include the position, and must be a relay-to-relay
+        // direct message: the receiver of this direct message stores it if they are in the top-4+1
+        // locations (the extra +1 is to allow for a slight amount of drift in positions, e.g. in
+        // case of races with oxen block changes or other stale data).
+        //
+        // This two-step process helps ensure that publishes work even if the client has an
+        // incomplete or outdated set of RCs, and doesn't require the client to build extra paths to
+        // the 4 publish locations.
+        const bool is_forwarded = not inner_body;
+
+        auto closest_rcs = router.node_db().find_many_closest_to(dht_key, path::CC_PUBLISH_LOCATIONS + 1);
+        if (closest_rcs.size() < path::CC_PUBLISH_LOCATIONS)
         {
-            log::debug(logcat, "Received relayed PublishClientContact request (key: {}); accepting...", dht_key);
-            // TODO FIXME: This is wrong: we should only be storing in our cc *if* we are one of the
-            // 4 closest.
-            router.contact_db().put_cc(std::move(enc));
-            return m.respond(messages::OK_RESPONSE);
+            m.respond("No RCs available!", true);
+            return;
         }
 
-        auto local_rid = router.local_rid();
-
-        auto closest_rcs = router.node_db().find_many_closest_to(dht_key, path::CC_PUBLISH_LOCATIONS);
-        if (closest_rcs.empty())
+        if (!is_forwarded)
         {
-            return m.respond("No RCs available!", true);
-        }
-
-        // TODO FIXME: why is there just one closest that we propagate to?  This CC needs to end up
-        // at all 4 closest positions, not just the one closest.  We probably also need the client
-        // to tell us which of the 4 it was trying to reach to reduce amplification.
-        const auto& closest_peer = closest_rcs.front()->router_id();
-
-        for (const auto* rc : closest_rcs)
-        {
-            auto& rid = rc->router_id();
-
-            log::debug(logcat, "Closest RCs to received ClientContact: {}", rid);
-
-            if (rid == local_rid)
+            if (!location || *location < 0 || *location >= path::CC_PUBLISH_LOCATIONS)
             {
-                log::info(
+                log::warning(
                     logcat,
-                    "Received PublishClientContact (key: {}) for which we are a candidate; accepting...",
-                    dht_key);
-                router.contact_db().put_cc(std::move(enc));
-                return m.respond(messages::OK_RESPONSE);
+                    "Ignoring ECC publish from a client with {} publish index",
+                    location ? "invalid ({})"_format(*location) : "missing");
+                m.respond(
+                    messages::serialize_status_response(
+                        location ? "INVALID PUBLISH LOCATION" : "MISSING PUBLISH LOCATION"),
+                    true);
+                return;
             }
+
+            auto& rc = *closest_rcs[*location];
+
+            if (rc.router_id() == router.local_rid())
+            {
+                // Special case: we *are* the intended location
+                router.contact_db().put_cc(std::move(enc));
+                m.respond(messages::OK_RESPONSE);
+                return;
+            }
+
+            log::debug(
+                logcat,
+                "Received PublishClientContact (key: {}, index: {}); forwarding to {}",
+                enc.key(),
+                *location,
+                rc.router_id());
+
+            send_control_message(
+                rc.router_id(),
+                "publish_cc",
+                PublishClientContact::serialize(std::move(enc)),
+                [prev_msg = std::move(m)](quic::message msg) mutable {
+                    log::info(
+                        logcat,
+                        "Relayed PublishClientContact {}! Relaying response...",
+                        msg                 ? "SUCCEEDED"
+                            : msg.timed_out ? "timed out"
+                                            : "failed");
+                    log::trace(logcat, "Relayed PublishClientContact response: {}", buffer_printer{msg.body()});
+                    prev_msg.respond(msg.body(), msg.is_error());
+                });
+            return;
         }
 
-        // TODO FIXME: these should go to the *four* closest, not the single closest.
-        log::info(
-            logcat,
-            "Received PublishClientContact (key: {}); propagating to closest peer (rid: {})...",
-            enc.key(),
-            closest_peer);
+        // Otherwise this was forwarded, so we store it if and only if we are one of the
+        // CC_PUBLISH_LOCATIONS closest locations, and we don't forward regardless.
+        //
+        // We don't require that we were strictly in the correct position that the client originally
+        // sent (and thus we don't even get the target location forwarded), because an Oxen
+        // block update at just the wrong time could shift indices, and we still want to store it
+        // even if we shifted (e.g. from 3nd to 2nd).
+        for (auto* rc : closest_rcs)
+            if (rc->router_id() == router.local_rid())
+            {
+                router.contact_db().put_cc(std::move(enc));
+                m.respond(messages::OK_RESPONSE);
+                return;
+            }
 
-        send_control_message(
-            closest_peer,
-            "publish_cc",
-            PublishClientContact::serialize(std::move(enc), std::move(sender)),
-            [prev_msg = std::move(m)](quic::message msg) mutable {
-                log::info(
-                    logcat,
-                    "Relayed PublishClientContact {}! Relaying response...",
-                    msg                 ? "SUCCEEDED"
-                        : msg.timed_out ? "timed out"
-                                        : "failed");
-                log::trace(logcat, "Relayed PublishClientContact response: {}", buffer_printer{msg.body()});
-                prev_msg.respond(msg.body(), msg.is_error());
-            });
+        log::warning(
+            logcat, "Ignoring forwarded CC publish: we are not in the top {} publish locations", closest_rcs.size());
+        m.respond(messages::ERROR_RESPONSE, true);
+        return;
     }
 
     void LinkManager::_handle_find_cc(quic::message m, std::optional<std::string> inner_body)

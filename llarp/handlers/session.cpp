@@ -1,18 +1,17 @@
 #include "session.hpp"
 
-#include "llarp/contact/relay_contact.hpp"
-#include "llarp/path/transit_hop.hpp"
-#include "llarp/session/session.hpp"
-#include "llarp/util/time.hpp"
-
 #include <llarp/contact/contactdb.hpp>
+#include <llarp/contact/relay_contact.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/session/session.hpp>
 #include <llarp/util/bspan.hpp>
+#include <llarp/util/time.hpp>
 
 #include <oxenc/base32z.h>
 
@@ -307,7 +306,7 @@ namespace llarp::handlers
             // other path expiries relative to this.  We add 1 because the slot for the *current*
             // time (after truncation) will be an expired slot time, and so we only expect to see
             // path slots strictly greater than that.
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now)- path_expiry_basis) / slot_size + 1;
+            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1;
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
@@ -883,33 +882,9 @@ namespace llarp::handlers
         return s->tag();
     }
 
-    static void publish_cc_cb(quic::message m)
-    {
-        if (m)
-        {
-            log::debug(logcat, "Client contact publish succeeded");
-        }
-        else
-        {
-            std::optional<std::string> status = std::nullopt;
-            try
-            {
-                oxenc::bt_dict_consumer btdc{m.body()};
-
-                if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
-                    status = s;
-            }
-            catch (const std::exception& e)
-            {
-                log::warning(logcat, "Failed to parse CC publish response: {}", e.what());
-            }
-
-            log::error(logcat, "Failed to publish client contact: {}", status.value_or("<no reason given>"));
-        }
-    }
-
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
     {
+        auto now = std::chrono::steady_clock::now();
         // Send our CC down each inbound session so that everyone who is already connected to us
         // gets it pushed to them without having to always poll the network for updates.
         for (const auto& [addr, session] : _sessions)
@@ -919,31 +894,87 @@ namespace llarp::handlers
                 return;
             log::debug(logcat, "Publishing ClientContact to remote on inbound session (remote:{})", session->remote());
 
-            session->publish_client_contact(ecc, publish_cc_cb);
+            session->publish_client_contact(ecc, [started = now, to = session->remote()](quic::message m) {
+                log::debug(
+                    logcat,
+                    "{} new CC to {} via established session in {}",
+                    m                 ? "Pushed"
+                        : m.timed_out ? "Timeout pushing"
+                                      : "Error pushing",
+                    to,
+                    std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started));
+
+                if (m.is_error())
+                    log::debug(logcat, "CC push error response: {}", buffer_printer{m.body()});
+            });
         }
 
-        // Publish it down our established inbound paths; each terminus should then forward it on
-        // to the 4 best locations.
-        //
-        // TODO FIXME This doesn't right: we could have loads of paths, *and* every one we send
-        // would amplify by 4 at each terminus, which is way too much network data.  Instead we
-        // should perhaps do something like:
-        // - "publish to 1st best" -> send down 1 path
-        // - "publish to 2nd best" -> send down 1 path
-        // - "publish to 3rd best" -> send down 1 path
-        // - "publish to 4th best" -> send down 1 path
-        //
-        // where we try (if possible) to use 4 different paths for the 4 requests, so that there
-        // isn't any amplification at all.  If some fail that doesn't matter because there is
-        // already 4x redundancy built in here.
+        // Pick four random inbound paths to publish on, and then on each one we send along a 0-3
+        // location indicating where we want it to forward it (e.g. 0 means DHT-closest, 1 means 2nd
+        // closest, etc.).
+        std::vector<path::Path*> paths;
+        paths.resize(path::CC_PUBLISH_LOCATIONS);
+        auto end = std::ranges::sample(
+            active_paths() | std::views::transform([](auto& p) { return &p; }),
+            paths.begin(),
+            path::CC_PUBLISH_LOCATIONS,
+            llarp::csrng);
+        paths.resize(std::distance(paths.begin(), end));
+        if (paths.empty())
         {
-            Lock_t l{paths_mutex};
+            // This should be impossible: we should only have triggered a publish once we reached
+            // our target number of active paths, but somehow found no active paths!
+            log::error(logcat, "Internal error: attempt to publish CC with no active paths!");
+            assert(false);
+            return;
+        }
+        std::shuffle(paths.begin(), paths.end(), llarp::csrng);
 
-            for (auto& p : active_paths())
-            {
-                log::debug(logcat, "Publishing ClientContact via {}", p);
-                p.publish_client_contact(ecc, publish_cc_cb);
-            }
+        // Tracks number of successes and number of outstanding requests so that we can log success
+        // (or error) when the last response comes back:
+        auto remaining_success = std::make_shared<std::pair<int, int>>(path::CC_PUBLISH_LOCATIONS, 0);
+
+        for (int location = 0; location < path::CC_PUBLISH_LOCATIONS; location++)
+        {
+            // % because we might have fewer than path::CC_PUBLISH_LOCATIONS, and if that happens we
+            // just use some paths for multiple locations:
+            auto& p = *paths[location % paths.size()];
+            log::debug(logcat, "Publishing ClientContact to location {} via {}", location, p);
+            p.publish_client_contact(
+                ecc, location, [started = now, remaining_success, via = p.terminal_rid(), location](quic::message m) {
+                    auto elapsed =
+                        std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
+
+                    log::debug(
+                        logcat,
+                        "{} CC publish[{}] via relay {} in {}",
+                        m                 ? "Successful"
+                            : m.timed_out ? "Timeout during"
+                                          : "Error during",
+                        location,
+                        via,
+                        elapsed);
+                    if (m.is_error())
+                        log::debug(logcat, "CC publish error response: {}", buffer_printer(m.body()));
+
+                    auto& [remaining, success] = *remaining_success;
+                    remaining--;
+                    if (m)
+                        success++;
+
+                    if (not remaining)
+                    {  // This is the last response
+                        log::log(
+                            logcat,
+                            not success                                    ? log::Level::err
+                                : success < path::CC_PUBLISH_LOCATIONS / 2 ? log::Level::warn
+                                                                           : log::Level::info,
+                            "CC publish success to {}/{} publish locations in {}",
+                            success,
+                            path::CC_PUBLISH_LOCATIONS,
+                            elapsed);
+                    }
+                });
         }
     }
 

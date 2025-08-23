@@ -12,9 +12,9 @@ namespace llarp
         extern const std::string INVALID;
         extern const std::string EXPIRED;
 
-        std::vector<std::byte> serialize(const EncryptedClientContact& ecc, std::optional<RouterID> remote = std::nullopt);
+        std::vector<std::byte> serialize(const EncryptedClientContact& ecc, std::optional<int> location = std::nullopt);
 
-        std::pair<EncryptedClientContact, std::optional<RouterID>> deserialize(oxenc::bt_dict_consumer&& btdc);
+        std::pair<EncryptedClientContact, std::optional<int>> deserialize(oxenc::bt_dict_consumer&& btdc);
 
     }  // namespace PublishClientContact
 

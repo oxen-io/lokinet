@@ -164,9 +164,9 @@ namespace llarp::path
         send_path_control_message("find_cc", FindClientContact::serialize(location), std::move(func));
     }
 
-    void Path::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
+    void Path::publish_client_contact(const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)
     {
-        send_path_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
+        send_path_control_message("publish_cc", PublishClientContact::serialize(ecc, location), std::move(func));
     }
 
     void Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)

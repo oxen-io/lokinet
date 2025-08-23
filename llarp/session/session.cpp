@@ -513,8 +513,7 @@ namespace llarp::session
 
     void Session::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
-        send_session_control_message(
-            "publish_cc", PublishClientContact::serialize(ecc, _r.local_rid()), std::move(func));
+        send_session_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
     }
 
     void Session::handle_udp_from_remote(IPPacket&& pkt)
