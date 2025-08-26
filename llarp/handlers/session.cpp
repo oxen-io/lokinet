@@ -2,6 +2,7 @@
 
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
@@ -22,7 +23,8 @@ namespace llarp::handlers
     static auto logcat = log::Cat("session_ep");
 
     SessionEndpoint::SessionEndpoint(Router& r)
-        : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()}
+        : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()},
+          cc_blind_keys{r.identity(), crypto::blinding::CLIENT_CONTACT}
     {
         const auto& netconf = router.config().network;
 
@@ -41,12 +43,8 @@ namespace llarp::handlers
                 protocols |= protocol_flag::EXIT;
         }
 
-        client_contact = ClientContact{
-            router.key_manager.derive_subkey(),
-            router.key_manager.router_id(),
-            netconf.srv_records,
-            protocols,
-            netconf.traffic_policy};
+        client_contact =
+            ClientContact{router.key_manager.router_id(), netconf.srv_records, protocols, netconf.traffic_policy};
     }
 
     std::pair<size_t, size_t> SessionEndpoint::session_stats() const
@@ -648,7 +646,16 @@ namespace llarp::handlers
             return func(std::move(maybe_intro));
         }
 
-        auto remote_key = hash_key::derive_from_rid(remote);
+        PubKey remote_key;
+        if (!crypto::blind(remote_key, remote, crypto::blinding::CLIENT_CONTACT))
+        {
+            log::error(
+                logcat,
+                "Failed to blind remote address {}: this is most likely not a valid address",
+                remote.to_network_address(false));
+            func(std::nullopt);
+            return;
+        }
 
         log::debug(
             logcat,
@@ -759,18 +766,7 @@ namespace llarp::handlers
 
         try
         {
-            auto enc = client_contact.encrypt_and_sign();
-
-#ifndef NDEBUG
-            assert(enc.verify());
-            {
-                auto decrypt = enc.decrypt(router.local_rid());
-                assert(decrypt);
-                assert(*decrypt == client_contact);
-            }
-#endif
-
-            publish_client_contact(enc);
+            publish_client_contact(client_contact.encrypt_and_sign(cc_blind_keys));
         }
         catch (const std::exception& e)
         {

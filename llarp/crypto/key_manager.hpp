@@ -1,10 +1,7 @@
 #pragma once
 
-#include "types.hpp"
-
+#include <llarp/constants/files.hpp>
 #include <llarp/contact/router_id.hpp>
-
-#include <atomic>
 
 namespace llarp
 {
@@ -30,7 +27,6 @@ namespace llarp
         KeyManager(const Config& config, bool is_relay);
 
         Ed25519SecretKey identity_key;
-        Ed25519PrivateData identity_data;
         RouterID public_key;
 
         void update_idkey(Ed25519SecretKey&& newkey);
@@ -38,7 +34,13 @@ namespace llarp
       public:
         const RouterID& router_id() const { return public_key; }
 
-        Ed25519PrivateData derive_subkey(uint64_t domain = 1) const;
+        // Helper functions to load a key; these are used by KeyManager itself, but are expoed as
+        // they also have some uses for key loading outside KeyManager.
+        static void load_from_file(Ed25519SecretKey& key, const fs::path& fname);
+        static bool write_to_file(const Ed25519SecretKey& key, const fs::path& fname);
     };
+
+    void load_from_file(Ed25519SecretKey& key, const fs::path& fname);
+    bool write_to_file(const Ed25519SecretKey& key, const fs::path& fname);
 
 }  // namespace llarp

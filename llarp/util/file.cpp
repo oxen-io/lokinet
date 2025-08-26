@@ -20,34 +20,24 @@ namespace llarp::util
 {
     static auto logcat = log::Cat("util.file");
 
-    static std::streampos _file_reader_impl(const fs::path& filename, std::ifstream& in)
+    std::string file_to_string(const fs::path& filename, size_t max_size)
     {
+        std::ifstream in;
+        std::string contents;
+
         in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         in.open(filename, std::ios::binary | std::ios::in);
         in.seekg(0, std::ios::end);
         auto size = in.tellg();
         in.seekg(0, std::ios::beg);
-        return size;
-    }
 
-    std::string file_to_string(const fs::path& filename)
-    {
-        std::ifstream in;
-        std::string contents;
-        auto size = _file_reader_impl(filename, in);
+        if (auto sz = static_cast<size_t>(size); sz > max_size)
+            throw std::length_error{
+                "Cannot load {}: file size {} exceeds max allowed size {}"_format(filename, sz, max_size)};
+
         contents.resize(size);
         in.read(contents.data(), size);
         return contents;
-    }
-
-    size_t file_to_buffer(const fs::path& filename, char* buffer, size_t buffer_size)
-    {
-        std::ifstream in;
-        auto size = _file_reader_impl(filename, in);
-        if (static_cast<size_t>(size) > buffer_size)
-            throw std::length_error{"file is too large for buffer"};
-        in.read(buffer, size);
-        return size;
     }
 
     void buffer_to_file(const fs::path& filename, std::string_view contents)
@@ -72,22 +62,7 @@ namespace llarp::util
         const auto str = pathname.string();
         if (fs::exists(pathname, ec))  // file exists
         {
-            auto st = fs::status(pathname);
-            auto perms = st.permissions();
-            if ((perms & fs::perms::others_exec) != fs::perms::none)
-                perms = perms ^ fs::perms::others_exec;
-            if ((perms & fs::perms::others_write) != fs::perms::none)
-                perms = perms ^ fs::perms::others_write;
-            if ((perms & fs::perms::others_write) != fs::perms::none)
-                perms = perms ^ fs::perms::others_write;
-            if ((perms & fs::perms::group_read) != fs::perms::none)
-                perms = perms ^ fs::perms::group_read;
-            if ((perms & fs::perms::others_read) != fs::perms::none)
-                perms = perms ^ fs::perms::others_read;
-            if ((perms & fs::perms::owner_exec) != fs::perms::none)
-                perms = perms ^ fs::perms::owner_exec;
-
-            fs::permissions(pathname, perms, ec);
+            fs::permissions(pathname, fs::perms::owner_read | fs::perms::owner_write, ec);
             if (ec)
                 log::error(logcat, "failed to set permissions on {}", pathname);
         }

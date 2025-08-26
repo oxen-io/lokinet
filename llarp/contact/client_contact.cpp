@@ -16,16 +16,11 @@ namespace llarp
     static auto logcat = log::Cat("client-intro");
 
     ClientContact::ClientContact(
-        Ed25519PrivateData private_data,
         PubKey pk,
         std::unordered_set<dns::SRVData> srvs,
         protocol_flag protocols,
         std::optional<net::ExitPolicy> policy)
-        : derived_privatekey{std::move(private_data)},
-          _pubkey{std::move(pk)},
-          _srv{std::move(srvs)},
-          _protos{protocols},
-          _exit_policy{std::move(policy)}
+        : _pubkey{std::move(pk)}, _srv{std::move(srvs)}, _protos{protocols}, _exit_policy{std::move(policy)}
     {}
 
     ClientContact::ClientContact(std::span<const std::byte> buf)
@@ -118,24 +113,21 @@ namespace llarp
         return _intros.empty() || _intros.front().is_expired(now);
     }
 
-    EncryptedClientContact ClientContact::encrypt_and_sign() const
+    EncryptedClientContact ClientContact::encrypt_and_sign(const Ed25519BlindedKey& blinded) const
     {
         EncryptedClientContact enc{};
 
         try
         {
-            enc.blinded_pubkey.assign(derived_privatekey.to_pubkey().span());
+            enc.blinded_pubkey.assign(blinded.pubkey);
             enc.encrypted = bt_encode();
 
             crypto::xchacha20(enc.encrypted, _pubkey, enc.nonce);
             enc.signed_at = llarp::time_now_ms();
 
             auto btdp = enc.bt_encode_for_signing();
-            btdp.append_signature("~", [&enc, this](std::span<const std::byte> to_sign) {
-                if (not crypto::sign(enc.sig, derived_privatekey, to_sign))
-                    throw std::runtime_error{"Failed to sign EncryptedClientContact payload!"};
-                return enc.sig.span();
-            });
+            btdp.append_signature(
+                "~", [&blinded](std::span<const std::byte> to_sign) { return blinded.sign(to_sign); });
 
             enc._bt_payload = std::move(btdp).str();
         }
@@ -173,7 +165,7 @@ namespace llarp
     }
 
     /** EncryptedClientContact
-            "i" blinded local routerID
+            "i" blinded pubkey
             "n" nonce
             "t" signing time
             "x" encrypted payload
@@ -183,16 +175,20 @@ namespace llarp
     {
         try
         {
-            blinded_pubkey.assign(btdc.require_span<std::byte, hash_key::SIZE>("i"));
+            blinded_pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("i"));
             nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
             signed_at = std::chrono::milliseconds{btdc.require<int64_t>("t")};
 
-            // TESTNET: TOFIX: change this after oxenc span PR is merged
-            auto enc = btdc.require<std::string_view>("x");
-            encrypted.resize(enc.size());
-            std::memcpy(encrypted.data(), enc.data(), enc.size());
+            auto enc = btdc.require_span<std::byte>("x");
+            encrypted.assign(enc.begin(), enc.end());
 
-            sig.assign(btdc.require_span<std::byte, Signature::SIZE>("~"));
+            btdc.require_signature("~", [this](std::span<const std::byte> m, std::span<const std::byte> s) {
+                if (s.size() != 64)
+                    throw std::runtime_error{"Invalid signature: not 64 bytes"};
+
+                if (not crypto::verify(blinded_pubkey, m, s.first<64>()))
+                    throw std::runtime_error{"EncryptedClientContact signature verification failed"};
+            });
         }
         catch (const std::exception& e)
         {
@@ -215,31 +211,6 @@ namespace llarp
         cc.emplace(plaintext);
 
         return cc;
-    }
-
-    bool EncryptedClientContact::verify() const
-    {
-        try
-        {
-            oxenc::bt_dict_consumer btdc{_bt_payload};
-
-            btdc.require_signature("~", [this](std::span<const std::byte> m, std::span<const std::byte> s) {
-                if (s.size() != 64)
-                    throw std::runtime_error{"Invalid signature: not 64 bytes"};
-
-                if (not crypto::verify(blinded_pubkey, m, s.first<64>()))
-                    throw std::runtime_error{"Failed to verify EncryptedClientContact signature!"};
-            });
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            return false;
-        }
-
-        log::trace(logcat, "Successfully verified EncryptedClientContact!");
-
-        return true;
     }
 
     bool EncryptedClientContact::is_expired(std::chrono::milliseconds now) const

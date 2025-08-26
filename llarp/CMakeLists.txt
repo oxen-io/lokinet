@@ -12,8 +12,9 @@ endfunction()
 
 lokinet_add_library(lokinet-cryptography
   crypto/crypto.cpp
-  crypto/types.cpp
   crypto/key_manager.cpp
+  crypto/keys.cpp
+  crypto/types.cpp
 )
 
 if(LOKINET_FULL)
@@ -90,7 +91,6 @@ lokinet_add_library(lokinet-contact
   contact/client_contact.cpp
   contact/client_intro.cpp
   contact/contactdb.cpp
-  contact/keys.cpp
   contact/relay_contact.cpp
   contact/router_id.cpp
   contact/sns.cpp

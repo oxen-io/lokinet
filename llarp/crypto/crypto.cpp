@@ -1,6 +1,6 @@
 #include "crypto.hpp"
 
-#include <llarp/contact/keys.hpp>
+#include <llarp/crypto/keys.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/random.hpp>
@@ -31,12 +31,17 @@ namespace llarp::crypto
         const PubKey& client_pk,
         const PubKey& server_pk,
         bool we_are_client,
-        const Ed25519PrivateData& local_edhash,
+        const Ed25519SecretKey& local_keys,
         const SymmNonce& nonce)
     {
         SharedSecret shared;
-        if (crypto_scalarmult_ed25519(
-                shared.data(), local_edhash.scalar().data(), (we_are_client ? server_pk : client_pk).data()))
+
+        // Somewhat misnamed: actually gets the private scalar (which happens to be what you need
+        // for converting to X):
+        std::array<unsigned char, 32> a;
+        crypto_sign_ed25519_sk_to_curve25519(a.data(), local_keys.data());
+
+        if (crypto_scalarmult_ed25519(shared.data(), a.data(), (we_are_client ? server_pk : client_pk).data()))
             return false;
 
         crypto_generichash_blake2b_state h;
@@ -97,14 +102,15 @@ namespace llarp::crypto
 
     bool dh_client(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
-        if (dh(shared, sk.to_pubkey(), pk, true, sk.to_eddata(), n))
+        if (dh(shared, sk.to_pubkey(), pk, true, sk, n))
             return true;
 
         log::warning(logcat, "dh_client - dh failed");
         return false;
     }
 
-    std::tuple<SharedSecret, PubKey, SymmNonce> dh_client_gen(const PubKey& server_pk) {
+    std::tuple<SharedSecret, PubKey, SymmNonce> dh_client_gen(const PubKey& server_pk)
+    {
         std::tuple<SharedSecret, PubKey, SymmNonce> result;
         auto& [secret, eph_pk, nonce] = result;
 
@@ -119,7 +125,7 @@ namespace llarp::crypto
     /// path dh relay side
     bool dh_server(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)
     {
-        if (dh(shared, pk, sk.to_pubkey(), false, sk.to_eddata(), n))
+        if (dh(shared, pk, sk.to_pubkey(), false, sk, n))
             return true;
 
         log::warning(logcat, "dh_server - dh failed");
@@ -141,53 +147,6 @@ namespace llarp::crypto
         AlignedBuffer<SHORTHASHSIZE> result;
         shorthash(result, buf);
         return result;
-    }
-    bool sign(std::span<std::byte, SIGSIZE> sig, const Ed25519SecretKey& secret, std::span<const std::byte> buf)
-    {
-        return crypto_sign_detached(as_uspan(sig).data(), nullptr, as_uspan(buf).data(), buf.size(), secret.data())
-            != -1;
-    }
-
-    bool sign(std::span<std::byte, SIGSIZE> sig, const Ed25519PrivateData& privkey, std::span<const std::byte> buf)
-    {
-        PubKey pubkey = privkey.to_pubkey();
-
-        crypto_hash_sha512_state hs;
-        unsigned char nonce[64];
-        unsigned char hram[64];
-        unsigned char mulres[32];
-
-        // r = H(s || M) where here s is pseudorandom bytes typically generated as
-        // part of hashing the seed (i.e. [a,s] = H(k)), but for derived
-        // PrivateKeys will come from a hash of the root key's s concatenated with
-        // the derivation hash.
-        crypto_hash_sha512_init(&hs);
-        crypto_hash_sha512_update(&hs, privkey.signing_hash().data(), 32);
-        crypto_hash_sha512_update(&hs, as_uspan(buf).data(), buf.size());
-        crypto_hash_sha512_final(&hs, nonce);
-        crypto_core_ed25519_scalar_reduce(nonce, nonce);
-
-        // copy pubkey into sig to make (for now) sig = (R || A)
-        memmove(sig.data() + 32, pubkey.data(), 32);
-
-        auto* sig_data = as_uspan(sig).data();
-        // R = r * B
-        crypto_scalarmult_ed25519_base_noclamp(sig_data, nonce);
-
-        // hram = H(R || A || M)
-        crypto_hash_sha512_init(&hs);
-        crypto_hash_sha512_update(&hs, sig_data, 64);
-        crypto_hash_sha512_update(&hs, as_uspan(buf).data(), buf.size());
-        crypto_hash_sha512_final(&hs, hram);
-
-        // S = r + H(R || A || M) * s, so sig = (R || S)
-        crypto_core_ed25519_scalar_reduce(hram, hram);
-        crypto_core_ed25519_scalar_mul(mulres, hram, privkey.data());
-        crypto_core_ed25519_scalar_add(sig_data + 32, mulres, nonce);
-
-        sodium_memzero(nonce, sizeof nonce);
-
-        return true;
     }
 
     bool verify(
@@ -241,65 +200,33 @@ namespace llarp::crypto
         log::trace(logcat, "Shared secret: {}", shared.to_string());
     }
 
-    /// clamp a 32 byte ec point
-    static void clamp_ed25519(uint8_t* out)
+    std::array<unsigned char, 32> blinding_scalar(std::span<const std::byte, 32> pubkey, std::string_view blind_domain)
     {
-        out[0] &= 248;
-        out[31] &= 127;
-        out[31] |= 64;
-    }
+        if (blind_domain.size() > crypto_generichash_KEYBYTES_MAX)
+            blind_domain = blind_domain.substr(0, crypto_generichash_KEYBYTES_MAX);
 
-    template <typename K>
-    static K clamp(const K& p)
-    {
-        K out = p;
-        clamp_ed25519(out);
-        return out;
-    }
-
-    template <typename K>
-    static bool is_clamped(const K& key)
-    {
-        K other(key);
-        clamp_ed25519(other.data());
-        return other == key;
-    }
-
-    static constexpr char derived_key_hash_str[161] =
-        "just imagine what would happen if we all decided to understand. you "
-        "can't in the and by be or then before so just face it this text hurts "
-        "to read? lokinet yolo!";
-
-    std::array<unsigned char, 32> make_scalar(const PubKey& k, uint64_t domain)
-    {
-        // b = BLIND-STRING || k || i
-        std::array<uint8_t, 160 + PubKey::SIZE + sizeof(uint64_t)> buf;
-        std::copy(derived_key_hash_str, derived_key_hash_str + 160, buf.begin());
-        std::copy(k.begin(), k.end(), buf.begin() + 160);
-        oxenc::write_host_as_little(domain, buf.data() + 160 + PubKey::SIZE);
-
-        // n = H(b)
-        // h = make_point(n)
+        // n = H(pk, key=blind_domain)
         std::array<unsigned char, 64> n;
-        std::array<unsigned char, 32> out;
+        crypto_generichash_blake2b(
+            n.data(),
+            n.size(),
+            reinterpret_cast<const unsigned char*>(pubkey.data()),
+            pubkey.size(),
+            reinterpret_cast<const unsigned char*>(blind_domain.data()),
+            blind_domain.size());
 
-        crypto_generichash_blake2b(n.data(), n.size(), buf.data(), buf.size(), nullptr, 0);
+        // out = scalar_reduce(n)
+        std::array<unsigned char, 32> out;
         crypto_core_ed25519_scalar_reduce(out.data(), n.data());
 
         return out;
     }
 
-    bool derive_subkey(uint8_t* derived, size_t derived_len, const PubKey& root_pubkey, uint64_t key_n)
+    bool blind(PubKey& blinded, const PubKey& root, std::string_view blind_domain)
     {
-        if (derived_len != PubKey::SIZE)
-        {
-            log::error(logcat, "Derived pubkey must be {}!", PubKey::SIZE);
-            return false;
-        }
-
-        // scalar h = H( BLIND-STRING || root_pubkey || key_n )
-        std::array<unsigned char, 32> h = make_scalar(root_pubkey, key_n);
-        return 0 == crypto_scalarmult_ed25519_noclamp(derived, h.data(), root_pubkey.data());
+        return 0
+            == crypto_scalarmult_ed25519_noclamp(
+                   blinded.data(), blinding_scalar(root, blind_domain).data(), root.data());
     }
 
     Ed25519SecretKey generate_ed25519()

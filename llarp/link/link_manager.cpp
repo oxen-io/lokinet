@@ -1159,12 +1159,6 @@ namespace llarp
             return m.respond(PublishClientContact::EXPIRED, true);
         }
 
-        if (not enc.verify())
-        {
-            log::warning(logcat, "Received invalid EncryptedClientContact!");
-            return m.respond(PublishClientContact::INVALID, true);
-        }
-
         if (not router.is_service_node)
         {
             // If we aren't a service node then this message is presumably a pushed introset update
@@ -1208,7 +1202,7 @@ namespace llarp
 #endif
         }
 
-        auto dht_key = enc.key();
+        auto cc_blind_pk = enc.key();
 
         // These messages have two steps: the client sends each message down a path with a 0-3
         // location value indicating which of the 4 closest locations it should be published to.
@@ -1225,7 +1219,7 @@ namespace llarp
         // the 4 publish locations.
         const bool is_forwarded = not inner_body;
 
-        auto closest_rcs = router.node_db().find_many_closest_to(dht_key, path::CC_PUBLISH_LOCATIONS + 1);
+        auto closest_rcs = router.node_db().find_many_closest_to(cc_blind_pk, path::CC_PUBLISH_LOCATIONS + 1);
         if (closest_rcs.size() < path::CC_PUBLISH_LOCATIONS)
         {
             m.respond("No RCs available!", true);
@@ -1306,14 +1300,11 @@ namespace llarp
     {
         log::trace(logcat, "Received request to find client contact!");
 
-        hash_key dht_key;
-
+        PubKey blinded_pubkey;
         try
         {
-            if (inner_body)
-                dht_key = FindClientContact::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                dht_key = FindClientContact::deserialize(oxenc::bt_dict_consumer{m.body()});
+            blinded_pubkey =
+                FindClientContact::deserialize(oxenc::bt_dict_consumer{inner_body ? *inner_body : m.body()});
         }
         catch (const std::exception& e)
         {
@@ -1321,13 +1312,37 @@ namespace llarp
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        if (auto maybe_cc = router.contact_db().get_encrypted_cc(dht_key))
+        auto closest_rcs = router.node_db().find_many_closest_to(blinded_pubkey, path::CC_PUBLISH_LOCATIONS);
+
+        // We don't provide the answer ourselves unless we are in the closest-4 set because it's
+        // possible we *were* in the closest 4 but then dropped out, but still have a stale record
+        // hanging around.
+        bool we_are_authoritative = false;
+        for (auto* rc : closest_rcs)
+            if (rc && rc->router_id() == router.local_rid())
+                we_are_authoritative = true;
+
+        if (we_are_authoritative)
         {
-            log::info(
+            // TODO FIXME: Do we want to send the requests off to other relays *even if* we have it,
+            // to double-check against other relays in case ours is stale?
+
+            if (auto maybe_cc = router.contact_db().get_encrypted_cc(blinded_pubkey))
+            {
+                log::info(
+                    logcat,
+                    "Received FindClientContact request (key: {}); returning local EncryptedClientContact...",
+                    blinded_pubkey);
+                return m.respond(FindClientContact::serialize_response(*maybe_cc));
+            }
+
+            log::debug(
                 logcat,
-                "Received FindClientContact request (key: {}); returning local EncryptedClientContact...",
-                dht_key);
-            return m.respond(FindClientContact::serialize_response(*maybe_cc));
+                "Received FindClientContact and we are authoritative, but don't have a matching CC for {}",
+                blinded_pubkey);
+            // Don't return an error because we can still possibly forward it to other authoritative
+            // nodes, below, and it's perfectly possible for us not to have it if we missed it for
+            // various reasons.
         }
 
         // If the optional was nullopt, then this was a relay <-> relay request. As a result, we should NOT
@@ -1338,61 +1353,40 @@ namespace llarp
                 logcat,
                 "Received relayed FindClientContact request (key: {}); could not find locally, relaying "
                 "error...",
-                dht_key);
+                blinded_pubkey);
             return m.respond(FindClientContact::NOT_FOUND, true);
         }
 
-        auto local_rid = router.local_rid();
-
-        auto closest_rcs = router.node_db().find_many_closest_to(dht_key, path::CC_PUBLISH_LOCATIONS);
+        std::erase_if(closest_rcs, [this](const auto* rc) { return !rc || rc->router_id() == router.local_rid(); });
         if (closest_rcs.empty())
             return m.respond("No RCs!", true);
 
-        auto n_closest = closest_rcs.size();
-
-        for (const auto* rc : closest_rcs)
-        {
-            auto& rid = rc->router_id();
-
-            if (rid == local_rid)
-            {
-                log::warning(
-                    logcat,
-                    "We are closest peer for FindClientContact request (key: {}); no EncryptedClientContact "
-                    "found locally!",
-                    dht_key);
-                return m.respond(FindClientContact::NOT_FOUND, true);
-            }
-        }
-
-        auto counter = std::make_shared<size_t>(n_closest);
-
-        auto hook = [prev_msg = std::move(m), counter](quic::message msg) mutable {
-            if (*counter == 0)
-                return;
+        auto remaining = std::make_shared<size_t>(closest_rcs.size());
+        auto hook = [m = std::move(m), remaining](quic::message msg) mutable {
+            if (*remaining == 0)
+                return;  // Already answered by an earlier response
 
             if (msg)
             {
-                *counter = 0;
-                log::info(logcat, "Relayed FindClientContact request SUCCEEDED! Relaying response...");
+                *remaining = 0;
+                log::info(logcat, "Relayed FindClientContact request SUCCEEDED! Relaying response");
                 log::trace(logcat, "Relayed FindClientContact response: {}", buffer_printer{msg.body()});
-            }
-            else if (--*counter == 0)
-            {
-                log::warning(logcat, "All FindClientContact requests FAILED! Relaying response...");
-            }
-            else
+                m.respond(msg.body());
                 return;
+            }
 
-            prev_msg.respond(msg.body(), msg.is_error());
+            if (--*remaining == 0)
+                return;  // This was an error, but there are more responses to come back
+
+            log::warning(logcat, "All FindClientContact requests FAILED! Relaying failure");
+            m.respond(msg.timed_out ? messages::TIMEOUT_RESPONSE : msg.body(), true);
         };
 
-        log::info(logcat, "Relaying FindClientContactMessage (key: {}) to {} peers", dht_key, n_closest);
+        log::debug(logcat, "Relaying FindClientContactMessage (key: {}) to {} peers", blinded_pubkey, *remaining);
 
-        for (const auto& rc : closest_rcs)
-        {
-            send_control_message(rc->router_id(), "find_cc", FindClientContact::serialize(dht_key), hook);
-        }
+        auto forwarded_find_cc = FindClientContact::serialize(blinded_pubkey);
+        for (const auto* rc : closest_rcs)
+            send_control_message(rc->router_id(), "find_cc", forwarded_find_cc, hook);
     }
 
     void LinkManager::handle_path_build(quic::message m, const RouterID& from)

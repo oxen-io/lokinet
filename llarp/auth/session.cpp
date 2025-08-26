@@ -1,5 +1,6 @@
 #include "session.hpp"
 
+#include <llarp/crypto/key_manager.hpp>
 #include <llarp/router/router.hpp>
 
 namespace llarp::auth
@@ -28,6 +29,6 @@ namespace llarp::auth
         return ret;
     }
 
-    bool SessionAuthPolicy::load_identity_from_file(const char* fname) { return _session_key.load_from_file(fname); }
+    bool SessionAuthPolicy::load_identity_from_file(const char* fname) { KeyManager::load_from_file(_session_key, fname); }
 
 }  // namespace llarp::auth

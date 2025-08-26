@@ -159,9 +159,9 @@ namespace llarp::path
         send_path_control_message("fetch_rcs", FetchRC::serialize(needed), std::move(func));
     }
 
-    void Path::find_client_contact(const hash_key& location, std::function<void(quic::message)> func)
+    void Path::find_client_contact(const PubKey& blinded_pk, std::function<void(quic::message)> func)
     {
-        send_path_control_message("find_cc", FindClientContact::serialize(location), std::move(func));
+        send_path_control_message("find_cc", FindClientContact::serialize(blinded_pk), std::move(func));
     }
 
     void Path::publish_client_contact(const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)

@@ -854,22 +854,52 @@ namespace llarp
         });
     }
 
-    std::vector<const RemoteRC*> NodeDB::find_many_closest_to(llarp::hash_key location, int num_routers) const
+    namespace
+    {
+        inline uint64_t xor_condense(const AlignedBuffer<32>& x)
+        {
+            auto* y = reinterpret_cast<const uint64_t*>(x.data());
+            return y[0] ^ y[1] ^ y[2] ^ y[3];
+        }
+
+        // Metric for determining the "closest" router ID to a given blinded pubkey, used for
+        // blinded CC publishing.
+        //
+        // This consists of xoring all of the uint64_t chunks of the blinded pubkey with the router
+        // ID and returning the smallest value.
+        struct PublishLocationMetric
+        {
+            PublishLocationMetric(const PubKey& blinded_pk) : pk_xor{xor_condense(blinded_pk)} {}
+
+            const uint64_t pk_xor;  // xor of the blinded PK
+            bool operator()(const RouterID* left, const RouterID* right) const
+            {
+                auto l = xor_condense(*left) ^ pk_xor;
+                auto r = xor_condense(*right) ^ pk_xor;
+                return std::tie(l, *left) < std::tie(r, *right);
+            }
+        };
+    }  // namespace
+
+    std::vector<const RemoteRC*> NodeDB::find_many_closest_to(const PubKey& blinded_pk, int num_routers) const
     {
         if (num_routers <= 0)
             return {};
 
-        std::vector<const RemoteRC*> rcs;
-        rcs.reserve(known_rcs.size());
-        for (const auto& [id, rc] : known_rcs)
-            rcs.push_back(&rc);
-        if (num_routers >= static_cast<int>(rcs.size()))
-            return rcs;
-
-        std::ranges::nth_element(
-            rcs, rcs.begin() + num_routers, XorMetric{location}, [](const auto* a) -> auto& { return *a; });
-        rcs.resize(num_routers);
-        rcs.shrink_to_fit();
-        return rcs;
+        auto rr = _registered_routers | std::views::transform([](const auto& rid) { return &rid; });
+        std::vector<const RouterID*> rids{rr.begin(), rr.end()};
+        num_routers = std::min(num_routers, static_cast<int>(rids.size()));
+        std::ranges::partial_sort(rids, rids.begin() + num_routers, PublishLocationMetric{blinded_pk});
+        rids.resize(num_routers);
+        std::vector<const RemoteRC*> result;
+        result.reserve(rids.size());
+        for (auto* rid : rids)
+        {
+            if (auto it = known_rcs.find(*rid); it != known_rcs.end())
+                result.push_back(&it->second);
+            else
+                result.push_back(nullptr);
+        }
+        return result;
     }
 }  // namespace llarp

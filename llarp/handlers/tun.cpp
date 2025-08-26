@@ -471,7 +471,7 @@ namespace llarp::handlers
             return false;
         }
 
-        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node);
+        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node).to_string();
 
         std::string qname = msg.questions[0].Name();
         const auto nameparts = split(qname, ".");

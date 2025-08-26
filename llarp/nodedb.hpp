@@ -210,9 +210,10 @@ namespace llarp
         /// do periodic tasks like flush to disk and expiration
         bool tick(std::chrono::milliseconds now);
 
-        /// find the `num_routers` routers closest to dht key.  The order of returned elements is
-        /// arbitrary (that is: they will be the N closest routers, but in no particular order).
-        std::vector<const RemoteRC*> find_many_closest_to(hash_key location, int num_routers) const;
+        /// find the `num_routers` router with IDs closest to dht key, in order from closest to
+        /// Nth-closest, and returns pointers to their RCs.  If any RCs are not yet known for the
+        /// given RCs, the corresponding entry in the vector will be nullptr.
+        std::vector<const RemoteRC*> find_many_closest_to(const PubKey& blinded_pk, int num_routers) const;
 
         /// return true if we have an rc by its ident pubkey
         bool has_rc(const RouterID& pk) const { return get_rc(pk); }

@@ -92,7 +92,7 @@ namespace llarp
 
         return {
             {"instance",
-             {{"id", local_rid().to_network_address(is_service_node)}, {"running", true}, {"exit_node", is_exit}}},
+             {{"id", local_rid().to_network_address(is_service_node).to_string()}, {"running", true}, {"exit_node", is_exit}}},
             {"links", {{"inbound", in}, {"outbound", out}, {"relay", relay}, {"client", client}}},
             {"sessions", {{"active", nsessions}}},
             {"nodedb", {{"RCs", rcs}, {"RIDs", rids}}},

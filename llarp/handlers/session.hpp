@@ -41,6 +41,7 @@ namespace llarp
             // std::unordered_map<NetworkAddress, std::vector<std::function<void(bool)>>> pending_session_hooks;
 
             ClientContact client_contact;
+            Ed25519BlindedKey cc_blind_keys;
             protocol_flag protocols;
 
             // auth tokens for making outbound sessions; some of these are copied at construction,

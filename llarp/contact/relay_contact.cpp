@@ -102,7 +102,7 @@ namespace llarp
     {
         try
         {
-            util::buffer_to_file(fname, _payload.data(), _payload.size());
+            util::buffer_to_file(fname, _payload);
         }
         catch (const std::exception& e)
         {
@@ -186,10 +186,9 @@ namespace llarp
 
     void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
     {
-        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
-            if (!crypto::sign(_signature, _secret_key, to_sign))
-                throw std::runtime_error{"Failed to sign RC"};
-            return std::span<std::byte, 64>{_signature};
+        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) -> std::span<const std::byte, SIGSIZE> {
+            _secret_key.sign(_signature, to_sign);
+            return _signature;
         });
 
         auto v = btdp.view();

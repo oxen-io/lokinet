@@ -25,13 +25,13 @@ namespace llarp
         extern const std::string INVALID_ORDER;
 
         /** Bt-encoded contents:
-            - 'k' : DHT key corresponding to client contact
+            - 'k' : blinded pubkey of the queried client contact
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::vector<std::byte> serialize(const hash_key& location);
+        std::vector<std::byte> serialize(const PubKey& location);
 
-        hash_key deserialize(oxenc::bt_dict_consumer&& btdc);
+        PubKey deserialize(oxenc::bt_dict_consumer&& btdc);
 
         /** Bt-encoded contents:
             - 'x' : EncryptedClientContact
