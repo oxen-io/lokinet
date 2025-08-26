@@ -42,6 +42,7 @@ namespace llarp
 
             ClientContact client_contact;
             Ed25519BlindedKey cc_blind_keys;
+            int cc_count = -1;
             protocol_flag protocols;
 
             // auth tokens for making outbound sessions; some of these are copied at construction,

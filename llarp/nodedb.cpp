@@ -881,7 +881,7 @@ namespace llarp
         };
     }  // namespace
 
-    std::vector<const RemoteRC*> NodeDB::find_many_closest_to(const PubKey& blinded_pk, int num_routers) const
+    std::vector<RouterID> NodeDB::find_many_closest_to(const PubKey& blinded_pk, int num_routers) const
     {
         if (num_routers <= 0)
             return {};
@@ -891,15 +891,10 @@ namespace llarp
         num_routers = std::min(num_routers, static_cast<int>(rids.size()));
         std::ranges::partial_sort(rids, rids.begin() + num_routers, PublishLocationMetric{blinded_pk});
         rids.resize(num_routers);
-        std::vector<const RemoteRC*> result;
+        std::vector<RouterID> result;
         result.reserve(rids.size());
         for (auto* rid : rids)
-        {
-            if (auto it = known_rcs.find(*rid); it != known_rcs.end())
-                result.push_back(&it->second);
-            else
-                result.push_back(nullptr);
-        }
+            result.push_back(*rid);
         return result;
     }
 }  // namespace llarp

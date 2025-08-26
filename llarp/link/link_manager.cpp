@@ -1219,8 +1219,8 @@ namespace llarp
         // the 4 publish locations.
         const bool is_forwarded = not inner_body;
 
-        auto closest_rcs = router.node_db().find_many_closest_to(cc_blind_pk, path::CC_PUBLISH_LOCATIONS + 1);
-        if (closest_rcs.size() < path::CC_PUBLISH_LOCATIONS)
+        auto closest_rids = router.node_db().find_many_closest_to(cc_blind_pk, path::CC_PUBLISH_LOCATIONS + 1);
+        if (closest_rids.size() < path::CC_PUBLISH_LOCATIONS)
         {
             m.respond("No RCs available!", true);
             return;
@@ -1241,9 +1241,9 @@ namespace llarp
                 return;
             }
 
-            auto& rc = *closest_rcs[*location];
+            const auto& rid = closest_rids[*location];
 
-            if (rc.router_id() == router.local_rid())
+            if (rid == router.local_rid())
             {
                 // Special case: we *are* the intended location
                 router.contact_db().put_cc(std::move(enc));
@@ -1256,10 +1256,10 @@ namespace llarp
                 "Received PublishClientContact (key: {}, index: {}); forwarding to {}",
                 enc.key(),
                 *location,
-                rc.router_id());
+                rid);
 
             send_control_message(
-                rc.router_id(),
+                rid,
                 "publish_cc",
                 PublishClientContact::serialize(std::move(enc)),
                 [prev_msg = std::move(m)](quic::message msg) mutable {
@@ -1279,11 +1279,11 @@ namespace llarp
         // CC_PUBLISH_LOCATIONS closest locations, and we don't forward regardless.
         //
         // We don't require that we were strictly in the correct position that the client originally
-        // sent (and thus we don't even get the target location forwarded), because an Oxen
-        // block update at just the wrong time could shift indices, and we still want to store it
-        // even if we shifted (e.g. from 3nd to 2nd).
-        for (auto* rc : closest_rcs)
-            if (rc->router_id() == router.local_rid())
+        // sent (and thus we don't even include the target location when forwarding), because an
+        // Oxen block update with a new or removed registration at just the wrong time could shift
+        // indices, and we still want to store it even if we shifted (e.g. from 3nd to 2nd).
+        for (auto& rid : closest_rids)
+            if (rid == router.local_rid())
             {
                 router.contact_db().put_cc(std::move(enc));
                 m.respond(messages::OK_RESPONSE);
@@ -1291,7 +1291,7 @@ namespace llarp
             }
 
         log::warning(
-            logcat, "Ignoring forwarded CC publish: we are not in the top {} publish locations", closest_rcs.size());
+            logcat, "Ignoring forwarded CC publish: we are not in the top {} publish locations", closest_rids.size());
         m.respond(messages::ERROR_RESPONSE, true);
         return;
     }
@@ -1312,17 +1312,17 @@ namespace llarp
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        auto closest_rcs = router.node_db().find_many_closest_to(blinded_pubkey, path::CC_PUBLISH_LOCATIONS);
+        auto closest_rids = router.node_db().find_many_closest_to(blinded_pubkey, path::CC_PUBLISH_LOCATIONS);
+        if (closest_rids.size() < path::CC_PUBLISH_LOCATIONS)
+            return m.respond("No RCs!", true);
 
         // We don't provide the answer ourselves unless we are in the closest-4 set because it's
         // possible we *were* in the closest 4 but then dropped out, but still have a stale record
         // hanging around.
-        bool we_are_authoritative = false;
-        for (auto* rc : closest_rcs)
-            if (rc && rc->router_id() == router.local_rid())
-                we_are_authoritative = true;
+        auto authoritative = std::ranges::count(closest_rids, router.local_rid());
+        assert(authoritative <= 1);
 
-        if (we_are_authoritative)
+        if (authoritative)
         {
             // TODO FIXME: Do we want to send the requests off to other relays *even if* we have it,
             // to double-check against other relays in case ours is stale?
@@ -1357,11 +1357,7 @@ namespace llarp
             return m.respond(FindClientContact::NOT_FOUND, true);
         }
 
-        std::erase_if(closest_rcs, [this](const auto* rc) { return !rc || rc->router_id() == router.local_rid(); });
-        if (closest_rcs.empty())
-            return m.respond("No RCs!", true);
-
-        auto remaining = std::make_shared<size_t>(closest_rcs.size());
+        auto remaining = std::make_shared<size_t>(closest_rids.size() - authoritative);
         auto hook = [m = std::move(m), remaining](quic::message msg) mutable {
             if (*remaining == 0)
                 return;  // Already answered by an earlier response
@@ -1385,8 +1381,12 @@ namespace llarp
         log::debug(logcat, "Relaying FindClientContactMessage (key: {}) to {} peers", blinded_pubkey, *remaining);
 
         auto forwarded_find_cc = FindClientContact::serialize(blinded_pubkey);
-        for (const auto* rc : closest_rcs)
-            send_control_message(rc->router_id(), "find_cc", forwarded_find_cc, hook);
+        for (const auto& rid : closest_rids)
+        {
+            if (rid == router.local_rid())
+                continue;
+            send_control_message(rid, "find_cc", forwarded_find_cc, hook);
+        }
     }
 
     void LinkManager::handle_path_build(quic::message m, const RouterID& from)

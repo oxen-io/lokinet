@@ -881,6 +881,7 @@ namespace llarp::handlers
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
     {
         auto now = std::chrono::steady_clock::now();
+        ++cc_count;
         // Send our CC down each inbound session so that everyone who is already connected to us
         // gets it pushed to them without having to always poll the network for updates.
         for (const auto& [addr, session] : _sessions)
@@ -888,7 +889,11 @@ namespace llarp::handlers
             // don't publish client contact to other end of outbound session
             if (session->is_outbound)
                 return;
-            log::debug(logcat, "Publishing ClientContact to remote on inbound session (remote:{})", session->remote());
+            log::debug(
+                logcat,
+                "Publishing ClientContact#{} to remote on inbound session (remote:{})",
+                cc_count,
+                session->remote());
 
             session->publish_client_contact(ecc, [started = now, to = session->remote()](quic::message m) {
                 log::debug(
@@ -937,16 +942,20 @@ namespace llarp::handlers
             auto& p = *paths[location % paths.size()];
             log::debug(logcat, "Publishing ClientContact to location {} via {}", location, p);
             p.publish_client_contact(
-                ecc, location, [started = now, remaining_success, via = p.terminal_rid(), location](quic::message m) {
+                ecc,
+                location,
+                [started = now, remaining_success, via = p.terminal_rid(), location, cc_num = cc_count](
+                    quic::message m) {
                     auto elapsed =
                         std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
 
                     log::debug(
                         logcat,
-                        "{} CC publish[{}] via relay {} in {}",
+                        "{} CC#{} publish[{}] via relay {} in {}",
                         m                 ? "Successful"
                             : m.timed_out ? "Timeout during"
                                           : "Error during",
+                        cc_num,
                         location,
                         via,
                         elapsed);
@@ -965,7 +974,8 @@ namespace llarp::handlers
                             not success                                    ? log::Level::err
                                 : success < path::CC_PUBLISH_LOCATIONS / 2 ? log::Level::warn
                                                                            : log::Level::info,
-                            "CC publish success to {}/{} publish locations in {}",
+                            "CC#{} publish success to {}/{} publish locations in {}",
+                            cc_num,
                             success,
                             path::CC_PUBLISH_LOCATIONS,
                             elapsed);
