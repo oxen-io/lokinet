@@ -1473,7 +1473,7 @@ namespace llarp
         }
         catch (const path::TransitHopError& e)
         {
-            log::warning(logcat, "Exception: {}", e.what());
+            log::warning(logcat, "An error occured during path build request handling: {}", e.what());
             return m.respond(messages::serialize_status_response(e.error_code), true);
         }
     }

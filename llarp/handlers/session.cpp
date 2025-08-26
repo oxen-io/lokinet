@@ -896,8 +896,9 @@ namespace llarp::handlers
                 session->remote());
 
             session->publish_client_contact(ecc, [started = now, to = session->remote()](quic::message m) {
-                log::debug(
+                log::log(
                     logcat,
+                    m ? log::Level::debug : log::Level::warn,
                     "{} new CC to {} via established session in {}",
                     m                 ? "Pushed"
                         : m.timed_out ? "Timeout pushing"
