@@ -1,4 +1,4 @@
-local distro = 'sid';
+local distro = 'forky';
 local distro_name = 'Debian ' + distro;
 local distro_docker = 'registry.oxen.rocks/debian-' + distro + '-builder';
 

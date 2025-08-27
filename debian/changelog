@@ -1,3 +1,9 @@
+lokinet (0.9.14-1~deb14) forky; urgency=medium
+
+  * forky deb
+
+ -- Jason Rhinelander <jason@session.foundation>  Wed, 27 Aug 2025 14:40:05 -0300
+
 lokinet (0.9.14-1) unstable; urgency=medium
 
   * Update mainnet bootstraps
