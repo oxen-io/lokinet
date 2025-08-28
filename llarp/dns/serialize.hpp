@@ -2,7 +2,7 @@
 
 #include <llarp/util/buffer.hpp>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include <vector>
 

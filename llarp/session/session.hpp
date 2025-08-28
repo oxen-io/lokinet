@@ -103,8 +103,9 @@ namespace llarp
                 std::weak_ptr<session_path_interface> path,
                 const HopID& remote_pivot_txid);
 
-          public:
             virtual ~Session();
+
+          public:
 
             // Non-movable, non-copyable:
             Session(Session&&) = delete;
@@ -181,6 +182,8 @@ namespace llarp
                 std::function<void(OutboundSession& session)> on_established,
                 std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
+            ~OutboundSession() override = default;
+
             void select_new_current_impl(
                 std::vector<std::pair<path::Path*, HopID>>&& good,
                 std::vector<std::pair<path::Path*, HopID>>&& fallback);
@@ -235,7 +238,7 @@ namespace llarp
         };
 
         // Outbound Session to Remote Relay
-        class OutboundRelaySession : public OutboundSession
+        class OutboundRelaySession final : public OutboundSession
         {
           public:
             OutboundRelaySession(
@@ -258,7 +261,7 @@ namespace llarp
         };
 
         // Outbound Session to Remote Client
-        class OutboundClientSession : public OutboundSession
+        class OutboundClientSession final : public OutboundSession
         {
           public:
             OutboundClientSession(
@@ -314,10 +317,13 @@ namespace llarp
                 const SharedSecret& secret,
                 std::weak_ptr<session_path_interface> p,
                 const HopID& remote_pivot_txid);
+
+          protected:
+            ~InboundSession() override = default;
         };
 
         // Inbound Session *to* client from client (we are the target client)
-        class InboundClientSession : public InboundSession
+        class InboundClientSession final : public InboundSession
         {
           public:
             using InboundSession::InboundSession;

@@ -4,17 +4,14 @@
 #include <llarp/util/time.hpp>
 
 #include <event2/event.h>
+#include <fmt/std.h>
 
 namespace llarp
 {
     static auto logcat = log::Cat("ev-trigger");
 
     EventTrigger::EventTrigger(
-        quic::Loop& loop,
-        std::chrono::microseconds cooldown,
-        std::function<void()> task,
-        int n,
-        bool start_immediately)
+        quic::Loop& loop, std::chrono::microseconds cooldown, std::function<void()> task, int n, bool start_immediately)
         : n{n}, _cooldown{loop_time_to_timeval(cooldown)}, f{std::move(task)}
     {
         ev.reset(event_new(
@@ -112,7 +109,7 @@ namespace llarp
         {
             _current += 1;
 
-            log::debug(logcat, "Attempting callback {}/{} times!", _current.load(), n);
+            log::debug(logcat, "Attempting callback {}/{} times!", _current, n);
             f();
         }
 

@@ -1,8 +1,9 @@
 #include "path.hpp"
 
-#include "llarp/crypto/crypto.hpp"
 #include "path_handler.hpp"
 
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/link/endpoint.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
@@ -10,6 +11,8 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include <chrono>
 #include <ranges>
@@ -164,7 +167,8 @@ namespace llarp::path
         send_path_control_message("find_cc", FindClientContact::serialize(blinded_pk), std::move(func));
     }
 
-    void Path::publish_client_contact(const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)
+    void Path::publish_client_contact(
+        const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)
     {
         send_path_control_message("publish_cc", PublishClientContact::serialize(ecc, location), std::move(func));
     }
@@ -200,7 +204,7 @@ namespace llarp::path
     void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce, std::byte type)
     {
         encrypt_path_message(data, std::move(nonce), type);
-        _router.send_data_message(edge().router_id, std::move(data));
+        _router.link_endpoint().send_datagram(edge().router_id, std::move(data));
     }
 
     void Path::send_path_control_message(
@@ -215,7 +219,7 @@ namespace llarp::path
         payload.resize(inner_payload.size());
         std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
         encrypt_path_message(payload, SymmNonce::make_random(), type);
-        _router.send_control_message(edge().router_id, "path_control", std::move(payload), std::move(func));
+        _router.link_endpoint().send_command(edge().router_id, "path_control", std::move(payload), std::move(func));
     }
 
     std::string Path::to_string() const { return "Path{{{}}}[{}]"_format(path_log_id, hop_string()); }

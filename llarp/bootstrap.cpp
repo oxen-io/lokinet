@@ -1,9 +1,12 @@
 #include "bootstrap.hpp"
 
-#include "util/file.hpp"
-#include "util/logging.hpp"
-#include "util/logging/buffer.hpp"
+#include <llarp/util/file.hpp>
+#include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/random.hpp>
 
+#include <fmt/std.h>
 #include <oxenc/bt_serialize.h>
 
 namespace llarp

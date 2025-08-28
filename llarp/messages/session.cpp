@@ -1,9 +1,9 @@
 #include "session.hpp"
 
 #include "common.hpp"
-#include "llarp/crypto/crypto.hpp"
 #include "path.hpp"
 
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/util/bspan.hpp>
 
 namespace llarp
@@ -52,8 +52,7 @@ namespace llarp
         {
             try
             {
-                auto payload =
-                    serialize(local, local_pivot_txid, remote_pivot_txid, std::move(auth_token));
+                auto payload = serialize(local, local_pivot_txid, remote_pivot_txid, std::move(auth_token));
 
                 auto [secret, eph_pk, dh_nonce] = crypto::dh_client_gen(remote);
                 crypto::xchacha20(payload, secret, dh_nonce);
@@ -73,8 +72,7 @@ namespace llarp
             }
         }
 
-        Parameters decrypt_deserialize(
-            oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local)
+        Parameters decrypt_deserialize(oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local)
         {
             Parameters ret;
 

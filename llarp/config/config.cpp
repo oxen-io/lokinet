@@ -1338,9 +1338,9 @@ namespace llarp
             "add-node",
             MultiValue,
             Comment{
-                "Specify a bootstrap file containing a list of signed RelayContacts of service "
-                "nodes",
-                "which can act as a bootstrap. Can be specified multiple times.",
+                "Specify a bootstrap file containing a list of signed RelayContacts of service nodes",
+                "which can act as a bootstrap. Can be specified multiple times. If set this overrides",
+                "the built-in seed node list.",
             },
             [this](std::string arg) {
                 if (arg.empty())

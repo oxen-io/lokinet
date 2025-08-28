@@ -16,6 +16,8 @@
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/str.hpp>
 
+#include <nlohmann/json.hpp>
+
 namespace llarp::handlers
 {
     static auto logcat = log::Cat("tun");
@@ -328,8 +330,7 @@ namespace llarp::handlers
         };
 
 #ifdef __linux__
-        _poller =
-            std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop.get_event_base(), std::move(pkt_hook));
+        _poller = std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop.get_event_base(), std::move(pkt_hook));
 #endif
         if (not _poller)
         {

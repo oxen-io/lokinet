@@ -18,12 +18,7 @@ namespace llarp
     {
         using AlignedBuffer<PATHIDSIZE>::AlignedBuffer;
 
-        static HopID make_random()
-        {
-            HopID h;
-            randombytes_buf(h.data(), h.size());
-            return h;
-        }
+        static HopID make_random();
     };
 
     namespace handlers

@@ -10,6 +10,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/random.hpp>
 #include <llarp/util/service_manager.hpp>
 
 #include <oxen/log.hpp>
@@ -84,7 +85,22 @@ namespace llarp
         if (not _is_running)
             nlohmann::json{{"running", false}};
 
-        auto [in, out, relay, client] = _link_manager->connection_stats();
+        nlohmann::json links;
+        if (is_service_node)
+        {
+            auto [relays, out, in, pending, clients] = _link_endpoint->relay_connection_counts();
+            links = {
+                {"relays", relays},
+                {"relays_in", in},
+                {"relays_out", out},
+                {"pending_out", pending},
+                {"clients_in", clients}};
+        }
+        else
+        {
+            auto [nconns, pending] = _link_endpoint->client_connection_counts();
+            links = {{"relays", nconns}, {"relays_out", nconns}, {"pending_out", pending}};
+        }
         auto [rcs, rids, bootstraps] = node_db().db_stats();
         auto [npaths, nhops] = path_context.path_ctx_stats();
         auto [nsessions, is_exit] = _session_endpoint->session_stats();
@@ -92,11 +108,14 @@ namespace llarp
 
         return {
             {"instance",
-             {{"id", local_rid().to_network_address(is_service_node).to_string()}, {"running", true}, {"exit_node", is_exit}}},
-            {"links", {{"inbound", in}, {"outbound", out}, {"relay", relay}, {"client", client}}},
+             {{"id", local_rid().to_network_address(is_service_node).to_string()},
+              {"running", true},
+              {"relay", is_service_node},
+              {"exit_node", is_exit}}},
+            {"links", std::move(links)},
             {"sessions", {{"active", nsessions}}},
-            {"nodedb", {{"RCs", rcs}, {"RIDs", rids}}},
-            {"contactdb", {{"CCs", ccs}}},
+            {"nodedb", {{"rcs", rcs}, {"rids", rids}}},
+            {"contactdb", {{"ccs", ccs}}},
             {"path_ctx", {{"paths", npaths}, {"hops", nhops}}}};
     }
 
@@ -209,6 +228,7 @@ namespace llarp
 
         _node_db->start_tickers();
         _contact_db->start_tickers();
+        _link_endpoint->start_tickers();
 
 #ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node)
@@ -228,22 +248,6 @@ namespace llarp
                     log::debug(logcat, "Updated RC broadcast to {} peers", count);
                 });
             });
-
-            if (not _testing_disabled)
-            {
-                if (not _reachability_ticker)
-                    throw std::runtime_error{"Router has no service node reachability loop ticker -- Does not exist!"};
-
-                if (not _reachability_ticker->is_running())
-                {
-                    if (not _reachability_ticker->start())
-                        throw std::runtime_error{"Router failed to start service node reachability loop ticker!"};
-
-                    log::debug(logcat, "Router successfully started service node reachability loop ticker!");
-                }
-                else
-                    log::debug(logcat, "Service node reachability loop ticker already auto-started!");
-            }
         }
         else
 #endif
@@ -253,25 +257,7 @@ namespace llarp
         }
     }
 
-    bool Router::is_fully_meshed() const { return num_router_connections() >= _node_db->num_rcs(); }
-
-    void Router::send_data_message(const RouterID& remote, std::vector<std::byte> payload)
-    {
-        _link_manager->send_data_message(remote, std::move(payload));
-    }
-
-    void Router::send_control_message(
-        const RouterID& remote, std::string ep, std::vector<std::byte> body, std::function<void(quic::message)> func)
-    {
-        _link_manager->send_control_message(remote, std::move(ep), std::move(body), std::move(func));
-    }
-
-    std::unordered_set<RouterID> Router::get_current_remotes() const { return _link_manager->get_current_remotes(); }
-
-    void Router::for_each_connection(std::function<void(const RouterID&, link::Connection&)> func)
-    {
-        return _link_manager->for_each_connection(std::move(func));
-    }
+    bool Router::is_fully_meshed() const { return _link_endpoint->num_relay_conns() >= _node_db->num_rcs(); }
 
     void Router::fetch_snode_identity()
     {
@@ -640,7 +626,8 @@ namespace llarp
         _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
 
         log::debug(logcat, "Creating QUIC link manager");
-        _link_manager = std::make_unique<LinkManager>(*this);
+        _link_manager = std::make_unique<link::Manager>(*this);
+        _link_endpoint = &_link_manager->endpoint;
 
         if (!embedded())
         {
@@ -692,15 +679,6 @@ namespace llarp
         return is_service_node and has_whitelist() and node_db().registered_routers().count(local_rid());
     }
 
-    bool Router::can_test_routers() const { return appears_funded() and not _testing_disabled; }
-
-    int Router::num_router_connections(bool active_only) const
-    {
-        return _link_manager->get_num_connected_routers(active_only);
-    }
-
-    int Router::num_client_connections() const { return _link_manager->get_num_connected_clients(); }
-
     void Router::update_rc()
     {
         relay_contact.resign();
@@ -722,24 +700,25 @@ namespace llarp
 
     std::string Router::_stats_line()
     {
-        auto [_in, _out, _relay, _client] = _link_manager->connection_stats();
-        auto [_rcs, _rids, _] = _node_db->db_stats();
-        auto [_npaths, _nhops] = path_context.path_ctx_stats();
-        auto _nsessions = std::get<0>(_session_endpoint->session_stats());
-        auto _ccs = _contact_db->num_ccs();
+        auto [rcs, rids, bs] = _node_db->db_stats();
+        std::string conns;
+        if (is_service_node)
+        {
+            auto [relays, rout, rin, rpending, clients] = _link_endpoint->relay_connection_counts();
+            conns = "[relays:{} ({} in, {} out + {} pending{}), clients:{}]"_format(
+                relays, rin, rout, rpending, relays == rcs ? ", full mesh" : "", clients);
+        }
+        else
+        {
+            auto [nconns, npending] = _link_endpoint->client_connection_counts();
+            conns = "[relay:{} + {} pending]"_format(nconns, npending);
+        }
+        auto [npaths, nhops] = path_context.path_ctx_stats();
+        auto nsessions = std::get<0>(_session_endpoint->session_stats());
+        auto ccs = _contact_db->num_ccs();
 
-        return "{}RCs:{} | RIDs:{} | CCs:{} | {}:{} | sessions:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
-            is_service_node ? "Full Mesh:{} | "_format(_relay == _rcs) : "",
-            _rcs,
-            _rids,
-            _ccs,
-            is_service_node ? "hops" : "paths",
-            is_service_node ? _nhops : _npaths,
-            _nsessions,
-            _in,
-            _out,
-            _relay,
-            _client);
+        return "RCs:{} | RIDs:{} | CCs:{} | {}:{} | sessions:{} | conns:{}"_format(
+            rcs, rids, ccs, is_service_node ? "hops" : "paths", is_service_node ? nhops : npaths, nsessions, conns);
     }
 
     void Router::report_stats()
@@ -787,9 +766,6 @@ namespace llarp
         }
 
         const bool is_decommed = appears_decommed();
-        // we want ALL router-connections, including in-progress connections because full-mesh
-        auto num_router_conns = num_router_connections(false);
-
         if (now >= _next_decomm_warning)
         {
             if (auto registered = appears_registered(), funded = appears_funded();
@@ -814,7 +790,7 @@ namespace llarp
             }
         }
 
-        if (num_router_conns < node_db().num_rcs())
+        if (_link_endpoint->num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
         {
             log::debug(
                 logcat, "Service Node connecting to {} random routers to achieve full mesh", FULL_MESH_ITERATION);
@@ -848,8 +824,7 @@ namespace llarp
 
         // TODO: make "use_pinned_edges" boolean to only connect to pinned edges
         // if we need more sessions to routers we shall connect out to others
-        if (auto n_conns = static_cast<int>(num_router_connections(/*active_only=*/false));
-            n_conns < min_client_outbounds)
+        if (int n_conns = _link_endpoint->num_relay_conns(/*include_pending=*/true); n_conns < min_client_outbounds)
         {
             // result could maybe be negative with this subtraction, so we HAVE to check nconns < min in the conditional
             auto num_needed = min_client_outbounds - n_conns;
@@ -966,16 +941,30 @@ namespace llarp
 #ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node and not _testing_disabled)
         {
+            // TODO FIXME: this reachability testing implementation is definitely not right: it
+            // involves establishing a new connection to the remote, and then closing it, but that
+            // definitely isn't right because the new connection will replace the existing one at
+            // the remote end, *both* of which can break in-flight data through that connection.
+            //
+            // Perhaps we should just issue a ping request on the current connection, and call it a
+            // day?
+            // - what about if the IP/port of the current connection doesn't match the RC?
+            //
+            // Perhaps we should always establish a new connection to the RC, but *not* using our
+            // current keys (i.e. using a client ALPN), not putting it into link endpoint, and close
+            // it as soon as we get a ping?
+            log::critical(logcat, "Reachability testing disabled - TODO FIXME");
+#if 0   // FIXME
             log::debug(logcat, "Creating reachability testing ticker...");
-            // do service node testing if we are in service node whitelist mode
             _reachability_ticker = _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, [this] {
+
                 // dont run tests if we are not running or we are stopping
                 if (not _is_running)
                     return;
-                // dont run tests if we think we should not test other routers
-                // this occurs when we are deregistered or do not have the service node list
-                // yet when we expect to have one.
-                if (not can_test_routers())
+
+                // Don't run testing if we are not a registered service node, because other service
+                // nodes in that case wouldn't allow our connection.
+                if (not appears_funded())
                     return;
 
                 auto tests = router_testing.get_failing();
@@ -1027,6 +1016,7 @@ namespace llarp
                         });
                 }
             });
+#endif  // FIXME
         }
 #endif
 
@@ -1076,6 +1066,7 @@ namespace llarp
         node_db().save_to_disk();
 
         log::debug(logcat, "cleaning up link_manager");
+        _link_endpoint = nullptr;
         _link_manager.reset();
 
         _loop->call_later(200ms, [this] { teardown(); });
@@ -1083,7 +1074,7 @@ namespace llarp
 
     void Router::stop_outbounds()
     {
-        _link_manager->close_all_links();
+        _link_manager->stop();
 
         auto rv = _loop_ticker->stop();
         log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");

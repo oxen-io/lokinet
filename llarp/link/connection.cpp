@@ -6,13 +6,8 @@ namespace llarp::link
 {
     static auto logcat = log::Cat("link_conn");
 
-    Connection::Connection(
-        std::shared_ptr<quic::Connection> c, std::shared_ptr<quic::BTRequestStream> s, bool _is_relay, bool _is_active)
-        : conn{std::move(c)},
-          datagrams{conn->datagrams()},
-          control_stream{std::move(s)},
-          is_active{_is_active},
-          remote_is_relay{_is_relay}
+    Connection::Connection(std::shared_ptr<quic::Connection> c, std::shared_ptr<quic::BTRequestStream> s)
+        : conn{std::move(c)}, datagrams{conn->datagrams()}, control_stream{std::move(s)}
     {}
 
     void Connection::close_quietly()

@@ -2,7 +2,6 @@
 
 #include "definition.hpp"
 #include "ini.hpp"
-#include "llarp/constants/path.hpp"
 
 #include <llarp/address/address.hpp>
 #include <llarp/address/ip_range.hpp>
@@ -10,6 +9,7 @@
 #include <llarp/auth/file.hpp>
 #include <llarp/bootstrap.hpp>
 #include <llarp/constants/files.hpp>
+#include <llarp/constants/path.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/dns/srv_data.hpp>

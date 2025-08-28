@@ -1,5 +1,7 @@
 #include "address.hpp"
 
+#include <llarp/util/formattable.hpp>
+
 #include <oxenc/base32z.h>
 
 #include <stdexcept>

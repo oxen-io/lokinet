@@ -1,5 +1,9 @@
 #include "time.hpp"
 
+#include <llarp/util/formattable.hpp>
+
+#include <nlohmann/json.hpp>
+
 namespace llarp
 {
     namespace

@@ -1,10 +1,9 @@
 #include "path_handler.hpp"
 
-#include "llarp/constants/path.hpp"
-#include "llarp/util/time.hpp"
 #include "path.hpp"
 #include "path_context.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
@@ -13,7 +12,10 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/random.hpp>
+#include <llarp/util/time.hpp>
 
+#include <nlohmann/json.hpp>
 #include <sodium/randombytes.h>
 
 #include <chrono>
@@ -158,8 +160,9 @@ namespace llarp::path
 
     std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
     {
-        std::unordered_set<RouterID> current_remotes =
-            router.node_db().strict_connect_enabled() ? router.node_db().pinned_edges() : router.get_current_remotes();
+        auto current_remotes = router.node_db().strict_connect_enabled()
+            ? router.node_db().pinned_edges()
+            : router.link_manager().endpoint.get_current_relays();
 
         RouterID edge;
         int acceptable = 0;
@@ -644,7 +647,7 @@ namespace llarp::path
         auto payload = path_build_onion(*new_path);
         const auto& upstream = new_path->edge().router_id;
 
-        router.send_control_message(
+        router.link_endpoint().send_command(
             std::move(upstream), "path_build", std::move(payload), [this, new_path, id](quic::message m) {
                 if (m)
                 {

@@ -198,7 +198,7 @@ namespace llarp
             route.add_blackhole();
 
         // explicit route pokes for first hops
-        _router.for_each_connection([this](const RouterID&, link::Connection& conn) {
+        _router.link_manager().endpoint.for_each_relay_conn([this](const RouterID&, link::Connection& conn) {
             auto remote = conn.conn->remote();
             if (remote.is_ipv4())
                 add_route(remote.to_ipv4());
@@ -231,7 +231,7 @@ namespace llarp
             return;
 
         // unpoke routes for first hops
-        _router.for_each_connection([this](const RouterID&, link::Connection& conn) {
+        _router.link_manager().endpoint.for_each_relay_conn([this](const RouterID&, link::Connection& conn) {
             auto remote = conn.conn->remote();
             if (remote.is_ipv4())
                 delete_route(remote.to_ipv4());

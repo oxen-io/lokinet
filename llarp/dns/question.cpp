@@ -5,6 +5,8 @@
 
 #include <llarp/util/str.hpp>
 
+#include <nlohmann/json.hpp>
+
 namespace llarp::dns
 {
     static auto logcat = log::Cat("dns");

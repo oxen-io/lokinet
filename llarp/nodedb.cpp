@@ -1,9 +1,10 @@
 #include "nodedb.hpp"
 
-#include "crypto/types.hpp"
-#include "link/link_manager.hpp"
-#include "messages/fetch.hpp"
-#include "util/time.hpp"
+#include <llarp/crypto/types.hpp>
+#include <llarp/link/link_manager.hpp>
+#include <llarp/messages/fetch.hpp>
+#include <llarp/util/random.hpp>
+#include <llarp/util/time.hpp>
 
 #include <oxen/quic/btstream.hpp>
 #include <sodium/crypto_generichash.h>
@@ -20,7 +21,7 @@ namespace llarp
 
     static constexpr auto RC_FILE_EXT = ".signed"sv;
 
-    std::tuple<size_t, size_t, size_t> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
+    std::array<int, 3> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
 
     const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
     {
@@ -82,6 +83,9 @@ namespace llarp
                     _router.is_service_node ? "Relay" : "Client",
                     bsrc);
 
+                log::critical(logcat, "BOOTSTRAPPING FIXME");
+                // Temporarily disable this code to be fixed in the following commits
+#if 0
                 _router.link_manager().connect_to(
                     brc,
                     [this](quic::connection_interface& ci) {
@@ -95,6 +99,7 @@ namespace llarp
                         _is_connecting_bstrap = false;
                         return _router.link_manager().on_conn_closed(ci, ec);
                     });
+#endif
 
                 _is_connecting_bstrap = true;
                 return false;
@@ -365,8 +370,8 @@ namespace llarp
         // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
         // purge-then-save?
 
-        _flush_ticker = _router.loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
-        _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
+        _flush_ticker = _router.disk_loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
+        _router.disk_loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
         _purge_ticker = _router.loop.call_every(
             PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
@@ -489,70 +494,74 @@ namespace llarp
 
         auto num_needed = _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
-        _router.link_manager().fetch_bootstrap_rcs(
-            rc,
+        _router.link_manager().endpoint.control_stream_for(rc).command(
+            "bfetch_rcs",
             BootstrapFetch::serialize(
                 _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
             [this, source](quic::message m) {
-                log::debug(logcat, "Received response to BootstrapRC fetch request...");
-
-                if (not m)
-                {
-                    log::warning(logcat, "BootstrapRC fetch request to {} failed", source.short_string());
-                    return;
-                }
-
-                int num = 0, accepted = 0;
-
-                try
-                {
-                    oxenc::bt_dict_consumer btdc{m.body()};
-
-                    btdc.required("r");
-
-                    {
-                        auto sublist = btdc.consume_list_consumer();
-
-                        while (not sublist.is_finished())
-                        {
-                            // if we're trusting the bootstrap for RCs regardless of RouterID, we
-                            // should trust the RouterID as well.
-                            RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
-                            known_rids.insert(new_rc.router_id());
-                            accepted += put_rc(std::move(new_rc));
-                            ++num;
-                        }
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    log::warning(
-                        logcat,
-                        "Failed to parse BootstrapRC fetch response from {}: {}",
-                        source.short_string(),
-                        e.what());
-                    return;
-                }
-
-                if (num >= MIN_ACTIVE_RCS)
-                {
-                    log::info(
-                        logcat,
-                        "{} BootstrapRC fetch successfully produced {} RCs ({} minimum needed) with {} accepted",
-                        _router.is_service_node ? "Relay" : "Client",
-                        num,
-                        MIN_ACTIVE_RCS,
-                        accepted);
-                    return stop_bootstrap(true);
-                }
-
-                log::warning(
-                    logcat,
-                    "BootstrapRC response from {} returned {} RCs ({} minimum needed); continuing bootstrapping...",
-                    source.short_string(),
-                    num,
-                    MIN_ACTIVE_RCS);
+                // We're in the network loop right now, so transfer to the router loop:
+                _router.loop.call(
+                    [this, m = std::move(m), source]() mutable { handle_bootstrap_result(source, std::move(m)); });
             });
+    }
+
+    void NodeDB::handle_bootstrap_result(const RouterID& source, quic::message m)
+    {
+        log::debug(logcat, "Received response to BootstrapRC fetch request...");
+
+        if (not m)
+        {
+            log::warning(logcat, "BootstrapRC fetch request to {} failed", source.short_string());
+            return;
+        }
+
+        int num = 0, accepted = 0;
+
+        try
+        {
+            oxenc::bt_dict_consumer btdc{m.body()};
+
+            btdc.required("r");
+
+            {
+                auto sublist = btdc.consume_list_consumer();
+
+                while (not sublist.is_finished())
+                {
+                    // if we're trusting the bootstrap for RCs regardless of RouterID, we
+                    // should trust the RouterID as well.
+                    RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
+                    known_rids.insert(new_rc.router_id());
+                    accepted += put_rc(std::move(new_rc));
+                    ++num;
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(
+                logcat, "Failed to parse BootstrapRC fetch response from {}: {}", source.short_string(), e.what());
+            return;
+        }
+
+        if (num >= MIN_ACTIVE_RCS)
+        {
+            log::info(
+                logcat,
+                "{} BootstrapRC fetch successfully produced {} RCs ({} minimum needed) with {} accepted",
+                _router.is_service_node ? "Relay" : "Client",
+                num,
+                MIN_ACTIVE_RCS,
+                accepted);
+            return stop_bootstrap(true);
+        }
+
+        log::warning(
+            logcat,
+            "BootstrapRC response from {} returned {} RCs ({} minimum needed); continuing bootstrapping...",
+            source.short_string(),
+            num,
+            MIN_ACTIVE_RCS);
     }
 
     // Updates `current` to not contain any of the elements of `replace` and resamples (up to

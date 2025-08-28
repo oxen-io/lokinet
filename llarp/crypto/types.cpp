@@ -2,19 +2,9 @@
 
 #include "oxenc/endian.h"
 
-#include <llarp/contact/relay_contact.hpp>
-#include <llarp/crypto/crypto.hpp>
-#include <llarp/util/buffer.hpp>
-#include <llarp/util/file.hpp>
 #include <llarp/util/logging.hpp>
 
-#include <oxenc/base32z.h>
-#include <oxenc/hex.h>
-#include <sodium/crypto_core_ed25519.h>
-#include <sodium/crypto_generichash.h>
-#include <sodium/crypto_hash_sha512.h>
-#include <sodium/crypto_scalarmult_ed25519.h>
-#include <sodium/crypto_sign.h>
+#include <sodium/randombytes.h>
 
 namespace llarp
 {

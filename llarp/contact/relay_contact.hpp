@@ -2,17 +2,10 @@
 
 #include "router_id.hpp"
 
-#include <llarp/constants/version.hpp>
-#include <llarp/crypto/crypto.hpp>
-#include <llarp/dns/srv_data.hpp>
 #include <llarp/net/id.hpp>
-#include <llarp/router_version.hpp>
-#include <llarp/util/aligned.hpp>
-#include <llarp/util/buffer.hpp>
-#include <llarp/util/file.hpp>
 #include <llarp/util/time.hpp>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <oxen/quic/address.hpp>
 #include <oxenc/bt_producer.h>
 
@@ -106,8 +99,6 @@ namespace llarp
         static const bool serializeExit = true;
 
         nlohmann::json extract_status() const;
-
-        nlohmann::json to_json() const { return extract_status(); }
 
         std::string to_string() const;
 

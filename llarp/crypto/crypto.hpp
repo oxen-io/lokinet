@@ -4,10 +4,13 @@
 #include "types.hpp"
 
 #include <llarp/contact/router_id.hpp>
-#include <llarp/util/buffer.hpp>
-#include <llarp/util/random.hpp>
 
 #include <cstdint>
+
+namespace llarp
+{
+    using namespace std::literals;
+}
 
 namespace llarp::crypto
 {

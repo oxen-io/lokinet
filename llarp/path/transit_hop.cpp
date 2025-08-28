@@ -1,13 +1,15 @@
 #include "transit_hop.hpp"
 
-#include "llarp/crypto/crypto.hpp"
-
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/link/endpoint.hpp>
 #include <llarp/messages/common.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace llarp::path
 {
@@ -68,13 +70,13 @@ namespace llarp::path
     {
         auto payload = PATH::CONTROL::serialize(method, body);
         encrypt_path_message(payload, SymmNonce::make_random(), type);
-        _parent.router.send_control_message(downstream, "path_control", std::move(payload), std::move(func));
+        _parent.router.link_endpoint().send_command(downstream, "path_control", std::move(payload), std::move(func));
     }
 
     void InboundRelayPath::send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce, std::byte type)
     {
         encrypt_path_message(body, std::move(nonce), type);
-        _parent.router.send_data_message(downstream, std::move(body));
+        _parent.router.link_endpoint().send_datagram(downstream, std::move(body));
     }
 
     std::string InboundRelayPath::to_string() const

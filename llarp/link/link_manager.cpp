@@ -1,288 +1,62 @@
 #include "link_manager.hpp"
 
-#include "llarp/crypto/crypto.hpp"
-#include "llarp/messages/common.hpp"
-#include "llarp/path/transit_hop.hpp"
-
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/router_id.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/messages/common.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
+#include <llarp/util/random.hpp>
+#include <llarp/util/time.hpp>
 
-#include <cstddef>
-#include <ranges>
-
-#ifndef LOKINET_EMBEDDED_ONLY
-#include <llarp/rpc/rpc_client.hpp>
-#endif
-
+#include <nlohmann/json.hpp>
+#include <oxen/quic/btstream.hpp>
 #include <oxen/quic/context.hpp>
+#include <oxen/quic/opt.hpp>
 #include <oxenc/bt_producer.h>
 #include <sodium/crypto_generichash_blake2b.h>
 #include <sodium/randombytes.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cstddef>
 #include <exception>
+#include <ranges>
 #include <set>
 
-namespace llarp
+#ifndef LOKINET_EMBEDDED_ONLY
+#include <llarp/rpc/rpc_client.hpp>
+#endif
+
+namespace llarp::link
 {
-    static auto logcat = llarp::log::Cat("link_manager");
-
-    static std::vector<uint8_t> make_static_secret(
-        const Ed25519SecretKey& sk, std::string_view static_secret_key = "Lokinet static shared secret key"sv)
-    {
-        std::vector<uint8_t> secret;
-        secret.resize(32);
-
-        crypto_generichash_blake2b_state st;
-        crypto_generichash_blake2b_init(
-            &st, reinterpret_cast<const uint8_t*>(static_secret_key.data()), static_secret_key.size(), secret.size());
-        crypto_generichash_blake2b_update(&st, sk.data(), sk.size());
-        crypto_generichash_blake2b_final(&st, secret.data(), secret.size());
-
-        return secret;
-    }
-
-    namespace link
-    {
-        Endpoint::Endpoint(std::shared_ptr<quic::Endpoint> ep, LinkManager& lm)
-            : endpoint{std::move(ep)}, link_manager{lm}, router{lm.router}
-        {}
-
-        std::shared_ptr<link::Connection> Endpoint::get_service_conn(const RouterID& remote) const
-        {
-            return router.loop.call_get([this, rid = remote]() -> std::shared_ptr<link::Connection> {
-                if (auto itr = service_conns.find(rid); itr != service_conns.end())
-                    return itr->second;
-
-                return nullptr;
-            });
-        }
-
-        std::shared_ptr<link::Connection> Endpoint::get_conn(const RouterID& remote) const
-        {
-            if (auto itr = service_conns.find(remote); itr != service_conns.end())
-                return itr->second;
-
-            if (router.is_service_node)
-            {
-                if (auto itr = client_conns.find(remote); itr != client_conns.end())
-                    return itr->second;
-            }
-
-            return nullptr;
-        }
-
-        bool Endpoint::have_conn(const RouterID& remote) const
-        {
-            return have_service_conn(remote) or have_client_conn(remote);
-        }
-
-        bool Endpoint::have_client_conn(const RouterID& remote) const
-        {
-            return router.loop.call_get([this, remote]() { return client_conns.count(remote); });
-        }
-
-        bool Endpoint::have_service_conn(const RouterID& remote) const
-        {
-            return router.loop.call_get([this, remote]() { return service_conns.count(remote); });
-        }
-
-        void Endpoint::for_each_service_conn(
-            std::function<void(const RouterID&, link::Connection&)> func, bool active_only)
-        {
-            assert(router.loop.inside());
-
-            for (const auto& [rid, conn] : service_conns)
-                if (conn and (not active_only or conn->is_active.load()))
-                    func(rid, *conn);
-        }
-
-        void Endpoint::for_each_connection(std::function<void(const RouterID&, link::Connection&)> func)
-        {
-            assert(router.loop.inside());
-
-            for (auto& [rid, conn] : service_conns)
-                if (conn)
-                    func(rid, *conn);
-
-            for (auto& [rid, conn] : client_conns)
-                if (conn)
-                    func(rid, *conn);
-        }
-
-        void Endpoint::close_connection(const RouterID& rid)
-        {
-            router.loop.call([this, rid] {
-                if (auto itr = service_conns.find(rid); itr != service_conns.end())
-                {
-                    log::info(logcat, "Closing connection to relay RID:{}", rid);
-                    auto& conn = *itr->second->conn;
-                    conn.close_connection();
-                }
-                else if (router.is_service_node)
-                {
-                    if (auto itr = client_conns.find(rid); itr != client_conns.end())
-                    {
-                        log::info(logcat, "Closing connection to client RID:{}", rid);
-                        auto& conn = *itr->second->conn;
-                        conn.close_connection();
-                    }
-                }
-                else
-                    log::warning(logcat, "Could not find connection to RID:{} to close!", rid);
-            });
-        }
-
-        void Endpoint::close_all()
-        {
-            for (auto& conn : service_conns)
-                conn.second->close_quietly();
-
-            service_conns.clear();
-
-            for (auto& conn : client_conns)
-                conn.second->close_quietly();
-
-            client_conns.clear();
-        }
-
-        std::tuple<size_t, size_t, size_t, size_t> Endpoint::connection_stats() const
-        {
-            return router.loop.call_get([this] {
-                std::tuple<size_t, size_t, size_t, size_t> result{0, 0, 0, 0};
-                auto& [in, out, s_conns, c_conns] = result;
-
-                s_conns = service_conns.size();
-                for (const auto& c : std::views::values(service_conns))
-                    if (c)
-                        ++(c->is_inbound() ? in : out);
-
-                c_conns = client_conns.size();
-                for (const auto& c : std::views::values(client_conns))
-                    if (c)
-                        ++(c->is_inbound() ? in : out);
-
-                return result;
-            });
-        }
-
-        int Endpoint::num_client_conns() const
-        {
-            return router.loop.call_get([this] { return static_cast<int>(client_conns.size()); });
-        }
-
-        int Endpoint::num_router_conns(bool active_only) const
-        {
-            return router.loop.call_get([&] {
-                return static_cast<int>(std::ranges::count_if(
-                    std::views::values(service_conns),
-                    [&active_only](const auto& conn) { return conn and (not active_only or conn->is_active.load()); }));
-            });
-        }
-
-        bool Endpoint::establish_and_send_control(
-            const RemoteRC& rc, std::function<void(quic::BTRequestStream&)> send_hook)
-        {
-            log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-            return router.loop.call_get([this, &rc, &send_hook] {
-                auto rid = rc.router_id();
-
-                try
-                {
-                    auto [itr, b] = service_conns.try_emplace(rid, nullptr);
-
-                    if (not b)
-                    {
-                        log::debug(logcat, "Attempting to establish an already existing connection!");
-                        send_hook(*itr->second->control_stream);
-                        return true;
-                    }
-
-                    auto conn = endpoint->connect(
-                        quic::RemoteAddress{rid.to_view(), rc.addr()},
-                        link_manager.tls_creds,
-                        quic::opt::keep_alive{router.is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
-                        [this, itr = std::move(itr), rid, send_hook = std::move(send_hook)](
-                            quic::Connection& conn) mutable {
-                            log::debug(
-                                logcat,
-                                "{} batch dispatching to remote (rid:{})",
-                                router.is_service_node ? "Relay" : "Client",
-                                rid.short_string());
-                            send_hook(*itr->second->control_stream);
-                            link_manager.on_conn_open(conn);
-                        });
-
-                    auto control_stream = link_manager.make_control(*conn, rid);
-
-                    itr->second = std::make_shared<link::Connection>(std::move(conn), std::move(control_stream));
-
-                    log::info(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
-                    return true;
-                }
-                catch (const std::exception& e)
-                {
-                    log::error(
-                        logcat, "Exception caught establishing connection to {}: {}", rid.short_string(), e.what());
-                    return false;
-                }
-                return true;
-            });
-        }
-    }  // namespace link
+    static auto logcat = llarp::log::Cat("link.manager");
 
     // These requests come over a path (as a "path_control" request),
     // we may or may not need to make a request to another relay,
     // then respond (onioned) back along the path.
-    std::unordered_map<std::string_view, void (LinkManager::*)(quic::message, std::optional<std::string>)>
-        LinkManager::path_requests = {
-            {"path_control"sv, &LinkManager::_handle_path_control},
-            {"publish_cc"sv, &LinkManager::_handle_publish_cc},
-            {"find_cc"sv, &LinkManager::_handle_find_cc},
-            {"fetch_rcs"sv, &LinkManager::_handle_fetch_rcs},
-            {"fetch_rids"sv, &LinkManager::_handle_fetch_router_ids},
-            {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
-            {"session_init"sv, &LinkManager::_handle_initiate_session},
-            {"session_close"sv, &LinkManager::_handle_close_session},
-            {"path_switch"sv, &LinkManager::_handle_path_switch},
-            {"path_ping"sv, &LinkManager::_handle_path_ping}};
+    std::unordered_map<std::string_view, void (Manager::*)(quic::message, std::optional<std::string>)>
+        Manager::path_requests = {
+            {"path_control"sv, &Manager::handle_path_control},
+            {"publish_cc"sv, &Manager::handle_publish_cc},
+            {"find_cc"sv, &Manager::handle_find_cc},
+            {"fetch_rcs"sv, &Manager::handle_fetch_rcs},
+            {"fetch_rids"sv, &Manager::handle_fetch_router_ids},
+            {"resolve_sns"sv, &Manager::handle_resolve_sns},
+            {"session_init"sv, &Manager::handle_initiate_session},
+            {"session_close"sv, &Manager::handle_close_session},
+            {"path_switch"sv, &Manager::handle_path_switch},
+            {"path_ping"sv, &Manager::handle_path_ping}};
 
-    std::tuple<size_t, size_t, size_t, size_t> LinkManager::connection_stats() const { return ep->connection_stats(); }
-
-    int LinkManager::get_num_connected_routers(bool active_only) const { return ep->num_router_conns(active_only); }
-
-    int LinkManager::get_num_connected_clients() const { return ep->num_client_conns(); }
-
-    std::unordered_set<RouterID> LinkManager::get_current_remotes() const
-    {
-        // invoke using Router method to wrap in call_get
-        std::unordered_set<RouterID> ret;
-
-        for (auto& [rid, conn] : ep->service_conns)
-            if (conn and conn->is_active)
-                ret.insert(rid);
-
-        return ret;
-    }
-
-    void LinkManager::for_each_connection(std::function<void(const RouterID&, link::Connection&)> func)
-    {
-        if (is_stopping)
-            return;
-
-        return ep->for_each_connection(std::move(func));
-    }
-
-    void LinkManager::register_commands(quic::BTRequestStream& s, const RouterID& remote_rid, bool client_only)
+    void Manager::register_commands(quic::BTRequestStream& s, const RouterID& remote_rid, bool client_only)
     {
         // TODO FIXME: registering all these commands on every stream feels icky; a quic fallback
         // handler could do this better.
@@ -321,7 +95,7 @@ namespace llarp
         });
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { _handle_fetch_rcs(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
         });
 
         s.register_handler("gossip_rc"s, [this](quic::message m) {
@@ -329,312 +103,29 @@ namespace llarp
         });
 
         s.register_handler("publish_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { _handle_publish_cc(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_publish_cc(std::move(msg)); });
         });
 
         s.register_handler("find_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { _handle_find_cc(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_find_cc(std::move(msg)); });
         });
 
         s.register_handler("resolve_sns"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { _handle_resolve_sns(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_resolve_sns(std::move(msg)); });
         });
 
         log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
     }
 
-    LinkManager::LinkManager(Router& r)
-        : router{r},
-          quic_loop{std::make_unique<quic::Loop>()},
-          tls_creds{quic::GNUTLSCreds::make_from_ed_keys(
-              {reinterpret_cast<const char*>(router.identity().data()), 32},
-              {reinterpret_cast<const char*>(router.local_rid().data()), 32})},
-          ep{std::make_unique<link::Endpoint>(startup_endpoint(), *this)},
-          is_stopping{false}
-    {}
+    Manager::Manager(Router& r) : router{r}, endpoint{*this} {}
 
-    std::shared_ptr<quic::Endpoint> LinkManager::startup_endpoint()
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        /** Parameters:
-              - local bind address
-              - conection open callback
-              - connection close callback
-              - stream constructor callback
-                - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
-                - bt stream construction contains a stream close callback that shuts down the
-                    connection if the btstream closes unexpectedly
-        */
+    // void Manager::close_connection(RouterID rid) { return ep->close_connection(rid); }
 
-        std::optional<quic::opt::inbound_alpns> inbound_alpn;
-        if (router.is_service_node)
-            inbound_alpn.emplace({RELAY_ALPN, CLIENT_ALPN});
-
-        auto e = quic::Endpoint::endpoint(
-            *quic_loop,
-            router.listen_addr(),
-            quic::opt::static_secret{make_static_secret(router.identity())},
-            [this](quic::Connection& conn) { on_conn_open(conn); },
-            [this](quic::Connection& conn, uint64_t ec) { on_conn_closed(conn, ec); },
-            [this](quic::datagram dgram) {
-                // Transfer handling to the logic loop:
-                router.loop.call(
-                    [this, msg = std::move(dgram).extract()]() mutable { handle_path_data_message(std::move(msg)); });
-            },
-            inbound_alpn,
-            quic::opt::outbound_alpns{{router.is_service_node ? RELAY_ALPN : CLIENT_ALPN}},
-            quic::opt::enable_datagrams{quic::Splitting::ACTIVE});
-
-        if (router.is_service_node)
-            tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
-                bool incoming_client = alpn == CLIENT_ALPN;
-                if (!incoming_client && alpn != RELAY_ALPN)
-                {
-                    log::warning(logcat, "Rejecting incoming connection with unknown ALPN {}", alpn);
-                    return false;
-                }
-
-                if (key.size() != RouterID::SIZE)
-                {
-                    log::warning(
-                        logcat,
-                        "Rejecting incoming connection with invalid/unsupported pubkey ({} bytes, expected {})",
-                        key.size(),
-                        RouterID::SIZE);
-                    return false;
-                }
-
-                return router.loop.call_get([this, incoming_client, other = RouterID{key.first<32>()}] {
-                    if (incoming_client)
-                    {
-                        // FIXME: what if the client is reconnecting but we already have something
-                        // in ep->client_conns?
-                        log::debug(logcat, "Accepting client connection from {}!", other);
-                        ep->client_conns.emplace(other, nullptr);
-                        return true;
-                    }
-
-                    // verify incoming service node
-                    if (not router.node_db().registered_routers().contains(other))
-                    {
-                        log::warning(
-                            logcat, "Rejecting incoming relay connection from unregistered relay (RID:{})", other);
-                        return false;
-                    }
-
-                    auto [itr, b] = ep->service_conns.emplace(other, nullptr);
-                    if (b)
-                    {
-                        log::debug(logcat, "Accepting inbound from registered relay (RID:{})", other);
-                        return true;
-                    }
-
-                    // If we fail to emplace a connection to the incoming RID, then we are
-                    // simultaneously dealing with an outbound and inbound with the same remote.  To
-                    // resolve this consistently on both ends, both relays will defer to the
-                    // connection initiated by the RID that appears first in lexicographical order.
-                    auto defer_to_incoming = other < router.local_rid();
-
-                    if (defer_to_incoming)
-                    {
-                        if (itr->second)
-                            itr->second->conn->set_close_quietly();
-                        itr->second = nullptr;
-                    }
-
-                    log::debug(
-                        logcat,
-                        "Received inbound with ongoing outbound to relay (RID:{}); {}!",
-                        other,
-                        defer_to_incoming ? "deferring to inbound" : "rejecting in favor of outbound");
-
-                    return defer_to_incoming;
-                });
-            });
-
-        e->listen(tls_creds);
-
-        return e;
-    }
-
-    std::shared_ptr<quic::BTRequestStream> LinkManager::make_control(quic::Connection& conn, const RouterID& remote)
-    {
-        std::shared_ptr<quic::BTRequestStream> control_stream;
-
-        if (conn.is_inbound())
-        {
-            control_stream =
-                conn.template queue_incoming_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
-                    log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
-                });
-
-            log::trace(logcat, "Queued BTStream to be opened (ID:{})", control_stream->stream_id());
-            assert(control_stream->stream_id() == 0);
-        }
-        else
-        {
-            control_stream = conn.open_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
-                log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
-            });
-
-            log::trace(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
-        }
-
-        register_commands(*control_stream, remote, not router.is_service_node);
-        return control_stream;
-    }
-
-    void LinkManager::on_inbound_conn(std::shared_ptr<quic::Connection> conn)
-    {
-        assert(router.is_service_node);
-        assert(conn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
-        RouterID rid{conn->remote_key().first<RouterID::SIZE>()};
-
-        auto control = make_control(*conn, rid);
-        bool is_client_conn = false;
-
-        if (auto it = ep->service_conns.find(rid); it != ep->service_conns.end())
-        {
-            log::debug(logcat, "Configuring inbound connection from relay RID:{}", rid.short_string());
-            it->second = std::make_shared<link::Connection>(std::move(conn), std::move(control), false, true);
-        }
-        else if (auto it = ep->client_conns.find(rid); it != ep->client_conns.end())
-        {
-            is_client_conn = true;
-            log::debug(logcat, "Configuring inbound connection from client RID:{}", rid.short_string());
-            it->second = std::make_shared<link::Connection>(std::move(conn), std::move(control), false, true);
-        }
-        else
-            log::warning(logcat, "Could not find inbound connection corresponding to RID: {}", rid);
-
-        log::critical(
-            logcat,
-            "SERVICE NODE (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-            router.local_rid().to_network_address(),
-            rid.to_network_address(!is_client_conn));
-    }
-
-    void LinkManager::on_outbound_conn(RouterID rid)
-    {
-        log::trace(logcat, "Outbound connection to {}", rid);
-
-        if (auto conn = ep->get_service_conn(rid))
-        {
-            conn->is_active = true;
-            log::trace(logcat, "Fetched configured outbound connection to relay RID: {}", rid);
-        }
-        else
-        {
-            log::warning(logcat, "Could not find outbound connection corresponding to RID: {}", rid);
-
-            log::critical(
-                logcat,
-                "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-                router.is_service_node ? "SERVICE NODE" : "CLIENT",
-                router.local_rid().to_network_address(router.is_service_node),
-                rid.to_network_address(/*is_relay=*/true));
-        }
-    }
-
-    void LinkManager::on_conn_open(quic::Connection& conn)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        router.loop.call([this, wci = conn.weak_from_this()]() {
-            auto conn = wci.lock();
-
-            if (not conn)
-            {
-                log::warning(logcat, "Connection died before connection open callback execution!");
-                return;
-            }
-
-            if (conn->is_inbound())
-                on_inbound_conn(std::move(conn));
-            else
-            {
-                auto key = conn->remote_key();
-                assert(key.size() == RouterID::SIZE);
-                on_outbound_conn(RouterID{key.first<RouterID::SIZE>()});
-            }
-        });
-    }
-
-    void LinkManager::on_conn_closed(quic::Connection& conn, uint64_t ec)
-    {
-        if (!conn.remote_key().size())
-        {
-            log::debug(logcat, "on_conn_closed on rejected connection, nothing to do");
-            return;
-        }
-        assert(conn.remote_key().size() == 32);
-
-        router.loop.call([this,
-                          ref_id = conn.reference_id(),
-                          rid = RouterID{conn.remote_key().first<32>()},
-                          error_code = ec,
-                          path = conn.path()]() {
-            log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
-
-            if (auto s_itr = ep->service_conns.find(rid); s_itr != ep->service_conns.end())
-            {
-                log::debug(logcat, "Quic connection to relay RID:{} purged successfully", rid.short_string());
-                ep->service_conns.erase(s_itr);
-            }
-            else if (auto c_itr = ep->client_conns.find(rid); c_itr != ep->client_conns.end())
-            {
-                log::debug(logcat, "Quic connection to client RID:{} purged successfully", rid.short_string());
-                ep->client_conns.erase(c_itr);
-            }
-            else
-                log::trace(logcat, "Nothing to purge for quic connection {}", ref_id);
-        });
-    }
-
-    void LinkManager::send_control_message(
-        const RouterID& remote,
-        std::string endpoint,
-        std::vector<std::byte> body,
-        std::function<void(quic::message)> func)
-    {
-        assert(router.loop.inside());
-        if (is_stopping)
-            return;
-
-        // The command callback will be invoked on the quic loop, but we need to transfer to the
-        // lokinet loop for actual callback execution of `func`:
-        if (func)
-            func = [this, f = std::move(func)](quic::message m) mutable {
-                router.loop.call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
-            };
-
-        auto conn = ep->get_conn(remote);
-        log::debug(logcat, "{} control message to {}", conn ? "Sending" : "Queuing", remote);
-        if (conn)
-            conn->control_stream->command(std::move(endpoint), std::move(body), std::move(func));
-        else
-            connect_and_send(remote, std::move(endpoint), std::move(body), std::move(func));
-    }
-
-    bool LinkManager::send_data_message(const RouterID& remote, std::vector<std::byte> body)
-    {
-        if (is_stopping)
-            return false;
-
-        if (auto conn = ep->get_conn(remote); conn)
-        {
-            conn->datagrams->send(std::move(body));
-            return true;
-        }
-
-        // Unlike the above, we don't have a connection here and since this is a datagram, we just
-        // drop it rather than trying to queue something.
-        return false;
-    }
-
-    void LinkManager::close_connection(RouterID rid) { return ep->close_connection(rid); }
-
-    void LinkManager::test_reachability(
+#if 0
+    /*
+     * TODO FIXME - fix reachability logic (see router.cpp)
+     */
+    void Manager::test_reachability(
         const RouterID& rid, connection_established_callback on_open, connection_closed_callback on_close)
     {
         if (auto rc = router.node_db().get_rc(rid))
@@ -642,249 +133,64 @@ namespace llarp
         else
             log::warning(logcat, "Could not find RelayContact for connection to rid:{}", rid);
     }
+#endif
 
-    void LinkManager::connect_and_send(const RouterID& rid, std::function<void(quic::BTRequestStream&)> send_hook)
+    // TODO: put this in ~Manager() after sorting out close sequence and logic
+    void Manager::stop()
     {
-        if (auto rc = router.node_db().get_rc(rid))
-        {
-            if (ep->establish_and_send_control(*rc, std::move(send_hook)))
-                log::info(logcat, "Begun establishing connection to {}", rid);
-            else
-                log::warning(logcat, "Failed to begin establishing connection to {}", rid);
-        }
-        else
-            log::error(logcat, "Error: Could not find RC for connection to rid:{}, message not sent!", rid);
-    }
-
-    bool link::Endpoint::establish_and_send(
-        quic::RemoteAddress remote,
-        const RouterID& rid,
-        std::string ep,
-        std::vector<std::byte> body,
-        std::function<void(quic::message)> func)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        return router.loop.call_get([this, &ep, &rid, &remote, &body, &func] {
-            try
-            {
-                log::debug(logcat, "Establishing connection to RID:{}", rid);
-
-                // add to service conns
-                auto [itr, b] = service_conns.try_emplace(rid, nullptr);
-
-                if (not b)
-                {
-                    log::debug(logcat, "request to establish an already-existing connection");
-                    itr->second->control_stream->command(std::move(ep), std::move(body), std::move(func));
-                    return true;
-                }
-
-                auto conn_ = endpoint->connect(
-                    remote,
-                    link_manager.tls_creds,
-                    quic::opt::keep_alive{router.is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
-                    [this, itr, ep = std::move(ep), body = std::move(body), func = std::move(func)](
-                        quic::Connection& conn) mutable {
-                        auto& control_stream = itr->second->control_stream;
-
-                        control_stream->command(std::move(ep), std::move(body), std::move(func));
-                        link_manager.on_conn_open(conn);
-                    });
-
-                auto control_stream = link_manager.make_control(*conn_, rid);
-
-                itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
-
-                log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid);
-                return true;
-            }
-            catch (const std::exception& e)
-            {
-                log::error(logcat, "Exception caught establishing connection to {}: {}", remote, e.what());
-                return false;
-            }
-        });
-    }
-
-    void LinkManager::connect_and_send(
-        const RouterID& rid, std::string endpoint, std::vector<std::byte> body, std::function<void(quic::message)> func)
-    {
-        // by the time we have called this, we have already checked if we have a connection to this
-        // RID in ::send_control_message, at which point we will dispatch on that stream
-        if (auto rc = router.node_db().get_rc(rid))
-        {
-            const auto& remote_addr = rc->addr();
-
-            if (auto rv = ep->establish_and_send(
-                    quic::RemoteAddress{rid.to_view(), remote_addr},
-                    rid,
-                    std::move(endpoint),
-                    std::move(body),
-                    std::move(func));
-                rv)
-            {
-                log::debug(logcat, "Begun establishing connection to {}", remote_addr);
-                return;
-            }
-
-            log::warning(logcat, "Failed to begin establishing connection to {}", remote_addr);
-        }
-        else
-            log::error(logcat, "Error: Could not find RC for connection to rid:{}, message not sent!", rid);
-    }
-
-    bool link::Endpoint::establish_connection(
-        quic::RemoteAddress remote,
-        RouterID rid,
-        connection_established_callback on_open,
-        connection_closed_callback on_close)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        return router.loop.call_get([&]() {
-            try
-            {
-                log::debug(logcat, "Establishing connection to RID:{}", rid.short_string());
-                // add to service conns
-                auto [itr, b] = service_conns.try_emplace(rid, nullptr);
-
-                if (not b)
-                {
-                    log::debug(logcat, "ERROR: attempting to establish an already-existing connection");
-                    return b;
-                }
-
-                auto conn_ = endpoint->connect(
-                    remote,
-                    link_manager.tls_creds,
-                    quic::opt::keep_alive{router.is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
-                    std::move(on_open),
-                    std::move(on_close));
-
-                log::trace(logcat, "Created outbound connection with path: {}", conn_->path());
-
-                auto control_stream =
-                    conn_->template open_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
-                        log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
-                    });
-
-                link_manager.register_commands(*control_stream, rid, not router.is_service_node);
-
-                itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
-
-                log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
-                return true;
-            }
-            catch (...)
-            {
-                log::error(logcat, "Error: failed to establish connection to {}", remote);
-                return false;
-            }
-        });
-    }
-
-    void LinkManager::connect_to(
-        const RemoteRC& rc, connection_established_callback on_open, connection_closed_callback on_close)
-    {
-        auto rid = rc.router_id();
-
-        if (ep->have_service_conn(rid))
-        {
-            log::warning(logcat, "We already have a connection to {}!", rid);
-            // TODO: should implement some connection failed logic, but not the same logic that
-            // would be executed for another failure case
-            return;
-        }
-
-        auto remote_addr = rc.addr();
-
-        if (auto rv = ep->establish_connection(
-                quic::RemoteAddress{rid.to_view(), remote_addr}, rid, std::move(on_open), std::move(on_close));
-            rv)
-        {
-            log::debug(logcat, "Begun establishing connection to {}", remote_addr);
-            return;
-        }
-        log::warning(logcat, "Failed to begin establishing connection to {}", remote_addr);
-    }
-
-    bool LinkManager::have_connection_to(const RouterID& remote) const { return ep->have_conn(remote); }
-
-    bool LinkManager::have_service_connection_to(const RouterID& remote) const { return ep->have_service_conn(remote); }
-
-    bool LinkManager::have_client_connection_to(const RouterID& remote) const { return ep->have_client_conn(remote); }
-
-    void LinkManager::close_all_links()
-    {
-        if (!ep)
+        if (is_stopping.exchange(true))
             return;
 
-        log::debug(logcat, "Closing all connections...");
-
-        // TODO FIXME: this seems suspicious: Endpoint::close_all calls close_quietly on the quic
-        // connections, but if any of those require a logic loop call_get, that's a deadlock, so we
-        // either need to make this asynchronous or make sure there are no such callbacks.
-        router.loop.call_get([this] { ep->close_all(); });
-
-        ep.reset();
-        log::info(logcat, "All connections closed!");
-    }
-
-    // TODO: put this in ~LinkManager() after sorting out close sequence and logic
-    void LinkManager::stop()
-    {
-        if (is_stopping)
-        {
-            return;
-        }
-
-        log::info(logcat, "stopping loop");
-        is_stopping = true;
-        quic_loop->call([this] { ep.reset(); });
-        quic_loop.reset();
+        router.loop.call_get([this] { endpoint.shutdown(); });
     }
 
     // TODO: this
-    nlohmann::json LinkManager::extract_status() const { return {}; }
+    nlohmann::json Manager::extract_status() const { return {}; }
 
-    void LinkManager::connect_to_keep_alive(int num_conns)
+    void Manager::connect_to_keep_alive(int num_conns)
     {
         if (router.node_db().strict_connect_enabled())
         {
             assert(not router.is_service_node);
 
             // TESTNET: TODO: if given strict-connects, fetch their RCs SPECIFICALLY in bootstrapping
+            // TODO FIXME: why?  That sounds rather metadata-leaky.
             log::warning(logcat, "FINISH STRICT CONNECT (SEE COMMENT)");
         }
 
         if (auto rcs = router.node_db().get_n_random_rcs(
-                num_conns, true, [this](const RemoteRC& rc) { return !ep->have_service_conn(rc.router_id()); });
+                num_conns,
+                true,
+                [this](const RemoteRC& rc) {
+                    return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
+                });
             !rcs.empty())
         {
             for (const auto& rc : rcs)
-                connect_to(rc);
+                // We don't actually need the stream right now, but as a side effect this starts
+                // establishing a new connection if needed:
+                endpoint.control_stream_for(rc);
         }
         else
             log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
     }
 
-    int LinkManager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
+    int Manager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
     {
         int count = 0;
-        ep->for_each_service_conn(
-            [&rc, &sender, &count](const RouterID& rid, link::Connection& conn) {
-                // Don't gossip this to RC's origin, or back along the connection that sent it to us:
-                if (rid == rc.router_id() or (sender && *sender == conn.conn->reference_id()))
-                    return;
+        endpoint.for_each_relay_conn([&rc, &sender, &count](const RouterID& rid, link::Connection& conn) {
+            // Don't gossip this to RC's origin, or back along the connection that sent it to us:
+            if (rid == rc.router_id() or (sender && *sender == conn.conn->reference_id()))
+                return;
 
-                conn.control_stream->command("gossip_rc", rc.view());
-                ++count;
-            },
-            false /* !active_only: inactive relays still want RCs */);
+            conn.control_stream->command("gossip_rc", rc.view());
+            ++count;
+        });
 
         return count;
     }
 
-    void LinkManager::handle_gossip_rc(quic::message m)
+    void Manager::handle_gossip_rc(quic::message m)
     {
         RemoteRC rc;
 
@@ -894,7 +200,7 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            log::critical(logcat, "Exception handling GossipRC request: {}", e.what());
+            log::warning(logcat, "Invalid gossipped RC: {}", e.what());
             return;
         }
 
@@ -902,38 +208,30 @@ namespace llarp
         {
             log::debug(
                 logcat,
-                "Received new or significantly changed RC for {}; gossipping to peers",
+                "Received new or significantly updated RC for {}; gossipping to peers",
                 rc.router_id().short_string());
             gossip_rc(rc, &m.conn_rid());
         }
         else
-            log::trace(logcat, "Received known or old RC, not storing or forwarding.");
+            log::debug(
+                logcat,
+                "Received known or minor RC update for {}; not gossipping to peers",
+                rc.router_id().short_string());
     }
 
-    // TODO: can probably use ::send_control_message instead. Need to discuss the potential
-    // difference in calling Endpoint::get_service_conn vs Endpoint::get_conn
-    void LinkManager::fetch_bootstrap_rcs(
+    void Manager::fetch_bootstrap_rcs(
         const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func)
     {
-        func = [this, f = std::move(func)](quic::message m) mutable {
-            router.loop.call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
-        };
-
-        const auto& rid = source.router_id();
-
-        if (auto conn = ep->get_service_conn(rid); conn)
-        {
-            conn->control_stream->command("bfetch_rcs", std::move(payload), std::move(func));
-            log::debug(logcat, "Dispatched bootstrap fetch request!");
-            return;
-        }
-
-        router.loop.call([this, source, payload = std::move(payload), f = std::move(func), rid = rid]() mutable {
-            connect_and_send(rid, "bfetch_rcs", std::move(payload), std::move(f));
-        });
+        assert(router.loop.inside());
+        endpoint.control_stream_for(source).command(
+            "bfetch_rcs",
+            std::move(payload),
+            // The callback fires in the network event loop, so wrap it to transfer the reply back
+            // to the router loop for actually processing:
+            [func = std::move(func)](quic::message m) { func(std::move(m)); });
     }
 
-    void LinkManager::handle_fetch_bootstrap_rcs(quic::message m)
+    void Manager::handle_fetch_bootstrap_rcs(quic::message m)
     {
         // this handler should not be registered for clients
         assert(router.is_service_node);
@@ -1012,16 +310,7 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::fetch_rcs(
-        const RouterID& source, std::vector<std::byte> payload, std::function<void(quic::message)> func)
-    {
-        // this handler should not be registered for service nodes
-        assert(not router.is_service_node);
-
-        send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
-    }
-
-    void LinkManager::_handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)
     {
         log::debug(logcat, "Handling FetchRC request...");
         // this handler should not be registered for clients
@@ -1061,22 +350,7 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::fetch_router_ids(const RouterID& via, std::function<void(quic::BTRequestStream&)> send_hook)
-    {
-        if (auto conn = ep->get_conn(via); conn)
-        {
-            log::debug(logcat, "Batch dispatching FetchRID requests to {}", via);
-            return send_hook(*conn->control_stream);
-        }
-
-        log::debug(logcat, "Queueing FetchRID batch send to {}...", via);
-
-        router.loop.call([this, rid = via, send_hook = std::move(send_hook)]() mutable {
-            connect_and_send(std::move(rid), std::move(send_hook));
-        });
-    }
-
-    void LinkManager::_handle_fetch_router_ids(quic::message m, std::optional<std::string>)
+    void Manager::handle_fetch_router_ids(quic::message m, std::optional<std::string>)
     {
         log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
@@ -1096,7 +370,7 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::_handle_resolve_sns(
+    void Manager::handle_resolve_sns(
         [[maybe_unused]] quic::message m, [[maybe_unused]] std::optional<std::string> inner_body)
     {
 #ifdef LOKINET_EMBEDDED_ONLY
@@ -1135,7 +409,7 @@ namespace llarp
 #endif
     }
 
-    void LinkManager::_handle_publish_cc(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_publish_cc(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "Received request to publish client contact!");
 
@@ -1258,7 +532,7 @@ namespace llarp
                 *location,
                 rid);
 
-            send_control_message(
+            endpoint.send_command(
                 rid,
                 "publish_cc",
                 PublishClientContact::serialize(std::move(enc)),
@@ -1296,7 +570,7 @@ namespace llarp
         return;
     }
 
-    void LinkManager::_handle_find_cc(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_find_cc(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "Received request to find client contact!");
 
@@ -1385,11 +659,11 @@ namespace llarp
         {
             if (rid == router.local_rid())
                 continue;
-            send_control_message(rid, "find_cc", forwarded_find_cc, hook);
+            endpoint.send_command(rid, "find_cc", forwarded_find_cc, hook);
         }
     }
 
-    void LinkManager::handle_path_build(quic::message m, const RouterID& from)
+    void Manager::handle_path_build(quic::message m, const RouterID& from)
     {
         if (!router.path_context.is_transit_allowed())
         {
@@ -1446,7 +720,8 @@ namespace llarp
                 dh_nonce ^ hop->xor_nonce);
 
             const auto& upstream = hop->upstream;
-            send_control_message(
+
+            endpoint.send_command(
                 upstream,
                 "path_build",
                 std::move(frames),
@@ -1478,7 +753,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::_handle_path_control(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_path_control(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -1576,7 +851,7 @@ namespace llarp
         nonce.copy_to(bnonce);
         next_hopid.copy_to(bhop);
 
-        send_control_message(
+        endpoint.send_command(
             next_rid,
             "path_control",
             std::move(payload),
@@ -1628,8 +903,6 @@ namespace llarp
             });
     }
 
-    void LinkManager::handle_path_control(quic::message m) { return _handle_path_control(std::move(m)); }
-
     // FIXME: overhead for session MAC?
     static constexpr size_t MIN_PATH_DATA_MESSAGE_SIZE = 0 /*payload*/ + 1 /*packet type*/ + sizeof(HopID) /*pivot*/
         + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD /*nonce, hop, type*/;
@@ -1672,7 +945,7 @@ namespace llarp
         return result;
     }
 
-    void LinkManager::handle_path_data_message(std::vector<std::byte> message)
+    void Manager::handle_path_data_message(std::vector<std::byte> message)
     {
         auto maybe_hop_nonce = extract_path_message_metadata(message);
         if (!maybe_hop_nonce)
@@ -1801,7 +1074,7 @@ namespace llarp
             msgtype[0] = std::byte{0x01};
 
             log::trace(logcat, "Pivoting message down another path");
-            send_data_message(trans_hop->downstream, std::move(message));
+            endpoint.send_datagram(trans_hop->downstream, std::move(message));
             return;
         }
 
@@ -1827,11 +1100,10 @@ namespace llarp
         next_hopid.copy_to(bhop);
         bmsgtype[0] = std::byte{0x01};
 
-        send_data_message(next_rid, std::move(message));
+        endpoint.send_datagram(next_rid, std::move(message));
     }
 
-    void LinkManager::handle_session_data(
-        std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
+    void Manager::handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
     {
         if (auto session = router.session_endpoint().get_session(tag))
             session->recv_session_data_message(std::move(payload), nonce);
@@ -1839,7 +1111,7 @@ namespace llarp
             log::warning(logcat, "Could not find session {} to receive session data message!", tag);
     }
 
-    void LinkManager::handle_path_request(quic::message m, std::span<const std::byte> payload)
+    void Manager::handle_path_request(quic::message m, std::span<const std::byte> payload)
     {
         std::string endpoint, body;
 
@@ -1851,7 +1123,7 @@ namespace llarp
             {
                 log::info(logcat, "Received path control relay request; deserializing intermediate payload...");
                 auto [_, i_body] = PATH::CONTROL::deserialize(oxenc::bt_dict_consumer{std::move(body)});
-                return _handle_path_control(std::move(m), std::move(i_body));
+                return handle_path_control(std::move(m), std::move(i_body));
             }
         }
         catch (const std::exception& e)
@@ -1869,7 +1141,7 @@ namespace llarp
             log::warning(logcat, "Received path control request (`{}`), which has no local handler!", endpoint);
     }
 
-    void LinkManager::_handle_initiate_session(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_initiate_session(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -1972,9 +1244,7 @@ namespace llarp
         m.respond(messages::ERROR_RESPONSE, true);
     }
 
-    void LinkManager::handle_initiate_session(quic::message m) { return _handle_initiate_session(std::move(m)); }
-
-    void LinkManager::_handle_path_switch(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_path_switch(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -2029,15 +1299,13 @@ namespace llarp
         return m.respond(SessionPathSwitch::BAD_TAG, true);
     }
 
-    void LinkManager::handle_path_switch(quic::message m) { return _handle_path_switch(std::move(m)); }
-
-    void LinkManager::_handle_path_ping(quic::message m, std::optional<std::string>)
+    void Manager::handle_path_ping(quic::message m, std::optional<std::string>)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         m.respond(messages::OK_RESPONSE);
     }
 
-    void LinkManager::_handle_close_session(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_close_session(quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -2064,9 +1332,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_close_session(quic::message m) { return _handle_close_session(std::move(m)); }
-
-    void LinkManager::handle_path_latency(quic::message m)
+    void Manager::handle_path_latency(quic::message m)
     {
         try
         {
@@ -2079,7 +1345,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_path_latency_response(quic::message m)
+    void Manager::handle_path_latency_response(quic::message m)
     {
         try
         {
@@ -2092,4 +1358,4 @@ namespace llarp
         }
     }
 
-}  // namespace llarp
+}  // namespace llarp::link

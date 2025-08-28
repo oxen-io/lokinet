@@ -1,5 +1,9 @@
 #include "utils.hpp"
 
+#include <llarp/util/formattable.hpp>
+
+#include <nlohmann/json.hpp>
+
 namespace llarp::controller
 {
     size_t lokinet_instance::next_id = 0;

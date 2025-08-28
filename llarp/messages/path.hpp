@@ -1,8 +1,7 @@
 #pragma once
 
-#include "llarp/constants/path.hpp"
-
 #include <llarp/address/address.hpp>
+#include <llarp/constants/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging/buffer.hpp>
 

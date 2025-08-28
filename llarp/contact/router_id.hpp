@@ -2,12 +2,12 @@
 
 #include <llarp/crypto/keys.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/util/formattable.hpp>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 namespace llarp
 {
+    using namespace std::literals;
 
     struct RouterID : public PubKey
     {

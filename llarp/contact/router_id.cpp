@@ -1,5 +1,8 @@
 #include "router_id.hpp"
 
+#include <llarp/util/formattable.hpp>
+
+#include <nlohmann/json.hpp>
 #include <oxenc/base32z.h>
 
 #include <iterator>

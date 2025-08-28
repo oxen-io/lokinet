@@ -12,6 +12,11 @@
 #include <set>
 #include <unordered_set>
 
+namespace oxen::quic
+{
+    class message;
+}
+
 namespace llarp
 {
     class Router;
@@ -140,7 +145,7 @@ namespace llarp
         void start_tickers();
 
         // returns {num_rcs, num_rids, num_bootstraps}
-        std::tuple<size_t, size_t, size_t> db_stats() const;
+        std::array<int, 3> db_stats() const;
 
         const std::set<RouterID>& get_known_rids() const { return known_rids; }
 
@@ -253,14 +258,15 @@ namespace llarp
         /// Checks of the router in the given rc is a known network router (either active or
         /// decommissioned) and, if so, calls and returns put_rc with it.
         ///
-        /// Returns true if the router ID is known *and* the rc was update *and* the RC should be
-        /// re-gossipped; returns false otherwise.
+        /// Returns true if the router ID is known *and* the rc was updated *and* the RC should be
+        /// re-gossipped (see put_rc); returns false otherwise.
         bool verify_store_gossip_rc(const RemoteRC& rc);
 
       private:
         void fetch_rcs();
         void fetch_rids();
         void bootstrap();
+        void handle_bootstrap_result(const RouterID& source, oxen::quic::message m);
 
         void post_rid_fetch(bool shutdown = false);
 

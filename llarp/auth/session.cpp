@@ -5,6 +5,8 @@
 
 namespace llarp::auth
 {
+    static auto logcat = log::Cat("auth_policy");
+
     SessionAuthPolicy::SessionAuthPolicy(Router& r, RouterID& remote, bool is_snode, bool is_exit)
         : AuthPolicy{r}, _is_snode_service{is_snode}, _is_exit_service{is_exit}, _remote{remote, not _is_snode_service}
     {
@@ -29,6 +31,18 @@ namespace llarp::auth
         return ret;
     }
 
-    bool SessionAuthPolicy::load_identity_from_file(const char* fname) { KeyManager::load_from_file(_session_key, fname); }
+    bool SessionAuthPolicy::load_identity_from_file(const char* fname)
+    {
+        try
+        {
+            KeyManager::load_from_file(_session_key, fname);
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            log::error(logcat, "Failed to load identity key from {}: {}", fname, e.what());
+        }
+        return false;
+    }
 
 }  // namespace llarp::auth

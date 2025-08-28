@@ -1,8 +1,12 @@
 #include "relay_contact.hpp"
 
 #include <llarp/constants/version.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/util/file.hpp>
+#include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 
+#include <nlohmann/json.hpp>
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 

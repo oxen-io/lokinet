@@ -47,8 +47,10 @@ lokinet_add_library(lokinet-core
   
   consensus/reachability_testing.cpp
   
+  link/connection.cpp
+  link/endpoint.cpp
   link/link_manager.cpp
-  
+
   router/router.cpp
 
   session/session.cpp
@@ -67,11 +69,6 @@ if (LOKINET_FULL)
     rpc/rpc_server.cpp
   )
 endif()
-
-lokinet_add_library(lokinet-wire
-  link/connection.cpp
-  link/link_manager.cpp
-)
 
 # config, crypto, timeplace, nodedb, bootstrap.cpp, net, router
 lokinet_add_library(lokinet-utils
@@ -212,18 +209,17 @@ lokinet_add_library(lokinet-path
   path/path.cpp
   path/path_context.cpp
   path/path_handler.cpp
+  path/path_types.cpp
   path/transit_hop.cpp
 )
 
 # Link libraries to their internals
-target_link_libraries(lokinet-wire PUBLIC lokinet-addressing)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
 target_link_libraries(lokinet-contact PUBLIC lokinet-dns)
 if(LOKINET_FULL)
-  target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
+  target_link_libraries(lokinet-rpc PUBLIC lokinet-contact lokinet-config)
 endif()
 target_link_libraries(lokinet-addressing PUBLIC lokinet-utils lokinet-cryptography lokinet-contact lokinet-ip)
-target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
 target_link_libraries(lokinet-config PUBLIC lokinet-cryptography lokinet-addressing)
 if(LOKINET_FULL)
   target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
@@ -244,7 +240,6 @@ target_link_libraries(lokinet-path
 target_link_libraries(lokinet-core-utils 
   PUBLIC 
   lokinet-config
-  lokinet-wire 
   lokinet-dns
 )
 

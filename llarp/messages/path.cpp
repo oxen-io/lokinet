@@ -1,9 +1,9 @@
 #include "path.hpp"
 
 #include "common.hpp"
-#include "llarp/constants/path.hpp"
-#include "llarp/crypto/crypto.hpp"
 
+#include <llarp/constants/path.hpp>
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/util/bspan.hpp>
 
 #include <ranges>

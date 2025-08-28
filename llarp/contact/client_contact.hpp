@@ -13,7 +13,7 @@
 #include <llarp/util/file.hpp>
 #include <llarp/util/time.hpp>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <oxenc/bt_producer.h>
 
 #include <unordered_set>

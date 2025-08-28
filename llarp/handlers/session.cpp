@@ -12,6 +12,7 @@
 #include <llarp/router/router.hpp>
 #include <llarp/session/session.hpp>
 #include <llarp/util/bspan.hpp>
+#include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
 
 #include <oxenc/base32z.h>

@@ -34,6 +34,8 @@ namespace llarp
     namespace link
     {
         struct Connection;
+        class Endpoint;
+        class Manager;
     }  // namespace link
 
     namespace rpc
@@ -43,8 +45,6 @@ namespace llarp
     }  // namespace rpc
 
     namespace quic = oxen::quic;
-
-    class LinkManager;
 
     /// number of routers to publish to
     inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
@@ -116,7 +116,8 @@ namespace llarp
 
         std::unique_ptr<handlers::SessionEndpoint> _session_endpoint;
 
-        std::unique_ptr<LinkManager> _link_manager;
+        std::unique_ptr<link::Manager> _link_manager;
+        link::Endpoint* _link_endpoint = nullptr;
 
         // These are only created in full platform mode (not embedded clients)
         std::shared_ptr<handlers::TunEPBase> _tun;
@@ -188,10 +189,6 @@ namespace llarp
 
         int client_outbounds_needed() const { return min_client_outbounds; }
 
-        std::unordered_set<RouterID> get_current_remotes() const;
-
-        void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
-
         const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 
         // Returns the net Platform pointer, or nullptr if this is an embedded client.
@@ -202,8 +199,10 @@ namespace llarp
         handlers::SessionEndpoint& session_endpoint() { return *_session_endpoint; }
         const handlers::SessionEndpoint& session_endpoint() const { return *_session_endpoint; }
 
-        LinkManager& link_manager() { return *_link_manager; }
-        const LinkManager& link_manager() const { return *_link_manager; }
+        link::Manager& link_manager() { return *_link_manager; }
+        const link::Manager& link_manager() const { return *_link_manager; }
+        link::Endpoint& link_endpoint() { return *_link_endpoint; }
+        const link::Endpoint& link_endpoint() const { return *_link_endpoint; }
 
         const Config& config() const { return _config; }
 
@@ -280,9 +279,6 @@ namespace llarp
         /// stake, and does not imply that this service node is *active* or fully funded.
         bool appears_registered() const;
 
-        /// return true if we look like we are allowed and able to test other routers
-        bool can_test_routers() const;
-
         std::chrono::milliseconds Uptime() const;
 
         std::chrono::milliseconds _last_tick;
@@ -319,23 +315,9 @@ namespace llarp
 
         void fetch_snode_identity();
 
-        void send_data_message(const RouterID& remote, std::vector<std::byte> payload);
-
-        void send_control_message(
-            const RouterID& remote,
-            std::string endpoint,
-            std::vector<std::byte> body,
-            std::function<void(quic::message)> func = nullptr);
-
         // bool is_bootstrap_node(RouterID rid) const;
 
         std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
-
-        /// count the number of unique service nodes connected via pubkey
-        int num_router_connections(bool active_only = true) const;
-
-        /// count the number of unique clients connected by pubkey
-        int num_client_connections() const;
 
         void teardown();
 
