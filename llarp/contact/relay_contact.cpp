@@ -98,7 +98,7 @@ namespace llarp
         btdc.finish();
     }
 
-    bool RelayContact::write(const fs::path& fname) const
+    bool RelayContact::write(const std::filesystem::path& fname) const
     {
         try
         {
@@ -281,7 +281,7 @@ namespace llarp
     }
 
     template <>
-    RemoteRC::RemoteRC(const fs::path& fname, NetID netid, bool accept_expired)
+    RemoteRC::RemoteRC(const std::filesystem::path& fname, NetID netid, bool accept_expired)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _payload = util::file_to_string(fname);

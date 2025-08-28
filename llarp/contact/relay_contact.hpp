@@ -16,6 +16,8 @@
 #include <oxen/quic/address.hpp>
 #include <oxenc/bt_producer.h>
 
+#include <filesystem>
+
 namespace llarp
 {
     namespace quic = oxen::quic;
@@ -109,7 +111,7 @@ namespace llarp
 
         std::string to_string() const;
 
-        bool write(const fs::path& fname) const;
+        bool write(const std::filesystem::path& fname) const;
 
         bool operator==(const RelayContact& other) const { return compare_tuple() == other.compare_tuple(); }
 
@@ -191,7 +193,7 @@ namespace llarp
       public:
         RemoteRC() = default;
         RemoteRC(std::string_view data, NetID netid, bool accept_expired = false);
-        template <std::same_as<fs::path> FSPath>
+        template <std::same_as<std::filesystem::path> FSPath>
         RemoteRC(const FSPath& fname, NetID netid, bool accept_expired = false);
     };
 }  // namespace llarp

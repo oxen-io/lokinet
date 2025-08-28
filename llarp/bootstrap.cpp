@@ -68,7 +68,10 @@ namespace llarp
     }
 
     void BootstrapList::populate(
-        NetID netid, const std::vector<fs::path>& paths, const fs::path& def, bool load_fallbacks)
+        NetID netid,
+        const std::vector<std::filesystem::path>& paths,
+        const std::filesystem::path& def,
+        bool load_fallbacks)
     {
         for (const auto& f : paths)
         {
@@ -76,7 +79,7 @@ namespace llarp
             read_from_file(netid, f);
         }
 
-        if (empty() && !def.empty() && fs::exists(def))
+        if (empty() && !def.empty() && exists(def))
         {
             log::debug(logcat, "BootstrapRC list empty; looking for default from {}", def);
             try
@@ -144,9 +147,9 @@ namespace llarp
         }
     }
 
-    void BootstrapList::read_from_file(NetID netid, const fs::path& fpath)
+    void BootstrapList::read_from_file(NetID netid, const std::filesystem::path& fpath)
     {
-        if (not fs::exists(fpath))
+        if (not exists(fpath))
             throw std::runtime_error{"Bootstrap RC file '{}' does not exist"_format(fpath)};
 
         auto content = util::file_to_string(fpath);

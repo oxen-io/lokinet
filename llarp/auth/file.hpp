@@ -24,12 +24,12 @@ namespace llarp::auth
 
     struct FileAuthPolicy final : public AuthPolicy
     {
-        FileAuthPolicy(Router& r, std::vector<fs::path> files, AuthFileType filetype)
+        FileAuthPolicy(Router& r, std::vector<std::filesystem::path> files, AuthFileType filetype)
             : AuthPolicy{r}, _files{std::move(files)}, _type{filetype}
         {}
 
       private:
-        const std::vector<fs::path> _files;
+        const std::vector<std::filesystem::path> _files;
         const AuthFileType _type;
         mutable util::Mutex _m;
         std::unordered_set<session_tag> _pending;

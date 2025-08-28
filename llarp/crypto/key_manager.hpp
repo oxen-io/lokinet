@@ -36,11 +36,11 @@ namespace llarp
 
         // Helper functions to load a key; these are used by KeyManager itself, but are expoed as
         // they also have some uses for key loading outside KeyManager.
-        static void load_from_file(Ed25519SecretKey& key, const fs::path& fname);
-        static bool write_to_file(const Ed25519SecretKey& key, const fs::path& fname);
+        static void load_from_file(Ed25519SecretKey& key, const std::filesystem::path& fname);
+        static bool write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname);
     };
 
-    void load_from_file(Ed25519SecretKey& key, const fs::path& fname);
-    bool write_to_file(const Ed25519SecretKey& key, const fs::path& fname);
+    void load_from_file(Ed25519SecretKey& key, const std::filesystem::path& fname);
+    bool write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname);
 
 }  // namespace llarp

@@ -65,7 +65,7 @@ namespace llarp
         friend class Router;
 
         Router& _router;
-        const fs::path _root;
+        const std::filesystem::path _root;
 
         /******** RouterID/RelayContacts ********/
 
@@ -118,7 +118,7 @@ namespace llarp
         void remove_many_from_disk_async(const std::vector<RouterID>& idents) const;
 
         /// get filename of an RC file given its public ident key
-        fs::path get_path_by_pubkey(const RouterID& pk) const;
+        std::filesystem::path get_path_by_pubkey(const RouterID& pk) const;
 
         // TESTNET: NEW MEMBERS FOR BOOTSTRAPPING MANAGED BY EVENTTRIGGER OBJECT
         std::atomic<bool> _needs_bootstrap{false}, _is_bootstrapping{false}, _has_bstrap_connection{false},

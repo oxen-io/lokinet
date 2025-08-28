@@ -935,7 +935,7 @@ namespace llarp
             _router_profiling._profile_file = _config.router.data_dir / "profiles.dat";
 
             log::debug(logcat, "Router profiling enabled");
-            if (not fs::exists(_router_profiling._profile_file))
+            if (not std::filesystem::exists(_router_profiling._profile_file))
             {
                 log::debug(logcat, "No profiles file found at {}; skipping...", _router_profiling._profile_file);
             }

@@ -23,7 +23,7 @@ namespace llarp
 {
     static auto logcat = log::Cat("config");
 
-    static bool check_path_op(std::optional<fs::path>& path)
+    static bool check_path_op(std::optional<std::filesystem::path>& path)
     {
         if (not path.has_value())
         {
@@ -136,7 +136,7 @@ namespace llarp
 
         conf.define_option<std::string>("router", "nickname", Deprecated);
 
-        conf.define_option<fs::path>(
+        conf.define_option<std::filesystem::path>(
             "router",
             "data-dir",
             Default{params.default_data_dir},
@@ -144,10 +144,10 @@ namespace llarp
                 "Optional directory for containing lokinet runtime data. This includes generated",
                 "private keys.",
             },
-            [this](fs::path arg) {
+            [this](std::filesystem::path arg) {
                 if (arg.empty())
-                    arg = fs::path{"."};
-                if (not fs::exists(arg))
+                    arg = std::filesystem::path{"."};
+                if (not exists(arg))
                     throw std::runtime_error{"Specified [router]:data-dir {} does not exist"_format(arg)};
 
                 data_dir = std::move(arg);
@@ -527,7 +527,7 @@ namespace llarp
                 }
             });
 
-        conf.define_option<fs::path>(
+        conf.define_option<std::filesystem::path>(
             "network",
             "auth-file",
             FullClientOnly,
@@ -536,10 +536,10 @@ namespace llarp
                 "Read auth tokens from file to accept endpoint auth",
                 "Can be provided multiple times",
             },
-            [this, rel_base = params.default_data_dir](fs::path arg) {
+            [this, rel_base = params.default_data_dir](std::filesystem::path arg) {
                 if (!arg.empty() && arg.is_relative())
                     arg = rel_base / arg;
-                if (not fs::exists(arg))
+                if (not exists(arg))
                     throw std::invalid_argument{"cannot load auth file {}: file does not exist"_format(arg)};
                 auth_files.push_back(std::move(arg));
             });
@@ -788,7 +788,7 @@ namespace llarp
 
         conf.define_option<int>("network", "path-alignment-timeout", Deprecated);
 
-        conf.define_option<fs::path>(
+        conf.define_option<std::filesystem::path>(
             "network",
             "persist-addrmap-file",
             FullClientOnly,
@@ -798,20 +798,20 @@ namespace llarp
                 "is not specified then the local IP of remote lokinet targets will not persist across",
                 "restarts of lokinet.",
             },
-            [this, rel_base = params.default_data_dir](fs::path file) {
+            [this, rel_base = params.default_data_dir](std::filesystem::path file) {
                 if (!file.empty() && file.is_relative())
                     file = rel_base / file;
                 static constexpr auto addrmap_errorstr = "Invalid entry in persist-addrmap-file"sv;
                 if (file.empty())
                     throw std::invalid_argument("persist-addrmap-file cannot be empty");
 
-                if (not fs::exists(file))
+                if (not exists(file))
                     throw std::invalid_argument("persist-addrmap-file path invalid: {}"_format(file));
 
                 bool load_file = true;
                 {
                     constexpr auto ADDR_PERSIST_MODIFY_WINDOW = 1min;
-                    const auto last_write_time = fs::last_write_time(file);
+                    const auto last_write_time = std::filesystem::last_write_time(file);
                     const auto now = decltype(last_write_time)::clock::now();
 
                     if (now < last_write_time or now - last_write_time > ADDR_PERSIST_MODIFY_WINDOW)
@@ -1048,17 +1048,17 @@ namespace llarp
                 }
             });
 
-        conf.define_option<fs::path>(
+        conf.define_option<std::filesystem::path>(
             "dns",
             "add-hosts",
             FullClientOnly,
             Comment{"Add a hosts file to the dns resolver", "For use with client side dns filtering"},
-            [this, rel_base = params.default_data_dir](fs::path path) {
+            [this, rel_base = params.default_data_dir](std::filesystem::path path) {
                 if (path.empty())
                     return;
                 if (path.is_relative())
                     path = rel_base / path;
-                if (not fs::exists(path))
+                if (not exists(path))
                     throw std::invalid_argument{"cannot add hosts file {} as it does not exist"_format(path)};
                 hostfiles.emplace_back(std::move(path));
             });
@@ -1348,7 +1348,7 @@ namespace llarp
 
                 files.emplace_back(std::move(arg));
 
-                if (not fs::exists(files.back()))
+                if (not exists(files.back()))
                     throw std::invalid_argument("file does not exist: " + arg);
             });
     }
@@ -1586,25 +1586,25 @@ namespace llarp
         return cgp;
     }
 
-    Config::Config(config::Type type, fs::path conf_file) : data_dir{conf_file.parent_path()}, type{type}
+    Config::Config(config::Type type, std::filesystem::path conf_file) : data_dir{conf_file.parent_path()}, type{type}
     {
         auto ini = util::file_to_string(conf_file);
         load_config_data(std::move(ini), std::move(conf_file));
     }
 
-    Config::Config(config::Type type, std::string ini, fs::path default_data_dir)
+    Config::Config(config::Type type, std::string ini, std::filesystem::path default_data_dir)
         : data_dir{std::move(default_data_dir)}, type{type}
     {
         load_config_data(std::move(ini));
     }
 
-    static fs::path overrides_dir(const fs::path& datadir) { return datadir / "conf.d"; }
+    static std::filesystem::path overrides_dir(const std::filesystem::path& datadir) { return datadir / "conf.d"; }
 
     void Config::save()
     {
         const auto overridesDir = overrides_dir(data_dir);
-        if (not fs::exists(overridesDir))
-            fs::create_directories(overridesDir);
+        if (not exists(overridesDir))
+            create_directories(overridesDir);
         parser.save();
     }
 
@@ -1617,9 +1617,9 @@ namespace llarp
     {
         ConfigParser parser;
         const auto overridesDir = overrides_dir(data_dir);
-        if (fs::exists(overridesDir))
+        if (exists(overridesDir))
         {
-            for (const auto& f : fs::directory_iterator{overridesDir})
+            for (const auto& f : std::filesystem::directory_iterator{overridesDir})
             {
                 if (not f.is_regular_file() or f.path().extension() != ".ini")
                     continue;
@@ -1646,7 +1646,7 @@ namespace llarp
         additional.emplace_back(std::array<std::string, 3>{section, key, val});
     }
 
-    void Config::load_config_data(std::string ini, std::optional<fs::path> filename)
+    void Config::load_config_data(std::string ini, std::optional<std::filesystem::path> filename)
     {
 #ifdef LOKINET_EMBEDDED_ONLY
         if (type != Type::EmbeddedClient)
@@ -1668,7 +1668,7 @@ namespace llarp
         if (filename)
             parser.set_filename(*filename);
         else
-            parser.set_filename(fs::path{});
+            parser.set_filename(std::filesystem::path{});
 
         parser.load_from_str(std::move(ini));
 
@@ -1711,10 +1711,10 @@ namespace llarp
         conf.define_option<std::string>("metrics", "json-metrics-path", Deprecated);
     }
 
-    void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, config::Type type)
+    void ensure_config(std::filesystem::path dataDir, std::filesystem::path confFile, bool overwrite, config::Type type)
     {
         // fail to overwrite if not instructed to do so
-        if (fs::exists(confFile) && !overwrite)
+        if (exists(confFile) && !overwrite)
         {
             log::info(logcat, "Config file already exists; NOT creating new config");
             return;
@@ -1723,9 +1723,9 @@ namespace llarp
         const auto parent = confFile.parent_path();
 
         // create parent dir if it doesn't exist
-        if ((not parent.empty()) and (not fs::exists(parent)))
+        if ((not parent.empty()) and (not exists(parent)))
         {
-            fs::create_directory(parent);
+            create_directory(parent);
         }
 
         log::info(logcat, "Attempting to create config file for {} at file path:{}", to_string(type), confFile);

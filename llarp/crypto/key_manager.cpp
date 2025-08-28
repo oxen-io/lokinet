@@ -11,7 +11,7 @@ namespace llarp
 {
     static auto logcat = log::Cat("keymanager");
 
-    void KeyManager::load_from_file(Ed25519SecretKey& key, const fs::path& fname)
+    void KeyManager::load_from_file(Ed25519SecretKey& key, const std::filesystem::path& fname)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -25,7 +25,7 @@ namespace llarp
             throw std::invalid_argument{"Invalid key file {}: Keypair seed and pubkey do not match"};
     }
 
-    bool KeyManager::write_to_file(const Ed25519SecretKey& key, const fs::path& fname)
+    bool KeyManager::write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         try

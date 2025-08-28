@@ -874,7 +874,7 @@ namespace llarp::handlers
         {
             const auto& file = *_persisting_addr_file;
             log::debug(logcat, "{} saving address map to {}", name(), file);
-            // if (auto maybe = util::OpenFileStream<fs::ofstream>(file, std::ios_base::binary))
+            // if (auto maybe = util::OpenFileStream<std::filesystem::ofstream>(file, std::ios_base::binary))
             // {
             //   std::map<std::string, std::string> addrmap;
             //   for (const auto& [ip, addr] : m_IPToAddr)

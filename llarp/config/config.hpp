@@ -49,7 +49,7 @@ namespace llarp
         ConfigGenParameters(ConfigGenParameters&&) = delete;
 
         config::Type type;
-        fs::path default_data_dir;
+        std::filesystem::path default_data_dir;
 
         /// get network platform (virtual for unit test mocks)
         virtual const llarp::net::Platform* net_ptr();
@@ -61,7 +61,7 @@ namespace llarp
 
         NetID net_id = NetID::MAINNET;
 
-        fs::path data_dir;
+        std::filesystem::path data_dir;
 
         bool block_bogons = false;
 
@@ -70,7 +70,7 @@ namespace llarp
 
         size_t job_que_size = 0;
 
-        std::optional<fs::path> rc_file;
+        std::optional<std::filesystem::path> rc_file;
 
         bool is_relay = false;
 
@@ -154,7 +154,7 @@ namespace llarp
         bool save_profiles{false};
         std::unordered_set<RouterID> pinned_edges;
 
-        std::optional<fs::path> keyfile;
+        std::optional<std::filesystem::path> keyfile;
 
         bool enable_ipv6{false};
         bool is_reachable{false};
@@ -172,14 +172,14 @@ namespace llarp
 
         std::unordered_set<std::string> auth_static_tokens;
 
-        std::vector<fs::path> auth_files;
+        std::vector<std::filesystem::path> auth_files;
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
 
         /* TESTNET: Under modification */
 
         // Contents of this file are read directly into ::_reserved_local_addrs
-        std::optional<fs::path> addr_map_persist_file;
+        std::optional<std::filesystem::path> addr_map_persist_file;
 
         // the only member that refers to an actual interface
         std::optional<std::string> _if_name;
@@ -212,7 +212,7 @@ namespace llarp
     {
         bool l3_intercept{false};
 
-        std::vector<fs::path> hostfiles;
+        std::vector<std::filesystem::path> hostfiles;
 
         /* TESTNET: Under modification */
         std::vector<quic::Address> _upstream_dns;
@@ -251,7 +251,7 @@ namespace llarp
 
     struct LokidConfig
     {
-        fs::path id_keyfile;
+        std::filesystem::path id_keyfile;
         std::string rpc_addr;
         bool disable_testing = false;
 
@@ -260,7 +260,7 @@ namespace llarp
 
     struct BootstrapConfig
     {
-        std::vector<fs::path> files;
+        std::vector<std::filesystem::path> files;
         bool seednode{false};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -288,12 +288,15 @@ namespace llarp
         // client), loading configuration data from the given string, if given (all default config
         // otherwise).  The default data directory (if not explicit set in the given config string)
         // can optionally be provided.  If omitted (and not set in the string) it defaults to cwd.
-        Config(config::Type type, std::string config = "", fs::path default_data_dir = fs::current_path());
+        Config(
+            config::Type type,
+            std::string config = "",
+            std::filesystem::path default_data_dir = std::filesystem::current_path());
 
         // Creates a config for the given lokinet instance type (relay, full client, or embedded
         // client), loading configuration data from an existing file.  The default data directory
         // (if not set in the config itself) will be the directory containing the given config file.
-        Config(config::Type type, fs::path config_file);
+        Config(config::Type type, std::filesystem::path config_file);
 
         Config(Config&&) = default;
         Config(const Config&) = default;
@@ -338,18 +341,19 @@ namespace llarp
         bool client() const { return !relay(); }
 
       private:
-        void load_config_data(std::string ini, std::optional<fs::path> fname = std::nullopt);
+        void load_config_data(std::string ini, std::optional<std::filesystem::path> fname = std::nullopt);
 
         void load_overrides(ConfigDefinition& conf) const;
 
         std::vector<std::array<std::string, 3>> additional;
         ConfigParser parser;
-        fs::path data_dir{fs::current_path()};
+        std::filesystem::path data_dir{std::filesystem::current_path()};
         config::Type type;
     };
 
     // Ensures that a conf file exists, writing a default one if not present.  Only for full
     // clients/routers (i.e. not embedded clients).
-    void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, config::Type type);
+    void ensure_config(
+        std::filesystem::path dataDir, std::filesystem::path confFile, bool overwrite, config::Type type);
 
 }  // namespace llarp

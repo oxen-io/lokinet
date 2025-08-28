@@ -182,7 +182,7 @@ namespace llarp
         _needs_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
     }
 
-    fs::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
+    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
     {
         return "{}/{}{}"_format(_root.native(), pubkey.to_string(), RC_FILE_EXT);
     }
@@ -392,9 +392,9 @@ namespace llarp
 
     NodeDB::NodeDB(Router& r) : _router{r}, _root{_router.config().router.data_dir / nodedb_dirname}
     {
-        if (not fs::exists(_root))
-            fs::create_directory(_root);
-        if (not fs::is_directory(_root))
+        if (not exists(_root))
+            create_directory(_root);
+        if (not is_directory(_root))
             throw std::runtime_error{fmt::format("nodedb {} is not a directory", _root)};
 
         auto seed = _router.config().bootstrap.seednode;
@@ -670,11 +670,11 @@ namespace llarp
         if (_root.empty())
             return;
 
-        std::vector<fs::path> purge;
+        std::vector<std::filesystem::path> purge;
 
         const auto now = time_now_ms();
 
-        for (const auto& f : fs::directory_iterator{_root})
+        for (const auto& f : std::filesystem::directory_iterator{_root})
         {
             if (not f.is_regular_file() or f.path().extension() != RC_FILE_EXT)
                 continue;
@@ -705,7 +705,7 @@ namespace llarp
         {
             log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
             for (const auto& fpath : purge)
-                fs::remove(fpath);
+                remove(fpath);
         }
     }
 
@@ -842,7 +842,7 @@ namespace llarp
             return;
 
         // build file list
-        std::vector<fs::path> files;
+        std::vector<std::filesystem::path> files;
         files.reserve(remove.size());
         for (const auto& rid : remove)
             files.push_back(get_path_by_pubkey(rid));
@@ -850,7 +850,7 @@ namespace llarp
         // remove them from the disk via the diskio thread
         _router.disk_loop.call_soon([files = std::move(files)] {
             for (const auto& p : files)
-                fs::remove(p);
+                std::filesystem::remove(p);
         });
     }
 

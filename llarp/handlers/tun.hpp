@@ -63,7 +63,7 @@ namespace llarp::handlers
         std::optional<net::ExitPolicy> _exit_policy = std::nullopt;
 
         /// a file to load / store the ephemeral address map to
-        std::optional<fs::path> _persisting_addr_file = std::nullopt;
+        std::optional<std::filesystem::path> _persisting_addr_file = std::nullopt;
         bool persist_addrs{false};
 
         /// for raw packet dns

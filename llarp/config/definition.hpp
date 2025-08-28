@@ -19,8 +19,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fs = std::filesystem;
-
 namespace llarp
 {
     namespace config
@@ -332,7 +330,7 @@ namespace llarp
         {
             if (default_values.empty())
                 return {};
-            if constexpr (std::is_same_v<fs::path, T>)
+            if constexpr (std::is_same_v<std::filesystem::path, T>)
                 return {{default_values.front().string()}};
             else
             {

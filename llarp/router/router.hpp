@@ -95,7 +95,7 @@ namespace llarp
         std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
-        fs::path our_rc_file;
+        std::filesystem::path our_rc_file;
 
         // our router contact
         LocalRC relay_contact;

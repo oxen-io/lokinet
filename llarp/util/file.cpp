@@ -20,7 +20,7 @@ namespace llarp::util
 {
     static auto logcat = log::Cat("util.file");
 
-    std::string file_to_string(const fs::path& filename, size_t max_size)
+    std::string file_to_string(const std::filesystem::path& filename, size_t max_size)
     {
         std::ifstream in;
         std::string contents;
@@ -40,7 +40,7 @@ namespace llarp::util
         return contents;
     }
 
-    void buffer_to_file(const fs::path& filename, std::string_view contents)
+    void buffer_to_file(const std::filesystem::path& filename, std::string_view contents)
     {
         std::ofstream out;
         out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -55,14 +55,14 @@ namespace llarp::util
         return std::make_error_code(static_cast<std::errc>(e));
     }
 
-    error_code_t EnsurePrivateFile(fs::path pathname)
+    error_code_t EnsurePrivateFile(const std::filesystem::path& pathname)
     {
         errno = 0;
         error_code_t ec = errno_error();
         const auto str = pathname.string();
-        if (fs::exists(pathname, ec))  // file exists
+        if (exists(pathname, ec))  // file exists
         {
-            fs::permissions(pathname, fs::perms::owner_read | fs::perms::owner_write, ec);
+            permissions(pathname, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write, ec);
             if (ec)
                 log::error(logcat, "failed to set permissions on {}", pathname);
         }

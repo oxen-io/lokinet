@@ -710,14 +710,14 @@ namespace llarp::rpc
             return;
         }
 
-        fs::path conf_d{"conf.d"};
+        std::filesystem::path conf_d{"conf.d"};
 
         if (config.request.del and not config.request.filename.empty())
         {
             try
             {
-                if (fs::exists(conf_d / (config.request.filename)))
-                    fs::remove(conf_d / (config.request.filename));
+                if (exists(conf_d / config.request.filename))
+                    remove(conf_d / config.request.filename);
             }
             catch (std::exception& e)
             {
@@ -729,12 +729,12 @@ namespace llarp::rpc
         {
             try
             {
-                if (not fs::exists(conf_d))
-                    fs::create_directory(conf_d);
+                if (not exists(conf_d))
+                    create_directory(conf_d);
 
                 auto parser = ConfigParser();
                 parser.load_new_from_str(config.request.ini);
-                parser.set_filename(conf_d / (config.request.filename));
+                parser.set_filename(conf_d / config.request.filename);
                 parser.save_new();
             }
             catch (std::exception& e)

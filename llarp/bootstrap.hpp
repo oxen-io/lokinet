@@ -24,7 +24,7 @@ namespace llarp
         static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
         size_t add_fallbacks(NetID netid);
 
-        void read_from_file(NetID netid, const fs::path& fpath);
+        void read_from_file(NetID netid, const std::filesystem::path& fpath);
 
       public:
         BootstrapList() = default;
@@ -52,7 +52,11 @@ namespace llarp
 
         void clear();
 
-        void populate(NetID netid, const std::vector<fs::path>& paths, const fs::path& def, bool load_fallbacks);
+        void populate(
+            NetID netid,
+            const std::vector<std::filesystem::path>& paths,
+            const std::filesystem::path& def,
+            bool load_fallbacks);
     };
 
 }  // namespace llarp
