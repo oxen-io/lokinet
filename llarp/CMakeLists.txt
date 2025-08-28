@@ -110,8 +110,6 @@ lokinet_add_library(lokinet-addressing
 
   ev/tcp.cpp
   ev/types.cpp
-
-  router_version.cpp  # to be deleted shortly
 )
 
 lokinet_add_library(lokinet-dns

@@ -7,7 +7,6 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/net/policy.hpp>
-#include <llarp/router_version.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/file.hpp>
