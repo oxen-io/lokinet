@@ -258,7 +258,7 @@ namespace llarp::link
         if (remote)
         {
             auto& remote_rc = *remote;
-            if (router.node_db().registered_routers().contains(remote_rc.router_id()))
+            if (router.node_db().is_registered(remote_rc.router_id()))
             {
                 router.node_db().put_rc(remote_rc);
                 log::debug(
@@ -356,7 +356,7 @@ namespace llarp::link
         // this handler should not be registered for clients
         assert(router.is_service_node);
 
-        const auto& known_rids = router.node_db().registered_routers();
+        auto known_rids = router.node_db().get_registered_relays();
         oxenc::bt_dict_producer btdp;
 
         {

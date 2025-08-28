@@ -97,6 +97,9 @@ namespace llarp::link
         if (router.is_service_node)
         {
             tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
+                // NB: this code *must not* call_get into the router event loop, because there are
+                // lots of places that router call-get's into endloop.loop, and so any attempt to
+                // call-get the other direction is a recipe for deadlock.
                 if (key.size() != RouterID::SIZE)
                 {
                     log::warning(
@@ -106,28 +109,25 @@ namespace llarp::link
                         RouterID::SIZE);
                     return false;
                 }
+                RouterID other{key.first<32>()};
 
                 if (alpn == CLIENT_ALPN)
                     return true;
 
-                return router.loop.call_get([this, other = RouterID{key.first<32>()}] {
-                    if (other == router.local_rid())
-                    {
-                        // We shouldn't even legitimately connect to ourselves, but we could
-                        // possibly get this sort of failure if someone had somehow misconfigured
-                        // different lokinets with the wrong keys, so log loudly.
-                        log::error(
-                            logcat,
-                            "Rejecting incoming relay connection from relay with our own key ({})",
-                            other.to_network_address());
-                        return false;
-                    }
-                    if (router.node_db().registered_routers().contains(other))
-                        return true;
-
-                    log::warning(logcat, "Rejecting incoming relay connection from unregistered RID {}", other);
+                if (other == router.local_rid())
+                {
+                    log::error(
+                        logcat,
+                        "Rejecting incoming relay connection from relay with our own key ({})",
+                        other.to_network_address());
                     return false;
-                });
+                }
+
+                if (router.node_db().is_registered(other))
+                    return true;
+
+                log::warning(logcat, "Rejecting incoming relay connection from unregistered RID {}", other);
+                return false;
             });
 
             endpoint->listen(

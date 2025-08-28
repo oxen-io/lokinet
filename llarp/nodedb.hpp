@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <filesystem>
+#include <shared_mutex>
 #include <optional>
 #include <set>
 #include <unordered_set>
@@ -100,7 +101,8 @@ namespace llarp
         BootstrapList _bootstraps{};
 
         // All registered relays (service nodes)
-        std::unordered_set<RouterID> _registered_routers;
+        std::unordered_set<RouterID> _registered_relays;
+        mutable std::shared_mutex _registered_relays_mutex;
 
         // if populated from a config file, lists specific exclusively used as path first-hops
         std::unordered_set<RouterID> _pinned_edges;
@@ -157,25 +159,24 @@ namespace llarp
         bool is_bootstrap_node(const RemoteRC& rc) const;
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
-        void set_router_whitelist(const std::vector<RouterID>& whitelist);
+        void set_registered_relays(std::unordered_set<RouterID> relays);
+        std::vector<RouterID> get_registered_relays() const;
 
-        std::optional<RouterID> get_random_registered_router() const;
+        std::optional<RouterID> get_random_registered_relay() const;
 
         // client:
         //   if pinned edges were specified, connections are allowed only to those and
         //   to the configured bootstrap nodes.  otherwise, always allow.
         //
         // relay:
-        //   outgoing connections are allowed only to other registered, funded relays
-        //   (whitelist and greylist, respectively).
+        //   outgoing connections are allowed only to other registered relays
         bool is_connection_allowed(const RouterID& remote) const;
 
         // client:
         //   same as is_connection_allowed
         //
         // server:
-        //   we only build new paths through registered, not decommissioned relays
-        //   (i.e. whitelist)
+        //   we only build new paths through registered, non-decommissioned relays
         bool is_path_allowed(const RouterID& remote) const { return known_rids.count(remote); }
 
         // if pinned edges were specified, the remote must be in that set, else any remote
@@ -196,7 +197,10 @@ namespace llarp
 
         const BootstrapList& bootstrap_list() const { return _bootstraps; }
 
-        const std::unordered_set<RouterID>& registered_routers() const { return _registered_routers; }
+        // Returns true if `relay` is a registered relay.  This uses a mutex (rather that event
+        // loop) protection so that it can be safely called from either event loop without disk a
+        // deadlock between the loops.
+        bool is_registered(const RouterID& relay) const;
 
         /// load all known_rcs from disk synchronously
         void load_from_disk();
@@ -215,10 +219,10 @@ namespace llarp
         /// do periodic tasks like flush to disk and expiration
         bool tick(std::chrono::milliseconds now);
 
-        /// find the `num_routers` router with IDs closest to the given blinded pubkey, in order
+        /// find the `num_relays` relays with IDs closest to the given blinded pubkey, in order
         /// from closest to Nth-closest.  Note that this searches all network-registered rids, even
-        /// if we don't have the RC for that router yet.
-        std::vector<RouterID> find_many_closest_to(const PubKey& blinded_pk, int num_routers) const;
+        /// if we don't have the RC for that relay yet.
+        std::vector<RouterID> find_many_closest_to(const PubKey& blinded_pk, int num_relays) const;
 
         /// return true if we have an rc by its ident pubkey
         bool has_rc(const RouterID& pk) const { return get_rc(pk); }
@@ -255,7 +259,7 @@ namespace llarp
         ///   a minute older than the incoming one.
         bool put_rc(const RemoteRC& rc);
 
-        /// Checks of the router in the given rc is a known network router (either active or
+        /// Checks of the relay in the given rc is a registered network relay (either active or
         /// decommissioned) and, if so, calls and returns put_rc with it.
         ///
         /// Returns true if the router ID is known *and* the rc was updated *and* the RC should be

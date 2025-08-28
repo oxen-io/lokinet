@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <random>
 #include <unordered_map>
 #include <utility>
 
@@ -155,26 +156,23 @@ namespace llarp
                 return true;
             }
 
-            // clients have no notion of a whilelist
+            // clients have no notion of registered relays
             // we short circuit logic here so we dont remove
-            // routers that are not whitelisted for first hops
+            // routers that are not registered for first hops
             if (not _router.is_service_node)
             {
                 log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.router_id());
                 return false;
             }
 
-            // if we don't have the whitelist yet don't remove the entry
-            if (not _router.has_whitelist())
+            // if we don't have the registered relay list yet don't remove the entry
+            if (not _router.has_registered_relays())
             {
-                log::trace(logcat, "Skipping check on {}: don't have whitelist yet", rc.router_id());
+                log::trace(
+                    logcat, "Skipping check on {}: have not received oxend registered relay list yet", rc.router_id());
                 return false;
             }
 
-            // if we have no whitelist enabled or we have
-            // the whitelist enabled and we got the whitelist
-            // check against the whitelist and remove if it's not
-            // in the whitelist OR if there is no whitelist don't remove
             if (not is_connection_allowed(rc.router_id()))
             {
                 log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
@@ -595,27 +593,48 @@ namespace llarp
     }
 
     // FIXME: do we care about active vs decommissioned nodes?
-    void NodeDB::set_router_whitelist(const std::vector<RouterID>& whitelist)
+    void NodeDB::set_registered_relays(std::unordered_set<RouterID> relays)
     {
-        log::debug(logcat, "Oxend provided {} whitelisted routers", whitelist.size());
+        log::debug(logcat, "Oxend provided {} whitelisted routers", relays.size());
 
-        if (whitelist.empty())
+        if (relays.empty())
             return;
 
-        _registered_routers.clear();
-        _registered_routers.insert(whitelist.begin(), whitelist.end());
+        size_t size = relays.size();
+        {
+            std::unique_lock lock{_registered_relays_mutex};
+            std::swap(relays, _registered_relays);
+        }
 
-        log::info(
-            logcat, "Service node holding {} registered relays after oxend integration", _registered_routers.size());
+        if (relays.empty())
+            log::info(logcat, "Loaded initial SN list from oxend with {} registered relays", size);
+        else
+            log::debug(logcat, "Updated SN list from oxend with {} registered relays", size);
     }
 
-    std::optional<RouterID> NodeDB::get_random_registered_router() const
+    std::vector<RouterID> NodeDB::get_registered_relays() const
     {
-        auto result = std::make_optional<RouterID>();
-        std::function<bool(RouterID)> hook = [](const auto&) -> bool { return true; };
-        auto end = std::ranges::sample(_registered_routers, &*result, 1, llarp::csrng);
-        if (end == &*result)
-            result.reset();
+        std::vector<RouterID> result;
+        std::shared_lock lock{_registered_relays_mutex};
+        result.reserve(_registered_relays.size());
+        result.assign(_registered_relays.begin(), _registered_relays.end());
+        return result;
+    }
+
+    bool NodeDB::is_registered(const RouterID& relay) const
+    {
+        std::shared_lock lock{_registered_relays_mutex};
+        return _registered_relays.contains(relay);
+    }
+
+    std::optional<RouterID> NodeDB::get_random_registered_relay() const
+    {
+        std::optional<RouterID> result;
+        std::shared_lock lock{_registered_relays_mutex};
+        if (!_registered_relays.empty())
+            result = *std::next(
+                _registered_relays.begin(),
+                std::uniform_int_distribution<int>{0, static_cast<int>(_registered_relays.size())}(llarp::csrng));
         return result;
     }
 
@@ -623,13 +642,13 @@ namespace llarp
     {
         if (not _router.is_service_node)
         {
-            if (_pinned_edges.size() && _pinned_edges.count(remote) == 0 && not _bootstraps.contains(remote))
+            if (_pinned_edges.size() and not _pinned_edges.contains(remote) and not _bootstraps.contains(remote))
                 return false;
 
-            return known_rids.count(remote);
+            return known_rids.contains(remote);
         }
 
-        return known_rids.count(remote) and _registered_routers.empty() ? true : _registered_routers.count(remote);
+        return known_rids.contains(remote) and is_registered(remote);
     }
 
     bool NodeDB::is_first_hop_allowed(const RouterID& remote) const
@@ -813,7 +832,7 @@ namespace llarp
 
     bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
     {
-        if (!_registered_routers.contains(rc.router_id()))
+        if (not is_registered(rc.router_id()))
             return false;
         return put_rc(rc);
     }
@@ -895,7 +914,8 @@ namespace llarp
         if (num_routers <= 0)
             return {};
 
-        auto rr = _registered_routers | std::views::transform([](const auto& rid) { return &rid; });
+        std::shared_lock lock{_registered_relays_mutex};
+        auto rr = _registered_relays | std::views::transform([](const auto& rid) { return &rid; });
         std::vector<const RouterID*> rids{rr.begin(), rr.end()};
         num_routers = std::min(num_routers, static_cast<int>(rids.size()));
         std::ranges::partial_sort(rids, rids.begin() + num_routers, PublishLocationMetric{blinded_pk});

@@ -46,19 +46,10 @@ namespace llarp
 
     namespace quic = oxen::quic;
 
-    /// number of routers to publish to
-    inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
-
-    /// number of dht locations handled per relay
-    // DISCUSS: do we need this??
-    // inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
-    // inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{(INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
-
     inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{10min};
 
     // as we advance towards full mesh, we try to connect to this number per tick
     inline constexpr int FULL_MESH_ITERATION{1};
-    inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
 
     // DISCUSS: ask tom and jason about this
     // how big of a time skip before we reset network state
@@ -139,7 +130,7 @@ namespace llarp
 
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
-        std::chrono::milliseconds _next_decomm_warning{time_now_ms() + 15s};
+        std::chrono::milliseconds _next_dereg_warning{time_now_ms() + 15s};
 
         std::chrono::milliseconds _last_path_ping{0s};
 
@@ -148,7 +139,7 @@ namespace llarp
         std::shared_ptr<rpc::RPCServer> _rpc_server;
         std::shared_ptr<rpc::RPCClient> _rpc_client;
 
-        bool whitelist_received{false};
+        bool registered_relays_received{false};
 
         Profiling _router_profiling;
 
@@ -259,24 +250,13 @@ namespace llarp
 
         nlohmann::json ExtractSummaryStatus() const;
 
-        const std::unordered_set<RouterID>& get_whitelist() const;
-
-        void set_router_whitelist(const std::vector<RouterID>& whitelist);
+        void set_registered_relays(std::unordered_set<RouterID> relays);
 
         /// Return true if we are operating as a service node and have received a service node
-        /// whitelist
-        bool has_whitelist() const;
+        /// registered list from oxend.
+        bool has_registered_relays() const;
 
-        /// return true if we look like we are a decommissioned service node
-        bool appears_decommed() const;
-
-        /// return true if we look like we are a registered, fully-staked service node (either
-        /// active or decommissioned).  This condition determines when we are allowed to (and
-        /// attempt to) connect to other peers when running as a service node.
-        bool appears_funded() const;
-
-        /// return true if we a registered service node; not that this only requires a partial
-        /// stake, and does not imply that this service node is *active* or fully funded.
+        /// return true if we a registered service node (either active or decommissioned).
         bool appears_registered() const;
 
         std::chrono::milliseconds Uptime() const;

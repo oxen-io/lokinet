@@ -60,8 +60,8 @@ namespace llarp
         // Not actually shared, but unique_ptr would require destructor visibility which
         // embedded-only won't have:
         _omq = std::make_shared<oxenmq::OxenMQ>();
-        // for oxend, so we don't close the connection when syncing the whitelist (which exceeds the
-        // defaut 1MB limit).
+        // for oxend, so we don't close the connection when syncing the registered relay (which can
+        // exceed the defaut 1MB limit).
         _omq->MAX_MSG_SIZE = -1;
         if (_config.router.worker_threads > 0)
             _omq->set_general_threads(_config.router.worker_threads);
@@ -655,28 +655,18 @@ namespace llarp
 
     std::optional<std::string> Router::OxendErrorState() const
     {
-        // If we're in the white or gray list then we *should* be establishing connections to other
+        // If we're in the registered list then we *should* be establishing connections to other
         // routers, so if we have almost no peers then something is almost certainly wrong.
-        if (appears_funded() and insufficient_peers() and not _testing_disabled)
+        if (insufficient_peers() and not _testing_disabled)
             return "too few peer connections; lokinet is not adequately connected to the network";
         return std::nullopt;
     }
 
-    bool Router::has_whitelist() const { return whitelist_received; }
-
-    bool Router::appears_decommed() const
-    {
-        return is_service_node and has_whitelist() and not node_db().registered_routers().count(local_rid());
-    }
-
-    bool Router::appears_funded() const
-    {
-        return is_service_node and has_whitelist() and node_db().is_connection_allowed(local_rid());
-    }
+    bool Router::has_registered_relays() const { return registered_relays_received; }
 
     bool Router::appears_registered() const
     {
-        return is_service_node and has_whitelist() and node_db().registered_routers().count(local_rid());
+        return is_service_node and has_registered_relays() and node_db().is_registered(local_rid());
     }
 
     void Router::update_rc()
@@ -747,15 +737,6 @@ namespace llarp
 #ifndef LOKINET_EMBEDDED_ONLY
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        const auto& local = local_rid();
-
-        // TESTNET:
-        if (not node_db().registered_routers().count(local))
-        {
-            log::trace(logcat, "We are NOT a registered router, figure it out!");
-            return;
-        }
-
         if (should_report_stats(now))
             report_stats();
 
@@ -765,32 +746,25 @@ namespace llarp
             return;
         }
 
-        const bool is_decommed = appears_decommed();
-        if (now >= _next_decomm_warning)
+        bool registered = appears_registered();
+
+        if (now >= _next_dereg_warning)
         {
-            if (auto registered = appears_registered(), funded = appears_funded();
-                not(registered and funded and not is_decommed))
+            if (not registered)
             {
-                // complain about being deregistered/decommed/unfunded
-                log::error(
-                    logcat,
-                    "We are running as a service node but we seem to be {}",
-                    not registered    ? "deregistered"
-                        : is_decommed ? "decommissioned"
-                                      : "not fully staked");
-                _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
+                // complain about being deregistered/decommed
+                log::error(logcat, "We are running as a relay but are not a registered service node");
+                _next_dereg_warning = now + DECOMM_WARNING_INTERVAL;
             }
             else if (insufficient_peers())
             {
                 log::error(
-                    logcat,
-                    "We appear to be an active service node, but have only {} known peers.",
-                    node_db().num_rcs());
-                _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
+                    logcat, "We are an active service node, but have too few ({}) known peers!", node_db().num_rcs());
+                _next_dereg_warning = now + DECOMM_WARNING_INTERVAL;
             }
         }
 
-        if (_link_endpoint->num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
+        if (registered and _link_endpoint->num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
         {
             log::debug(
                 logcat, "Service Node connecting to {} random routers to achieve full mesh", FULL_MESH_ITERATION);
@@ -881,12 +855,10 @@ namespace llarp
         _last_tick = llarp::time_now_ms();
     }
 
-    const std::unordered_set<RouterID>& Router::get_whitelist() const { return _node_db->registered_routers(); }
-
-    void Router::set_router_whitelist(const std::vector<RouterID>& whitelist)
+    void Router::set_registered_relays(std::unordered_set<RouterID> relays)
     {
-        node_db().set_router_whitelist(whitelist);
-        whitelist_received = true;
+        node_db().set_registered_relays(std::move(relays));
+        registered_relays_received = true;
     }
 
     void Router::start()
@@ -964,7 +936,7 @@ namespace llarp
 
                 // Don't run testing if we are not a registered service node, because other service
                 // nodes in that case wouldn't allow our connection.
-                if (not appears_funded())
+                if (not appears_registered())
                     return;
 
                 auto tests = router_testing.get_failing();
