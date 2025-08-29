@@ -102,6 +102,8 @@ namespace llarp::link
         // we sent it to.
         int gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender = nullptr);
 
+        ~Manager();
+
       private:
         void handle_gossip_rc(quic::message);
 

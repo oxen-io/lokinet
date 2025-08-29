@@ -10,6 +10,7 @@
 #include <sodium/crypto_generichash.h>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iterator>
 #include <random>
@@ -368,8 +369,8 @@ namespace llarp
         // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
         // purge-then-save?
 
-        _flush_ticker = _router.disk_loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
-        _router.disk_loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
+        _flush_ticker = _router.loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
+        _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
 
         _purge_ticker = _router.loop.call_every(
             PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
@@ -740,19 +741,26 @@ namespace llarp
     void NodeDB::save_to_disk() const
     {
         // TODO FIXME: we should have a "changed" flag here so that we only write anything to disk
-        // if it has changed.  Otherwise we're writing 2000+ files to disk every few seconds.
+        // if it has changed.  Otherwise we're writing 2000 files to disk every iteration.
 
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (_root.empty())
             return;
 
-        log::trace(logcat, "Writing NodeDB contents to disk...");
+        // Copy the set of rcs to the disk loop to be processed as slowly as it wants:
+        _router.disk_loop.call([this, known_rcs = known_rcs] {
+            auto start = std::chrono::steady_clock::now();
+            log::trace(logcat, "Writing NodeDB contents to disk...");
 
-        for (const auto& [rid, rc] : known_rcs)
-            rc.write(get_path_by_pubkey(rid));
+            for (const auto& [rid, rc] : known_rcs)
+                rc.write(get_path_by_pubkey(rid));
 
-        log::trace(logcat, "Done writing NodeDB contents");
+            log::debug(
+                logcat,
+                "Wrote NodeDB contents to disk in {}",
+                std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
+        });
     }
 
     void NodeDB::cleanup()

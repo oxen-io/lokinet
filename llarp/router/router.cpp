@@ -1011,84 +1011,6 @@ namespace llarp
         return 0s;
     }
 
-    void Router::close()
-    {
-        log::debug(logcat, "closing");
-
-        if (_router_close_cb)
-            _router_close_cb();
-
-        _is_running.store(false);
-    }
-
-    void Router::teardown()
-    {
-        close();
-        log::debug(logcat, "stopping oxenmq");
-        _omq.reset();
-        _close_promise.set_value();
-    }
-
-    void Router::cleanup()
-    {
-        log::debug(logcat, "stopping outbound links");
-        stop_outbounds();
-
-        log::debug(logcat, "cleaning up nodedb");
-        node_db().save_to_disk();
-
-        log::debug(logcat, "cleaning up link_manager");
-        _link_endpoint = nullptr;
-        _link_manager.reset();
-
-        _loop->call_later(200ms, [this] { teardown(); });
-    }
-
-    void Router::stop_outbounds()
-    {
-        _link_manager->stop();
-
-        auto rv = _loop_ticker->stop();
-        log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
-        _loop_ticker.reset();
-
-        rv = _service_stat_ticker->stop();
-        log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
-        _service_stat_ticker.reset();
-
-        if (_reachability_ticker)
-        {
-            log::debug(logcat, "clearing reachability ticker...");
-            _reachability_ticker->stop();
-            _reachability_ticker.reset();
-        }
-
-        log::debug(logcat, "stopping nodedb events");
-        node_db().cleanup();
-    }
-
-    void Router::stop_immediately()
-    {
-        if (!_is_running)
-            return;
-        if (_is_stopping)
-            return;
-
-        if (_is_stopping.exchange(true))
-            return;  // Lost a race with something else trying to stop
-
-        _loop->call([this] {
-            log::warning(logcat, "Hard stopping router");
-#ifndef LOKINET_EMBEDDED_ONLY
-            if (!embedded())
-                llarp::sys::service_manager->stopping();
-#endif
-            _session_endpoint->stop(false);
-            stop_outbounds();
-            close();
-        });
-    }
-
     void Router::stop()
     {
         if (!_is_running)
@@ -1119,11 +1041,49 @@ namespace llarp
             if (not is_service_node)
                 _router_profiling.stop_save_ticker();
 
-            _loop->call_later(200ms, [this] { cleanup(); });
+            log::debug(logcat, "closing all connections");
+            _link_manager->stop();
+
+            auto rv = _loop_ticker->stop();
+            log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
+            _loop_ticker.reset();
+
+            rv = _service_stat_ticker->stop();
+            log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
+            _service_stat_ticker.reset();
+
+            if (_reachability_ticker)
+            {
+                log::debug(logcat, "clearing reachability ticker...");
+                _reachability_ticker->stop();
+                _reachability_ticker.reset();
+            }
+
+            log::debug(logcat, "stopping nodedb events");
+            node_db().cleanup();
+
+            log::debug(logcat, "storing nodedb");
+            node_db().save_to_disk();
+
+            // `save_to_disk` above submits a job to the disk loop to do the writing, so submit another,
+            // dummy one that we can wait on to make sure the save-to-disk has happened.
+            disk_loop.call_get([] {});
+
+            log::debug(logcat, "cleaning up link_manager");
+            _link_endpoint = nullptr;
+            _link_manager.reset();
+
+            if (_router_close_cb)
+                _router_close_cb();
+
+            _is_running.store(false);
+
+            _omq.reset();
+
+            _close_promise.set_value();
+            log::debug(logcat, "Router is stopped");
         });
     }
-
-    quic::Address Router::listen_addr() const { return _listen_address; }
 
     const llarp::net::Platform* Router::net() const
     {

@@ -135,7 +135,6 @@ namespace llarp::link
     }
 #endif
 
-    // TODO: put this in ~Manager() after sorting out close sequence and logic
     void Manager::stop()
     {
         if (is_stopping.exchange(true))
@@ -143,6 +142,8 @@ namespace llarp::link
 
         router.loop.call_get([this] { endpoint.shutdown(); });
     }
+
+    Manager::~Manager() { stop(); }
 
     // TODO: this
     nlohmann::json Manager::extract_status() const { return {}; }

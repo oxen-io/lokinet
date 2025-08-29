@@ -241,7 +241,7 @@ namespace llarp::link
 
     void Endpoint::shutdown()
     {
-        log::debug(logcat, "Closing all connections...");
+        log::debug(logcat, "Closing all connections");
         for (auto& [rid, conn] : relay_conns)
             conn.close_all_quietly();
         relay_conns.clear();
@@ -251,6 +251,9 @@ namespace llarp::link
             conn.second->close_quietly();
 
         client_conns.clear();
+
+        log::debug(logcat, "Closing quic endpoint");
+        endpoint.reset();
 
         log::info(logcat, "Stopping network endpoint event loop");
         loop.reset();

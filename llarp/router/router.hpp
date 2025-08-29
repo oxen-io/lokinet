@@ -244,7 +244,7 @@ namespace llarp
         // Updates and re-signs the local RC and queues it for saving to disk.
         void update_rc();
 
-        quic::Address listen_addr() const;
+        const quic::Address& listen_addr() const { return _listen_address; }
 
         nlohmann::json ExtractStatus() const;
 
@@ -287,12 +287,6 @@ namespace llarp
         /// stop running the router logic gracefully
         void stop();
 
-        /// non graceful stop router
-        void stop_immediately();
-
-        /// close all sessions and shutdown all links
-        void stop_outbounds();
-
         void fetch_snode_identity();
 
         // bool is_bootstrap_node(RouterID rid) const;
@@ -300,7 +294,5 @@ namespace llarp
         std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
 
         void teardown();
-
-        void cleanup();
     };
 }  // namespace llarp
