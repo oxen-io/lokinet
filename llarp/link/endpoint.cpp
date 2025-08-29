@@ -574,7 +574,7 @@ namespace llarp::link
     {
         if (conn.remote_key().size() != RouterID::SIZE)
         {
-            log::debug(logcat, "on_conn_closed on rejected connection, nothing to do");
+            log::debug(logcat, "on_conn_closed on rejected connection (ec={}), nothing to do", ec);
             return;
         }
 
