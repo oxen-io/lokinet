@@ -30,7 +30,6 @@
 #include <cstddef>
 #include <exception>
 #include <ranges>
-#include <set>
 
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/rpc/rpc_client.hpp>
