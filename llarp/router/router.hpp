@@ -190,8 +190,16 @@ namespace llarp
 
         link::Manager& link_manager() { return *_link_manager; }
         const link::Manager& link_manager() const { return *_link_manager; }
-        link::Endpoint& link_endpoint() { return *_link_endpoint; }
-        const link::Endpoint& link_endpoint() const { return *_link_endpoint; }
+        link::Endpoint& link_endpoint()
+        {
+            assert(_link_endpoint);
+            return *_link_endpoint;
+        }
+        const link::Endpoint& link_endpoint() const
+        {
+            assert(_link_endpoint);
+            return *_link_endpoint;
+        }
 
         const Config& config() const { return _config; }
 

@@ -257,7 +257,7 @@ namespace llarp
         }
     }
 
-    bool Router::is_fully_meshed() const { return _link_endpoint->num_relay_conns() >= _node_db->num_rcs(); }
+    bool Router::is_fully_meshed() const { return link_endpoint().num_relay_conns() >= _node_db->num_rcs(); }
 
     void Router::fetch_snode_identity()
     {
@@ -692,13 +692,13 @@ namespace llarp
         std::string conns;
         if (is_service_node)
         {
-            auto [relays, rout, rin, rpending, clients] = _link_endpoint->relay_connection_counts();
+            auto [relays, rout, rin, rpending, clients] = link_endpoint().relay_connection_counts();
             conns = "[relays:{} ({} in, {} out + {} pending{}), clients:{}]"_format(
                 relays, rin, rout, rpending, relays == rcs ? ", full mesh" : "", clients);
         }
         else
         {
-            auto [nconns, npending] = _link_endpoint->client_connection_counts();
+            auto [nconns, npending] = link_endpoint().client_connection_counts();
             conns = "[relay:{} + {} pending]"_format(nconns, npending);
         }
         auto [npaths, nhops] = path_context.path_ctx_stats();
@@ -762,7 +762,7 @@ namespace llarp
             }
         }
 
-        if (registered and _link_endpoint->num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
+        if (registered and link_endpoint().num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
         {
             log::debug(
                 logcat, "Service Node connecting to {} random routers to achieve full mesh", FULL_MESH_ITERATION);
@@ -796,7 +796,7 @@ namespace llarp
 
         // TODO: make "use_pinned_edges" boolean to only connect to pinned edges
         // if we need more sessions to routers we shall connect out to others
-        if (int n_conns = _link_endpoint->num_relay_conns(/*include_pending=*/true); n_conns < min_client_outbounds)
+        if (int n_conns = link_endpoint().num_relay_conns(/*include_pending=*/true); n_conns < min_client_outbounds)
         {
             // result could maybe be negative with this subtraction, so we HAVE to check nconns < min in the conditional
             auto num_needed = min_client_outbounds - n_conns;
