@@ -179,7 +179,7 @@ namespace llarp::path
 
                 // DIY reservoir sample because doing this with a filter and a view calls the filter
                 // code multiple times, which we don't want.
-                if (acceptable == 0 || std::uniform_int_distribution<int>{0, acceptable - 1}(llarp::csrng) == 0)
+                if (acceptable == 0 || std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0)
                     edge = rid;
                 acceptable++;
             }
