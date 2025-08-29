@@ -376,10 +376,10 @@ namespace llarp::handlers
                     "Unable to build {} new inbound paths: {} unused/acceptable pivots currently available",
                     needed,
                     new_pivots.size());
-            for (const llarp::RemoteRC& rc : new_pivots)
+            for (const llarp::RemoteRC* rc : new_pivots)
             {
-                log::debug(logcat, "Selected new inbound path terminus {}", rc.router_id().short_string());
-                auto hops = select_hops_to_remote(rc.router_id());
+                log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
+                auto hops = select_hops_to_remote(rc->router_id());
                 if (!hops)
                     continue;  // No need to warn: the call above should already if it fails
 

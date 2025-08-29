@@ -328,7 +328,7 @@ namespace llarp::path
             // because of no-replacement but also because of the unique range setting.  (And we
             // can't use a mutating filter because the random selection potentially calls the filter
             // for every possible node, whether or not they end up being in the final selection).
-            auto maybe_hop = router.node_db().get_random_rc(filter);
+            auto* maybe_hop = router.node_db().get_random_rc(filter);
             if (!maybe_hop)
             {
                 log::warning(

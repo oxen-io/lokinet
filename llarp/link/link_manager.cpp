@@ -166,12 +166,10 @@ namespace llarp::link
                     return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
                 });
             !rcs.empty())
-        {
-            for (const auto& rc : rcs)
+            for (const auto* rc : rcs)
                 // We don't actually need the stream right now, but as a side effect this starts
                 // establishing a new connection if needed:
-                endpoint.control_stream_for(rc);
-        }
+                endpoint.control_stream_for(*rc);
         else
             log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
     }

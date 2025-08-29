@@ -238,8 +238,9 @@ namespace llarp
         /// Selects n random RCs from all known RCs (if a predicate is given, all that return true
         /// from the given predicate).  If there are fewer than `n` admissable RCs then all
         /// admissable RCs are returned.  The resulting RCs will also be shuffled before being
-        /// returned, unless the shuffle argument is set to false.
-        std::vector<std::reference_wrapper<const RemoteRC>> get_n_random_rcs(
+        /// returned, unless the shuffle argument is set to false.  The returned pointers are
+        /// guaranteed to be non-nullptr.
+        std::vector<const RemoteRC*> get_n_random_rcs(
             int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
         /// Stores an RC broadcast to the network.  The return value indicates whether this RC

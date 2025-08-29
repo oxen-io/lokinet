@@ -27,11 +27,19 @@ namespace llarp
 
     const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
     {
-        auto rcs = get_n_random_rcs(1, false, predicate);
-        return rcs.empty() ? nullptr : &rcs[0].get();
+        const RemoteRC* result = nullptr;
+        int admitted = 0;
+        for (const auto& rc : std::views::values(known_rcs)) {
+            if (!predicate || predicate(rc)) {
+                if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
+                    result = &rc;
+                admitted++;
+            }
+        }
+        return result;
     }
 
-    std::vector<std::reference_wrapper<const RemoteRC>> NodeDB::get_n_random_rcs(
+    std::vector<const RemoteRC*> NodeDB::get_n_random_rcs(
         int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
     {
         std::vector<const RemoteRC*> rand;
@@ -45,11 +53,7 @@ namespace llarp
             rand.resize(len);
         if (shuffle && rand.size() > 1)
             std::ranges::shuffle(rand, csrng);
-        std::vector<std::reference_wrapper<const RemoteRC>> result;
-        result.reserve(rand.size());
-        for (auto* rc : rand)
-            result.push_back(std::ref(*rc));
-        return result;
+        return rand;
     }
 
     bool NodeDB::tick(std::chrono::milliseconds /*now*/)
