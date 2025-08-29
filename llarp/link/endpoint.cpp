@@ -315,16 +315,22 @@ namespace llarp::link
         });
     }
 
-    quic::BTRequestStream& Endpoint::control_stream_for(const RemoteRC& rc)
+    std::pair<bool, quic::BTRequestStream*> Endpoint::ctrl_stream_impl(const RemoteRC& rc)
     {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         assert(router.loop.inside());
+        std::pair<bool, quic::BTRequestStream*> result;
+        auto& [res_est, res_str] = result;
 
         auto rid = rc.router_id();
 
         if (auto* c = get_relay_conn(rid))
-            return *c->control_stream;
+        {
+            res_est = true;
+            res_str = c->control_stream.get();
+            return result;
+        }
 
+        res_est = false;
         auto& pending = pending_outbound[rid];
         if (!pending)
         {
@@ -340,7 +346,21 @@ namespace llarp::link
 
             pending = std::make_shared<Connection>(std::move(conn), std::move(control_stream));
         }
-        return *pending->control_stream;
+        res_str = pending->control_stream.get();
+
+        return result;
+    }
+
+    bool Endpoint::ensure_connection(const RemoteRC& rc)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        return ctrl_stream_impl(rc).first;
+    }
+
+    quic::BTRequestStream& Endpoint::control_stream_for(const RemoteRC& rc)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        return *ctrl_stream_impl(rc).second;
     }
 
     void Endpoint::send_command(

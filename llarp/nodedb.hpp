@@ -8,9 +8,9 @@
 
 #include <atomic>
 #include <filesystem>
-#include <shared_mutex>
 #include <optional>
 #include <set>
+#include <shared_mutex>
 #include <unordered_set>
 
 namespace oxen::quic
@@ -75,9 +75,6 @@ namespace llarp
 
         /******** RouterID/RelayContacts ********/
 
-        using Lock_t = util::NullLock;
-        mutable util::NullMutex nodedb_mutex;
-
         /** RouterID mappings
             Both the following are populated in NodeDB startup with RouterID's stored on disk.
             - known_rids: meant to persist between lokinet sessions, and is only
@@ -92,7 +89,7 @@ namespace llarp
            requests senders into this container to "introduce" them to each other
             - _bootstraps: the standard container for bootstrap RemoteRCs
         */
-        std::set<RouterID> known_rids;
+        std::unordered_set<RouterID> known_rids;
         std::unordered_map<RouterID, int> unconfirmed_rids;  // Value is the number of votes: seeing
                                                              // the rid is +1, missing it is -1.
 
@@ -149,7 +146,7 @@ namespace llarp
         // returns {num_rcs, num_rids, num_bootstraps}
         std::array<int, 3> db_stats() const;
 
-        const std::set<RouterID>& get_known_rids() const { return known_rids; }
+        const std::unordered_set<RouterID>& get_known_rids() const { return known_rids; }
 
         const std::unordered_map<RouterID, RemoteRC>& get_known_rcs() const { return known_rcs; }
 
@@ -160,6 +157,7 @@ namespace llarp
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
         void set_registered_relays(std::unordered_set<RouterID> relays);
+        bool has_registered_relays() const;
         std::vector<RouterID> get_registered_relays() const;
 
         std::optional<RouterID> get_random_registered_relay() const;
@@ -280,6 +278,6 @@ namespace llarp
         /// remove any stored RCs matching the given predicate
         void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);
 
-        void handle_fetched_router_ids(const std::unordered_map<RouterID, std::set<RouterID>>& results);
+        void handle_fetched_router_ids(const std::unordered_map<RouterID, std::unordered_set<RouterID>>& results);
     };
 }  // namespace llarp

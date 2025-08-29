@@ -662,11 +662,9 @@ namespace llarp
         return std::nullopt;
     }
 
-    bool Router::has_registered_relays() const { return registered_relays_received; }
-
     bool Router::appears_registered() const
     {
-        return is_service_node and has_registered_relays() and node_db().is_registered(local_rid());
+        return is_service_node and node_db().is_registered(local_rid());
     }
 
     void Router::update_rc()
@@ -853,12 +851,6 @@ namespace llarp
 
         // update tick timestamp
         _last_tick = llarp::time_now_ms();
-    }
-
-    void Router::set_registered_relays(std::unordered_set<RouterID> relays)
-    {
-        node_db().set_registered_relays(std::move(relays));
-        registered_relays_received = true;
     }
 
     void Router::start()

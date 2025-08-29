@@ -1,5 +1,6 @@
 #include "rpc_client.hpp"
 
+#include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 
@@ -188,9 +189,8 @@ namespace llarp::rpc
             return;
         }
 
-        _router.loop.call([this, registered = std::move(registered)]() mutable {
-            _router.set_registered_relays(std::move(registered));
-        });
+        // Thread-safe; doesn't need to be in a loop call:
+        _router.node_db().set_registered_relays(std::move(registered));
     }
 
     void RPCClient::inform_connection(RouterID router, bool success)

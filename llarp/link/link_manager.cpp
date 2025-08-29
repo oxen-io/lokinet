@@ -167,9 +167,7 @@ namespace llarp::link
                 });
             !rcs.empty())
             for (const auto* rc : rcs)
-                // We don't actually need the stream right now, but as a side effect this starts
-                // establishing a new connection if needed:
-                endpoint.control_stream_for(*rc);
+                endpoint.ensure_connection(*rc);
         else
             log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
     }
@@ -222,12 +220,7 @@ namespace llarp::link
         const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func)
     {
         assert(router.loop.inside());
-        endpoint.control_stream_for(source).command(
-            "bfetch_rcs",
-            std::move(payload),
-            // The callback fires in the network event loop, so wrap it to transfer the reply back
-            // to the router loop for actually processing:
-            [func = std::move(func)](quic::message m) { func(std::move(m)); });
+        endpoint.send_command(source, "bfetch_rcs", std::move(payload), std::move(func));
     }
 
     void Manager::handle_fetch_bootstrap_rcs(quic::message m)
@@ -315,7 +308,7 @@ namespace llarp::link
         // this handler should not be registered for clients
         assert(router.is_service_node);
 
-        std::set<RouterID> explicit_ids;
+        std::unordered_set<RouterID> explicit_ids;
 
         try
         {
@@ -733,7 +726,7 @@ namespace llarp::link
                             "relaying",
                             *hop);
                         router.path_context.put_transit_hop(std::move(hop));
-                        prev_message.respond(messages::OK_RESPONSE, false);
+                        prev_message.respond(messages::OK_RESPONSE);
                         return;
                     }
 

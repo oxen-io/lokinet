@@ -161,7 +161,7 @@ namespace llarp::link
         // If there is no existing or pending connection to the given relay, initiates a new
         // outbound connection to it, otherwise does nothing.  Returns true a with the remote is
         // already established, false if it was initiated by this call or was already pending.
-        bool establish_conn(const RemoteRC& rc);
+        bool ensure_connection(const RemoteRC& rc);
 
         // Returns a reference to the control stream currently in use to send commands to the given
         // relay.  If no connection exists yet with that relay, a new one is constructed (and so the
@@ -216,6 +216,8 @@ namespace llarp::link
         void on_conn_established(quic::Connection& conn);
 
         void on_conn_closed(quic::Connection& conn, uint64_t ec);
+
+        std::pair<bool, quic::BTRequestStream*> ctrl_stream_impl(const RemoteRC& rc);
     };
 
 }  // namespace llarp::link

@@ -51,8 +51,6 @@ namespace llarp::path
         : router{r}, _running{true}, _num_hops{num_hops}, _target_paths{target_paths}
     {}
 
-    static const std::shared_ptr<Path> NULL_PATH{nullptr};
-
     void PathHandler::add_path(Path& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -648,7 +646,7 @@ namespace llarp::path
         const auto& upstream = new_path->edge().router_id;
 
         router.link_endpoint().send_command(
-            std::move(upstream), "path_build", std::move(payload), [this, new_path, id](quic::message m) {
+            upstream, "path_build", std::move(payload), [this, new_path, id](quic::message m) {
                 if (m)
                 {
                     log::info(logcat, "PATH ESTABLISHED: {}", *new_path);

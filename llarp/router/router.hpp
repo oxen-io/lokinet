@@ -139,8 +139,6 @@ namespace llarp
         std::shared_ptr<rpc::RPCServer> _rpc_server;
         std::shared_ptr<rpc::RPCClient> _rpc_client;
 
-        bool registered_relays_received{false};
-
         Profiling _router_profiling;
 
         int min_client_outbounds{};
@@ -249,12 +247,6 @@ namespace llarp
         nlohmann::json ExtractStatus() const;
 
         nlohmann::json ExtractSummaryStatus() const;
-
-        void set_registered_relays(std::unordered_set<RouterID> relays);
-
-        /// Return true if we are operating as a service node and have received a service node
-        /// registered list from oxend.
-        bool has_registered_relays() const;
 
         /// return true if we a registered service node (either active or decommissioned).
         bool appears_registered() const;
