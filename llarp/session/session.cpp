@@ -6,6 +6,7 @@
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
+#include <llarp/net/policy.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
@@ -492,14 +493,15 @@ namespace llarp::session
         {
             if (is_udp)
             {
-                handle_udp_from_remote(IPPacket{data});
+                handle_udp_from_remote(IPPacket{std::move(data)});
             }
             else if (!is_tunneled)
             {
                 log::warning(logcat, "Received non-UDP, non-tunneled datagram on embedded client, dropping!");
             }
             else
-                tcp_tunnel->quic_ep->manually_receive_packet(oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, data});
+                tcp_tunnel->quic_ep->manually_receive_packet(
+                    oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, std::move(data)});
             return;
         }
 
@@ -507,9 +509,10 @@ namespace llarp::session
         // packet to handle via the tun endpoint, and the same for UDP packets from embedded
         // remotes (which also send raw UDP packets):
         if (dgram_type == traffic_type::TUNNELED_QUIC)
-            tcp_tunnel->quic_ep->manually_receive_packet(oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, data});
+            tcp_tunnel->quic_ep->manually_receive_packet(
+                oxen::quic::Packet{tcp_tunnel->FAKE_QUIC_PATH, std::move(data)});
         else
-            _r.tun_endpoint()->handle_inbound_packet(IPPacket{data}, dgram_type, _remote);
+            _r.tun_endpoint()->handle_inbound_packet(IPPacket{std::move(data)}, dgram_type, _remote);
     }
 
     void Session::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
@@ -519,16 +522,26 @@ namespace llarp::session
 
     void Session::handle_udp_from_remote(IPPacket&& pkt)
     {
+        if (!pkt.is_ip() || pkt.protocol() != net::IPProtocol::UDP)
+        {
+            log::debug(logcat, "Dropping unsupported non-IPv4/v6 UDP packet");
+            return;
+        }
         auto source_port = pkt.source_port();
-        log::trace(logcat, "incoming udp packet from remote port {}", source_port);
-        auto itr = udp_handles.find(source_port);
+        if (!source_port)
+        {
+            log::debug(logcat, "Dropping malformed UDP packet: {}", pkt.info_line());
+            return;
+        }
+        log::trace(logcat, "incoming udp packet from remote port {}", *source_port);
+        auto itr = udp_handles.find(*source_port);
         if (itr == udp_handles.end())
         {
-            log::debug(logcat, "Received udp datagram from unknown source port {}", source_port);
+            log::debug(logcat, "Received udp datagram from unknown source port {}", *source_port);
             return;
         }
         auto& socket = itr->second;
-        auto dest_port = pkt.dest_port();
+        auto dest_port = *pkt.dest_port();
         log::trace(logcat, "incoming udp packet for pseudo port {}", dest_port);
         if (!udp_remote_ports.contains(dest_port))
         {

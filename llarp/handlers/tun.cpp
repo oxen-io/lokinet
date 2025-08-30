@@ -148,8 +148,10 @@ namespace llarp::handlers
                 try
                 {
                     _packet_router->add_udp_handler(p, [this, dns](IPPacket pkt) {
-                        if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(), pkt.udp_data()))
-                            return;
+                        // TODO FIXME
+                        log::critical(logcat, "TODO FIXME: L3 udp interceptor!");
+                        //if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(), pkt.udp_data()))
+                        //    return;
 
                         handle_outbound_packet(std::move(pkt));
                     });
@@ -982,21 +984,21 @@ namespace llarp::handlers
     void TunEndpoint::handle_outbound_packet(IPPacket pkt)
     {
         ipv4 src, dest;
-        if (pkt.is_ipv6())
+        if (!pkt.is_ipv4())
         {
-            log::debug(logcat, "Dropping IPv6 packet: not yet supported");
-            return;
-        }
-        if (!pkt.is_ip())
-        {
+            if (pkt.is_ipv6())
+            {
+                log::debug(logcat, "Dropping IPv6 packet: not yet supported");
+                return;
+            }
             log::debug(logcat, "Dropping non-IP packet");
             return;
         }
 
         log::trace(logcat, "outbound packet: {}: {}", pkt.info_line(), buffer_printer{pkt.span()});
 
-        src = pkt.source_ipv4();
-        dest = pkt.dest_ipv4();
+        src = *pkt.source_ipv4();
+        dest = *pkt.dest_ipv4();
 
         log::trace(logcat, "src:{}, dest:{}", src, dest);
 
@@ -1129,12 +1131,12 @@ namespace llarp::handlers
             if (pkt.is_ipv4())
             {
                 if (auto src = obtain_src_for_ipv4_remote(remote))
-                    return rewrite_and_send_packet(std::move(pkt), *src, pkt.dest_ipv4());
+                    return rewrite_and_send_packet(std::move(pkt), *src, *pkt.dest_ipv4());
             }
             else
             {
                 if (auto src = obtain_src_for_ipv6_remote(remote))
-                    return rewrite_and_send_packet(std::move(pkt), *src, pkt.dest_ipv6());
+                    return rewrite_and_send_packet(std::move(pkt), *src, *pkt.dest_ipv6());
             }
             return;
         }
@@ -1143,9 +1145,9 @@ namespace llarp::handlers
         {
             log::trace(logcat, "inbound return exit pkt: {}", pkt.info_line());
             if (pkt.is_ipv4())
-                return rewrite_and_send_packet(std::move(pkt), pkt.source_ipv4(), _local_net.ip);
+                return rewrite_and_send_packet(std::move(pkt), *pkt.source_ipv4(), _local_net.ip);
             if (_local_ipv6_net)
-                return rewrite_and_send_packet(std::move(pkt), pkt.source_ipv6(), _local_ipv6_net->ip);
+                return rewrite_and_send_packet(std::move(pkt), *pkt.source_ipv6(), _local_ipv6_net->ip);
             return;
         }
 

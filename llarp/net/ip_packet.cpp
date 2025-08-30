@@ -30,10 +30,13 @@ namespace llarp
         if (sz and sz < MIN_PACKET_SIZE)
             throw std::invalid_argument{"Buffer size is too small for an IP packet!"};
         _buf.resize(sz, std::byte{0});
-        _init_internals();
     }
 
-    IPPacket::IPPacket(std::vector<std::byte>&& data) : _buf{std::move(data)} { _init_internals(); }
+    IPPacket::IPPacket(std::vector<std::byte>&& data) : _buf{std::move(data)}
+    {
+        if (_buf.size() < MIN_PACKET_SIZE)
+            throw std::invalid_argument{"Buffer data is too small for an IP packet!"};
+    }
 
     IPPacket::IPPacket(std::span<const std::byte> buf)
     {
@@ -42,102 +45,36 @@ namespace llarp
 
         _buf.resize(buf.size());
         std::memcpy(_buf.data(), buf.data(), buf.size());
-
-        _init_internals();
-    }
-
-    std::optional<IPPacket> IPPacket::try_making(std::span<const std::byte> buf)
-    {
-        std::optional<IPPacket> ret;
-        try
-        {
-            ret.emplace(buf);
-        }
-        catch (const std::invalid_argument& e)
-        {
-            log::trace(logcat, "Invalid IP packet: {}", e.what());
-        }
-        return ret;
-    }
-
-    static constexpr uint8_t v4_header_version = 4;
-    static constexpr uint8_t v6_header_version = 6;
-
-    void IPPacket::_init_internals()
-    {
-        if (_buf.empty())
-            return;
-
-        const auto* header = reinterpret_cast<ip_header*>(data());
-        const auto* v6_header = reinterpret_cast<ipv6_header*>(data());
-
-        _is_v4 = header->version == v4_header_version;
-        _is_v6 = header->version == v6_header_version;
-        assert(!(_is_v4 && _is_v6));
-        if (!_is_v4 && !_is_v6)
-            return;  // Not an IP packet!
-
-        uint16_t pkt_len;
-        if (_is_v4)
-        {
-            _proto = net::IPProtocol{header->protocol};
-            pkt_len = oxenc::big_to_host(header->total_len);
-            _header_len = 4 * header->header_len;
-            _payload_len = pkt_len - _header_len;
-        }
-        else
-        {
-            _proto = net::IPProtocol{v6_header->protocol};
-            _header_len = 40;
-            _payload_len = oxenc::big_to_host(v6_header->payload_len);
-            pkt_len = _payload_len + _header_len;
-        }
-
-        if (pkt_len != size())
-            throw std::invalid_argument{
-                "Invalid IP packet size: header implies {}B, but packet is {}B"_format(pkt_len, size())};
-
-        uint16_t src_port = 0, dest_port = 0;
-        if ((_proto == net::IPProtocol::UDP || _proto == net::IPProtocol::TCP) && _payload_len >= 4)
-        {
-            src_port = oxenc::load_big_to_host<uint16_t>(data() + _header_len);
-            dest_port = oxenc::load_big_to_host<uint16_t>(data() + _header_len + 2);
-        }
-
-        if (_is_v4)
-        {
-            _src_addr = quic::Address{ipv4{oxenc::big_to_host(header->src)}, src_port};
-            _dst_addr = quic::Address{ipv4{oxenc::big_to_host(header->dest)}, dest_port};
-        }
-        else
-        {
-            _src_addr = quic::Address{ipv6{v6_header->src}, src_port};
-            _dst_addr = quic::Address{ipv6{v6_header->dest}, dest_port};
-        }
-        log::trace(logcat, "IP packet init: proto={}, src={}, dest={}", _proto, _src_addr, _dst_addr);
     }
 
     std::span<const std::byte> IPPacket::udp_data()
     {
-        if (_proto != net::IPProtocol::UDP || _payload_len < 8)
+        auto proto = protocol();
+        if (proto != net::IPProtocol::UDP || payload_size() < 8)
             return {};
+        return span().subspan(header_size() + 8);
+    }
 
-        auto hlen = _header_len + 8;
-        return {reinterpret_cast<const std::byte*>(data()) + hlen, size() - hlen};
+    void IPPacket::clear_addresses()
+    {
+        if (is_ipv4())
+            update_ipv4_address(ipv4{}, ipv4{});
+        else if (is_ipv6())
+            update_ipv6_address(ipv6{}, ipv6{});
     }
 
     void IPPacket::update_ipv4_address(const ipv4& src, const ipv4& dst)
     {
         log::trace(logcat, "Setting new source ({}) and destination ({}) IPs", src, dst);
 
-        auto _header = reinterpret_cast<ip_header*>(data());
-        if (auto ihs = size_t(_header->header_len * 4), sz = size(); ihs <= sz)
+        auto& hdr = header();
+        if (auto ihs = size_t(hdr.header_len * 4), sz = size(); ihs <= sz)
         {
             auto* payload = data() + ihs;
             auto payload_size = sz - ihs;
-            auto frag_off = size_t(oxenc::big_to_host(_header->frag_off) & 0x1Fff) * 8;
+            auto frag_off = size_t(oxenc::big_to_host(hdr.frag_off) & 0x1Fff) * 8;
 
-            auto ip_proto = static_cast<net::IPProtocol>(_header->protocol);
+            auto ip_proto = static_cast<net::IPProtocol>(hdr.protocol);
             switch (ip_proto)
             {
                 case net::IPProtocol::TCP:
@@ -145,7 +82,7 @@ namespace llarp
                     {
                         auto* tcp_hdr = reinterpret_cast<tcp_header*>(payload);
                         tcp_hdr->checksum =
-                            utils::ipv4_tcp_checksum_diff(tcp_hdr->checksum, _header->src, _header->dest, src, dst);
+                            utils::ipv4_tcp_checksum_diff(tcp_hdr->checksum, hdr.src, hdr.dest, src, dst);
                     }
                     break;
                 case net::IPProtocol::UDP:
@@ -154,7 +91,7 @@ namespace llarp
                     {
                         auto* udp_hdr = reinterpret_cast<udp_header*>(payload);
                         udp_hdr->checksum =
-                            utils::ipv4_udp_checksum_diff(udp_hdr->checksum, _header->src, _header->dest, src, dst);
+                            utils::ipv4_udp_checksum_diff(udp_hdr->checksum, hdr.src, hdr.dest, src, dst);
                     }
                     break;
                 case net::IPProtocol::DCCP:
@@ -162,7 +99,7 @@ namespace llarp
                     {
                         auto* tcp_hdr = reinterpret_cast<tcp_header*>(payload);
                         tcp_hdr->checksum =
-                            utils::ipv4_tcp_checksum_diff(tcp_hdr->checksum, _header->src, _header->dest, src, dst);
+                            utils::ipv4_tcp_checksum_diff(tcp_hdr->checksum, hdr.src, hdr.dest, src, dst);
                     }
                     break;
                 default:
@@ -171,14 +108,11 @@ namespace llarp
             }
         }
 
-        _header->checksum = utils::ipv4_checksum_diff(_header->checksum, _header->src, _header->dest, src, dst);
+        hdr.checksum = utils::ipv4_checksum_diff(hdr.checksum, hdr.src, hdr.dest, src, dst);
 
         // set new IP addresses
-        _header->src = oxenc::host_to_big(src.addr);
-        _header->dest = oxenc::host_to_big(dst.addr);
-
-        _src_addr.set_addr(reinterpret_cast<in_addr*>(&_header->src));
-        _dst_addr.set_addr(reinterpret_cast<in_addr*>(&_header->dest));
+        hdr.src = oxenc::host_to_big(src.addr);
+        hdr.dest = oxenc::host_to_big(dst.addr);
     }
 
     void IPPacket::update_ipv6_address(const ipv6& src, const ipv6& dst, std::optional<uint32_t> flowlabel)
@@ -276,8 +210,6 @@ namespace llarp
         auto check = is_udp ? (uint16_t*)(pld + 6) : (uint16_t*)(pld + chksumoff - fragoff);
 
         *check = chksum;
-
-        _init_internals();
     }
 
     std::optional<IPPacket> IPPacket::make_icmp_unreachable() const
@@ -286,49 +218,53 @@ namespace llarp
         {
             const auto& header = *reinterpret_cast<const ip_header*>(data());
             auto ip_hdr_sz = header.header_len * 4;
-            size_t pkt_size = (ICMP_HEADER_SIZE + ip_hdr_sz) * 2;
 
-            if (pkt_size < MIN_PACKET_SIZE)
-                return std::nullopt;
+            // ICMP unreachable includes a carbon copy of the illiciting packet prefix include *at
+            // least* the header; we also include the first 8 bytes after the header:
+            std::span orig_prefix{_buf.data(), std::min<size_t>(ip_hdr_sz + 8, _buf.size())};
 
-            IPPacket pkt{*this};
+            size_t pkt_size = sizeof(ip_header) + ICMP_HEADER_SIZE + orig_prefix.size();
 
-            pkt.header().version = 0x04;
-            pkt.header().header_len = 0x05;
-            pkt.header().service_type = 0;
-            pkt.header().checksum = 0;
-            pkt.header().total_len = ntohs(pkt_size);
-            pkt.header().src = header.dest;
-            pkt.header().dest = header.src;
-            pkt.header().protocol = 1;  // ICMP
-            pkt.header().ttl = header.ttl;
-            pkt.header().frag_off = oxenc::host_to_big<uint16_t>(0b01000000'00000000);
+            IPPacket pkt{pkt_size};
 
-            uint8_t* itr = reinterpret_cast<uint8_t*>(pkt.data()) + ip_hdr_sz;
-            uint8_t* icmp_begin = itr;  // type 'destination unreachable'
-            *itr++ = 3;
+            auto& hdr = pkt.header();
+            hdr.version = 0x04;
+            hdr.header_len = 0x05;
+            hdr.service_type = 0;
+            hdr.checksum = 0;
+            hdr.total_len = ntohs(pkt_size);
+            hdr.src = header.dest;
+            hdr.dest = header.src;
+            hdr.protocol = 1;  // ICMP
+            hdr.ttl = header.ttl;
+            hdr.frag_off = oxenc::host_to_big<uint16_t>(0b01000000'00000000);
 
-            // code 'Destination host unknown error'
-            *itr++ = 7;
+            std::byte* itr = pkt.data() + sizeof(ip_header);
+            auto* icmp_begin = itr;
+            *itr++ = std::byte{3};  // ICMP type 3 = 'destination unreachable'
+            *itr++ = std::byte{7};  // ICMP code 7 = 'Destination host unknown error'
 
-            // checksum + unused
-            oxenc::write_host_as_big<uint32_t>(0, itr);
-            auto* checksum = (uint16_t*)itr;
-            itr += 4;
-
-            // next hop mtu is ignored but let's put something here anyways just in case tm
-            oxenc::write_host_as_big<uint16_t>(1500, itr);
+            // 2 byte checksum (we'll come back to this later)
+            auto* checksum = reinterpret_cast<uint16_t*>(itr);
             itr += 2;
+            // optional length byte + unused byte + optional 2-byte next hop MTU (for code 4, i.e.
+            // not us).  We leave this all as zero (and buf is already 0 initialized).
+            itr += (1 + 1 + 2);
 
-            // copy ip header and first 8 bytes of datagram for icmp reject
-            std::memcpy(itr, _buf.data(), ip_hdr_sz + ICMP_HEADER_SIZE);
-            itr += ip_hdr_sz + ICMP_HEADER_SIZE;
+            assert(itr == pkt.data() + sizeof(ip_header) + ICMP_HEADER_SIZE);
+
+            // carbon copy the original packet prefix:
+            std::memcpy(itr, orig_prefix.data(), orig_prefix.size());
+            itr += orig_prefix.size();
+
+            assert(itr == pkt.data() + pkt_size);
 
             // calculate checksum of ip header
-            pkt.header().checksum = utils::ip_checksum(reinterpret_cast<const uint8_t*>(pkt.data()), ip_hdr_sz);
+            pkt.header().checksum = utils::ip_checksum(reinterpret_cast<const uint8_t*>(pkt.data()), sizeof(ip_header));
 
-            // calculate icmp checksum
-            *checksum = utils::ip_checksum(icmp_begin, std::distance(icmp_begin, itr));
+            // calculate icmp checksum from everything from icmp header (inclusive) to the end.
+            *checksum =
+                utils::ip_checksum(reinterpret_cast<const uint8_t*>(icmp_begin), std::distance(icmp_begin, itr));
 
             log::debug(logcat, "Constructed ICMP unreachable packet");
             return pkt;
@@ -372,18 +308,19 @@ namespace llarp
         return pkt;
     }
 
-    quic::Packet IPPacket::make_netpkt()
+    std::string IPPacket::info_printer::to_string() const
     {
-        quic::Packet p{
-            quic::Path{_src_addr, _dst_addr}, {reinterpret_cast<const std::byte*>(_buf.data()), _buf.size()}};
-        p.ensure_owned_data();
-        return p;
-    }
-
-    std::string IPPacket::info_line() const
-    {
-        return "IPPacket:[ type:{} | src:{} | dest:{} | size:{} ]"_format(
-            ip_protocol_name(_proto), _src_addr, _dst_addr, size());
+        if (pkt.is_ipv4())
+        {
+            return "IPv4[{}, {}B, src={}, dst={}]"_format(
+                ip_protocol_name(pkt.protocol()), pkt.size(), *pkt.source_ipv4(), *pkt.dest_ipv4());
+        }
+        if (pkt.is_ipv6())
+        {
+            return "IPv6[{}, {}B, src={}, dst={}]"_format(
+                ip_protocol_name(pkt.protocol()), pkt.size(), *pkt.source_ipv6(), *pkt.dest_ipv6());
+        }
+        return "IPPacket[<unknown-type>, {}B]"_format(pkt.size());
     }
 
 }  // namespace llarp

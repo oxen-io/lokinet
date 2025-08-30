@@ -21,7 +21,7 @@ namespace llarp::vpn
 
         void handle_ip_packet(IPPacket pkt) override
         {
-            log::trace(logcat, "udp pkt: ", pkt.info_line());
+            log::trace(logcat, "{}", pkt.info_line());
             auto dstport = pkt.dest_port();
 
             if (not dstport)
@@ -31,7 +31,7 @@ namespace llarp::vpn
                 return;
             }
 
-            if (auto itr = _port_mapped_handlers.find(dstport); itr != _port_mapped_handlers.end())
+            if (auto itr = _port_mapped_handlers.find(*dstport); itr != _port_mapped_handlers.end())
                 itr->second(std::move(pkt));
             // else
             //     _base_handler(IPPacket::from_udp(std::move(pkt)));
@@ -56,10 +56,8 @@ namespace llarp::vpn
 
     void PacketRouter::handle_ip_packet(IPPacket pkt) const
     {
-        if (pkt.is_ipv4())
-            log::trace(logcat, "ipv4 pkt: {}", pkt.info_line());
+        log::trace(logcat, "{}", pkt.info_line());
         auto dest_port = pkt.dest_port();
-
         if (not dest_port)
             return _handler(std::move(pkt));
 

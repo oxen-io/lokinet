@@ -43,8 +43,11 @@ namespace llarp
             // ranges are always the allow list (if empty, we route nothing).  Add a 0.0.0.0/0 or
             // ::/0 if you want to allow everything.
             auto accept_range = pkt.is_ipv4()
-                ? std::ranges::any_of(ranges, [dest = pkt.dest_ipv4()](const auto& r) { return r.contains(dest); })
-                : std::ranges::any_of(ranges_v6, [dest = pkt.dest_ipv6()](const auto& r) { return r.contains(dest); });
+                ? std::ranges::any_of(ranges, [dest = *pkt.dest_ipv4()](const auto& r) { return r.contains(dest); })
+                : pkt.is_ipv6()
+                ? std::ranges::any_of(ranges_v6, [dest = *pkt.dest_ipv6()](const auto& r) { return r.contains(dest); })
+                : false;
+
             if (!accept_range)
                 return false;
 
