@@ -1018,6 +1018,10 @@ namespace llarp
             "{} started @ {}",
             is_service_node ? "Relay" : "Client",
             local_rid().to_network_address(is_service_node));
+
+        // Fire a tick right now to start making connections immediately (rather than waiting until
+        // the first tick):
+        tick();
     }
 
     std::chrono::milliseconds Router::Uptime() const
