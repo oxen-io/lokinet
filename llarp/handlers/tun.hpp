@@ -96,6 +96,10 @@ namespace llarp::handlers
         // Returns the lokinet tun IPv6 address by pointer, or nullptr if ipv6 is not configured.
         const ipv6* get_ipv6() const;
 
+        // Returns the lokinet tun IPv4 network; the address is set to this tun device's local
+        // address (i.e. the .1 address).
+        const ipv4_net& get_ipv4_network() const;
+
         nlohmann::json ExtractStatus() const;
 
         bool supports_ipv6() const;

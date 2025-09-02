@@ -75,10 +75,11 @@ lokinet_add_library(lokinet-utils
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/buffer.cpp
   util/file.cpp
+  util/logging.cpp
   util/mem.cpp
   util/str.cpp
-  util/thread/threading.cpp
   util/thread/queue_manager.cpp  
+  util/thread/threading.cpp
   util/time.cpp
 )
 
@@ -204,6 +205,7 @@ lokinet_add_library(lokinet-config
 
 # All path objects; link directly to lokinet-core
 lokinet_add_library(lokinet-path
+  path/build_stats.cpp
   path/path.cpp
   path/path_context.cpp
   path/path_handler.cpp

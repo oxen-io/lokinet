@@ -102,6 +102,11 @@ namespace llarp::link
         std::shared_ptr<quic::Ticker> redundancy_ticker;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
 
+        // Tracks client connectivity: a client becomes "connected" when it reaches the configured
+        // number of router connections, and becomes disconnected when it loses all connections.
+        // (And so in between could be in either state).
+        bool _client_connected{false};
+
       public:
 
         void start_tickers();
@@ -206,6 +211,11 @@ namespace llarp::link
 
         // Closes all connections and stops the network event loop
         void shutdown();
+
+        // Returns true if the endpoint is "connected", that is, has reached the target number of
+        // connections.  Once true, this value becomes false if all router connections are lost.  No
+        // meaningful value for service nodes.
+        bool is_client_connected() const;
 
       private:
         std::shared_ptr<quic::BTRequestStream> make_control(quic::Connection& conn, const RouterID& rid);

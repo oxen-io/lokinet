@@ -27,27 +27,6 @@ namespace llarp
         /// and then increase the delay by this amount again for each additional path build failure.
         inline constexpr auto BACKOFF_INCREMENT = 1s;
 
-        /// Stats about all our path builds
-        struct BuildStats
-        {
-            static constexpr double THRESHOLD{0.25};
-
-            uint64_t attempts{0};
-            uint64_t success{0};
-            uint64_t build_fails{0};  // path build failures
-            uint64_t path_fails{0};   // path failures post-build
-            uint64_t timeouts{0};
-
-            std::chrono::milliseconds last_warn_time{0s};
-
-            nlohmann::json ExtractStatus() const;
-
-            void update(std::chrono::milliseconds now);
-
-            std::string to_string() const;
-            static constexpr bool to_string_formattable = true;
-        };
-
         class PathHandler : public std::enable_shared_from_this<PathHandler>
         {
             void path_build_backoff();
@@ -63,7 +42,6 @@ namespace llarp
 
             int _num_hops;
             int _target_paths;
-            BuildStats _build_stats;
             int64_t _path_counter = 0;
 
             int _consecutive_failures = 0;
@@ -127,8 +105,10 @@ namespace llarp
             // Returns a random path, or nullptr if there are no paths.
             Path* get_random_active_path() const;
 
-            /// get the number of ACTIVE paths
-            int num_active_paths() const;
+            /// get the number of ACTIVE, unexpired paths.  An future expiry value other than now
+            /// can be given to query the number of active paths that will not have expired at the
+            /// given timestamp.
+            int num_active_paths(std::chrono::milliseconds expiry_ts = llarp::time_now_ms()) const;
 
             /// get the number of ALL unexpired paths (both active and those being currently built).
             /// If an expiry value is given then this returns the number of paths that will not have
@@ -144,10 +124,6 @@ namespace llarp
 
             /// Returns the number of hops used for paths built by this object
             const int& num_hops() const { return _num_hops; }
-
-            const BuildStats& build_stats() const { return _build_stats; }
-
-            BuildStats& build_stats() { return _build_stats; }
 
             // TODO FIXME: this seems like an entangled mess: I don't think *anything* ever calls
             // this, except for Router calling SessionHandler::stop (which overrides this but then

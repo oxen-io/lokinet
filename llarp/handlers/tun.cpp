@@ -860,6 +860,8 @@ namespace llarp::handlers
     const ipv4& TunEndpoint::get_ipv4() const { return _local_net.ip; }
     const ipv6* TunEndpoint::get_ipv6() const { return _local_ipv6_net ? &_local_ipv6_net->ip : nullptr; }
 
+    const ipv4_net& TunEndpoint::get_ipv4_network() const { return _local_net; }
+
     bool TunEndpoint::is_service_node() const { return _router.is_service_node; }
 
     bool TunEndpoint::is_exit_node() const { return _router.is_exit_node(); }

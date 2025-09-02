@@ -6,7 +6,9 @@
 #include <llarp/path/path_handler.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/session/session.hpp>
+#include <llarp/util/time.hpp>
 
+#include <chrono>
 #include <concepts>
 #include <memory>
 
@@ -29,8 +31,8 @@ namespace llarp
             // Inbound path lifetimes within a slot are always determined relative to this base
             // value, so that if we need a path in the (15,20] minute range, we will always pick the
             // same value in that slot by using this basis value.
-            const std::chrono::seconds path_expiry_basis = std::chrono::floor<
-                std::chrono::seconds>(llarp::time_now_ms());
+            const std::chrono::seconds path_expiry_basis =
+                std::chrono::floor<std::chrono::seconds>(llarp::time_now_ms());
 
             std::unordered_map<NetworkAddress, std::shared_ptr<session::Session>> _sessions;
             std::unordered_map<session_tag, std::shared_ptr<session::Session>> _session_tags;
@@ -44,6 +46,9 @@ namespace llarp
             Ed25519BlindedKey cc_blind_keys;
             int cc_count = -1;
             protocol_flag protocols;
+
+            // Used for logging connected/disconnected status:
+            bool connected = false;
 
             // auth tokens for making outbound sessions; some of these are copied at construction,
             // some (with ONS names) get looked up and populated later.
@@ -67,8 +72,22 @@ namespace llarp
 
             // bool build_path_to_random(bool exclude_current_termini)
 
-            /// Returns: {number of sessions, number of active sessions}
-            std::pair<size_t, size_t> session_stats() const;
+            /// Returns array of:
+            /// - inbound sessions (i.e. from remote clients)
+            /// - outbound relay sessions (pending or established)
+            /// - outbound client sessions (pending or established)
+            /// - pending outbound relay sessions
+            /// - pending outbound client sessions
+            ///
+            /// For relays, all but the first value will be 0 (relays do not establish outbound
+            /// sessions).
+            std::array<int, 5> session_stats() const;
+
+            /// Returns array of path counts:
+            /// - inbound/utility paths (used for inbound sessions and network queries)
+            /// - paths for outbound relay sessions
+            /// - paths for outbound client sessions
+            std::array<int, 3> path_stats(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
             // quic::Address local_address() const { return _local_addr; }
 

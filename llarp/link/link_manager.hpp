@@ -94,9 +94,6 @@ namespace llarp::link
         // that thread safe would be slow...I think.
         void connect_to_keep_alive(int num_conns);
 
-        /// always maintain this many client connections to other routers
-        int client_router_connections = 4;
-
         // Sends the given RC to all our relay peers, excluding connections to the RC pubkey itself,
         // and (if not-nullptr) the given quic connection.  Returns the number of relay connections
         // we sent it to.

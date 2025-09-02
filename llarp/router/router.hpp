@@ -9,6 +9,7 @@
 #include <llarp/crypto/key_manager.hpp>
 #include <llarp/handlers/session.hpp>
 #include <llarp/handlers/tun_base.hpp>
+#include <llarp/path/build_stats.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/util/buffer.hpp>
@@ -19,9 +20,9 @@
 
 #include <oxen/quic/loop.hpp>
 
+#include <chrono>
 #include <functional>
 #include <memory>
-#include <vector>
 
 namespace oxenmq
 {
@@ -55,7 +56,8 @@ namespace llarp
     // how big of a time skip before we reset network state
     inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
 
-    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{10s};
+    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{1min};
+    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL_DEBUG{10s};
 
     inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
 
@@ -94,6 +96,8 @@ namespace llarp
 
         std::atomic<bool> _is_stopping{false};
         std::atomic<bool> _is_running{false};
+
+        bool _is_connected{false};
 
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
@@ -141,12 +145,11 @@ namespace llarp
 
         Profiling _router_profiling;
 
-        int min_client_outbounds{};
-        std::atomic<bool> initial_client_connect_complete{false};
+        int _client_target_outbounds = 0;
 
         bool should_report_stats(std::chrono::milliseconds now) const;
 
-        std::string _stats_line();
+        std::string _stats_line(std::chrono::milliseconds now) const;
 
         void report_stats();
 
@@ -170,13 +173,14 @@ namespace llarp
 
       public:
         path::PathContext path_context{*this};
+        path::BuildStats path_builds{};
         KeyManager key_manager;
 
         const bool is_service_node{_config.router.is_relay};
 
         bool is_fully_meshed() const;
 
-        int client_outbounds_needed() const { return min_client_outbounds; }
+        int client_target_outbounds() const { return _client_target_outbounds; }
 
         const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 
@@ -273,6 +277,14 @@ namespace llarp
         // const RoutePoker& route_poker() const { return *_route_poker; }
 
         std::string status_line();
+
+        // Client connectivity status: we enter "client connected" state when we have reached our
+        // target number of router connections, and we lose connected state when we fall to 0 router
+        // connections.  These log when we flip from disconnected to connected (info) or vice versa
+        // (warning).
+        void set_connected();
+        void set_disconnected();
+        bool is_connected() const;
 
         bool is_running() const { return _is_running; }
 

@@ -48,12 +48,54 @@ namespace llarp::handlers
             ClientContact{router.key_manager.router_id(), netconf.srv_records, protocols, netconf.traffic_policy};
     }
 
-    std::pair<size_t, size_t> SessionEndpoint::session_stats() const
+    std::array<int, 5> SessionEndpoint::session_stats() const
     {
-        return {
-            _sessions.size(),
-            std::ranges::count_if(std::views::values(_sessions), [](const auto& s) { return s->is_established(); }),
-        };
+        std::array<int, 5> stats{0};
+        auto& [in, out_r, out_c, out_r_pending, out_c_pending] = stats;
+
+        for (const auto& s : std::views::values(_sessions))
+        {
+            if (s->is_closed())
+                continue;
+            if (s->is_outbound)
+            {
+                if (s->is_relay_session)
+                {
+                    out_r++;
+                    if (!s->is_established())
+                        out_r_pending++;
+                }
+                else
+                {
+                    out_c++;
+                    if (!s->is_established())
+                        out_c_pending++;
+                }
+            }
+            else
+                in++;
+        }
+
+        return stats;
+    }
+
+    std::array<int, 3> SessionEndpoint::path_stats(std::chrono::milliseconds now) const
+    {
+        std::array<int, 3> stats{0};
+        auto& [in, out_r, out_c] = stats;
+        in = num_paths();
+
+        for (const auto& s : std::views::values(_sessions))
+            if (!s->is_closed() && s->is_outbound)
+            {
+                auto& os = static_cast<const session::OutboundSession&>(*s);
+                if (os.is_relay_session)
+                    out_r += os.num_paths(now);
+                else
+                    out_c += os.num_paths(now);
+            }
+
+        return stats;
     }
 
     void SessionEndpoint::close_session(std::shared_ptr<session::Session>& s, bool send_close)
@@ -100,6 +142,7 @@ namespace llarp::handlers
 
         if (auto s = get_session<session::InboundClientSession>(t))
         {
+            // TODO FIXME: is this an appropriate assert (i.e. is it checked somewhere before this)?
             // only OutboundSessions send path switch messages
             assert(s && !s->is_outbound);
 

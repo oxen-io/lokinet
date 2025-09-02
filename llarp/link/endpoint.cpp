@@ -567,6 +567,18 @@ namespace llarp::link
                 on_inbound_conn(std::move(conn));
             else
                 on_outbound_conn(std::move(conn));
+
+            if (not router.is_service_node and not _client_connected)
+                if (int n = num_relay_conns(/*include_pending=*/false); n >= router.client_target_outbounds())
+                {
+                    _client_connected = true;
+                    log::info(
+                        log_global,
+                        "Lokinet is now connected to the network ({}) with {} relay connections",
+                        router.config().network.is_reachable ? router.local_rid().to_network_address(false).to_string()
+                                                             : "outgoing-only",
+                        n);
+                }
         });
     }
 
@@ -585,6 +597,7 @@ namespace llarp::link
                           path = conn.path()] {
             if (auto it = relay_conns.find(rid); it != relay_conns.end())
             {
+                assert(router.is_service_node);
                 auto& relcon = it->second;
                 bool found = false;
                 if (relcon.inbound && ref_id == relcon.inbound->conn->reference_id())
@@ -620,9 +633,8 @@ namespace llarp::link
                     rid.to_network_address(!router.is_service_node),
                     ec);
                 client_conns.erase(it);
-                return;
             }
-            if (auto it = pending_outbound.find(rid); it != pending_outbound.end())
+            else if (auto it = pending_outbound.find(rid); it != pending_outbound.end())
             {
                 log::debug(
                     logcat,
@@ -630,16 +642,27 @@ namespace llarp::link
                     rid.to_network_address(true),
                     ec);
                 pending_outbound.erase(it);
-                return;
             }
-
-            log::warning(
-                logcat,
-                "Closed untracked connection to {} (ref_id={}, ec={})",
-                rid.to_network_address(true /* don't know! */),
-                ref_id,
-                ec);
+            else
+            {
+                log::warning(
+                    logcat,
+                    "Closed untracked connection to {} (ref_id={}, ec={})",
+                    rid.to_network_address(true /* don't know! */),
+                    ref_id,
+                    ec);
+            }
+            if (not router.is_service_node and _client_connected and num_relay_conns(/*include_pending=*/false) == 0)
+            {
+                _client_connected = false;
+                log::warning(log_global, "Lokinet is no longer connected to the network!");
+            }
         });
+    }
+
+    bool Endpoint::is_client_connected() const
+    {
+        return router.loop.call_get([this] { return _client_connected; });
     }
 
 }  // namespace llarp::link

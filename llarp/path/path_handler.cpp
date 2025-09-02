@@ -26,27 +26,6 @@ namespace llarp::path
 {
     static auto logcat = log::Cat("pathhandler");
 
-    nlohmann::json BuildStats::ExtractStatus() const
-    {
-        return nlohmann::json{
-            {"success", success}, {"attempts", attempts}, {"timeouts", timeouts}, {"fails", build_fails}};
-    }
-
-    void BuildStats::update(std::chrono::milliseconds now)
-    {
-        if (attempts > 50 && attempts >= (success * 4) && now - last_warn_time > 5s)
-        {
-            log::warning(logcat, "Low path build success: {}", *this);
-            last_warn_time = now;
-        }
-    }
-
-    std::string BuildStats::to_string() const
-    {
-        return "Stats:[ success:{} | attempts:{} | timeouts:{} | fails:{} ]"_format(
-            success, attempts, timeouts, build_fails);
-    }
-
     PathHandler::PathHandler(Router& r, int target_paths, int num_hops)
         : router{r}, _running{true}, _num_hops{num_hops}, _target_paths{target_paths}
     {}
@@ -136,10 +115,16 @@ namespace llarp::path
 
         expire_paths(now);
 
+        if (not router.is_service_node and not router.link_endpoint().is_client_connected())
+            // If we are not yet fully connected then we can't initiate path builds.  (In theory we
+            // could whe not yet fully connected, but don't want to because that would bias edge
+            // router selection towards faster ones).
+            return;
+
         if (!is_stopped())
             update_paths(now);
 
-        _build_stats.update(now);
+        router.path_builds.update(now);
     }
 
     nlohmann::json PathHandler::ExtractStatus() const
@@ -149,11 +134,7 @@ namespace llarp::path
             if (path)
                 paths.push_back(path->ExtractStatus());
 
-        return nlohmann::json{
-            {"buildStats", _build_stats.ExtractStatus()},
-            {"numHops", _num_hops},
-            {"targetPaths", _target_paths},
-            {"paths", std::move(paths)}};
+        return nlohmann::json{{"numHops", _num_hops}, {"targetPaths", _target_paths}, {"paths", std::move(paths)}};
     }
 
     std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
@@ -198,15 +179,14 @@ namespace llarp::path
         return std::nullopt;
     }
 
-    int PathHandler::num_active_paths() const
+    int PathHandler::num_active_paths(std::chrono::milliseconds expiry_ts) const
     {
         Lock_t l(paths_mutex);
 
         int n = 0;
         for (const auto& [_, p] : _paths)
-            if (p and p->is_active())
+            if (p and p->is_active() and not p->is_expired(expiry_ts))
                 n++;
-
         return n;
     }
 
@@ -539,7 +519,7 @@ namespace llarp::path
                     dh_nonce ^ hop.xor_nonce);
         }
 
-        _build_stats.attempts++;
+        router.path_builds.attempts++;
 
         return result;
     }
@@ -687,10 +667,10 @@ namespace llarp::path
         {
             if (p)
                 router.router_profiling().path_timeout(*p);
-            _build_stats.timeouts++;
+            router.path_builds.timeouts++;
         }
         else
-            _build_stats.build_fails++;
+            router.path_builds.build_fails++;
 
         _last_failure = llarp::time_now_ms();
         _consecutive_failures++;
@@ -705,7 +685,7 @@ namespace llarp::path
         p.set_established();
         add_path(p);
         router.router_profiling().path_success(p);
-        _build_stats.success++;
+        router.path_builds.success++;
 
         _consecutive_failures = 0;
 
@@ -724,6 +704,6 @@ namespace llarp::path
     void PathHandler::path_died(const Path& p)
     {
         log::warning(logcat, "Path {} died post-build", p);
-        _build_stats.path_fails++;
+        router.path_builds.path_fails++;
     }
 }  // namespace llarp::path
