@@ -261,7 +261,6 @@ namespace llarp
     struct BootstrapConfig
     {
         std::vector<std::filesystem::path> files;
-        bool seednode{false};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };

@@ -73,8 +73,7 @@ namespace llarp
     void BootstrapList::populate(
         NetID netid,
         const std::vector<std::filesystem::path>& paths,
-        const std::filesystem::path& def,
-        bool load_fallbacks)
+        const std::filesystem::path& def)
     {
         for (const auto& f : paths)
         {
@@ -99,7 +98,7 @@ namespace llarp
         if (obsolete > 0)
             log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
 
-        if (empty() and load_fallbacks)
+        if (empty())
         {
             log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
             auto size = add_fallbacks(netid);

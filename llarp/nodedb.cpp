@@ -73,7 +73,7 @@ namespace llarp
         // wrong.  We instead need something like "if we are the only bootstrap"
 
         // only enter bootstrap process if we have NOT marked initial fetch as needed
-        if (_needs_bootstrap and not _router.config().bootstrap.seednode)
+        if (_needs_bootstrap)
         {
             if (not _has_bstrap_connection)
             {
@@ -417,15 +417,8 @@ namespace llarp
         if (not is_directory(_root))
             throw std::runtime_error{fmt::format("nodedb {} is not a directory", _root)};
 
-        auto seed = _router.config().bootstrap.seednode;
-        if (seed)
-            log::warning(logcat, "Local instance is bootstrap seed node!");
-
         _bootstraps.populate(
-            _router.netid(),
-            _router.config().bootstrap.files,
-            _router.config().router.data_dir / default_bootstrap,
-            not seed);
+            _router.netid(), _router.config().bootstrap.files, _router.config().router.data_dir / default_bootstrap);
 
         bootstrap_init();
         load_from_disk();

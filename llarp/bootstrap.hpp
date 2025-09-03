@@ -55,8 +55,7 @@ namespace llarp
         void populate(
             NetID netid,
             const std::vector<std::filesystem::path>& paths,
-            const std::filesystem::path& def,
-            bool load_fallbacks);
+            const std::filesystem::path& def);
     };
 
 }  // namespace llarp

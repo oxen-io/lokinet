@@ -1324,15 +1324,6 @@ namespace llarp
                 "Configure nodes that will bootstrap us onto the network",
             });
 
-        conf.define_option<bool>(
-            "bootstrap",
-            "seed-node",
-            RelayOnly,
-            Default{false},
-            Comment{"Whether or not to run as a seed node. We will not have any bootstrap routers "
-                    "configured."},
-            assignment_acceptor(seednode));
-
         conf.define_option<std::string>(
             "bootstrap",
             "add-node",
