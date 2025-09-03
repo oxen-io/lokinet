@@ -15,7 +15,7 @@ namespace oxen::quic
 {
     class message;
     class Ticker;
-}
+}  // namespace oxen::quic
 
 namespace llarp
 {
@@ -23,7 +23,6 @@ namespace llarp
 
     inline constexpr auto FETCH_INTERVAL{10min};
     inline constexpr auto PURGE_INTERVAL{5min};
-    inline constexpr auto FLUSH_INTERVAL{5min};
 
     /*  RC Fetch Constants  */
     // fallback to bootstrap if we have less than this many RCs
@@ -125,7 +124,7 @@ namespace llarp
         std::atomic<bool> _needs_bootstrap{false}, _is_bootstrapping{false}, _has_bstrap_connection{false},
             _is_connecting_bstrap{false};
 
-        //std::shared_ptr<EventTrigger> _bootstrap_handler;
+        // std::shared_ptr<EventTrigger> _bootstrap_handler;
 
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
         std::shared_ptr<quic::Ticker> _rc_fetch_ticker;
@@ -150,7 +149,6 @@ namespace llarp
         bool is_bootstrapping() const { return _is_bootstrapping; }
         bool needs_bootstrap() const { return _needs_bootstrap; }
         bool bootstrap_completed() const { return not(_is_bootstrapping or _needs_bootstrap); }
-        bool is_bootstrap_node(const RemoteRC& rc) const;
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
         void set_registered_relays(std::unordered_set<RouterID> relays);
@@ -199,9 +197,6 @@ namespace llarp
 
         /// load all known_rcs from disk synchronously
         void load_from_disk();
-
-        /// explicit save all RCs to disk synchronously
-        void save_to_disk() const;
 
         /// called on close
         void cleanup();

@@ -1083,11 +1083,9 @@ namespace llarp
             log::debug(logcat, "stopping nodedb events");
             node_db().cleanup();
 
-            log::debug(logcat, "storing nodedb");
-            node_db().save_to_disk();
-
-            // `save_to_disk` above submits a job to the disk loop to do the writing, so submit another,
-            // dummy one that we can wait on to make sure the save-to-disk has happened.
+            // Submit a dummy job to the disk loop that we wait on to ensure that we've cleared out
+            // any pending disk write jobs.
+            log::debug(logcat, "flushing disk loop jobs");
             disk_loop.call_get([] {});
 
             log::debug(logcat, "cleaning up link_manager");

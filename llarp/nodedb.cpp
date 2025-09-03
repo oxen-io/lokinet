@@ -146,8 +146,8 @@ namespace llarp
         }
 
         remove_rcs_if([this, now](const RemoteRC& rc) -> bool {
-            // don't purge bootstrap nodes from nodedb
-            if (is_bootstrap_node(rc))
+            // don't purge bootstrap RCs
+            if (_bootstraps.contains(rc))
             {
                 log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
                 return false;
@@ -168,27 +168,30 @@ namespace llarp
                 return true;
             }
 
-            // clients have no notion of registered relays
-            // we short circuit logic here so we dont remove
-            // routers that are not registered for first hops
-            if (not _router.is_service_node)
+            if (_router.is_service_node)
             {
+                // if we don't have the registered relay list yet don't remove the entry
+                if (not has_registered_relays())
+                {
+                    log::trace(
+                        logcat,
+                        "Skipping check on {}: have not received oxend registered relay list yet",
+                        rc.router_id());
+                    return false;
+                }
+
+                if (not is_connection_allowed(rc.router_id()))
+                {
+                    log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
+                    return true;
+                }
+            }
+            else
+            {
+                // Clients do not have an authoritative relay list, so we have no checks equivalent
+                // to the above ones.
                 log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.router_id());
                 return false;
-            }
-
-            // if we don't have the registered relay list yet don't remove the entry
-            if (not has_registered_relays())
-            {
-                log::trace(
-                    logcat, "Skipping check on {}: have not received oxend registered relay list yet", rc.router_id());
-                return false;
-            }
-
-            if (not is_connection_allowed(rc.router_id()))
-            {
-                log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
-                return true;
             }
 
             return false;
@@ -373,27 +376,11 @@ namespace llarp
             known_rids.insert(rid);
     }
 
-    bool NodeDB::is_bootstrap_node(const RemoteRC& rc) const
-    {
-        assert(_router.loop.inside());
-        return _bootstraps.contains(rc.router_id());
-    }
-
     void NodeDB::start_tickers()
     {
         log::trace(logcat, "NodeDB starting tickers...");
 
-        // TODO FIXME: this startup pattern is very strange.  save_to_disk might fire before the
-        // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
-        // purge-then-save?
-
-        _flush_ticker = _router.loop.call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
-        _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
-
-        _purge_ticker = _router.loop.call_every(
-            PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
-        if (not _needs_bootstrap)
-            _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
+        _purge_ticker = _router.loop.call_every(PURGE_INTERVAL, [this] { purge_rcs(); });
 
         if (not _router.is_service_node)
         {
@@ -723,32 +710,6 @@ namespace llarp
         }
     }
 
-    void NodeDB::save_to_disk() const
-    {
-        // TODO FIXME: we should have a "changed" flag here so that we only write anything to disk
-        // if it has changed.  Otherwise we're writing 2000 files to disk every iteration.
-
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        assert(_router.loop.inside());
-
-        if (_root.empty())
-            return;
-
-        // Copy the set of rcs to the disk loop to be processed as slowly as it wants:
-        _router.disk_loop.call([this, known_rcs = known_rcs] {
-            auto start = std::chrono::steady_clock::now();
-            log::trace(logcat, "Writing NodeDB contents to disk...");
-
-            for (const auto& [rid, rc] : known_rcs)
-                rc.write(get_path_by_pubkey(rid));
-
-            log::debug(
-                logcat,
-                "Wrote NodeDB contents to disk in {}",
-                std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start));
-        });
-    }
-
     void NodeDB::cleanup()
     {
 #if 0
@@ -805,26 +766,36 @@ namespace llarp
         if (rc.router_id() == _router.local_rid())
             return false;
 
-        auto it = known_rcs.find(rc.router_id());
-        if (it == known_rcs.end())
+        auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), rc);
+        auto& stored = it->second;
+        bool should_gossip;
+        if (new_rc)
         {
-            known_rcs.emplace(rc.router_id(), rc);
-            return true;  // New RC hurray, gossip the good news!
+            // If this is a brand new RC then we want to gossip it to make sure everyone gets it.
+            should_gossip = true;
+        }
+        else if (!rc.newer_than(stored, RemoteRC::MIN_GOSSIP_RC_AGE))
+        {
+            // The RC is too new since the last one we stored, so drop it.
+            return false;
+        }
+        else
+        {
+            // This RC is an update of one we already have: we only gossip if this RC indicates a
+            // changed address (e.g. port or IP change) or was the first RC from this node in a long
+            // time, both of which are updates we want to waste a little extra network bandwidth for
+            // to get out everywhere ASAP via gossipping.  Otherwise it's a mundane update, and so
+            // we don't gossip it because the full-mesh network connections means it will send it
+            // directly to everyone (and other nodes don't need to update to be able to full mesh
+            // with it).
+            should_gossip = rc.newer_than(stored, RemoteRC::OUTDATED_AGE) || rc.address_changed(stored);
+            stored = rc;
         }
 
-        auto& stored = it->second;
-        if (!rc.newer_than(stored, RemoteRC::MIN_GOSSIP_RC_AGE))
-            return false;
+        // We inserted or stored, to queue saving it to disk on the disk loop
+        _router.disk_loop.call_soon([rc, path = get_path_by_pubkey(rc.router_id())] { rc.write(path); });
 
-        // This RC is an update of one we already had: we only gossip if this RC indicates a changed
-        // address (e.g. port or IP change) or was the first RC from this node in a long time, both
-        // of which are updates we want to waste a little extra network bandwidth for to get out
-        // everywhere ASAP via gossipping.
-        bool significant = rc.newer_than(stored, RemoteRC::OUTDATED_AGE) || rc.address_changed(stored);
-
-        stored = rc;
-
-        return significant;
+        return should_gossip;
     }
 
     bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
