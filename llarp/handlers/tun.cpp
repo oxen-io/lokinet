@@ -150,8 +150,9 @@ namespace llarp::handlers
                     _packet_router->add_udp_handler(p, [this, dns](IPPacket pkt) {
                         // TODO FIXME
                         log::critical(logcat, "TODO FIXME: L3 udp interceptor!");
-                        //if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(), pkt.udp_data()))
-                        //    return;
+                        // if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(),
+                        // pkt.udp_data()))
+                        //     return;
 
                         handle_outbound_packet(std::move(pkt));
                     });

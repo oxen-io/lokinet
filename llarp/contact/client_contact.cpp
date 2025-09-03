@@ -122,7 +122,7 @@ namespace llarp
             enc.blinded_pubkey.assign(blinded.pubkey);
             enc.encrypted = bt_encode();
 
-            crypto::xchacha20(enc.encrypted, _pubkey, enc.nonce);
+            crypto::xchacha20(enc.encrypted, SharedSecret{_pubkey}, enc.nonce);
             enc.signed_at = llarp::time_now_ms();
 
             auto btdp = enc.bt_encode_for_signing();
@@ -192,11 +192,8 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            log::critical(
-                logcat,
-                "EncryptedClientContact deserialization failed: {} : payload: {}",
-                e.what(),
-                buffer_printer{_bt_payload});
+            log::warning(logcat, "EncryptedClientContact deserialization failed: {}", e.what());
+            log::trace(logcat, "Failing Encrypted CC data: {}", buffer_printer{_bt_payload});
             throw;
         }
     }
@@ -205,10 +202,15 @@ namespace llarp
     {
         std::optional<ClientContact> cc;
         auto plaintext = encrypted;
-        // FIXME: either ClientContact::emplace needs to throw if decryption fails, or we need
-        // to catch some actual failure here.  Need some authentication.
-        crypto::xchacha20(plaintext, root, nonce);
-        cc.emplace(plaintext);
+        crypto::xchacha20(plaintext, SharedSecret{root}, nonce);
+        try
+        {
+            cc.emplace(plaintext);
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Client contact decryption failed for {}", root);
+        }
 
         return cc;
     }
