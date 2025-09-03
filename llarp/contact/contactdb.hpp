@@ -2,7 +2,10 @@
 
 #include "client_contact.hpp"
 
-#include <llarp/ev/types.hpp>
+namespace oxen::quic
+{
+    class Ticker;
+}
 
 namespace llarp
 {

@@ -109,8 +109,8 @@ lokinet_add_library(lokinet-addressing
   address/ip_range.cpp
   address/utils.cpp
 
+  ev/fd_poller.cpp
   ev/tcp.cpp
-  ev/types.cpp
 )
 
 lokinet_add_library(lokinet-dns

@@ -3,26 +3,23 @@
 #include <llarp/bootstrap.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/contact/router_id.hpp>
-#include <llarp/ev/types.hpp>
 #include <llarp/util/thread/threading.hpp>
 
 #include <atomic>
 #include <filesystem>
 #include <optional>
-#include <set>
 #include <shared_mutex>
 #include <unordered_set>
 
 namespace oxen::quic
 {
     class message;
+    class Ticker;
 }
 
 namespace llarp
 {
     class Router;
-
-    // TESTNET: the following constants have been shortened for testing purposes
 
     inline constexpr auto FETCH_INTERVAL{10min};
     inline constexpr auto PURGE_INTERVAL{5min};
@@ -128,7 +125,7 @@ namespace llarp
         std::atomic<bool> _needs_bootstrap{false}, _is_bootstrapping{false}, _has_bstrap_connection{false},
             _is_connecting_bstrap{false};
 
-        std::shared_ptr<EventTrigger> _bootstrap_handler;
+        //std::shared_ptr<EventTrigger> _bootstrap_handler;
 
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
         std::shared_ptr<quic::Ticker> _rc_fetch_ticker;

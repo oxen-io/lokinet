@@ -4,7 +4,7 @@
 
 #include <llarp/address/map.hpp>
 #include <llarp/dns/server.hpp>
-#include <llarp/ev/types.hpp>
+#include <llarp/ev/fd_poller.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
@@ -56,7 +56,7 @@ namespace llarp::handlers
         std::string _if_name;
 
         std::shared_ptr<vpn::NetworkInterface> _net_if;
-        std::unique_ptr<FDPoller> _poller;
+        std::unique_ptr<ev::FDPoller> _poller;
 
         std::shared_ptr<vpn::PacketRouter> _packet_router;
 
@@ -156,7 +156,7 @@ namespace llarp::handlers
 
         Router& router() { return _router; }
 
-        void start_poller();
+        void start_poller() override;
 
         // Stores assigned IP's for each session in/out of this lokinet instance
         //  - Reserved local addresses are directly pre-loaded from config

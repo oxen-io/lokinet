@@ -322,24 +322,6 @@ namespace llarp::handlers
         _if_name = _net_if->interface_info().ifname;
 
         log::info(logcat, "{} got network interface:{}", name(), _if_name);
-
-        auto pkt_hook = [this]() {
-            for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
-            {
-                log::trace(logcat, "packet router receiving {}", pkt.info_line());
-                _packet_router->handle_ip_packet(std::move(pkt));
-            }
-        };
-
-#ifdef __linux__
-        _poller = std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop.get_event_base(), std::move(pkt_hook));
-#endif
-        if (not _poller)
-        {
-            auto err = "{} failed to add network interface!"_format(name());
-            log::critical(logcat, "{}", err);
-            throw std::runtime_error{std::move(err)};
-        }
     }
 
     static bool is_random_snode(const dns::Message& msg) { return msg.questions[0].IsName("random.snode"); }
@@ -1168,9 +1150,14 @@ namespace llarp::handlers
 
     void TunEndpoint::start_poller()
     {
-        if (not _poller->start())
-            throw std::runtime_error{"TUN failed to start FD poller!"};
-        log::trace(logcat, "TUN successfully started FD poller!");
+        _poller = std::make_unique<ev::FDPoller>(_router.loop, _net_if->PollFD(), [this] {
+            for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
+            {
+                log::trace(logcat, "packet router receiving {}", pkt.info_line());
+                _packet_router->handle_ip_packet(std::move(pkt));
+            }
+        });
+        log::debug(logcat, "TUN successfully started FD poller!");
     }
 
     bool TunEndpoint::is_allowing_traffic(const IPPacket& pkt) const

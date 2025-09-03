@@ -115,6 +115,7 @@ namespace llarp
                 return false;
             }
 
+#if 0
             if (_bootstrap_handler and not _bootstrap_handler->is_iterating())
             {
                 log::warning(
@@ -125,6 +126,7 @@ namespace llarp
                     MIN_ACTIVE_RCS);
                 _bootstrap_handler->start();
             }
+#endif
 
             return false;
         }
@@ -451,7 +453,7 @@ namespace llarp
         _is_bootstrapping = false;
         // this function is only called in success or lokinet shutdown, so we will never need bootstrapping
         _needs_bootstrap = false;
-        _bootstrap_handler->stop();
+        //_bootstrap_handler->stop();
 
         if (success)
         {
@@ -671,8 +673,8 @@ namespace llarp
             counter,
             _bootstraps.size());
 
-        _bootstrap_handler = _router.loop.make_shared<EventTrigger>(
-            _router.loop, FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
+        //_bootstrap_handler = _router.loop.make_shared<EventTrigger>(
+        //    _router.loop, FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
     }
 
     void NodeDB::load_from_disk()
@@ -749,12 +751,14 @@ namespace llarp
 
     void NodeDB::cleanup()
     {
+#if 0
         if (_bootstrap_handler)
         {
             log::trace(logcat, "NodeDB clearing bootstrap handler...");
             _bootstrap_handler->stop();
             _bootstrap_handler.reset();
         }
+#endif
 
         if (_rid_fetch_ticker)
         {

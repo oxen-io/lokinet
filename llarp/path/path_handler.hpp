@@ -4,7 +4,6 @@
 
 #include <llarp/address/address.hpp>
 #include <llarp/contact/client_intro.hpp>
-#include <llarp/ev/types.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -14,6 +13,11 @@
 #include <chrono>
 #include <ranges>
 #include <unordered_map>
+
+namespace oxen::quic
+{
+    class Ticker;
+}
 
 namespace llarp
 {
