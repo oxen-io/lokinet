@@ -610,6 +610,13 @@ namespace llarp::link
             return;
         }
 
+        if (conn.selected_alpn() == BOOTSTRAP_ALPN)
+        {
+            // These are untracked, so don't need to enter the below cleanup code.
+            log::debug(logcat, "bootstrap connection closed, ec={}", ec);
+            return;
+        }
+
         router.loop.call([this,
                           ref_id = conn.reference_id(),
                           rid = RouterID{conn.remote_key().first<32>()},
