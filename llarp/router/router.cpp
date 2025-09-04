@@ -821,15 +821,6 @@ namespace llarp
                 n_conns,
                 _client_target_outbounds);
             _link_manager->connect_to_keep_alive(num_needed);
-
-            // TODO FIXME: wtf "subtract bootstrap"?
-            if (num_needed == _client_target_outbounds - 1)  // subtract bootstrap
-            {
-                log::info(
-                    logcat,
-                    "Client has 0 non-bootstrap router connections currently; bypassing SessionEndpoint tick...");
-                return;
-            }
         }
 
         _session_endpoint->tick(now);

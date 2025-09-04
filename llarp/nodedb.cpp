@@ -65,8 +65,10 @@ namespace llarp
         assert(!_bootstraps.empty());
         _bootstrap_running = true;
 
-        _rc_fetch_ticker->stop();
-        _rid_fetch_ticker->stop();
+        if (_rc_fetch_ticker)
+            _rc_fetch_ticker->stop();
+        if (_rid_fetch_ticker)
+            _rid_fetch_ticker->stop();
 
         struct bs_data
         {
@@ -414,10 +416,22 @@ namespace llarp
         bool need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
         if (not need_bootstrap)
         {
-            if (_rc_fetch_ticker)
-                _rc_fetch_ticker->start();
+            // TODO FIXME: we've now completed a bootstrap and so we want to fire off a full RID
+            // fetch.  This current logic, however, doesn't seem right (but isn't specific to here):
+            // we fire off an rid fetch *and* fire off an RC fetch back to back, on separate timers,
+            // when really they should be dependent.
+            //
+            // But I'm not fixing it here because it needs a more significant overhaul.
             if (_rid_fetch_ticker)
+            {
                 _rid_fetch_ticker->start();
+                fetch_rids();
+            }
+            if (_rc_fetch_ticker)
+            {
+                _rc_fetch_ticker->start();
+                fetch_rcs();
+            }
             return;
         }
 
@@ -443,7 +457,8 @@ namespace llarp
         load_from_disk();
     }
 
-    void NodeDB::load_bootstrap(const std::filesystem::path& fpath) {
+    void NodeDB::load_bootstrap(const std::filesystem::path& fpath)
+    {
         if (not exists(fpath))
             throw std::runtime_error{"Bootstrap RC file '{}' does not exist"_format(fpath)};
 
@@ -481,7 +496,8 @@ namespace llarp
         }
     }
 
-    void NodeDB::load_bootstraps() {
+    void NodeDB::load_bootstraps()
+    {
         const auto def = _router.config().router.data_dir / default_bootstrap;
         for (const auto& f : _router.config().bootstrap.files)
         {
@@ -511,13 +527,18 @@ namespace llarp
             log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
             for (const auto& [n, rc_blob] : bootstrap_fallbacks)
             {
-                if (n == _router.netid()) {
+                if (n == _router.netid())
+                {
                     load_bootstrap(rc_blob, "Fallback bootstrap data");
                     break;
                 }
             }
 
-            log::info(logcat, "Loaded {} {} default fallback bootstrap router contact(s)", _bootstraps.size(), _router.netid());
+            log::info(
+                logcat,
+                "Loaded {} {} default fallback bootstrap router contact(s)",
+                _bootstraps.size(),
+                _router.netid());
 
             if (_bootstraps.empty())
             {
@@ -534,7 +555,6 @@ namespace llarp
 
         log::debug(logcat, "We have {} Bootstrap router(s)!", _bootstraps.size());
     }
-
 
     void NodeDB::post_rid_fetch(bool shutdown)
     {
