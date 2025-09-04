@@ -63,7 +63,7 @@ namespace llarp
                 btdp.append("n", dh_nonce.span());
                 btdp.append("x", payload);
 
-                return {PATH::CONTROL::serialize("session_init", to_bytes(btdp)), secret};
+                return {to_bytes(btdp), secret};
             }
             catch (const std::exception& e)
             {
