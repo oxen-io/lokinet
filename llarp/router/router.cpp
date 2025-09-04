@@ -232,7 +232,7 @@ namespace llarp
                 SERVICE_MANAGER_REPORT_INTERVAL, []() { sys::service_manager->report_periodic_stats(); });
 #endif
 
-        _node_db->start_tickers();
+        _node_db->start();
         _contact_db->start_tickers();
         _link_endpoint->start_tickers();
 
@@ -764,12 +764,6 @@ namespace llarp
         if (should_report_stats(now))
             report_stats();
 
-        if (not _node_db->tick(now))
-        {
-            log::trace(logcat, "Router awaiting NodeDB completion to proceed with ::tick() logic...");
-            return;
-        }
-
         bool registered = appears_registered();
 
         if (now >= _next_dereg_warning)
@@ -813,12 +807,6 @@ namespace llarp
 
         if (should_report_stats(now))
             report_stats();
-
-        if (not _node_db->tick(now))
-        {
-            log::trace(logcat, "Router awaiting NodeDB completion to proceed with ::tick() logic...");
-            return;
-        }
 
         // TODO: make "use_pinned_edges" boolean to only connect to pinned edges
         // if we need more sessions to routers we shall connect out to others
@@ -1100,7 +1088,7 @@ namespace llarp
             _omq.reset();
 
             _close_promise.set_value();
-            log::debug(logcat, "Router is stopped");
+            log::info(log_global, "Lokinet has stopped");
         });
     }
 

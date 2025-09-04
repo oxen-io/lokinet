@@ -59,79 +59,77 @@ namespace llarp
         return rand;
     }
 
-    bool NodeDB::tick(std::chrono::milliseconds /*now*/)
+    void NodeDB::bootstrap()
     {
         assert(_router.loop.inside());
-        if (_is_bootstrapping or _is_connecting_bstrap)
-        {
-            log::trace(logcat, "NodeDB deferring ::tick() to bootstrap fetch completion...");
-            return false;
-        }
+        assert(!_bootstraps.empty());
+        _bootstrap_running = true;
 
-        // TODO FIXME: there can be more than one bootstrap, and if we are a bootstrap then we may
-        // still want to connect to other bootstraps, so this "just don't bootstrap if a seed" is
-        // wrong.  We instead need something like "if we are the only bootstrap"
+        _rc_fetch_ticker->stop();
+        _rid_fetch_ticker->stop();
 
-        // only enter bootstrap process if we have NOT marked initial fetch as needed
-        if (_needs_bootstrap)
+        struct bs_data
         {
-            if (not _has_bstrap_connection)
+            NodeDB& nodedb;
+            size_t rc_i = 0;
+            std::vector<std::byte> body;
+            RouterID source;
+
+            // Shared pointer to ourself to keep us alive.  This is released once we run out of rcs,
+            // or get a successful fetch.
+            std::shared_ptr<void> keep_alive;
+
+            void try_next()
             {
-                if (_is_connecting_bstrap)
+                if (nodedb._router.is_stopping())
                 {
-                    log::trace(
-                        logcat, "{} awaiting bstrap connect attempt...", _router.is_service_node ? "Relay" : "Client");
-                    return false;
+                    log::debug(logcat, "Aborting bootstrap because of router stop");
+                    keep_alive.reset();
+                    return;
                 }
 
-                auto& brc = _bootstraps.current();
-                auto bsrc = brc.router_id();
+                if (rc_i >= nodedb._bootstraps.size())
+                {
+                    log::debug(logcat, "Bootstrapping failed: bootstraps list exhausted without any success");
+                    auto ka = std::move(keep_alive);
+                    nodedb.on_bootstrap_done(false);
+                    return;
+                }
 
-                log::critical(
+                auto& rc = nodedb._bootstraps[rc_i];
+                source = rc.router_id();
+                log::debug(
                     logcat,
-                    "{} has 0 router connections; connecting to bootstrap {}...",
-                    _router.is_service_node ? "Relay" : "Client",
-                    bsrc);
+                    "Initiating bootstrap request to {} @ {}",
+                    rc.router_id().to_network_address(true),
+                    rc.addr());
+                auto [conn, control] = nodedb._router.link_endpoint().bootstrap_connect(rc);
+                control->command("bfetch_rcs", body, [this, conn](quic::message m) {
+                    nodedb._router.loop.call_soon([this, m = std::move(m)] {
+                        if (not m)
+                            log::warning(logcat, "Bootstrap fetch failed: {}", m.timed_out ? "timeout" : m.body());
 
-                log::critical(logcat, "BOOTSTRAPPING FIXME");
-                // Temporarily disable this code to be fixed in the following commits
-#if 0
-                _router.link_manager().connect_to(
-                    brc,
-                    [this](quic::connection_interface& ci) {
-                        log::info(logcat, "Successfully connected to bootstrap node!");
-                        _has_bstrap_connection = true;
-                        _is_connecting_bstrap = false;
-                        return _router.link_manager().on_conn_open(ci);
-                    },
-                    [this](quic::connection_interface& ci, uint64_t ec) {
-                        log::warning(logcat, "Failed to connect to bootstrap node!");
-                        _is_connecting_bstrap = false;
-                        return _router.link_manager().on_conn_closed(ci, ec);
+                        else if (nodedb.handle_bootstrap_result(source, m.body()))
+                        {
+                            auto ka = std::move(keep_alive);
+                            nodedb.on_bootstrap_done(true);
+                            return;
+                        }
+
+                        try_next();
                     });
-#endif
 
-                _is_connecting_bstrap = true;
-                return false;
+                    conn->close_connection();
+                });
             }
+        };
+        auto bs = std::make_shared<bs_data>(*this);
+        bs->keep_alive = bs;
+        bs->body = BootstrapFetch::serialize(
+            _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt,
+            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT);
 
-#if 0
-            if (_bootstrap_handler and not _bootstrap_handler->is_iterating())
-            {
-                log::warning(
-                    logcat,
-                    "{} has {} of {} minimum RCs; initiating bootstrap RC fetch...",
-                    _router.is_service_node ? "Relay" : "Client",
-                    num_rcs(),
-                    MIN_ACTIVE_RCS);
-                _bootstrap_handler->start();
-            }
-#endif
-
-            return false;
-        }
-
-        return true;
+        bs->try_next();
     }
 
     void NodeDB::purge_rcs(std::chrono::milliseconds now)
@@ -146,13 +144,6 @@ namespace llarp
         }
 
         remove_rcs_if([this, now](const RemoteRC& rc) -> bool {
-            // don't purge bootstrap RCs
-            if (_bootstraps.contains(rc))
-            {
-                log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
-                return false;
-            }
-
             // if for some reason we stored an RC that isn't a valid router
             // purge this entry
             if (not rc.addr().is_public())
@@ -197,7 +188,12 @@ namespace llarp
             return false;
         });
 
-        _needs_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+        if (num_rcs() < MIN_ACTIVE_RCS and not _bootstraps.empty() and not _bootstrap_running)
+        {
+            log::warning(logcat, "Purging expired relays resulted in too few RCs; falling back to bootstrap mode");
+            _bootstrap_fails = 0;
+            bootstrap();
+        }
     }
 
     std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
@@ -376,27 +372,63 @@ namespace llarp
             known_rids.insert(rid);
     }
 
-    void NodeDB::start_tickers()
+    void NodeDB::start()
     {
         log::trace(logcat, "NodeDB starting tickers...");
 
         _purge_ticker = _router.loop.call_every(PURGE_INTERVAL, [this] { purge_rcs(); });
 
+        auto need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+        if (not has_bootstraps())
+        {
+            log::warning(logcat, "Only {} known RCs, but no bootstrap nodes are configured", num_rcs());
+            need_bootstrap = false;
+        }
+
         if (not _router.is_service_node)
         {
-            // start these immediately if we do not need to bootstrap
             _rc_fetch_ticker = _router.loop.call_every(
-                FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
+                FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
 
             _rid_fetch_ticker = _router.loop.call_every(
-                FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
-
-            if (not _needs_bootstrap)
-            {
-                _router.loop.call_later(uniform_duration_distribution{10s, 15s}(llarp::csrng), [this] { fetch_rcs(); });
-                _router.loop.call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
-            }
+                FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
         }
+
+        if (need_bootstrap)
+            bootstrap();
+    }
+
+    void NodeDB::on_bootstrap_done(bool success)
+    {
+        if (success)
+        {
+            log::debug(logcat, "Bootstrap attempt completed successfully");
+            _bootstrap_fails = 0;
+        }
+        else
+        {
+            _bootstrap_fails++;
+            log::debug(logcat, "Bootstrap attempt failed ({} consecutive failures)", _bootstrap_fails);
+        }
+
+        bool need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+        if (not need_bootstrap)
+        {
+            if (_rc_fetch_ticker)
+                _rc_fetch_ticker->start();
+            if (_rid_fetch_ticker)
+                _rid_fetch_ticker->start();
+            return;
+        }
+
+        auto cooldown = std::min(BOOTSTRAP_COOLDOWN * (success ? 1 : _bootstrap_fails), BOOTSTRAP_COOLDOWN_MAX);
+        log::warning(
+            logcat,
+            "Not enough RCs ({}) after {} bootstrap; trying again in {}",
+            num_rcs(),
+            success ? "successful" : "failed",
+            cooldown);
+        _router.loop.call_later(cooldown, [this] { bootstrap(); });
     }
 
     NodeDB::NodeDB(Router& r) : _router{r}, _root{_router.config().router.data_dir / nodedb_dirname}
@@ -406,14 +438,103 @@ namespace llarp
         if (not is_directory(_root))
             throw std::runtime_error{fmt::format("nodedb {} is not a directory", _root)};
 
-        _bootstraps.populate(
-            _router.netid(), _router.config().bootstrap.files, _router.config().router.data_dir / default_bootstrap);
+        load_bootstraps();
 
-        bootstrap_init();
         load_from_disk();
-
-        _needs_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
     }
+
+    void NodeDB::load_bootstrap(const std::filesystem::path& fpath) {
+        if (not exists(fpath))
+            throw std::runtime_error{"Bootstrap RC file '{}' does not exist"_format(fpath)};
+
+        auto content = util::file_to_string(fpath);
+        if (content.empty())
+            throw std::runtime_error{"Bootstrap RC file '{}' is empty"_format(fpath)};
+
+        load_bootstrap(content, "Bootstrap RC file '{}'"_format(fpath));
+
+        log::debug(logcat, "Successfully loaded BootstrapRC file {} ({}B)", fpath, content.size());
+    }
+
+    void NodeDB::load_bootstrap(std::string_view data, std::string_view input_desc)
+    {
+        try
+        {
+            // Bootstrap data can container either a list of bootstraps, or just a single bootstrap RC:
+            if (data.front() == 'l')
+            {
+                // list of bootstrap RCs
+                for (oxenc::bt_list_consumer l{data}; !l.is_finished();)
+                    _bootstraps.emplace_back(l.consume_dict_data(), _router.netid(), /*accept_expired=*/true);
+            }
+            else
+            {
+                // single bootstrap RC
+                _bootstraps.emplace_back(data, _router.netid(), /*accept_expired=*/true);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::debug(
+                logcat, "Failed to load the following bootstrap data from {}: {}", input_desc, buffer_printer{data});
+            throw std::runtime_error{"{} does not contain valid bootstrap data: {}"_format(input_desc, e.what())};
+        }
+    }
+
+    void NodeDB::load_bootstraps() {
+        const auto def = _router.config().router.data_dir / default_bootstrap;
+        for (const auto& f : _router.config().bootstrap.files)
+        {
+            log::debug(logcat, "Loading BootstrapRC from file {}", f);
+            load_bootstrap(f);
+        }
+
+        if (_bootstraps.empty() && exists(def))
+        {
+            log::debug(logcat, "No configured bootstraps; loading from {}", def);
+            try
+            {
+                load_bootstrap(def);
+            }
+            catch (const std::exception& e)
+            {
+                log::warning(logcat, "Failed loading from default bootstrap file {}: {}.  Skipping it.", def, e.what());
+            }
+        }
+
+        auto obsolete = std::erase_if(_bootstraps, [](const auto& bs) { return bs.is_obsolete(); });
+        if (obsolete > 0)
+            log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
+
+        if (_bootstraps.empty())
+        {
+            log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
+            for (const auto& [n, rc_blob] : bootstrap_fallbacks)
+            {
+                if (n == _router.netid()) {
+                    load_bootstrap(rc_blob, "Fallback bootstrap data");
+                    break;
+                }
+            }
+
+            log::info(logcat, "Loaded {} {} default fallback bootstrap router contact(s)", _bootstraps.size(), _router.netid());
+
+            if (_bootstraps.empty())
+            {
+                log::warning(
+                    logcat,
+                    "No bootstrap router contacts were loaded.  The default bootstrap file {} does not "
+                    "exist, and this lokinet binary does not have any fallback bootstraps for the '{}' network.",
+                    def,
+                    _router.netid());
+            }
+        }
+
+        std::shuffle(_bootstraps.begin(), _bootstraps.end(), llarp::csrng);
+
+        log::debug(logcat, "We have {} Bootstrap router(s)!", _bootstraps.size());
+    }
+
 
     void NodeDB::post_rid_fetch(bool shutdown)
     {
@@ -435,87 +556,16 @@ namespace llarp
             log::trace(logcat, "Client successfully completed RouterID fetch!");
     }
 
-    void NodeDB::stop_bootstrap(bool success)
-    {
-        _is_bootstrapping = false;
-        // this function is only called in success or lokinet shutdown, so we will never need bootstrapping
-        _needs_bootstrap = false;
-        //_bootstrap_handler->stop();
-
-        if (success)
-        {
-            log::debug(
-                logcat, "{} completed processing BootstrapRC fetch!", _router.is_service_node ? "Relay" : "Client");
-
-            if (not _purge_ticker->is_running())
-            {
-                log::trace(logcat, "{} activating NodeDB purge ticker", _router.is_service_node ? "Relay" : "Client");
-                _purge_ticker->start();
-            }
-
-            if (not _router.is_service_node)
-            {
-                if (not _rid_fetch_ticker->is_running())
-                {
-                    log::trace(logcat, "Client starting RID fetch ticker");
-                    _rid_fetch_ticker->start();
-                }
-
-                if (not _rc_fetch_ticker->is_running())
-                {
-                    log::trace(logcat, "Client starting RC fetch ticker");
-                    _rc_fetch_ticker->start();
-                }
-            }
-        }
-        else
-            log::critical(
-                logcat,
-                "{} stopping bootstrap without a successful fetch!",
-                _router.is_service_node ? "Relay" : "Client");
-    }
-
-    void NodeDB::bootstrap()
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (_router.is_stopping() || not _router.is_running())
-        {
-            log::debug(logcat, "NodeDB unable to continue bootstrap fetch -- router is stopped!");
-            return stop_bootstrap(false);
-        }
-
-        auto rc = _is_bootstrapping.exchange(true) ? _bootstraps.next() : _bootstraps.current();
-        auto source = rc.router_id();
-
-        log::debug(logcat, "Dispatching BootstrapRC to {}", source.short_string());
-
-        auto num_needed = _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
-
-        _router.link_endpoint().send_command(
-            rc,
-            "bfetch_rcs",
-            BootstrapFetch::serialize(
-                _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
-            [this, source](quic::message m) { handle_bootstrap_result(source, std::move(m)); });
-    }
-
-    void NodeDB::handle_bootstrap_result(const RouterID& source, quic::message m)
+    bool NodeDB::handle_bootstrap_result(const RouterID& source, std::string_view body)
     {
         assert(_router.loop.inside());
         log::debug(logcat, "Received response to BootstrapRC fetch request...");
-
-        if (not m)
-        {
-            log::warning(logcat, "BootstrapRC fetch request to {} failed", source.short_string());
-            return;
-        }
 
         int num = 0, accepted = 0;
 
         try
         {
-            oxenc::bt_dict_consumer btdc{m.body()};
+            oxenc::bt_dict_consumer btdc{body};
 
             btdc.required("r");
 
@@ -532,32 +582,17 @@ namespace llarp
                     ++num;
                 }
             }
+            btdc.finish();
         }
         catch (const std::exception& e)
         {
             log::warning(
                 logcat, "Failed to parse BootstrapRC fetch response from {}: {}", source.short_string(), e.what());
-            return;
+            return false;
         }
 
-        if (num >= MIN_ACTIVE_RCS)
-        {
-            log::info(
-                logcat,
-                "{} BootstrapRC fetch successfully produced {} RCs ({} minimum needed) with {} accepted",
-                _router.is_service_node ? "Relay" : "Client",
-                num,
-                MIN_ACTIVE_RCS,
-                accepted);
-            return stop_bootstrap(true);
-        }
-
-        log::warning(
-            logcat,
-            "BootstrapRC response from {} returned {} RCs ({} minimum needed); continuing bootstrapping...",
-            source.short_string(),
-            num,
-            MIN_ACTIVE_RCS);
+        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, accepted);
+        return true;
     }
 
     bool NodeDB::has_registered_relays() const
@@ -616,7 +651,7 @@ namespace llarp
         assert(_router.loop.inside());
         if (not _router.is_service_node)
         {
-            if (_pinned_edges.size() and not _pinned_edges.contains(remote) and not _bootstraps.contains(remote))
+            if (_pinned_edges.size() and not _pinned_edges.contains(remote))
                 return false;
 
             return known_rids.contains(remote);
@@ -638,30 +673,6 @@ namespace llarp
     {
         _strict_connect = true;
         _pinned_edges = std::move(edges);
-    }
-
-    void NodeDB::bootstrap_init()
-    {
-        log::trace(logcat, "NodeDB storing bootstraps...");
-
-        if (_bootstraps.empty())
-            return;
-
-        size_t counter{0};
-
-        for (size_t i = 0; i < _bootstraps.size(); i++)
-            counter += put_rc(_bootstraps.next());
-
-        auto success = counter == _bootstraps.size();
-        log::log(
-            logcat,
-            success ? log::Level::info : log::Level::err,
-            "NodeDB loaded {}/{} bootstrap routers",
-            counter,
-            _bootstraps.size());
-
-        //_bootstrap_handler = _router.loop.make_shared<EventTrigger>(
-        //    _router.loop, FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
     }
 
     void NodeDB::load_from_disk()
@@ -712,15 +723,6 @@ namespace llarp
 
     void NodeDB::cleanup()
     {
-#if 0
-        if (_bootstrap_handler)
-        {
-            log::trace(logcat, "NodeDB clearing bootstrap handler...");
-            _bootstrap_handler->stop();
-            _bootstrap_handler.reset();
-        }
-#endif
-
         if (_rid_fetch_ticker)
         {
             log::trace(logcat, "NodeDB clearing rid fetch ticker...");
@@ -740,13 +742,6 @@ namespace llarp
             log::trace(logcat, "NodeDB clearing purge ticker...");
             _purge_ticker->stop();
             _purge_ticker.reset();
-        }
-
-        if (_flush_ticker)
-        {
-            log::trace(logcat, "NodeDB clearing flush ticker...");
-            _flush_ticker->stop();
-            _flush_ticker.reset();
         }
 
         log::debug(logcat, "NodeDB cleared all tickers...");
@@ -792,7 +787,7 @@ namespace llarp
             stored = rc;
         }
 
-        // We inserted or stored, to queue saving it to disk on the disk loop
+        // We inserted or updated the record, so queue saving it to disk on the disk loop
         _router.disk_loop.call_soon([rc, path = get_path_by_pubkey(rc.router_id())] { rc.write(path); });
 
         return should_gossip;

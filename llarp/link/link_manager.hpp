@@ -23,7 +23,8 @@
 #include <chrono>
 #include <unordered_map>
 
-namespace llarp {
+namespace llarp
+{
     class Router;
 }
 namespace llarp::link
@@ -50,6 +51,13 @@ namespace llarp::link
     inline const auto RELAY_ALPN = "Lokinet_R"s;
     inline const auto CLIENT_ALPN = "Lokinet_C"s;
 
+    // Special ALPN used when bootstrapping; unlike the above, this does not replace any existing
+    // connection (e.g. if an already-connected pubkey reconnects) and these connections are not
+    // used as general relay or client connections.  This ALPN only supports a single BT stream
+    // command, bfetch_rcs, issued from the client to the server.
+    inline const auto BOOTSTRAP_ALPN = "Lokinet_BS"s;
+    inline const auto BOOTSTRAP_IDLE_TIMEOUT = 10s;
+
     class Manager
     {
       public:
@@ -67,7 +75,13 @@ namespace llarp::link
 
         std::atomic<bool> is_stopping{false};
 
+        // Registers commands on the client or relay end of a client-relay or relay-relay connection
         void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
+
+        // Registered the bootstrap command (bfetch_rcs) on the server (i.e. incoming) bootstrap
+        // connection (i.e.  to the relay being used as a bootstrap).  The client side of such a
+        // connection doesn't have any commands to register.
+        void register_bootstrap_commands(quic::BTRequestStream& s);
 
       public:
         link::Endpoint endpoint;

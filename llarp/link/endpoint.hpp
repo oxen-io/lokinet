@@ -108,7 +108,6 @@ namespace llarp::link
         bool _client_connected{false};
 
       public:
-
         void start_tickers();
 
         // Returns the connection to the given relay.  If there are established connections in both
@@ -217,8 +216,21 @@ namespace llarp::link
         // meaningful value for service nodes.
         bool is_client_connected() const;
 
+        // Makes a new connection to the given relay as a Lokinet bootstrap client (i.e. using the
+        // special bootstrapping ALPN, even if this node is a relay) *without* using an existing
+        // connection or tracking it in existing connections.  This is primarily used when
+        // bootstrapping to avoid having the connection get treated as a regular relay connection on
+        // either side of the connection.  The connection does not use keep-alive and is expected to
+        // be short lived.
+        //
+        // Returns the connection and the control stream through which a bfetch_rc command can be
+        // issued.  (This is the only command supported under the bootstrap ALPN).
+        std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> bootstrap_connect(
+            const RemoteRC& rc);
+
       private:
-        std::shared_ptr<quic::BTRequestStream> make_control(quic::Connection& conn, const RouterID& rid);
+        std::shared_ptr<quic::BTRequestStream> make_control(
+            quic::Connection& conn, const RouterID& rid, std::string_view alpn);
 
         void on_inbound_conn(std::shared_ptr<quic::Connection> conn);
         void on_outbound_conn(std::shared_ptr<quic::Connection> conn);

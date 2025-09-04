@@ -1,8 +1,8 @@
-#include <llarp/bootstrap.hpp>
+#include <llarp/nodedb.hpp>
 
 namespace llarp
 {
-    const std::vector<std::pair<NetID, std::string_view>> BootstrapList::bootstrap_fallbacks
+    const std::vector<std::pair<NetID, std::string_view>> NodeDB::bootstrap_fallbacks
     {
         // clang-format off
 @BOOTSTRAP_FALLBACKS@

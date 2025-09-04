@@ -1,6 +1,5 @@
 #pragma once
 
-#include <llarp/bootstrap.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/contact/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -52,9 +51,11 @@ namespace llarp
     inline constexpr size_t SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT{0};
     inline constexpr size_t CLIENT_BOOTSTRAP_SOURCE_COUNT{10};
 
-    // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
-    inline constexpr auto FETCH_ATTEMPT_INTERVAL{15s};
-    inline constexpr auto FETCH_ATTEMPTS{1};
+    // After a bootstrap (success or failure) that results in not enough RCs, this is how long we
+    // wait before bootstrapping again.  In the case of repeated failures, we apply an linear
+    // backoff in incrments of this value up to BOOTSTRAP_COOLDOWN_MAX.
+    inline constexpr auto BOOTSTRAP_COOLDOWN = 3s;
+    inline constexpr auto BOOTSTRAP_COOLDOWN_MAX = 60s;
 
     /*  Other Constants  */
     // threshold net number of verifications needed to promote an RID to known (positive) or drop
@@ -91,7 +92,12 @@ namespace llarp
 
         std::unordered_map<RouterID, RemoteRC> known_rcs;
 
-        BootstrapList _bootstraps{};
+        static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
+        std::vector<RemoteRC> _bootstraps;
+        void load_bootstraps();
+        void load_bootstrap(const std::filesystem::path&);
+        void load_bootstrap(std::string_view data, std::string_view log_desc);
+
 
         // All registered relays (service nodes)
         std::unordered_set<RouterID> _registered_relays;
@@ -114,30 +120,28 @@ namespace llarp
         std::atomic<int> fail_counter{};
         std::atomic<int> response_counter{};
 
+        bool _bootstrap_running = false;
+        int _bootstrap_fails = 0;
+
         /// asynchronously remove the files for a set of rcs on disk given their public ident key
         void remove_many_from_disk_async(const std::vector<RouterID>& idents) const;
 
         /// get filename of an RC file given its public ident key
         std::filesystem::path get_path_by_pubkey(const RouterID& pk) const;
 
-        // TESTNET: NEW MEMBERS FOR BOOTSTRAPPING MANAGED BY EVENTTRIGGER OBJECT
-        std::atomic<bool> _needs_bootstrap{false}, _is_bootstrapping{false}, _has_bstrap_connection{false},
-            _is_connecting_bstrap{false};
-
-        // std::shared_ptr<EventTrigger> _bootstrap_handler;
-
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
         std::shared_ptr<quic::Ticker> _rc_fetch_ticker;
 
         std::shared_ptr<quic::Ticker> _purge_ticker;
-        std::shared_ptr<quic::Ticker> _flush_ticker;
 
       public:
         explicit NodeDB(Router& r);
 
         bool strict_connect_enabled() const { return _strict_connect; }
 
-        void start_tickers();
+        // Starts the nodedb tickers for purge and fetch (clients), and initiates a bootstrap if the
+        // nodedb has too few RCs.
+        void start();
 
         // returns {num_rcs, num_rids, num_bootstraps}
         std::array<int, 3> db_stats() const;
@@ -146,9 +150,6 @@ namespace llarp
 
         const std::unordered_map<RouterID, RemoteRC>& get_known_rcs() const { return known_rcs; }
 
-        bool is_bootstrapping() const { return _is_bootstrapping; }
-        bool needs_bootstrap() const { return _needs_bootstrap; }
-        bool bootstrap_completed() const { return not(_is_bootstrapping or _needs_bootstrap); }
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
         void set_registered_relays(std::unordered_set<RouterID> relays);
@@ -170,6 +171,7 @@ namespace llarp
         //
         // server:
         //   we only build new paths through registered, non-decommissioned relays
+        //   TODO FIXME: What does this mean? Servers don't build paths?
         bool is_path_allowed(const RouterID& remote) const { return known_rids.count(remote); }
 
         // if pinned edges were specified, the remote must be in that set, else any remote
@@ -182,13 +184,9 @@ namespace llarp
         // paths starting with the given router IDs.
         void set_pinned_edges(std::unordered_set<RouterID> edges);
 
-        void bootstrap_init();
-
         int num_bootstraps() const { return static_cast<int>(_bootstraps.size()); }
 
-        bool has_bootstraps() const { return _bootstraps.empty(); }
-
-        const BootstrapList& bootstrap_list() const { return _bootstraps; }
+        bool has_bootstraps() const { return !_bootstraps.empty(); }
 
         // Returns true if `relay` is a registered relay.  This uses a mutex (rather that event
         // loop) protection so that it can be safely called from either event loop without disk a
@@ -205,9 +203,6 @@ namespace llarp
         int num_rcs() const;
 
         int num_rids() const;
-
-        /// do periodic tasks like flush to disk and expiration
-        bool tick(std::chrono::milliseconds now);
 
         /// find the `num_relays` relays with IDs closest to the given blinded pubkey, in order
         /// from closest to Nth-closest.  Note that this searches all network-registered rids, even
@@ -248,6 +243,9 @@ namespace llarp
         ///   reachability (i.e. changed IP or port, or other important RC properties).
         /// - Gossips will not be accepted if the currently stored RC for the relay is not at least
         ///   a minute older than the incoming one.
+        ///
+        /// `store_to_disk` is usually omitted to store the RC if it is accepted, but is false in
+        /// special cases such as when adding bootstrap fallbacks.
         bool put_rc(const RemoteRC& rc);
 
         /// Checks of the relay in the given rc is a registered network relay (either active or
@@ -260,12 +258,19 @@ namespace llarp
       private:
         void fetch_rcs();
         void fetch_rids();
+
+        /// Initiate a bootstrap fetch attempt.  This will try to bootstrap once from each
+        /// configured bootstrap node until bootstrapping succeeds, or all bootstraps have been
+        /// tried.  `on_bootstrap_done` will be called when the attempt finishes with a boolean
+        /// indicating whether bootstrapping was successful.
+        ///
+        /// While a bootstrap is running the regular rid- and rc-fetching routines are disabled.
         void bootstrap();
-        void handle_bootstrap_result(const RouterID& source, oxen::quic::message m);
+        void on_bootstrap_done(bool success);
+
+        bool handle_bootstrap_result(const RouterID& source, std::string_view body);
 
         void post_rid_fetch(bool shutdown = false);
-
-        void stop_bootstrap(bool success);
 
         /// remove any stored RCs matching the given predicate
         void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);

@@ -7,7 +7,6 @@
 #include <llarp/address/ip_range.hpp>
 #include <llarp/auth/auth.hpp>
 #include <llarp/auth/file.hpp>
-#include <llarp/bootstrap.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/relay_contact.hpp>

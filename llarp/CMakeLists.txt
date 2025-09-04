@@ -70,7 +70,7 @@ if (LOKINET_FULL)
   )
 endif()
 
-# config, crypto, timeplace, nodedb, bootstrap.cpp, net, router
+# config, crypto, timeplace, nodedb, net, router
 lokinet_add_library(lokinet-utils
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/buffer.cpp
@@ -179,7 +179,6 @@ endif()
 # lokinet-nodedb holds all types and logic for storing parsing and constructing
 # nodedb data published to the network and versions of it stored locally
 lokinet_add_library(lokinet-nodedb
-  bootstrap.cpp   # config, router.hpp
   nodedb.cpp
   profiling.cpp # path, router, service::endpoint
 )
@@ -193,8 +192,8 @@ foreach(bs IN ITEMS MAINNET TESTNET)
     set(BOOTSTRAP_FALLBACKS "${BOOTSTRAP_FALLBACKS}        {NetID::${bs}, \"${bs_data}\"sv},\n")
   endif()
 endforeach()
-configure_file("bootstrap-fallbacks.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp" @ONLY)
-target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp")
+configure_file("nodedb-bootstraps.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/nodedb-bootstraps.cpp" @ONLY)
+target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/nodedb-bootstraps.cpp")
 
 # lokinet-config is for all configuration types and parsers
 lokinet_add_library(lokinet-config

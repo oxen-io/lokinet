@@ -5,9 +5,8 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/util/time.hpp>
 
-// TODO FIXME: This include shouldn't be necessary to actually construct an Endpoint, but apparently
-// is:
-#include <oxen/quic/context.hpp>
+#include <oxen/quic/btstream.hpp>
+#include <oxen/quic/context.hpp>  // TODO FIXME: can't construct an Endpoint without this!
 #include <sodium/crypto_generichash_blake2b.h>
 
 namespace llarp::link
@@ -76,7 +75,7 @@ namespace llarp::link
     {
         std::optional<quic::opt::inbound_alpns> inbound_alpn;
         if (router.is_service_node)
-            inbound_alpn.emplace({RELAY_ALPN, CLIENT_ALPN});
+            inbound_alpn.emplace({RELAY_ALPN, CLIENT_ALPN, BOOTSTRAP_ALPN});
 
         endpoint = quic::Endpoint::endpoint(
             *loop,
@@ -100,6 +99,7 @@ namespace llarp::link
                 // NB: this code *must not* call_get into the router event loop, because there are
                 // lots of places that router call-get's into endloop.loop, and so any attempt to
                 // call-get the other direction is a recipe for deadlock.
+
                 if (key.size() != RouterID::SIZE)
                 {
                     log::warning(
@@ -109,10 +109,11 @@ namespace llarp::link
                         RouterID::SIZE);
                     return false;
                 }
-                RouterID other{key.first<32>()};
 
-                if (alpn == CLIENT_ALPN)
+                if (alpn == CLIENT_ALPN || alpn == BOOTSTRAP_ALPN)
                     return true;
+
+                RouterID other{key.first<32>()};
 
                 if (other == router.local_rid())
                 {
@@ -342,7 +343,7 @@ namespace llarp::link
                 quic::opt::idle_timeout{router.is_service_node ? RELAY_OUTBOUND_IDLE_TIMEOUT : CLIENT_IDLE_TIMEOUT},
                 [this](quic::Connection& conn) { on_conn_established(conn); });
 
-            auto control_stream = make_control(*conn, rid);
+            auto control_stream = make_control(*conn, rid, router.is_service_node ? RELAY_ALPN : CLIENT_ALPN);
 
             pending = std::make_shared<Connection>(std::move(conn), std::move(control_stream));
         }
@@ -419,7 +420,8 @@ namespace llarp::link
         return true;
     }
 
-    std::shared_ptr<quic::BTRequestStream> Endpoint::make_control(quic::Connection& conn, const RouterID& remote)
+    std::shared_ptr<quic::BTRequestStream> Endpoint::make_control(
+        quic::Connection& conn, const RouterID& remote, std::string_view alpn)
     {
         std::shared_ptr<quic::BTRequestStream> control_stream;
 
@@ -432,6 +434,13 @@ namespace llarp::link
 
             log::trace(logcat, "Queued BTStream to be opened (ID:{})", control_stream->stream_id());
             assert(control_stream->stream_id() == 0);
+
+            if (alpn == BOOTSTRAP_ALPN)
+            {
+                assert(router.is_service_node);  // A client should never be receiving an *inbound*
+                                                 // bootstrap ALPN connection.
+                manager.register_bootstrap_commands(*control_stream);
+            }
         }
         else
         {
@@ -442,18 +451,29 @@ namespace llarp::link
             log::trace(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
         }
 
-        manager.register_commands(*control_stream, remote, not router.is_service_node);
+        if (alpn != BOOTSTRAP_ALPN)
+            manager.register_commands(*control_stream, remote, not router.is_service_node);
+
         return control_stream;
     }
 
+    static auto log_bs = log::Cat("bootstrap");
     void Endpoint::on_inbound_conn(std::shared_ptr<quic::Connection> qconn)
     {
         assert(router.is_service_node);
         assert(qconn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
         RouterID rid{qconn->remote_key().first<RouterID::SIZE>()};
 
-        auto control = make_control(*qconn, rid);
-        bool is_relay = qconn->selected_alpn() != CLIENT_ALPN;
+        auto alpn = qconn->selected_alpn();
+        auto control = make_control(*qconn, rid, alpn);
+
+        if (alpn == BOOTSTRAP_ALPN)
+        {
+            log::debug(log_bs, "New incoming bootstrap connection from {} ({})", qconn->remote(), rid.short_string());
+            return;
+        }
+
+        bool is_relay = alpn != CLIENT_ALPN;
 
         auto conn = std::make_shared<link::Connection>(std::move(qconn), std::move(control));
 
@@ -663,6 +683,51 @@ namespace llarp::link
     bool Endpoint::is_client_connected() const
     {
         return router.loop.call_get([this] { return _client_connected; });
+    }
+
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
+        const RemoteRC& rc)
+    {
+        std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> ret;
+        auto& [conn, control] = ret;
+        log::debug(
+            logcat,
+            "Initiating new bootstrap connection to {} @ {}",
+            rc.router_id().to_network_address(true),
+            rc.addr());
+
+        conn = endpoint->connect(
+            quic::RemoteAddress{rc.router_id().to_view(), rc.addr()},
+            tls_creds,
+            quic::opt::idle_timeout{BOOTSTRAP_IDLE_TIMEOUT},
+            quic::opt::outbound_alpns{{BOOTSTRAP_ALPN}},
+            [](quic::Connection& conn) {
+                log::debug(
+                    logcat,
+                    "Successfully connected to bootstrap {} @ {}",
+                    RouterID{conn.remote_key().first<32>()}.to_network_address(true),
+                    conn.remote());
+            },
+            [](quic::Connection& conn, uint64_t ec) {
+                if (ec)
+                    log::warning(
+                        logcat,
+                        "{} while connecting to bootstrap {} @ {}",
+                        ec == static_cast<uint64_t>(NGTCP2_ERR_HANDSHAKE_TIMEOUT)
+                            ? "Connection timeout"
+                            : "An error occurred (ec={})"_format(ec),
+                        RouterID{conn.remote_key().first<32>()}.to_network_address(true),
+                        conn.remote());
+                else
+                    log::debug(
+                        logcat,
+                        "Connection to bootstrap {} closed.",
+                        RouterID{conn.remote_key().first<32>()}.to_network_address(true));
+            });
+
+        control = conn->open_stream<quic::BTRequestStream>();
+
+        return ret;
     }
 
 }  // namespace llarp::link

@@ -89,10 +89,6 @@ namespace llarp::link
                 [this, remote_rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote_rid); });
         });
 
-        s.register_handler("bfetch_rcs"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
-        });
-
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
             router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
         });
@@ -114,6 +110,15 @@ namespace llarp::link
         });
 
         log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
+    }
+
+    void Manager::register_bootstrap_commands(quic::BTRequestStream& s)
+    {
+        s.register_handler("bfetch_rcs"s, [this](quic::message m) {
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
+        });
+
+        log::trace(logcat, "Registered bootstrap commands for inbound bootstrap connection");
     }
 
     Manager::Manager(Router& r) : router{r}, endpoint{*this} {}

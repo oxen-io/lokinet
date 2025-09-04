@@ -2,7 +2,6 @@
 
 #include "route_poker.hpp"
 
-#include <llarp/bootstrap.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/contact/relay_contact.hpp>
@@ -300,8 +299,6 @@ namespace llarp
         void stop();
 
         void fetch_snode_identity();
-
-        // bool is_bootstrap_node(RouterID rid) const;
 
         std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
 
