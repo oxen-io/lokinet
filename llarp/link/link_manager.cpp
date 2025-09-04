@@ -1131,7 +1131,7 @@ namespace llarp::link
         if (auto it = path_requests.find(endpoint); it != path_requests.end())
         {
             log::debug(logcat, "Received path control request (`{}`); invoking endpoint...", endpoint);
-            std::invoke(it->second, this, std::move(m), std::move(body));
+            (this->*(it->second))(std::move(m), std::move(body));
         }
         else
             log::warning(logcat, "Received path control request (`{}`), which has no local handler!", endpoint);
