@@ -76,11 +76,13 @@ namespace llarp::link
         std::atomic<bool> is_stopping{false};
 
         // Registers commands on the client or relay end of a client-relay or relay-relay connection
+        // NB: this could be called from either the network or router loop thread!
         void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
 
         // Registered the bootstrap command (bfetch_rcs) on the server (i.e. incoming) bootstrap
         // connection (i.e.  to the relay being used as a bootstrap).  The client side of such a
         // connection doesn't have any commands to register.
+        // NB: this could be called from either the network or router loop thread!
         void register_bootstrap_commands(quic::BTRequestStream& s);
 
       public:

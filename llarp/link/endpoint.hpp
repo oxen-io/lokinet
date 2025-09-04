@@ -232,7 +232,7 @@ namespace llarp::link
         std::shared_ptr<quic::BTRequestStream> make_control(
             quic::Connection& conn, const RouterID& rid, std::string_view alpn);
 
-        void on_inbound_conn(std::shared_ptr<quic::Connection> conn);
+        void on_inbound_conn(std::shared_ptr<quic::Connection> conn, std::shared_ptr<quic::BTRequestStream> control);
         void on_outbound_conn(std::shared_ptr<quic::Connection> conn);
 
         void on_conn_established(quic::Connection& conn);

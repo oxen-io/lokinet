@@ -458,15 +458,14 @@ namespace llarp::link
     }
 
     static auto log_bs = log::Cat("bootstrap");
-    void Endpoint::on_inbound_conn(std::shared_ptr<quic::Connection> qconn)
+    void Endpoint::on_inbound_conn(
+        std::shared_ptr<quic::Connection> qconn, std::shared_ptr<quic::BTRequestStream> control)
     {
         assert(router.is_service_node);
         assert(qconn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
         RouterID rid{qconn->remote_key().first<RouterID::SIZE>()};
 
         auto alpn = qconn->selected_alpn();
-        auto control = make_control(*qconn, rid, alpn);
-
         if (alpn == BOOTSTRAP_ALPN)
         {
             log::debug(log_bs, "New incoming bootstrap connection from {} ({})", qconn->remote(), rid.short_string());
@@ -575,7 +574,14 @@ namespace llarp::link
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        router.loop.call([this, weak = conn.weak_from_this()]() {
+        std::shared_ptr<quic::BTRequestStream> inbound_cstream;
+        if (conn.is_inbound())
+            // We have to set up the control stream here, before the router loop transfer below,
+            // because the stream must be queued before stream data gets processed which could
+            // happen immediately after this callback.
+            inbound_cstream = make_control(conn, RouterID{conn.remote_key().first<32>()}, conn.selected_alpn());
+
+        router.loop.call([this, weak = conn.weak_from_this(), inbound_cstream = std::move(inbound_cstream)]() {
             auto conn = weak.lock();
             if (not conn)
             {
@@ -584,7 +590,7 @@ namespace llarp::link
             }
 
             if (conn->is_inbound())
-                on_inbound_conn(std::move(conn));
+                on_inbound_conn(std::move(conn), std::move(inbound_cstream));
             else
                 on_outbound_conn(std::move(conn));
 
