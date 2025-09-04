@@ -1154,7 +1154,7 @@ namespace llarp::link
         }
         catch (const std::exception& e)
         {
-            log::warning(logcat, "Exception: {}", e.what());
+            log::warning(logcat, "Failed to parse initiate session message: {}", e.what());
             return;
         }
 

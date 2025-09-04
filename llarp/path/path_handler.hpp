@@ -162,7 +162,7 @@ namespace llarp
             /// build is not currently possible.
             int64_t build(
                 std::span<const RemoteRC> hops,
-                std::chrono::milliseconds expiry = llarp::time_now_ms() + path::MAX_LIFETIME);
+                std::chrono::milliseconds expiry_ts = llarp::time_now_ms() + path::MAX_LIFETIME);
 
             /// Returns a view over all current paths (as `Path&` references)
             auto paths() const
@@ -193,7 +193,7 @@ namespace llarp
             /// Takes a set of path hops (edge, hop1, hop2, ..., pivot) and initializes a Path
             /// following those hops, including generating path IDs that will be used along the
             /// path.
-            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry);
+            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts);
 
             /// Takes a path as constructed by build_init_path and constructs an encoded network
             /// path build message containing the frames required to build the path.

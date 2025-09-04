@@ -335,7 +335,7 @@ namespace llarp::path
 
         if (auto maybe_hops = select_hops_to_remote(remote))
         {
-            build(*maybe_hops, lifetime);
+            build(*maybe_hops, llarp::time_now_ms() + lifetime);
             return true;
         }
 
@@ -372,9 +372,9 @@ namespace llarp::path
         return true;
     }
 
-    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry)
+    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
     {
-        auto path = std::make_shared<path::Path>(router, hops, *this, expiry);
+        auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
 
         Lock_t l{paths_mutex};
 
@@ -598,14 +598,14 @@ namespace llarp::path
     }
 
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry)
+    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
     {
         Lock_t lock{paths_mutex};
 
         // error message logs in function scope
         if (can_build(hops))
         {
-            if (auto new_path = build_init_path(hops, expiry))
+            if (auto new_path = build_init_path(hops, expiry_ts))
             {
                 auto id = ++_path_counter;
                 send_path_build(std::move(new_path), id);

@@ -344,7 +344,7 @@ namespace llarp::handlers
             std::array<int, path::MAX_LIFETIME_SLOTS> slot_count_a = {0};
             auto slot_count = std::span{slot_count_a}.first(slots);
 
-            // The base slot, as a multiple of the slot_size since our fixes basis: we consider
+            // The base slot, as a multiple of the slot_size since our fixed basis: we consider
             // other path expiries relative to this.  We add 1 because the slot for the *current*
             // time (after truncation) will be an expired slot time, and so we only expect to see
             // path slots strictly greater than that.

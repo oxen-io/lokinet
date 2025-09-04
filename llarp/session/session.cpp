@@ -972,7 +972,11 @@ namespace llarp::session
         }
         if (!_is_established)
         {
-            log::debug(logcat, "Aligned path for remote ({}) established, initiating session", _remote);
+            log::debug(
+                logcat,
+                "{} remote ({}) established, initiating session",
+                _remote.client() ? "Aligned path for" : "Path to",
+                _remote);
 
             const auto& local_pivot_txid = path.terminal_hopid();
             const auto& remote_pivot_txid = path.aligned_hopid ? *path.aligned_hopid : local_pivot_txid;
@@ -987,7 +991,7 @@ namespace llarp::session
                 [this](quic::message m) mutable {
                     if (m)
                     {
-                        log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
+                        log::debug(logcat, "Call to initiate outbound session returned success");
 
                         try
                         {
@@ -995,12 +999,12 @@ namespace llarp::session
                         }
                         catch (const std::exception& e)
                         {
-                            // TESTNET: TODO: close session here?
-                            log::warning(logcat, "Exception: {}", e.what());
+                            // TESTNET: TODO FIXME: close session here?
+                            log::warning(logcat, "Failed to parse session_init response: {}", e.what());
                             return;
                         }
 
-                        log::debug(logcat, "Remote relay has provided session tag: {}", _tag);
+                        log::debug(logcat, "Remote provided session tag: {}", _tag);
 
                         log::trace(logcat, "Outbound session to {} successfully created.", remote());
                         _is_established = true;
@@ -1008,23 +1012,20 @@ namespace llarp::session
                     }
                     else
                     {
-                        std::optional<std::string> status = std::nullopt;
+                        std::string_view status = m.timed_out ? "request timed out"sv : "<no reason given>"sv;
                         try
                         {
                             oxenc::bt_dict_consumer btdc{m.body()};
 
-                            if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
-                                status = s;
+                            if (auto s = btdc.maybe<std::string_view>(messages::STATUS_KEY))
+                                status = *s;
                         }
                         catch (const std::exception& e)
                         {
-                            log::warning(logcat, "Exception: {}", e.what());
+                            log::warning(logcat, "Failed to parse session_init error response: {}", e.what());
                         }
 
-                        log::info(
-                            logcat,
-                            "Call to initiate OutboundRelaySession FAILED; reason: {}",
-                            status.value_or("<none given>"));
+                        log::info(logcat, "Call to initiate outbound session FAILED: {}", status);
                     }
                 });
         }
@@ -1171,7 +1172,7 @@ namespace llarp::session
             std::uniform_int_distribution<int>{0, static_cast<int>(select_from.size()) - 1}(llarp::csrng));
     }
 
-    void OutboundClientSession::on_path_build_success(int64_t /*build_id*/, path::Path& p)
+    void OutboundSession::on_path_build_success(int64_t /*build_id*/, path::Path& p)
     {
         log::debug(logcat, "{} path {} built successfully", _remote, p);
         assert(router.loop.inside());
@@ -1186,7 +1187,7 @@ namespace llarp::session
             select_new_current();
     }
 
-    void OutboundClientSession::on_path_build_failure(int64_t /*build_id*/, path::Path* /*p*/, bool timeout)
+    void OutboundSession::on_path_build_failure(int64_t /*build_id*/, path::Path* /*p*/, bool timeout)
     {
         log::warning(
             logcat,

@@ -194,6 +194,8 @@ namespace llarp
 
             void tick(std::chrono::milliseconds now) override;
 
+            virtual void select_new_current() = 0;
+
             // Closes non-active paths that are close to expiry, i.e. any paths that we would not
             // select if we need to switch paths.
             void close_old_paths(std::chrono::milliseconds now);
@@ -217,6 +219,10 @@ namespace llarp
             // time after which we should give up and fire the callback anyway.  The callback can
             // figure out which case this was by checking `session.is_active()`.
             std::priority_queue<active_item, std::vector<active_item>, on_established_sorter> _on_established;
+
+            void on_path_build_success(int64_t build_id, path::Path& p) override;
+
+            void on_path_build_failure(int64_t build_id, path::Path* p, bool timeout) override;
 
           public:
             // void stop_session() override;
@@ -257,7 +263,7 @@ namespace llarp
             // void stop(bool send_close = false) override;
 
           private:
-            void select_new_current();
+            void select_new_current() override;
         };
 
         // Outbound Session to Remote Client
@@ -281,11 +287,7 @@ namespace llarp
             // living beyond the expiry of the pivot).
             std::optional<std::pair<RouterID, std::chrono::seconds>> select_pivot();
 
-            void select_new_current();
-
-            void on_path_build_success(int64_t build_id, path::Path& p) override;
-
-            void on_path_build_failure(int64_t build_id, path::Path* p, bool timeout) override;
+            void select_new_current() override;
 
           public:
             // Initiates a client intro lookup via the session endpoint.  This can be called even if
