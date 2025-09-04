@@ -96,7 +96,7 @@ namespace llarp
                     return;
                 }
 
-                auto& rc = nodedb._bootstraps[rc_i];
+                auto& rc = nodedb._bootstraps[rc_i++];
                 source = rc.router_id();
                 log::debug(
                     logcat,
