@@ -424,7 +424,7 @@ namespace llarp
         auto cooldown = std::min(BOOTSTRAP_COOLDOWN * (success ? 1 : _bootstrap_fails), BOOTSTRAP_COOLDOWN_MAX);
         log::warning(
             logcat,
-            "Not enough RCs ({}) after {} bootstrap; trying again in {}",
+            "Not enough RCs ({}) after {} bootstrap attempt; trying again in {}",
             num_rcs(),
             success ? "successful" : "failed",
             cooldown);
