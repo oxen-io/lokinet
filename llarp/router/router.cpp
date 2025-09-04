@@ -701,7 +701,7 @@ namespace llarp
         using namespace fmt::literals;
         auto [rcs, rids, bs] = _node_db->db_stats();
         auto [s_in, s_out_r, s_out_c, s_out_r_pending, s_out_c_pending] = _session_endpoint->session_stats();
-        auto [in_paths, out_r_paths, out_c_paths] = _session_endpoint->path_stats();
+        auto [in_paths, out_r_paths, out_c_paths] = _session_endpoint->path_stats(now);
         if (is_service_node)
         {
             auto [relays, rout, rin, rpending, clients] = link_endpoint().relay_connection_counts();
