@@ -449,11 +449,11 @@ namespace llarp::session
         const bool relay_session_return = !is_outbound && is_relay_session;
 
         std::vector<std::byte> everything;
-        auto target_size = data.size() + 1 + _tag.size() + (relay_session_return ? _remote_pivot_txid.size() : 0);
+        auto target_size = data.size() + 1 + _tag.size() + (relay_session_return ? 0 : _remote_pivot_txid.size());
         everything.reserve(target_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
         everything.resize(target_size);
         auto [ciphertext, tag, pivot] = split_span(everything, data.size() + 1, _tag.size());
-        assert(pivot.size() == (relay_session_return ? _remote_pivot_txid.size() : 0));
+        assert(pivot.size() == (relay_session_return ? 0 : _remote_pivot_txid.size()));
 
         std::memcpy(ciphertext.data(), data.data(), data.size());
         ciphertext[data.size()] = static_cast<std::byte>(type);
