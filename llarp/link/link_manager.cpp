@@ -72,6 +72,12 @@ namespace llarp::link
             return;
         }
 
+        // Do-nothing endpoint that returns no response, used by the initiator of a relay-relay
+        // connection to force open the stream on the server end.  Without that initial message, the
+        // server end would stay pending and anything it tries to send would just remain stuck in
+        // the queued stream until the connection initiator sends something to vivify the stream.
+        s.register_handler("noop", [](const quic::message&) {});
+
         s.register_handler("path_switch"s, [this](quic::message m) {
             router.loop.call([this, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
         });
