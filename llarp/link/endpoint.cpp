@@ -444,16 +444,11 @@ namespace llarp::link
         }
         else
         {
-            control_stream = conn.open_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
-                log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
-            });
-            if (alpn == RELAY_ALPN)
-                // For relay-to-relay connections where we expect one single bidirectional stream,
-                // we run into a QUIC issue that the actual stream does not get instantiated until
-                // something is received on it from the other end.  Thus we immediately queue a tiny
-                // do-nothing message to force it open on both ends so that even if we have nothing
-                // to say, the server can still talk to us.
-                control_stream->command("noop", "");
+            control_stream = conn.open_stream<quic::BTRequestStream>(
+                [](quic::Stream&, uint64_t error_code) {
+                    log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
+                },
+                quic::opt::stream_notify);
 
             log::trace(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
         }
