@@ -801,7 +801,22 @@ namespace llarp::session
         std::function<void(OutboundSession& session)> on_est,
         std::optional<std::chrono::milliseconds> on_est_timeout)
         : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), std::move(on_est), on_est_timeout}
-    {}
+    {
+        _parent.lookup_relay_contact(_remote.router_id(), [this](std::optional<llarp::RemoteRC> rc) mutable {
+            if (rc)
+            {
+                log::debug(logcat, "Relay contact for {} found: {}", _remote, *rc);
+                // Tick ourself to start building paths without waiting for the next scheduled tick
+                tick(llarp::time_now_ms());
+            }
+            else
+            {
+                log::debug(logcat, "RC lookup failed for {}", _remote);
+                // TODO FIXME: should we close the session?  Retry the lookup?  Start responding
+                // with ICMP unreachables?
+            }
+        });
+    }
 
     bool OutboundRelaySession::send_session_control_message(
         std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
