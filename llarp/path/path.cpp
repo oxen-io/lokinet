@@ -81,8 +81,12 @@ namespace llarp::path
 
     void Path::do_ping(std::chrono::milliseconds start_time)
     {
-        if (!is_active())
+        if (!is_active() || start_time < next_ping)
             return;
+
+        // Subtract a few milliseconds so that jitter in the tick processing time doesn't affect the
+        // ping interval:
+        next_ping = start_time + _router.config().paths.ping_interval - 20ms;
 
         log::trace(logcat, "Pinging path TXID={}", edge().txid);
         send_path_control_message("path_ping", {}, [this, wself = weak_from_this(), start_time](quic::message m) {
@@ -127,7 +131,7 @@ namespace llarp::path
                         edge().txid,
                         time_taken,
                         printable_ping_stats());
-                    expire = ++ping_recent_timeouts > 5;
+                    expire = ++ping_recent_timeouts > _router.config().paths.max_missed_pings;
                     if (expire)
                         log::warning(
                             logcat,
@@ -238,7 +242,6 @@ namespace llarp::path
 
         nlohmann::json obj{
             {"lastRecvMsg", to_json(last_recv_msg)},
-            {"lastLatencyTest", to_json(last_latency_test)},
             {"expired", is_expired(now)},
             {"ready", is_active()},
         };

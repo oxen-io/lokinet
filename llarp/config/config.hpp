@@ -118,6 +118,8 @@ namespace llarp
         std::chrono::seconds acceptable_expiry = 5min;
 
         std::chrono::milliseconds build_timeout{10s};
+        std::chrono::seconds ping_interval{5s};
+        int max_missed_pings{5};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };

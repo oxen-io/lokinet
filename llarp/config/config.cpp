@@ -1551,6 +1551,24 @@ namespace llarp
                 throw std::invalid_argument{"[paths]:min-expiry cannot be longer than [paths]:acceptable-expiry"};
         });
 
+        conf.define_option<std::chrono::seconds>(
+            "paths",
+            "ping-interval",
+            Default{5s},
+            ClientOnly,
+            Comment{"How frequently to send pings along built paths to test that they are still alive."},
+            lower_bounded_assignment_acceptor(ping_interval, 1s, "[paths]:ping-interval"));
+
+        conf.define_option<int>(
+            "paths",
+            "max-missed-pings",
+            Default{5},
+            ClientOnly,
+            Comment{
+                "The maximum number of consecutive missed pings (see ping-interval) allowed for a path.  If a path",
+                "misses more than this, the path will be considered to have died and be replaced."},
+            lower_bounded_assignment_acceptor(max_missed_pings, 0, "[paths]:max-missed-pings"));
+
 #ifdef WITH_GEOIP
         conf.defineOption<std::string>(
             "paths",

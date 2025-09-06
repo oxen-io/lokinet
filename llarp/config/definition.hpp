@@ -124,8 +124,9 @@ namespace llarp
         }
 
         /// Returns a value acceptor that accepts any value within a range of values.
-        template <std::totally_ordered T, std::convertible_to<T> Min, std::convertible_to<T> Max>
-        auto bounded_assignment_acceptor(T& ref, Min min, Max max, std::string setting_name)
+        template <std::totally_ordered T>
+        auto bounded_assignment_acceptor(
+            T& ref, std::type_identity_t<T> min, std::type_identity_t<T> max, std::string setting_name)
         {
             return [&ref, min = std::move(min), max = std::move(max), name = std::move(setting_name)](T arg) {
                 if (arg < min || arg > max)
@@ -133,8 +134,27 @@ namespace llarp
                 ref = std::move(arg);
             };
         }
-        template <std::totally_ordered T, std::convertible_to<T> Min, std::convertible_to<T> Max>
-        auto bounded_assignment_acceptor(std::optional<T>& ref, Min min, Max max, std::string setting_name)
+        template <std::totally_ordered T>
+        auto lower_bounded_assignment_acceptor(T& ref, std::type_identity_t<T> min, std::string setting_name)
+        {
+            return [&ref, min = std::move(min), name = std::move(setting_name)](T arg) {
+                if (arg < min)
+                    throw std::invalid_argument{fmt::format("{} must be >= {}", name, min)};
+                ref = std::move(arg);
+            };
+        }
+        template <std::totally_ordered T>
+        auto upper_bounded_assignment_acceptor(T& ref, std::type_identity_t<T> max, std::string setting_name)
+        {
+            return [&ref, max = std::move(max), name = std::move(setting_name)](T arg) {
+                if (arg > max)
+                    throw std::invalid_argument{fmt::format("{} must be <= {}", name, max)};
+                ref = std::move(arg);
+            };
+        }
+        template <std::totally_ordered T>
+        auto bounded_assignment_acceptor(
+            std::optional<T>& ref, std::type_identity_t<T> min, std::type_identity_t<T> max, std::string setting_name)
         {
             return [&ref, min = std::move(min), max = std::move(max), name = std::move(setting_name)](T arg) {
                 if (arg < min || arg > max)

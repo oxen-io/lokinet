@@ -122,6 +122,8 @@ namespace llarp::path
             update_paths(now);
 
         router.path_builds.update(now);
+
+        ping_paths(now);
     }
 
     nlohmann::json PathHandler::ExtractStatus() const

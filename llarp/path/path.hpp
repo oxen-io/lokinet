@@ -201,12 +201,11 @@ namespace llarp::path
 
         std::chrono::milliseconds _expiry{0s};
         std::chrono::milliseconds last_recv_msg{0s};
-        std::chrono::milliseconds last_latency_test{0s};
-        uint64_t last_latency_test_id{};
 
         static size_t next_path_log_id;
         const size_t path_log_id;  // Only used for log output
 
+        std::chrono::milliseconds next_ping{0s};
         int ping_responses{0}, ping_timeouts{0};
         int ping_recent_timeouts{0};
         // Cumulative time of all `ping_responses` pings (divide by ping_responses for an average).
