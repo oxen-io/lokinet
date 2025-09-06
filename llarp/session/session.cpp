@@ -332,6 +332,13 @@ namespace llarp::session
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
+        if (!_is_established)
+        {
+            log::debug(logcat, "Session not yet established: queuing packet for delayed delivery");
+            queue_data_message(data, type);
+            return;
+        }
+
         if (_dead_path)
         {
             log::warning(logcat, "Dropping session data message: session has no current path");
@@ -461,6 +468,20 @@ namespace llarp::session
         crypto::xchacha20(ciphertext, _shared_secret, nonce);
 
         return send_path_data_message(std::move(everything), std::move(nonce));
+    }
+
+    void OutboundSession::queue_data_message(std::span<const std::byte> data, uint8_t type)
+    {
+        if (!pre_establish_data_queue)
+            pre_establish_data_queue.emplace();
+        else
+            while (pre_establish_data_queue->size() >= MAX_QUEUED_PACKETS)
+                pre_establish_data_queue->pop_front();
+
+        auto& item = pre_establish_data_queue->emplace_back();
+        item.resize(data.size() + 1);
+        std::memcpy(item.data(), data.data(), data.size());
+        item.back() = static_cast<std::byte>(type);
     }
 
     void Session::recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce)
@@ -1066,6 +1087,15 @@ namespace llarp::session
                         log::trace(logcat, "Outbound session to {} successfully created.", remote());
                         _is_established = true;
                         _parent.outbound_session_established(*this);
+
+                        if (pre_establish_data_queue)
+                        {
+                            for (const auto& d : *pre_establish_data_queue)
+                                send_session_data_message(
+                                    std::span{d.data(), d.size() - 1}, static_cast<uint8_t>(d.back()));
+                            pre_establish_data_queue.reset();
+                        }
+
                         fire_waiting(llarp::time_now_ms());
                     }
                     else

@@ -157,6 +157,14 @@ namespace llarp
                     __PRETTY_FUNCTION__);
             }
 
+            // Called by send_session_data_message if trying to send a data message on a
+            // not-yet-established connection (which, by definition, can only be an outbound
+            // session).  The default does nothing, but OutboundSession overrides to queue them (up
+            // to a limit) so that initially sent packets on an initializing session get delivered
+            // as soon as the session establishes.  This allows, for example, pings to get delivered
+            // rather than having the first couple getting dropped before establishing.
+            virtual void queue_data_message(std::span<const std::byte> /*data*/, uint8_t /*type*/) {}
+
             void recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce);
 
             void publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
@@ -231,6 +239,11 @@ namespace llarp
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
 
+            void queue_data_message(std::span<const std::byte>, uint8_t type) override;
+
+            // We stash the `type` as the last byte of the vector
+            std::optional<std::deque<std::vector<std::byte>>> pre_establish_data_queue;
+
           private:
             void fire_waiting(std::chrono::milliseconds now);
 
@@ -266,6 +279,8 @@ namespace llarp
                 std::optional<std::chrono::milliseconds> timeout = std::nullopt);
 
             std::string to_string() const override;
+
+            inline static constexpr int MAX_QUEUED_PACKETS = 30;
         };
 
         // Outbound Session to Remote Relay
