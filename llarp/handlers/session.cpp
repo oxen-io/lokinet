@@ -120,13 +120,16 @@ namespace llarp::handlers
     }
 
     bool SessionEndpoint::recv_path_switch(
-        session_tag t, HopID remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
+        const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (auto* s = get_session<session::InboundRelaySession>(t))
         {
-            log::debug(logcat, "Successfully matched path-switch request to InboundRelaySession over transit hop {}", *new_thop);
+            log::debug(
+                logcat,
+                "Successfully matched path-switch request to InboundRelaySession over transit hop {}",
+                *new_thop);
 
             s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_thop));
             return true;
@@ -135,7 +138,8 @@ namespace llarp::handlers
         return false;
     }
 
-    bool SessionEndpoint::recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid)
+    bool SessionEndpoint::recv_path_switch(
+        const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid)
     {
         // FIXME: this needs to be encrypted
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -145,7 +149,8 @@ namespace llarp::handlers
             // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
             if (auto* path = get_path_by_terminus(local_pivot_txid))
             {
-                log::debug(logcat, "Successfully matched path-switch request to InboundClientSession over path:{}", *path);
+                log::debug(
+                    logcat, "Successfully matched path-switch request to InboundClientSession over path:{}", *path);
                 s->recv_path_switch(remote_pivot_txid, path->shared_from_this());
                 return true;
             }
@@ -156,6 +161,26 @@ namespace llarp::handlers
             log::warning(logcat, "Received path-switch request for unknown session (tag:{})", t);
 
         return false;
+    }
+
+    void SessionEndpoint::outbound_session_established(const session::Session& s)
+    {
+        if (auto it = _sessions.find(s.remote()); it != _sessions.end())
+        {
+            auto [it2, ins] = _session_tags.emplace(s.tag(), it->second);
+            if (!ins)
+            {
+                // TODO FIXME: we should redesign how session tags are constructed so that this
+                // isn't possible, e.g. by incorporating some local data into the tag value.
+                log::error(
+                    logcat,
+                    "Failed to insert outbound session tag for {}: tag {} already exists (associated with {})",
+                    s.remote(),
+                    s.tag(),
+                    it2->second->remote());
+            }
+            log::debug(logcat, "Associated session tag {} with outbound remote {}", s.tag(), s.remote());
+        }
     }
 
     bool SessionEndpoint::close_session(NetworkAddress remote, bool send_close)
@@ -856,10 +881,10 @@ namespace llarp::handlers
     }
 
     std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        NetworkAddress initiator,
-        HopID remote_pivot_txid,
+        const NetworkAddress& initiator,
+        const HopID& remote_pivot_txid,
         std::shared_ptr<path::Path> path,
-        SharedSecret session_key)
+        const SharedSecret& session_key)
     {
         assert(!router.is_service_node);
         // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
@@ -867,15 +892,14 @@ namespace llarp::handlers
         // can't possible conflict below.
         session_tag tag{protocols};
 
-        return setup_inbound_session(
-        std::make_shared<session::InboundClientSession>(
-                initiator, *this, tag, std::move(session_key), std::move(path), remote_pivot_txid));
+        return setup_inbound_session(std::make_shared<session::InboundClientSession>(
+            initiator, *this, tag, session_key, std::move(path), remote_pivot_txid));
     }
     std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        NetworkAddress initiator,
-        HopID remote_pivot_txid,
+        const NetworkAddress& initiator,
+        const HopID& remote_pivot_txid,
         std::shared_ptr<path::TransitHop> thop,
-        SharedSecret session_key)
+        const SharedSecret& session_key)
     {
         assert(router.is_service_node);
         // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
@@ -883,13 +907,12 @@ namespace llarp::handlers
         // can't possible conflict below.
         session_tag tag{protocols};
 
-        return setup_inbound_session(
-        std::make_shared<session::InboundRelaySession>(
-                initiator, *this, tag, std::move(session_key), std::move(thop), remote_pivot_txid));
+        return setup_inbound_session(std::make_shared<session::InboundRelaySession>(
+            initiator, *this, tag, session_key, std::move(thop), remote_pivot_txid));
     }
 
-    std::optional<session_tag> SessionEndpoint::setup_inbound_session(std::shared_ptr<session::Session> session) {
-
+    std::optional<session_tag> SessionEndpoint::setup_inbound_session(std::shared_ptr<session::Session> session)
+    {
         if (!map_session(*session))
         {
             log::warning(

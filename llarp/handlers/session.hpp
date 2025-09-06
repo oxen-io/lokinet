@@ -96,10 +96,13 @@ namespace llarp
             std::unordered_set<dns::SRVData> srv_records() const { return _srv_records; }
 
             // Called when a relay receives a path switch (i.e. for an inbound relay session)
-            bool recv_path_switch(session_tag t, HopID remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
+            bool recv_path_switch(
+                const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
 
             // Called when a client receives a path switch (i.e. for an inbound client session)
-            bool recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid);
+            bool recv_path_switch(const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid);
+
+            void outbound_session_established(const session::Session& s);
 
             template <std::derived_from<session::Session> S = session::Session>
             S* get_session(const session_tag& tag) const
@@ -144,19 +147,19 @@ namespace llarp
             // InboundClientSession.  Returns nullopt if the session cannot be created, otherwise
             // returns the random session tag we have associated with the inbound session.
             std::optional<session_tag> create_inbound_session(
-                NetworkAddress initiator,
-                HopID remote_pivot_txid,
+                const NetworkAddress& initiator,
+                const HopID& remote_pivot_txid,
                 std::shared_ptr<path::Path> path,
-                SharedSecret session_key);
+                const SharedSecret& session_key);
 
             // Called on a relay when we receive a session_init from a client to create an
             // InboundRelaySession.  Returns nullopt if the session cannot be created, otherwise
             // returns the random session tag we have associated with the inbound session.
             std::optional<session_tag> create_inbound_session(
-                NetworkAddress initiator,
-                HopID remote_pivot_txid,
+                const NetworkAddress& initiator,
+                const HopID& remote_pivot_txid,
                 std::shared_ptr<path::TransitHop> path,
-                SharedSecret session_key);
+                const SharedSecret& session_key);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client
             void resolve_sns(std::string name, std::function<void(std::optional<NetworkAddress>)> func);

@@ -1050,6 +1050,7 @@ namespace llarp::session
 
                         log::trace(logcat, "Outbound session to {} successfully created.", remote());
                         _is_established = true;
+                        _parent.outbound_session_established(*this);
                         fire_waiting(llarp::time_now_ms());
                     }
                     else
