@@ -10,6 +10,7 @@
 #include <llarp/util/time.hpp>
 
 #include <nlohmann/json.hpp>
+#include <sodium/randombytes.h>
 
 namespace llarp::path
 {
@@ -43,45 +44,4 @@ namespace llarp::path
             terminal_hop, txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
     }
 
-    InboundRelayPath::InboundRelayPath(const TransitHop& hop, handlers::SessionEndpoint& p)
-        : TransitHop{hop}, _parent{p}
-    {}
-
-    void InboundRelayPath::encrypt_path_message(std::vector<std::byte>& payload, SymmNonce&& nonce, std::byte type)
-    {
-        auto orig_size = payload.size();
-        payload.resize(orig_size + Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
-        static_assert(Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
-        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
-        assert(inner_payload.size() == orig_size);
-
-        nonce ^= xor_nonce;
-        crypto::xchacha20(inner_payload, shared_secret, nonce);
-        nonce.copy_to(bnonce);
-        rxid.copy_to(bhop);
-        msgtype[0] = type;
-    }
-
-    void InboundRelayPath::send_path_control_message(
-        std::string_view method,
-        std::span<const std::byte> body,
-        std::function<void(quic::message)> func,
-        std::byte type)
-    {
-        auto payload = PATH::CONTROL::serialize(method, body);
-        encrypt_path_message(payload, SymmNonce::make_random(), type);
-        _parent.router.link_endpoint().send_command(downstream, "path_control", std::move(payload), std::move(func));
-    }
-
-    void InboundRelayPath::send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce, std::byte type)
-    {
-        encrypt_path_message(body, std::move(nonce), type);
-        _parent.router.link_endpoint().send_datagram(downstream, std::move(body));
-    }
-
-    std::string InboundRelayPath::to_string() const
-    {
-        return "InboundRelayPath:[TX/RX:{}/{}; Up/Down:{}/{}; Exp:{}]"_format(
-            txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
-    }
 }  // namespace llarp::path

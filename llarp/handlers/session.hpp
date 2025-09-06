@@ -56,9 +56,10 @@ namespace llarp
 
             std::optional<std::string_view> fetch_auth_token(const NetworkAddress& remote) const;
 
+            std::optional<session_tag> setup_inbound_session(std::shared_ptr<session::Session> s);
+
             void close_session(std::shared_ptr<session::Session>& s, bool send_close);
 
-          protected:
             void on_path_build_failure(int64_t build_id, path::Path* path, bool timeout) override;
             void on_path_build_success(int64_t build_id, path::Path& p) override;
 
@@ -94,35 +95,28 @@ namespace llarp
             // get copy of all srv records
             std::unordered_set<dns::SRVData> srv_records() const { return _srv_records; }
 
-            bool recv_path_switch(
-                session_tag t, HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_path);
+            // Called when a relay receives a path switch (i.e. for an inbound relay session)
+            bool recv_path_switch(session_tag t, HopID remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
 
+            // Called when a client receives a path switch (i.e. for an inbound client session)
             bool recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid);
 
-            template <std::derived_from<session::Session> Session = session::Session>
-            std::shared_ptr<Session> get_session(const session_tag& tag) const
+            template <std::derived_from<session::Session> S = session::Session>
+            S* get_session(const session_tag& tag) const
             {
                 auto it = _session_tags.find(tag);
                 if (it == _session_tags.end())
                     return nullptr;
-
-                if constexpr (!std::same_as<Session, session::Session>)
-                    return std::dynamic_pointer_cast<Session>(it->second);
-                else
-                    return it->second;
+                return dynamic_cast<S*>(it->second.get());
             }
 
-            template <std::derived_from<session::Session> Session = session::Session>
-            std::shared_ptr<Session> get_session(const NetworkAddress& remote) const
+            template <std::derived_from<session::Session> S = session::Session>
+            S* get_session(const NetworkAddress& remote) const
             {
                 auto it = _sessions.find(remote);
                 if (it == _sessions.end())
                     return nullptr;
-
-                if constexpr (!std::same_as<Session, session::Session>)
-                    return std::dynamic_pointer_cast<Session>(it->second);
-                else
-                    return it->second;
+                return dynamic_cast<S*>(it->second.get());
             }
 
             bool close_session(NetworkAddress remote, bool send_close = false);
@@ -146,14 +140,22 @@ namespace llarp
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
             void unmap_remote_by_name(const std::string& name);
 
-            // Called when we receive a session_init from some client; we create either an
-            // InboundRelaySession (if we are a relay) or InboundClientSession (if we are a client).
-            // Returns nullopt if the session cannot be created, otherwise returns the random
-            // session tag we have associated with the inbound session.
+            // Called on a client when we receive a session_init from another client to create an
+            // InboundClientSession.  Returns nullopt if the session cannot be created, otherwise
+            // returns the random session tag we have associated with the inbound session.
             std::optional<session_tag> create_inbound_session(
                 NetworkAddress initiator,
                 HopID remote_pivot_txid,
-                std::shared_ptr<session_path_interface> path,
+                std::shared_ptr<path::Path> path,
+                SharedSecret session_key);
+
+            // Called on a relay when we receive a session_init from a client to create an
+            // InboundRelaySession.  Returns nullopt if the session cannot be created, otherwise
+            // returns the random session tag we have associated with the inbound session.
+            std::optional<session_tag> create_inbound_session(
+                NetworkAddress initiator,
+                HopID remote_pivot_txid,
+                std::shared_ptr<path::TransitHop> path,
                 SharedSecret session_key);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client

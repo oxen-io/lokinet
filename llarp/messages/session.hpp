@@ -2,7 +2,7 @@
 
 #include <llarp/address/address.hpp>
 #include <llarp/auth/auth.hpp>
-#include <llarp/path/path_types.hpp>
+#include <llarp/path/hopid.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
 namespace llarp

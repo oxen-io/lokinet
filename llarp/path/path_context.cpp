@@ -16,26 +16,51 @@ namespace llarp::path
 
     void PathContext::add_path(std::shared_ptr<Path> path) { _path_map.emplace(path->edge().rxid, std::move(path)); }
 
-    void PathContext::drop_paths(std::vector<HopID> droplist)
-    {
-        assert(_r.loop.inside());
-        for (auto itr = droplist.begin(); itr != droplist.end(); itr = droplist.erase(itr))
-            _drop_path(*itr);
-    }
-
     void PathContext::expire_hops(std::chrono::milliseconds now)
     {
         assert(_r.loop.inside());
-        auto n = std::erase_if(_transit_hops, [&now](const auto& x) { return x.second->is_expired(now); });
+        int n = 0;
+        for (auto it = _transit_hops.begin(); it != _transit_hops.end();)
+        {
+            if (it->second && it->second->is_expired(now))
+            {
+                it->second->is_dead = true;
+                it = _transit_hops.erase(it);
+                n++;
+            }
+            else
+                ++it;
+        }
 
         if (n > 0)
-            log::debug(logcat, "{} expired TransitHops purged!", n);
+            log::debug(logcat, "{} expired TransitHops purged", n);
     }
 
-    void PathContext::drop_path(const Path& path)
+    void PathContext::drop(const Path& path)
     {
         assert(_r.loop.inside());
-        _drop_path(path.edge().rxid);
+        auto it = _path_map.find(path.edge().rxid);
+        if (it != _path_map.end())
+        {
+            if (it->second)
+                it->second->is_dead = true;
+            _path_map.erase(it);
+        }
+    }
+
+    void PathContext::drop(const TransitHop& thop)
+    {
+        assert(_r.loop.inside());
+        for (const HopID* h : {&thop.txid, &thop.rxid})
+        {
+            auto it = _transit_hops.find(*h);
+            if (it != _transit_hops.end())
+            {
+                if (it->second)
+                    it->second->is_dead = true;
+                _transit_hops.erase(it);
+            }
+        }
     }
 
     std::tuple<size_t, size_t> PathContext::path_ctx_stats() const
@@ -81,14 +106,6 @@ namespace llarp::path
             return itr->second;
 
         return nullptr;
-    }
-
-    void PathContext::_drop_path(const HopID& hop_id)
-    {
-        assert(_r.loop.inside());
-
-        if (auto itr = _path_map.find(hop_id); itr != _path_map.end())
-            _path_map.erase(itr);
     }
 
     Path* PathContext::get_path(const HopID& hop_id) const

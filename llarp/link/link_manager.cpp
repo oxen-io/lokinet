@@ -1180,7 +1180,7 @@ namespace llarp::link
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            auto hop = router.path_context.get_transit_hop(params.local_pivot_txid);
+            auto hop = router.path_context.get_transit_hop_ptr(params.local_pivot_txid);
             if (not hop)
             {
                 log::warning(
@@ -1199,14 +1199,8 @@ namespace llarp::link
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
 
-            // TODO: The existence of InboundRelayPath seems pointless: we could just give the TransitHop to
-            // InboundRelaySession and let it take care of the very few things that InboundRelayPath does
-            // (because IRS is the only thing that uses InboundRelayPath at all!)
             tag = router.session_endpoint().create_inbound_session(
-                params.remote,
-                params.remote_pivot_txid,
-                std::make_shared<path::InboundRelayPath>(*hop, router.session_endpoint()),
-                std::move(params.session_key));
+                params.remote, params.remote_pivot_txid, std::move(hop), std::move(params.session_key));
         }
         else
         {
@@ -1275,7 +1269,7 @@ namespace llarp::link
         }
         else
         {
-            auto hop = router.path_context.get_transit_hop(local_pivot_txid);
+            auto hop = router.path_context.get_transit_hop_ptr(local_pivot_txid);
 
             if (not hop)
             {
@@ -1284,10 +1278,7 @@ namespace llarp::link
                 return m.respond(SessionPathSwitch::BAD_ID, true);
             }
 
-            if (router.session_endpoint().recv_path_switch(
-                    tag,
-                    std::move(remote_pivot_txid),
-                    std::make_shared<path::InboundRelayPath>(*hop, router.session_endpoint())))
+            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), std::move(hop)))
                 return m.respond(messages::OK_RESPONSE);
         }
 

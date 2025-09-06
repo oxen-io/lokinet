@@ -150,7 +150,11 @@ namespace llarp::path
         });
     }
 
-    bool Path::operator==(const Path& other) const { return hops == other.hops; }
+    bool Path::operator==(const Path& other) const
+    {
+        return std::ranges::equal(
+            hops, other.hops, [](const TransitHop& a, const TransitHop& b) { return a.same_transit(b); });
+    }
 
     void Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
     {
@@ -201,24 +205,21 @@ namespace llarp::path
         msgtype[0] = type;
     }
 
-    void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce, std::byte type)
+    void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
-        encrypt_path_message(data, std::move(nonce), type);
+        encrypt_path_message(data, std::move(nonce), DATA_MESSAGE_TYPE);
         _router.link_endpoint().send_datagram(edge().router_id, std::move(data));
     }
 
     void Path::send_path_control_message(
-        std::string_view endpoint,
-        std::span<const std::byte> body,
-        std::function<void(quic::message)> func,
-        std::byte type)
+        std::string_view endpoint, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
         auto inner_payload = PATH::CONTROL::serialize(endpoint, body);
         std::vector<std::byte> payload;
         payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD);
         payload.resize(inner_payload.size());
         std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
-        encrypt_path_message(payload, SymmNonce::make_random(), type);
+        encrypt_path_message(payload, SymmNonce::make_random(), CONTROL_MESSAGE_TYPE);
         _router.link_endpoint().send_command(edge().router_id, "path_control", std::move(payload), std::move(func));
     }
 

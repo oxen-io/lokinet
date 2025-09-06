@@ -3,6 +3,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/handlers/session.hpp>
 #include <llarp/handlers/tun.hpp>
+#include <llarp/link/endpoint.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
@@ -278,7 +279,6 @@ namespace llarp::session
         const NetworkAddress& remote,
         const SharedSecret& secret,
         const session_tag& t,
-        std::weak_ptr<session_path_interface> inbound_path,
         const HopID& remote_pivot_txid)
         : _r{r},
           _parent{parent},
@@ -286,7 +286,6 @@ namespace llarp::session
           _remote{remote},
           _shared_secret{secret},
           _remote_pivot_txid{remote_pivot_txid},
-          _current_path{std::move(inbound_path)},
           is_outbound{false},
           is_relay_session{_r.is_service_node}
     {
@@ -303,8 +302,7 @@ namespace llarp::session
     bool Session::send_session_control_message(
         std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto path = _current_path.lock();
-        if (!path)
+        if (_dead_path)
         {
             log::warning(logcat, "Dropping {} session control message: session has no current path", method);
             return false;
@@ -334,10 +332,8 @@ namespace llarp::session
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        auto path = _current_path.lock();
-        if (!path || !is_established())
+        if (_dead_path)
         {
-            // TODO FIXME: queue traffic?  (Perhaps only if `is_outbound` and we have no path?)
             log::warning(logcat, "Dropping session data message: session has no current path");
             return;
         }
@@ -464,7 +460,7 @@ namespace llarp::session
         // TODO FIXME: poly1305 MAC
         crypto::xchacha20(ciphertext, _shared_secret, nonce);
 
-        return path->send_path_data_message(std::move(everything), std::move(nonce));
+        return send_path_data_message(std::move(everything), std::move(nonce));
     }
 
     void Session::recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce)
@@ -633,16 +629,32 @@ namespace llarp::session
         }
     }
 
-    std::string Session::to_string() const
+    std::string OutboundSession::to_string() const
     {
-        auto path = _current_path.lock();
-        return "{}Session:[{}{} | {}]"_format(
-            is_outbound ? "O" : "I",
+        return "OSession:[{}{} | {}]"_format(
             _is_closed            ? "closing"
                 : _is_established ? "active"
                                   : "pending",
             is_exit_capable ? ",exit-capable" : "",
-            path ? fmt::to_string(*path) : "<NO-PATH>");
+            (_current_path && !_current_path->is_dead) ? fmt::to_string(*_current_path) : "<NO-PATH>");
+    }
+    std::string InboundClientSession::to_string() const
+    {
+        return "ISession:[{}{} | {}]"_format(
+            _is_closed            ? "closing"
+                : _is_established ? "active"
+                                  : "pending",
+            is_exit_capable ? ",exit-capable" : "",
+            (_current_path && !_current_path->is_dead) ? fmt::to_string(*_current_path) : "<NO-PATH>");
+    }
+    std::string InboundRelaySession::to_string() const
+    {
+        return "ISession:[{}{} | {}]"_format(
+            _is_closed            ? "closing"
+                : _is_established ? "active"
+                                  : "pending",
+            is_exit_capable ? ",exit-capable" : "",
+            (_current_thop && !_current_thop->is_dead) ? fmt::to_string(*_current_thop) : "<NO-T-HOP>");
     }
 
     OutboundSession::OutboundSession(
@@ -657,11 +669,6 @@ namespace llarp::session
         if (on_est)
             on_established(std::move(on_est), est_timeout);
         // TODO: kick off path builds immediately
-    }
-
-    std::shared_ptr<path::Path> OutboundSession::current_path()
-    {
-        return std::static_pointer_cast<path::Path>(_current_path.lock());
     }
 
     void OutboundSession::fire_waiting(std::chrono::milliseconds now)
@@ -690,6 +697,46 @@ namespace llarp::session
         fire_waiting(now);
     }
 
+    template <typename T>
+    bool check_dead(std::shared_ptr<T>& path_like, Session& s)
+    {
+        if (!path_like || path_like->is_dead)
+        {
+            s._dead_path = true;
+            if (path_like)
+                path_like.reset();
+            return true;
+        }
+        return false;
+    }
+
+    static void send_path_data_impl(
+        std::shared_ptr<path::Path>& path, Session& s, std::vector<std::byte>&& data, SymmNonce&& nonce)
+    {
+        if (check_dead(path, s))
+        {
+            log::debug(logcat, "Unable to send session data message: no current path");
+            return;
+        }
+        if (!path->is_established())
+        {
+            // TODO FIXME: queue traffic?  (Perhaps only if `is_outbound` and we have no path?)
+            log::debug(logcat, "Unable to send session data message: our current path is not yet established");
+            return;
+        }
+
+        path->send_path_data_message(std::move(data), std::move(nonce));
+    }
+
+    void OutboundSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    {
+        send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
+    }
+    void InboundClientSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    {
+        send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
+    }
+
     void OutboundSession::close_old_paths(std::chrono::milliseconds now)
     {
         // cf. select_new_current
@@ -699,13 +746,11 @@ namespace llarp::session
         // satisfy [paths]:min-expiry, and so we replicate that logic here so that we don't close
         // any paths that select_new_current could choose if it was called right now.
 
-        auto current = current_path();
-
         std::vector<std::pair<path::Path*, std::chrono::milliseconds>> close_me, maybe_close;
         bool found_acceptable_exp = false;
         for (auto& path : active_paths())
         {
-            if (current.get() == &path)
+            if (_current_path.get() == &path)
                 continue;  // never close the current path
 
             auto expires_in = path.expires_in(now);
@@ -762,8 +807,8 @@ namespace llarp::session
         std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
         // TODO FIXME: why do we bypass Session's send_path_control_message here?
-        if (auto p = _current_path.lock())
-            p->send_path_control_message(method, body, std::move(func));
+        if (_current_path && !_current_path->is_dead && _current_path->is_established())
+            _current_path->send_path_control_message(method, body, std::move(func));
 
         // FIXME: why is this bool return?
         return true;
@@ -779,6 +824,7 @@ namespace llarp::session
         {
             log::warning(logcat, "Unable to select new path to {}: no acceptable active paths", _remote);
             _current_path.reset();
+            _dead_path = true;
             return;
         }
 
@@ -909,14 +955,16 @@ namespace llarp::session
 
         int n_paths = num_paths();
 
-        auto curr = _current_path.lock();
-        if (!curr && n_paths)
+        if (_current_path && _current_path->is_dead)
         {
+            _current_path.reset();
+            _dead_path = true;
+        }
+
+        if (!_current_path && n_paths)
             // We don't have a current path, possibly because we just dropped it in the above loop,
             // so select a new one to make our current path
             select_new_current();
-            curr = _current_path.lock();
-        }
 
         const auto& pathconf = router.config().paths;
         auto acceptable_ts = now + pathconf.acceptable_expiry;
@@ -925,13 +973,12 @@ namespace llarp::session
         // are within our acceptable_paths window: anything older than that is due for replacement,
         // and will be dropped (but only once a replacement path is built).
         int needed = _target_paths - num_paths(acceptable_ts);
-        if (curr)
+        if (_current_path)
         {
             // If we are currently on a path between min and acceptable, however, then we *don't*
             // need a replacement for it as we are sticking with it (until it reaches min expiry),
             // but it will have been counted in `needed` above
-            assert(dynamic_cast<path::Path*>(curr.get()));
-            if (auto curr_expires_in = static_cast<path::Path*>(curr.get())->expires_in(now);
+            if (auto curr_expires_in = _current_path->expires_in(now);
                 curr_expires_in > pathconf.min_expiry && curr_expires_in < pathconf.acceptable_expiry)
                 needed--;
         }
@@ -962,14 +1009,11 @@ namespace llarp::session
     {
         log::debug(logcat, "{} switching path to {} (hopid={})", *this, path, pivot_hopid);
 
-        bool had_no_path = _current_path.expired();
-        _current_path = path.weak_from_this();
+        _current_path = path.shared_from_this();
+        _dead_path = !_current_path;
+        const auto& local_pivot_txid = path.terminal_hopid();
+        _remote_pivot_txid = path.aligned_hopid ? *path.aligned_hopid : local_pivot_txid;
 
-        if (_is_established && had_no_path)
-        {
-            log::error(logcat, "Somehow a session had no path, but is established?");
-            return;
-        }
         if (!_is_established)
         {
             log::debug(
@@ -978,10 +1022,8 @@ namespace llarp::session
                 _remote.client() ? "Aligned path for" : "Path to",
                 _remote);
 
-            const auto& local_pivot_txid = path.terminal_hopid();
-            const auto& remote_pivot_txid = path.aligned_hopid ? *path.aligned_hopid : local_pivot_txid;
             auto [payload, session_key] = InitiateSession::serialize_encrypt(
-                _r.local_rid(), _remote.router_id(), local_pivot_txid, remote_pivot_txid, std::nullopt);
+                _r.local_rid(), _remote.router_id(), local_pivot_txid, _remote_pivot_txid, std::nullopt);
 
             _shared_secret = session_key;
             path.send_path_control_message(
@@ -1039,7 +1081,7 @@ namespace llarp::session
                 path);
             send_session_control_message(
                 "path_switch",
-                as_bspan(SessionPathSwitch::serialize(_tag, path.terminal_hopid(), _remote_pivot_txid)),
+                as_bspan(SessionPathSwitch::serialize(_tag, local_pivot_txid, _remote_pivot_txid)),
                 [](quic::message m) {
                     if (m)
                     {
@@ -1183,7 +1225,7 @@ namespace llarp::session
         // closer edges and shorter hops; perhaps we should add a slight delay before choosing an
         // initial path so that other paths we have a chance to finish building before we select a
         // new one?
-        if (_current_path.expired())
+        if (!_current_path || _current_path->is_dead)
             select_new_current();
     }
 
@@ -1201,30 +1243,96 @@ namespace llarp::session
         handlers::SessionEndpoint& parent,
         const session_tag& t,
         const SharedSecret& secret,
-        std::weak_ptr<session_path_interface> p,
         const HopID& remote_pivot_txid)
-        : Session{parent.router, parent, remote, secret, t, std::move(p), remote_pivot_txid}
+        : Session{parent.router, parent, remote, secret, t, remote_pivot_txid}
     {
         log::debug(logcat, "InboundSession from {} created", _remote);
     }
 
-    void InboundClientSession::recv_path_switch(
-        const HopID& remote_pivot_txid, std::weak_ptr<session_path_interface> new_pi)
+    InboundClientSession::InboundClientSession(
+        const NetworkAddress& remote,
+        handlers::SessionEndpoint& parent,
+        const session_tag& t,
+        const SharedSecret& secret,
+        std::shared_ptr<path::Path> p,
+        const HopID& remote_pivot_txid)
+        : InboundSession{remote, parent, t, secret, remote_pivot_txid}, _current_path{std::move(p)}
+    {}
+
+    InboundRelaySession::InboundRelaySession(
+        const NetworkAddress& remote,
+        handlers::SessionEndpoint& parent,
+        const session_tag& t,
+        const SharedSecret& secret,
+        std::shared_ptr<path::TransitHop> thop,
+        const HopID& remote_pivot_txid)
+        : InboundSession{remote, parent, t, secret, remote_pivot_txid}, _current_thop{std::move(thop)}
+    {}
+
+    void InboundClientSession::recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _remote_pivot_txid = remote_pivot_txid;
-        _current_path = std::move(new_pi);
+        _current_path = std::move(new_path);
+        _dead_path = !_current_path;
+    }
+
+    void InboundRelaySession::recv_path_switch(
+        const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        _remote_pivot_txid = remote_pivot_txid;
+        _current_thop = std::move(new_thop);
+        _dead_path = !_current_thop;
+    }
+
+    void InboundRelaySession::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type)
+    {
+        // This is similar to Path encrypt, except that we are operating at the far end of a
+        // transithop and starting the encrypt backwards (and so don't see the whole path, just our
+        // end of it) which means:
+        // - we only do our first single layer of the required onioning
+        // - we apply the xor_nonce *before* xchacha20 rather than after (because we are applying
+        //   the operations in reverse).
+        auto orig_size = data.size();
+        data.resize(orig_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
+        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(data);
+        assert(inner_payload.size() == orig_size);
+
+        nonce ^= _current_thop->xor_nonce;
+        crypto::xchacha20(inner_payload, _current_thop->shared_secret, nonce);
+        nonce.copy_to(bnonce);
+        _current_thop->rxid.copy_to(bhop);
+        msgtype[0] = type;
+    }
+
+    void InboundRelaySession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    {
+        if (check_dead(_current_thop, *this))
+        {
+            log::debug(logcat, "Unable to send return relay session data message: no current transit hop");
+            return;
+        }
+
+        encrypt_path_message(data, std::move(nonce), path::Path::DATA_MESSAGE_TYPE);
+        _parent.router.link_endpoint().send_datagram(_current_thop->downstream, std::move(data));
     }
 
     bool InboundRelaySession::send_session_control_message(
         std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        if (auto p = _current_path.lock())
+        if (check_dead(_current_thop, *this))
         {
-            p->send_path_control_message(method, body, std::move(func));
-            return true;
+            log::debug(logcat, "Unable to send relay session return control message: no current path");
+            return false;
         }
-        return false;
+
+        auto payload = PATH::CONTROL::serialize(method, body);
+        encrypt_path_message(payload, SymmNonce::make_random(), path::Path::CONTROL_MESSAGE_TYPE);
+        _parent.router.link_endpoint().send_command(
+            _current_thop->downstream, "path_control", std::move(payload), std::move(func));
+        return true;
     }
 
 }  // namespace llarp::session

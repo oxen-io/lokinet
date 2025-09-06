@@ -45,7 +45,7 @@ namespace llarp::path
 
         _paths.erase(p.edge().rxid);
 
-        router.path_context.drop_path(p);
+        router.path_context.drop(p);
     }
 
     Path* PathHandler::get_random_active_path() const
@@ -72,24 +72,21 @@ namespace llarp::path
     {
         Lock_t lock{paths_mutex};
 
-        std::vector<HopID> to_drop;
-
+        int n = 0;
         for (auto itr = _paths.begin(); itr != _paths.end();)
         {
             if (itr->second and itr->second->is_expired(now))
             {
-                to_drop.push_back(itr->second->edge().rxid);
+                router.path_context.drop(*itr->second);
                 itr = _paths.erase(itr);
+                n++;
             }
             else
                 ++itr;
         }
 
-        if (not to_drop.empty())
-        {
-            log::debug(logcat, "{} paths expired; giving path-ctx droplist", to_drop.size());
-            router.path_context.drop_paths(std::move(to_drop));
-        }
+        if (n)
+            log::debug(logcat, "{} expired paths dropped", n);
     }
 
     Path* PathHandler::get_path_by_edge(const HopID& edge_hop_id)
@@ -372,7 +369,8 @@ namespace llarp::path
         return true;
     }
 
-    std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
+    std::shared_ptr<Path> PathHandler::build_init_path(
+        std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
     {
         auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
 

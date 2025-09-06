@@ -1,7 +1,9 @@
 #pragma once
 
+#include <llarp/contact/router_id.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/path/path_types.hpp>
+#include <llarp/path/hopid.hpp>
+#include <llarp/util/time.hpp>
 
 #include <oxenc/bt.h>
 

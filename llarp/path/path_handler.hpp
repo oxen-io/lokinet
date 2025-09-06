@@ -1,6 +1,6 @@
 #pragma once
 
-#include "path_types.hpp"
+#include "hopid.hpp"
 
 #include <llarp/address/address.hpp>
 #include <llarp/contact/client_intro.hpp>
