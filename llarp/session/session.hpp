@@ -64,7 +64,8 @@ namespace llarp
             // used for bridging data messages across aligned paths
             HopID _remote_pivot_txid;
 
-            // Will be set to true when a session is established:
+            // Will be set to true when an outbound session is established; will always be true for
+            // inbound sessions.
             bool _is_established{false};
 
             // Will be set to true if this session has been closed (i.e. via a call to

@@ -286,6 +286,7 @@ namespace llarp::session
           _remote{remote},
           _shared_secret{secret},
           _remote_pivot_txid{remote_pivot_txid},
+          _is_established{true}, // Inbound sessions are established from construction
           is_outbound{false},
           is_relay_session{_r.is_service_node}
     {
@@ -1303,7 +1304,9 @@ namespace llarp::session
         std::shared_ptr<path::Path> p,
         const HopID& remote_pivot_txid)
         : InboundSession{remote, parent, t, secret, remote_pivot_txid}, _current_path{std::move(p)}
-    {}
+    {
+        _dead_path = !_current_path;
+    }
 
     InboundRelaySession::InboundRelaySession(
         const NetworkAddress& remote,
@@ -1313,7 +1316,9 @@ namespace llarp::session
         std::shared_ptr<path::TransitHop> thop,
         const HopID& remote_pivot_txid)
         : InboundSession{remote, parent, t, secret, remote_pivot_txid}, _current_thop{std::move(thop)}
-    {}
+    {
+        _dead_path = !_current_thop;
+    }
 
     void InboundClientSession::recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path)
     {
