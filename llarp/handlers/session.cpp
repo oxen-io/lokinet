@@ -610,21 +610,16 @@ namespace llarp::handlers
                     auto rcs = FetchRC::deserialize_response(router.netid(), oxenc::bt_dict_consumer{m.body()});
 
                     if (rcs.empty())
-                    {
                         log::warning(logcat, "Received empty response from `fetch_rc` request!");
-                        return;
-                    }
-
-                    if (rcs.size() > 1)
-                    {
+                    else if (rcs.size() > 1)
                         log::warning(
                             logcat, "Received more RC's than expected (n:{}) from `fetch_rc` request!", rcs.size());
-                        return;
+                    else
+                    {
+                        log::debug(logcat, "Storing RelayContact for remote rid:{}", remote);
+                        router.node_db().put_rc(rcs.front());
+                        rc = std::move(rcs.front());
                     }
-
-                    log::debug(logcat, "Storing RelayContact for remote rid:{}", remote);
-                    router.node_db().put_rc(rcs.front());
-                    rc = std::move(rcs.front());
                 }
                 else
                 {
@@ -639,7 +634,7 @@ namespace llarp::handlers
             }
             catch (const std::exception& e)
             {
-                log::warning(logcat, "Exception: {}", e.what());
+                log::warning(logcat, "An error occured processing fetched rc response: {}", e.what());
             }
 
             if (rc)
