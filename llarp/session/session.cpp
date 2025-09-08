@@ -286,7 +286,7 @@ namespace llarp::session
           _remote{remote},
           _shared_secret{secret},
           _remote_pivot_txid{remote_pivot_txid},
-          _is_established{true}, // Inbound sessions are established from construction
+          _is_established{true},  // Inbound sessions are established from construction
           is_outbound{false},
           is_relay_session{_r.is_service_node}
     {

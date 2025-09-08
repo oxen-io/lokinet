@@ -15,7 +15,8 @@
 namespace llarp::util
 {
     /// Reads a binary file from disk into a string.  Throws on error.
-    std::string file_to_string(const std::filesystem::path& filename, size_t max_size = std::numeric_limits<size_t>::max());
+    std::string file_to_string(
+        const std::filesystem::path& filename, size_t max_size = std::numeric_limits<size_t>::max());
 
     /// Reads a binary file from disk directly into a buffer.  Throws a std::length_error if the
     /// file is bigger than the buffer.  Returns the bytes copied on success.

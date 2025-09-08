@@ -98,7 +98,6 @@ namespace llarp
         void load_bootstrap(const std::filesystem::path&);
         void load_bootstrap(std::string_view data, std::string_view log_desc);
 
-
         // All registered relays (service nodes)
         std::unordered_set<RouterID> _registered_relays;
         mutable std::shared_mutex _registered_relays_mutex;

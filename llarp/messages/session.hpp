@@ -9,7 +9,7 @@ namespace llarp
 {
     /** Fields for initiating sessions:
         - 'k' : ephemeral pubkey used to derive shared secret
-        - 'n' : nonce used for key exchange 
+        - 'n' : nonce used for key exchange
         - 'x' : encrypted payload
             - 'i' : RouterID of initiator
             - 'p' : HopID at the pivot taken from local ClientIntro
@@ -36,7 +36,8 @@ namespace llarp
             HopID remote_pivot_txid,
             std::optional<std::string_view> auth_token);
 
-        struct Parameters {
+        struct Parameters
+        {
             // FIXME: need some signature to prove remote owns this pubkey
             NetworkAddress remote;
             HopID local_pivot_txid;
@@ -46,8 +47,7 @@ namespace llarp
             // FIXME: need client's session tag here once that's implemented
         };
 
-        Parameters decrypt_deserialize(
-            oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local);
+        Parameters decrypt_deserialize(oxenc::bt_dict_consumer&& outer_btdc, const Ed25519SecretKey& local);
 
         std::string serialize_response(session_tag& t);
 

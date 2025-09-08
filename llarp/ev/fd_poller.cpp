@@ -1,8 +1,11 @@
 #include "fd_poller.hpp"
+
 #include <llarp/util/logging.hpp>
+
 #include <event2/event.h>
 
-namespace llarp::ev {
+namespace llarp::ev
+{
 
     static auto logcat = log::Cat("ev.fd");
 
@@ -33,4 +36,4 @@ namespace llarp::ev {
 
         log::debug(logcat, "FD poller watching fd {}", _fd);
     }
-}
+}  // namespace llarp::ev

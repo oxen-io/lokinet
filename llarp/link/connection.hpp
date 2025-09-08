@@ -16,8 +16,7 @@ namespace llarp::link
 {
     struct Connection
     {
-        Connection(
-            std::shared_ptr<quic::Connection> c, std::shared_ptr<quic::BTRequestStream> s);
+        Connection(std::shared_ptr<quic::Connection> c, std::shared_ptr<quic::BTRequestStream> s);
 
         std::shared_ptr<quic::Connection> conn;
         std::shared_ptr<quic::Datagrams> datagrams;
