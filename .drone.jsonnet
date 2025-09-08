@@ -391,13 +391,18 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // Debian sid
   debian_pipeline('Debian sid', docker_base + 'debian-sid'),
   debian_pipeline('Debian sid/debug', docker_base + 'debian-sid', build_type='Debug'),
-  debian_pipeline('Debian sid [arm64]', docker_base + 'debian-sid', arch='arm64', jobs=4),
+  debian_pipeline('Debian sid/debug [arm64]', docker_base + 'debian-sid', build_type='Debug', arch='arm64', jobs=4),
 
   clang(17),
   full_llvm(17),
   clang(19),
   full_llvm(19),
 
+  // Debian 14
+  debian_pipeline('Debian 14', docker_base + 'debian-forky'),
+  debian_pipeline('Debian 14 [i386]', docker_base + 'debian-forky/i386'),
+  debian_pipeline('Debian 14 [arm64]', docker_base + 'debian-forky', arch='arm64', jobs=4),
+  debian_pipeline('Debian 14 [armhf]', docker_base + 'debian-forky/arm32v7', arch='arm64', jobs=4),
 
   // Debian 13
   debian_pipeline('Debian 13', docker_base + 'debian-trixie'),
@@ -405,28 +410,18 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
 
   // Debian 12
   debian_pipeline('Debian 12', docker_base + 'debian-bookworm'),
-  debian_pipeline('Debian 12 [armhf]', docker_base + 'debian-bookworm/arm32v7', arch='arm64', jobs=4),
-  debian_pipeline('Debian 12 [i386]', docker_base + 'debian-bookworm/i386'),
-
-  // Debian 11
-  debian_pipeline('Debian 11',
-                  docker_base + 'debian-bullseye',
-                  deps=default_deps(remove='libcli11-dev'),
-                  extra_setup=debian_backports('bullseye', ['cmake'])),
-  debian_pipeline('Debian 11 static/debug',
-                  docker_base + 'debian-bullseye',
+  debian_pipeline('Debian 12 static/debug',
+                  docker_base + 'debian-bookworm',
                   build_type='Debug',
                   deps=static_deps,
                   oxen_repo=[],
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON',
-                  extra_setup=debian_backports('bullseye', ['cmake'])),
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON'),
 
-  // Static debian 11 armhf (upload to builds.lokinet.dev)
-  debian_pipeline('Debian 11 static [armhf]',
-                  docker_base + 'debian-bullseye/arm32v7',
+  // Static debian 12 armhf (upload to builds.lokinet.dev)
+  debian_pipeline('Debian 12 static [armhf]',
+                  docker_base + 'debian-bookworm/arm32v7',
                   arch='arm64',
                   deps=static_deps,
-                  extra_setup=debian_backports('bullseye', ['cmake']),
                   oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
@@ -441,22 +436,15 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Ubuntu latest', docker_base + 'ubuntu-rolling'),
   debian_pipeline('Ubuntu 24.04', docker_base + 'ubuntu-noble'),
   debian_pipeline('Ubuntu 22.04', docker_base + 'ubuntu-jammy'),
-  debian_pipeline('Ubuntu 20.04',
-                  docker_base + 'ubuntu-focal',
-                  deps=default_deps(remove=['g++', 'libcli11-dev'], add='g++-10'),
-                  extra_setup=kitware_repo('focal'),
-                  cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
 
-  // Static ubuntu focal amd64 build (upload to builds.lokinet.dev)
-  debian_pipeline('Ubuntu 20.04 static',
-                  docker_base + 'ubuntu-focal',
-                  deps=std.setDiff(static_deps, 'g++') + ['g++-10'],
-                  extra_setup=kitware_repo('focal'),
+  // Static ubuntu jammy amd64 build (upload to builds.lokinet.dev)
+  debian_pipeline('Ubuntu 22.04 static',
+                  docker_base + 'ubuntu-jammy',
+                  deps=static_deps,
                   lto=true,
                   tests=false,
                   oxen_repo=[],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
-                              '-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
@@ -479,11 +467,13 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   //apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
   // Windows builds (x64)
+  /*
   windows_cross_pipeline('Windows (x64)',
                          docker_base + 'debian-win32-cross',
                          extra_cmds=[
                            './contrib/ci/drone-static-upload.sh',
                          ]),
+  */
 
   /*
   // integration tests
@@ -500,9 +490,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   */
 
   // Macos builds:
+  /*
   mac_builder('macOS (Release, arm64)', extra_cmds=[
     './contrib/ci/drone-check-static-libs.sh',
     './contrib/ci/drone-static-upload.sh',
   ]),
   mac_builder('macOS (Debug, arm64)', build_type='Debug'),
+  */
 ]
