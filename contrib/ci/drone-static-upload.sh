@@ -61,7 +61,7 @@ elif [ -e build-mac ]; then
     mv build-mac/Lokinet*/ "$base"
     tar cJvf "$archive" "$base"
 else
-    cp -av build/daemon/lokinet{,-vpn} "$base"
+    cp -av build/daemon/lokinet{,-cntrl} "$base"
     cp -av contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"
     # tar dat shiz up yo
     archive="$base.tar.xz"

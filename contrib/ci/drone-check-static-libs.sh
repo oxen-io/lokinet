@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 
 # Script used with Drone CI to check that a statically build lokinet only links against the expected
-# base system libraries.  Expects to be run with pwd of the build directory.
+# base system libraries.  Expects to be run with pwd of the project directory with a build in
+# `build` or $1 (if given).
 
 set -o errexit
 
+build=${1:-build}
+
 bad=
 if [ "$DRONE_STAGE_OS" == "darwin" ]; then
-    if otool -L llarp/apple/org.lokinet.network-extension.systemextension/Contents/MacOS/org.lokinet.network-extension | \
+    if otool -L ${build}/llarp/apple/org.lokinet.network-extension.systemextension/Contents/MacOS/org.lokinet.network-extension | \
         grep -Ev '^llarp/apple:|^\t(/usr/lib/lib(System\.|c\+\+|objc))|/System/Library/Frameworks/(CoreFoundation|NetworkExtension|Foundation|Network)\.framework'; then
         bad=1
     fi
 elif [ "$DRONE_STAGE_OS" == "linux" ]; then
-    if ldd daemon/lokinet | grep -Ev '(linux-vdso|ld-linux-(x86-64|armhf|aarch64)|lib(pthread|dl|rt|stdc\+\+|gcc_s|c|m))\.so'; then
+    if ldd ${build}/daemon/lokinet | grep -Ev '(linux-vdso|ld-linux-(x86-64|armhf|aarch64)|lib(pthread|dl|rt|stdc\+\+|gcc_s|c|m))\.so'; then
         bad=1
     fi
 else
