@@ -290,7 +290,7 @@ local clang(version) = debian_pipeline(
 local full_llvm(version) = debian_pipeline(
   'Debian sid/llvm-' + version,
   docker_base + 'debian-sid-clang',
-  deps=default_deps(add=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev'],
+  deps=default_deps(add=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev', 'libngtcp2-crypto-gnutls-dev', 'libngtcp2-dev'],
                     remove='g++'),
   oxen_repo=[],
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version +
