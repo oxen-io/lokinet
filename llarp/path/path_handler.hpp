@@ -16,7 +16,7 @@
 
 namespace oxen::quic
 {
-    class Ticker;
+    struct Ticker;
 }
 
 namespace llarp

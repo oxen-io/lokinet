@@ -15,7 +15,7 @@ namespace oxenc
 
 namespace oxen::quic
 {
-    class Ticker;
+    struct Ticker;
 }
 
 namespace llarp
@@ -24,7 +24,7 @@ namespace llarp
 
     namespace path
     {
-        struct Path;
+        class Path;
     }
 
     struct RouterProfile

@@ -56,7 +56,7 @@ namespace llarp::vpn
 
         char resp_buf[4096];
         log::trace(logcat, "waiting for netlink response");
-        int resp_len = recv(nlfd, resp_buf, sizeof(resp_buf), 0);
+        auto resp_len = recv(nlfd, resp_buf, sizeof(resp_buf), 0);
         log::trace(logcat, "got netlink response");
         auto* resp = reinterpret_cast<nlmsghdr*>(resp_buf);
         if (!NLMSG_OK(resp, resp_len) || resp->nlmsg_type != NLMSG_ERROR)

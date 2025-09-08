@@ -12,8 +12,8 @@
 
 namespace oxen::quic
 {
-    class message;
-    class Ticker;
+    struct message;
+    struct Ticker;
 }  // namespace oxen::quic
 
 namespace llarp

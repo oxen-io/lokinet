@@ -1226,7 +1226,8 @@ namespace llarp::session
         auto now = llarp::time_now_ms();
         std::unordered_map<RouterID, std::chrono::seconds> select_from;
         int min_path_count = std::numeric_limits<int>::max();
-        auto acceptable_cutoff = std::chrono::sys_time{now + router.config().paths.acceptable_expiry};
+        auto acceptable_cutoff =
+            std::chrono::sys_time<std::chrono::milliseconds>{now + router.config().paths.acceptable_expiry};
         for (auto& intro : _intros)
         {
             if (intro.expiry < acceptable_cutoff)
