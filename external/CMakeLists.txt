@@ -33,8 +33,8 @@ if(SUBMODULE_CHECK)
   endif()
 endif()
 
-macro(system_or_submodule BIGNAME smallname pkgconf subdir)
-  if(NOT TARGET ${smallname}::${smallname})
+macro(system_or_submodule BIGNAME smallname target pkgconf subdir)
+  if(NOT TARGET ${target})
     option(FORCE_${BIGNAME}_SUBMODULE "force using ${smallname} submodule" OFF)
     if(NOT BUILD_STATIC_DEPS AND NOT FORCE_${BIGNAME}_SUBMODULE AND NOT FORCE_ALL_SUBMODULES)
       pkg_check_modules(${BIGNAME} ${pkgconf} IMPORTED_TARGET)
@@ -48,24 +48,25 @@ macro(system_or_submodule BIGNAME smallname pkgconf subdir)
       endif()
       message(STATUS "Found system ${smallname} ${${BIGNAME}_VERSION}")
     else()
-      message(STATUS "using ${smallname} submodule")
+      message(STATUS "using ${smallname} submodule ${subdir}")
       add_subdirectory(${subdir} EXCLUDE_FROM_ALL)
     endif()
-    if(NOT TARGET ${smallname}::${smallname})
-      add_library(${smallname}::${smallname} ALIAS ${smallname})
+    if(NOT TARGET ${target})
+      add_library(${target} ALIAS ${smallname})
     endif()
   endif()
 endmacro()
 
-system_or_submodule(OXENC oxenc liboxenc>=1.5.0 oxen-libquic/external/oxen-encoding)
+system_or_submodule(OXENC oxenc oxenc::oxenc liboxenc>=1.5.0 oxen-libquic/external/oxen-encoding)
+system_or_submodule(OXENLOGGING oxen-logging oxen::logging liboxen-logging>=1.2.0 oxen-libquic/external/oxen-logging)
 if(LOKINET_FULL)
-    system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.20 oxen-mq)
+    system_or_submodule(OXENMQ oxenmq oxenmq::oxenmq liboxenmq>=1.2.22 oxen-mq)
 endif()
-
+system_or_submodule(FMT fmt fmt::fmt fmt>=9 oxen-libquic/external/oxen-logging/fmt)
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
-system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
+system_or_submodule(NLOHMANN nlohmann_json nlohmann_json::nlohmann_json nlohmann_json>=3.7.0 nlohmann)
 
 
 if(LOKINET_HIVE)
@@ -73,7 +74,7 @@ if(LOKINET_HIVE)
 endif()
 
 
-system_or_submodule(CLI11 CLI11 CLI11>=2.3.0 CLI11)
+system_or_submodule(CLI11 CLI11 CLI11::CLI11 CLI11>=2.3.0 CLI11)
 
 
 if(LOKINET_PEERSTATS)
@@ -89,7 +90,7 @@ endif()
 
 
 set(LIBQUIC_BUILD_TESTS OFF CACHE BOOL "")
-system_or_submodule(OXENQUIC quic liboxenquic>=1.4.1 oxen-libquic)
+system_or_submodule(OXENQUIC quic oxen::quic liboxenquic>=1.6 oxen-libquic)
 
 
 # libcrypt defaults, only on with macos and non static linux

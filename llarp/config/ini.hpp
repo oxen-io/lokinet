@@ -17,7 +17,7 @@ namespace llarp
         void clear();
 
         /// Load config file.  Throws on error.
-        void load_file(const fs::path& fname);
+        void load_file(const std::filesystem::path& fname);
 
         /// Load new .ini data from string (calls ParseAll() rather than Parse())
         /// Throws on error.
@@ -34,7 +34,7 @@ namespace llarp
         bool visit_section(const char* name, std::function<bool(const SectionValues&)> visit) const;
 
         /// add a config option that is appended in another file
-        void add_override(fs::path file, std::string section, std::string key, std::string value);
+        void add_override(std::filesystem::path file, std::string section, std::string key, std::string value);
 
         /// save config overrides
         void save();
@@ -42,7 +42,7 @@ namespace llarp
         /// save new .ini config file to path
         void save_new() const;
 
-        void set_filename(const fs::path& f) { _filename = f; }
+        void set_filename(const std::filesystem::path& f) { _filename = f; }
 
       private:
         void parse_all();
@@ -51,8 +51,8 @@ namespace llarp
 
         std::string _data;
         ConfigMap _config;
-        std::unordered_map<fs::path, ConfigMap, util::FileHash> _overrides;
-        fs::path _filename;
+        std::unordered_map<std::filesystem::path, ConfigMap, util::FileHash> _overrides;
+        std::filesystem::path _filename;
     };
 
 }  // namespace llarp

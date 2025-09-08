@@ -1,10 +1,10 @@
 #pragma once
 
-#include "path_handler.hpp"
 #include "transit_hop.hpp"
 
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/client_contact.hpp>
+#include <llarp/contact/relay_contact.hpp>
 #include <llarp/contact/tag.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/util/aligned.hpp>
@@ -12,9 +12,14 @@
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
 
+#include <chrono>
 #include <functional>
-#include <unordered_set>
 #include <vector>
+
+namespace oxen::quic
+{
+    struct message;
+};
 
 namespace llarp
 {
@@ -25,149 +30,196 @@ namespace llarp
     {
         struct EncryptedIntroSet;
     }
-
-    namespace path
-    {
-        /// A path we made
-        struct Path final : public session_path_interface, public std::enable_shared_from_this<Path>
-        {
-            friend struct PathHandler;
-            friend class handlers::SessionEndpoint;
-            friend struct llarp::Profiling;
-            friend struct LinkManager;
-
-            Path(Router& rtr, const std::vector<RemoteRC>& routers, std::weak_ptr<PathHandler> parent);
-
-            ~Path();
-
-            // hops on constructed path
-            std::vector<TransitHop> hops;
-
-            std::weak_ptr<PathHandler> handler;
-            ClientIntro intro{};
-
-            std::shared_ptr<Path> get_self() { return shared_from_this(); }
-
-            std::weak_ptr<Path> get_weak() { return weak_from_this(); }
-
-            nlohmann::json ExtractStatus() const;
-
-            std::string hop_string() const;
-
-            std::chrono::milliseconds LastRemoteActivityAt() const { return last_recv_msg; }
-
-            void do_ping(std::chrono::milliseconds start_time);
-
-            void link_session(session_tag t) override;
-
-            bool unlink_session(session_tag t) override;
-
-            bool is_linked() const override { return not _linked_sessions.empty(); }
-
-            size_t num_links() const { return _linked_sessions.size(); }
-
-            bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const;
-
-            void Tick(std::chrono::milliseconds now);
-
-            bool resolve_sns(
-                std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
-
-            bool fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
-
-            bool find_client_contact(const hash_key& location, std::function<void(quic::message)> func);
-
-            bool publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
-
-            bool send_path_control_message(
-                std::string_view method,
-                std::span<const std::byte> body,
-                std::function<void(quic::message)> func) override;
-
-            bool send_path_data_message(std::span<std::byte> body) override;
-
-            // NB: mutates payload!
-            std::string make_path_message(std::span<std::byte> payload);
-
-            // NB: mutates payload!
-            std::string make_path_data_message(std::span<std::byte> payload);
-
-            bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const;
-
-            const TransitHop& edge() const { return hops.front(); }
-            const TransitHop& pivot() const { return hops.back(); }
-
-            std::string name() const;
-
-            bool operator==(const Path& other) const;
-
-            std::string to_string() const override;
-            static constexpr bool to_string_formattable = true;
-
-            // TESTNET: debug
-            std::string debug_string() const;
-
-            RouterID terminal_rid() const override { return pivot().router_id(); }
-
-            HopID terminal_txid() const override { return pivot().txid(); }
-
-          protected:
-            // Called by SessionEndpoint to indicate the path is successfully built
-            void set_established();
-
-            // Called by SessionEndpoint to check path status for internal management, and is made protected. All
-            // other objects are more concerned with ::is_active() and ::is_linked(), which include expiry status
-            // and session activity
-            bool is_established() const { return _is_established; }
-
-            void populate_internals(const std::vector<RemoteRC>& _hops);
-
-            /// call obtained exit hooks
-            bool InformExitResult(std::chrono::milliseconds b);
-
-            bool _is_established{false};
-
-            Router& _router;
-
-            const size_t num_hops;
-
-            std::unordered_set<session_tag> _linked_sessions;
-
-            std::chrono::milliseconds last_recv_msg{0s};
-            std::chrono::milliseconds last_latency_test{0s};
-            uint64_t last_latency_test_id{};
-
-            // TESTNET: debug
-            static size_t next_path_uuid;
-            const size_t path_id;
-
-          private:
-            uint64_t ping_count{0};
-            uint64_t recent_ping_failures{0};
-            std::chrono::milliseconds ping_average{0s};
-        };
-
-        struct PathExpComp
-        {
-            bool operator()(const std::shared_ptr<Path>& lhs, const std::shared_ptr<Path>& rhs) const
-            {
-                return lhs->intro.expiry > rhs->intro.expiry;
-            }
-        };
-
-        using PathPtrSet = std::set<std::shared_ptr<Path>, PathExpComp>;
-
-    }  // namespace path
 }  // namespace llarp
 
-namespace std
+namespace llarp::path
 {
-    template <>
-    struct hash<llarp::path::Path>
+    class PathHandler;
+
+    /// Proxy object to produce a human readable hop list in log statements on demand.  This
+    /// object is only intended to be used directly in format or log statements and not held.
+    struct path_hop_stringifier
     {
-        size_t operator()(const llarp::path::Path& p) const noexcept
-        {
-            return hash<llarp::HopID>{}(p.pivot().txid()) ^ ((hash<llarp::HopID>{}(p.edge().rxid()) << 13) >> 5);
-        }
+        std::span<const TransitHop> hops;
+
+        std::string to_string() const;
+        static constexpr bool to_string_formattable = true;
     };
-}  //  namespace std
+
+    class Path final : public std::enable_shared_from_this<Path>
+    {
+      public:
+        Path(Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts);
+
+        // hops on constructed path
+        std::vector<TransitHop> hops;
+
+        // If set, this is an aligned path to a pivot and this value is the hopid required to
+        // send data through the pivot.
+        std::optional<HopID> aligned_hopid;
+
+        std::weak_ptr<PathHandler> handler;
+
+        // Constructs a ClientInfo from this path, i.e. for including in a client contact.
+        ClientIntro make_intro() const;
+
+        nlohmann::json ExtractStatus() const;
+
+        path_hop_stringifier hop_string() const;
+
+        std::chrono::milliseconds LastRemoteActivityAt() const { return last_recv_msg; }
+
+        void do_ping(std::chrono::milliseconds start_time);
+
+        size_t num_hops() const { return hops.size(); }
+
+        const std::chrono::milliseconds& expiry() const { return _expiry; }
+
+        std::chrono::milliseconds expires_in(std::chrono::milliseconds now = llarp::time_now_ms()) const
+        {
+            return _expiry - now;
+        }
+
+        bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const { return _expiry < now; }
+
+        void resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func);
+
+        void fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func);
+
+        void fetch_relay_contacts(std::span<const RouterID> needed, std::function<void(quic::message)> func);
+
+        void find_client_contact(const PubKey& blinded_pk, std::function<void(quic::message)> func);
+
+        void publish_client_contact(
+            const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func);
+
+        // The constant "type" values that we put on the end of control (stream) and data
+        // (datagram) messages, which currently must always be this value; any other value is
+        // reserved for future use.
+        static constexpr std::byte CONTROL_MESSAGE_TYPE{0x01};
+        static constexpr std::byte DATA_MESSAGE_TYPE{0x01};
+
+        void send_path_control_message(
+            std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func);
+
+        void send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random());
+
+        // The overhead added to encrypted path messages (either data messages or path control
+        // messages) by the `encrypt_path_message` function.  This is the amount that the
+        // `payload` needs to be extended to add encryption metadata, and so callers can use
+        // this value to reserve the vector to be able to store the overhead without additional
+        // allocations.
+        inline static constexpr size_t ENCRYPT_PATH_MESSAGE_OVERHEAD = SymmNonce::SIZE + HopID::SIZE + 1;
+
+        // Takes a payload and encrypts and extends it in-place to make it suitable for sending
+        // down either the datagram channel (carrying traffic) or stream (carrying network
+        // requests such as lookups or path builds).  This is *not* bt-encoded because we want
+        // this to be as low overhead as possible for data messages, in particular.
+        //
+        // The given vector will be extended as part of this operation (to add nonce, hop,
+        // packet type info).  To avoid a need for memory reallocation and copy, the caller
+        // should optimally reserve enough space in the payload vector to ensure it has at least
+        // ENCRYPT_PATH_MESSAGE_OVERHEAD additional bytes.
+        //
+        // nonce will be used if given, otherwise a random nonce is generated and used.  (It is
+        // typically given when this is a session data message; see session.cpp).
+        //
+        // `type` must be a single byte, currently always equal to 0x01 for both data/control
+        // messages.  (All other values are reserved for future versions of the protocol that
+        // may need to change the fundamental structure of encrypted data, or send different
+        // types of data)
+        void encrypt_path_message(std::vector<std::byte>& payload, SymmNonce&& nonce, std::byte type);
+
+        bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const
+        {
+            return _is_established && !is_expired(now);
+        }
+
+        const TransitHop& edge() const { return hops.front(); }
+        const TransitHop& terminus() const { return hops.back(); }
+
+        std::string name() const;
+
+        bool operator==(const Path& other) const;
+
+        std::string to_string() const;
+        static constexpr bool to_string_formattable = true;
+
+        // The router ID at the end of the path.  For an outbound aligned path or inbound
+        // session path, this is the pivot; for an outbound relay path this is the target relay.
+        RouterID terminal_rid() const { return terminus().router_id; }
+
+        // The hop ID of this path used by remotes who want to reach us.  I.e. this is the pivot
+        // hopid we publish in client intros, and is used for return traffic on established
+        // outbound sessions.
+        HopID terminal_hopid() const { return terminus().txid; }
+
+        void set_established();
+
+        // Returns true if a path has been marked established.
+        bool is_established() const { return _is_established; }
+
+        // Marks a path as built.  This is primary used as a way to ensure we only build a Path
+        // object once.  Returns true if the state was successfully changed (i.e. a false return
+        // means the path was already built).
+        bool set_built()
+        {
+            bool was_built = _is_built;
+            _is_built = true;
+            return not was_built;
+        }
+
+        // Returns true if a path has been marked as built.
+        bool is_built() const { return _is_built; }
+
+        // Will be true when the path has been discarded (such as when expiring, or after a
+        // timeout); this is primarily used in the session code that hold onto the path as a shared
+        // pointer (to avoid excessive weak_ptr locks) where the object might live a little longer
+        // as a result, but uses this to detect when it should discard its pointer to the path as
+        // well.
+        bool is_dead{false};
+
+        struct ping_stats_printer
+        {
+            Path& p;
+            std::string to_string() const;
+            static constexpr bool to_string_formattable = true;
+        };
+
+        // Returns ping stats: response rate (0.0-1.0), and average (successful) ping response time
+        ping_stats_printer printable_ping_stats() { return ping_stats_printer{*this}; }
+
+      private:
+        /// call obtained exit hooks
+        bool InformExitResult(std::chrono::milliseconds b);
+
+        bool _is_built{false};
+        bool _is_established{false};
+        bool _is_dead{false};
+
+        Router& _router;
+
+        std::chrono::milliseconds _expiry{0s};
+        std::chrono::milliseconds last_recv_msg{0s};
+
+        static size_t next_path_log_id;
+        const size_t path_log_id;  // Only used for log output
+
+        std::chrono::milliseconds next_ping{0s};
+        int ping_responses{0}, ping_timeouts{0};
+        int ping_recent_timeouts{0};
+        // Cumulative time of all `ping_responses` pings (divide by ping_responses for an average).
+        std::chrono::milliseconds ping_cumulative{0s};
+        int64_t ping_sq_cumulative{0};
+    };
+
+}  // namespace llarp::path
+
+template <>
+struct std::hash<llarp::path::Path>
+{
+    size_t operator()(const llarp::path::Path& p) const noexcept
+    {
+        return hash<llarp::HopID>{}(p.terminal_hopid()) ^ ((hash<llarp::HopID>{}(p.edge().rxid) << 13) >> 5);
+    }
+};

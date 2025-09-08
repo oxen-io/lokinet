@@ -1,11 +1,16 @@
 #include "relay_contact.hpp"
 
 #include <llarp/constants/version.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/util/file.hpp>
+#include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 
+#include <nlohmann/json.hpp>
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
+#include <chrono>
 #include <unordered_set>
 
 namespace llarp
@@ -69,7 +74,7 @@ namespace llarp
             throw std::runtime_error{"Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
         std::memcpy(_router_id.data(), pubkey.data(), 32);
 
-        _timestamp = time_point{std::chrono::seconds{btdc.require<uint64_t>("t")}};
+        _timestamp = std::chrono::sys_seconds{std::chrono::seconds{btdc.require<uint64_t>("t")}};
 
         auto ver = btdc.require<std::span<const uint8_t>>("v");
 
@@ -97,11 +102,11 @@ namespace llarp
         btdc.finish();
     }
 
-    bool RelayContact::write(const fs::path& fname) const
+    bool RelayContact::write(const std::filesystem::path& fname) const
     {
         try
         {
-            util::buffer_to_file(fname, _payload.data(), _payload.size());
+            util::buffer_to_file(fname, _payload);
         }
         catch (const std::exception& e)
         {
@@ -166,6 +171,11 @@ namespace llarp
 
     bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.ToHex()); }
 
+    bool RelayContact::address_changed(const RelayContact& other) const
+    {
+        return std::tie(_addr, _addr6) != std::tie(other._addr, other._addr6);
+    }
+
     LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid) : _secret_key{std::move(secret)}
     {
         _router_id.assign(_secret_key.pubkey_span());
@@ -176,14 +186,13 @@ namespace llarp
         resign();
     }
 
-    RemoteRC LocalRC::to_remote() { return RemoteRC{_payload, _netid}; }
+    RemoteRC LocalRC::to_remote() const { return RemoteRC{_payload, _netid}; }
 
     void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
     {
-        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
-            if (!crypto::sign(_signature, _secret_key, to_sign))
-                throw std::runtime_error{"Failed to sign RC"};
-            return std::span<std::byte, 64>{_signature};
+        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) -> std::span<const std::byte, SIGSIZE> {
+            _secret_key.sign(_signature, to_sign);
+            return _signature;
         });
 
         auto v = btdp.view();
@@ -276,7 +285,7 @@ namespace llarp
     }
 
     template <>
-    RemoteRC::RemoteRC(const fs::path& fname, NetID netid, bool accept_expired)
+    RemoteRC::RemoteRC(const std::filesystem::path& fname, NetID netid, bool accept_expired)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _payload = util::file_to_string(fname);

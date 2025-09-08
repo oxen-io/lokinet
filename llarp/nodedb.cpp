@@ -1,13 +1,16 @@
 #include "nodedb.hpp"
 
-#include "crypto/types.hpp"
-#include "link/link_manager.hpp"
-#include "messages/fetch.hpp"
-#include "util/time.hpp"
+#include <llarp/crypto/types.hpp>
+#include <llarp/link/link_manager.hpp>
+#include <llarp/messages/fetch.hpp>
+#include <llarp/util/random.hpp>
+#include <llarp/util/time.hpp>
 
 #include <oxen/quic/btstream.hpp>
+#include <sodium/crypto_generichash.h>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iterator>
 #include <random>
@@ -18,19 +21,30 @@ namespace llarp
 {
     static auto logcat = llarp::log::Cat("nodedb");
 
-    static constexpr auto RC_FILE_EXT = ".signed"sv;
+    static const std::filesystem::path RC_FILE_EXT{".signed"};
 
-    std::tuple<size_t, size_t, size_t> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
+    std::array<int, 3> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
 
     const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
     {
-        auto rcs = get_n_random_rcs(1, false, predicate);
-        return rcs.empty() ? nullptr : &rcs[0].get();
+        const RemoteRC* result = nullptr;
+        int admitted = 0;
+        for (const auto& rc : std::views::values(known_rcs))
+        {
+            if (!predicate || predicate(rc))
+            {
+                if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
+                    result = &rc;
+                admitted++;
+            }
+        }
+        return result;
     }
 
-    std::vector<std::reference_wrapper<const RemoteRC>> NodeDB::get_n_random_rcs(
+    std::vector<const RemoteRC*> NodeDB::get_n_random_rcs(
         int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
     {
+        assert(_router.loop.inside());
         std::vector<const RemoteRC*> rand;
         rand.resize(n);
         auto all_rcs = known_rcs | std::views::values;
@@ -42,85 +56,87 @@ namespace llarp
             rand.resize(len);
         if (shuffle && rand.size() > 1)
             std::ranges::shuffle(rand, csrng);
-        std::vector<std::reference_wrapper<const RemoteRC>> result;
-        result.reserve(rand.size());
-        for (auto* rc : rand)
-            result.push_back(std::ref(*rc));
-        return result;
+        return rand;
     }
 
-    bool NodeDB::tick(std::chrono::milliseconds /*now*/)
+    void NodeDB::bootstrap()
     {
-        if (_is_bootstrapping or _is_connecting_bstrap)
-        {
-            log::trace(logcat, "NodeDB deferring ::tick() to bootstrap fetch completion...");
-            return false;
-        }
+        assert(_router.loop.inside());
+        assert(!_bootstraps.empty());
+        _bootstrap_running = true;
 
-        // TODO FIXME: there can be more than one bootstrap, and if we are a bootstrap then we may
-        // still want to connect to other bootstraps, so this "just don't bootstrap if a seed" is
-        // wrong.  We instead need something like "if we are the only bootstrap"
+        if (_rc_fetch_ticker)
+            _rc_fetch_ticker->stop();
+        if (_rid_fetch_ticker)
+            _rid_fetch_ticker->stop();
 
-        // only enter bootstrap process if we have NOT marked initial fetch as needed
-        if (_needs_bootstrap and not _router.config().bootstrap.seednode)
+        struct bs_data
         {
-            if (not _has_bstrap_connection)
+            NodeDB& nodedb;
+            size_t rc_i = 0;
+            std::vector<std::byte> body;
+            RouterID source;
+
+            // Shared pointer to ourself to keep us alive.  This is released once we run out of rcs,
+            // or get a successful fetch.
+            std::shared_ptr<void> keep_alive;
+
+            void try_next()
             {
-                if (_is_connecting_bstrap)
+                if (nodedb._router.is_stopping())
                 {
-                    log::trace(
-                        logcat,
-                        "{} awaiting bstrap connect attempt...",
-                        _router.is_service_node() ? "Relay" : "Client");
-                    return false;
+                    log::debug(logcat, "Aborting bootstrap because of router stop");
+                    keep_alive.reset();
+                    return;
                 }
 
-                auto& brc = _bootstraps.current();
-                auto bsrc = brc.router_id();
+                if (rc_i >= nodedb._bootstraps.size())
+                {
+                    log::debug(logcat, "Bootstrapping failed: bootstraps list exhausted without any success");
+                    auto ka = std::move(keep_alive);
+                    nodedb.on_bootstrap_done(false);
+                    return;
+                }
 
-                log::critical(
+                auto& rc = nodedb._bootstraps[rc_i++];
+                source = rc.router_id();
+                log::debug(
                     logcat,
-                    "{} has 0 router connections; connecting to bootstrap {}...",
-                    _router.is_service_node() ? "Relay" : "Client",
-                    bsrc);
+                    "Initiating bootstrap request to {} @ {}",
+                    rc.router_id().to_network_address(true),
+                    rc.addr());
+                auto [conn, control] = nodedb._router.link_endpoint().bootstrap_connect(rc);
+                control->command("bfetch_rcs", body, [this, conn](quic::message m) {
+                    nodedb._router.loop.call_soon([this, m = std::move(m)] {
+                        if (not m)
+                            log::warning(logcat, "Bootstrap fetch failed: {}", m.timed_out ? "timeout" : m.body());
 
-                _router.link_manager().connect_to(
-                    brc,
-                    [this](quic::connection_interface& ci) {
-                        log::info(logcat, "Successfully connected to bootstrap node!");
-                        _has_bstrap_connection = true;
-                        _is_connecting_bstrap = false;
-                        return _router.link_manager().on_conn_open(ci);
-                    },
-                    [this](quic::connection_interface& ci, uint64_t ec) {
-                        log::warning(logcat, "Failed to connect to bootstrap node!");
-                        _is_connecting_bstrap = false;
-                        return _router.link_manager().on_conn_closed(ci, ec);
+                        else if (nodedb.handle_bootstrap_result(source, m.body()))
+                        {
+                            auto ka = std::move(keep_alive);
+                            nodedb.on_bootstrap_done(true);
+                            return;
+                        }
+
+                        try_next();
                     });
 
-                _is_connecting_bstrap = true;
-                return false;
+                    conn->close_connection();
+                });
             }
+        };
+        auto bs = std::make_shared<bs_data>(*this);
+        bs->keep_alive = bs;
+        bs->body = BootstrapFetch::serialize(
+            _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt,
+            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT);
 
-            if (_bootstrap_handler and not _bootstrap_handler->is_iterating())
-            {
-                log::warning(
-                    logcat,
-                    "{} has {} of {} minimum RCs; initiating bootstrap RC fetch...",
-                    _router.is_service_node() ? "Relay" : "Client",
-                    num_rcs(),
-                    MIN_ACTIVE_RCS);
-                _bootstrap_handler->start();
-            }
-
-            return false;
-        }
-
-        return true;
+        bs->try_next();
     }
 
     void NodeDB::purge_rcs(std::chrono::milliseconds now)
     {
+        assert(_router.loop.inside());
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (_router.is_stopping() || not _router.is_running())
@@ -129,14 +145,7 @@ namespace llarp
             return;
         }
 
-        remove_rcs_if([&](const RemoteRC& rc) -> bool {
-            // don't purge bootstrap nodes from nodedb
-            if (is_bootstrap_node(rc))
-            {
-                log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
-                return false;
-            }
-
+        remove_rcs_if([this, now](const RemoteRC& rc) -> bool {
             // if for some reason we stored an RC that isn't a valid router
             // purge this entry
             if (not rc.addr().is_public())
@@ -152,206 +161,51 @@ namespace llarp
                 return true;
             }
 
-            // clients have no notion of a whilelist
-            // we short circuit logic here so we dont remove
-            // routers that are not whitelisted for first hops
-            if (not _router.is_service_node())
+            if (_router.is_service_node)
             {
+                // if we don't have the registered relay list yet don't remove the entry
+                if (not has_registered_relays())
+                {
+                    log::trace(
+                        logcat,
+                        "Skipping check on {}: have not received oxend registered relay list yet",
+                        rc.router_id());
+                    return false;
+                }
+
+                if (not is_connection_allowed(rc.router_id()))
+                {
+                    log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
+                    return true;
+                }
+            }
+            else
+            {
+                // Clients do not have an authoritative relay list, so we have no checks equivalent
+                // to the above ones.
                 log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.router_id());
                 return false;
-            }
-
-            // if we don't have the whitelist yet don't remove the entry
-            if (not _router.has_whitelist())
-            {
-                log::trace(logcat, "Skipping check on {}: don't have whitelist yet", rc.router_id());
-                return false;
-            }
-
-            // if we have no whitelist enabled or we have
-            // the whitelist enabled and we got the whitelist
-            // check against the whitelist and remove if it's not
-            // in the whitelist OR if there is no whitelist don't remove
-            if (not is_connection_allowed(rc.router_id()))
-            {
-                log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
-                return true;
             }
 
             return false;
         });
 
-        _needs_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
-    }
-
-    fs::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
-    {
-        return "{}/{}{}"_format(_root.native(), pubkey.to_string(), RC_FILE_EXT);
-    }
-
-    void NodeDB::process_fetched_rcs(std::vector<RemoteRC> rcs)
-    {
-        int accepted = 0;
-        for (auto& rc : rcs)
+        if (num_rcs() < MIN_ACTIVE_RCS and not _bootstraps.empty() and not _bootstrap_running)
         {
-            auto& rid = rc.router_id();
-            if (_router.is_service_node())
-            {
-                if (!_registered_routers.contains(rid))
-                {
-                    log::debug(logcat, "Rejecting fetched RC router {}: not found in registered router list", rid);
-                    continue;
-                }
-            }
-            else
-            {
-                if (!known_rids.contains(rc.router_id()))
-                {
-                    log::debug(
-                        logcat,
-                        "Fetched RC list contains {} RID {}; discarding it.",
-                        unconfirmed_rids.contains(rc.router_id()) ? "unconfirmed" : "unknown",
-                        rc.router_id());
-                    continue;
-                }
-            }
-            accepted++;
-            put_rc(std::move(rc));
-        }
-
-        int rejected = static_cast<int>(rcs.size()) - accepted;
-        double fetch_threshold = rcs.empty() ? 0.0 : accepted / (double)rcs.size();
-
-        log::info(logcat, "RC fetch returned {} RCs ({} good, {} rejected)", rcs.size(), accepted, rejected);
-
-        if (accepted < MIN_GOOD_RC_FETCH_TOTAL or fetch_threshold < MIN_GOOD_RC_FETCH_THRESHOLD)
-        {
-            log::warning(logcat, "RC acceptance rate is too low; reselecting RC fetch source");
-            cycle_fetch_source();
+            log::warning(logcat, "Purging expired relays resulted in too few RCs; falling back to bootstrap mode");
+            _bootstrap_fails = 0;
+            bootstrap();
         }
     }
 
-    void NodeDB::process_unconfirmed_rids(std::set<RouterID> unconfirmed)
+    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
     {
-        // before we add the unconfirmed set, we check to see if our local set of unconfirmed
-        // rcs/rids appeared in the latest unconfirmed set; if so, we will increment their
-        // number of verifications and reset the attempts counter. Once appearing in 3 different
-        // requests, the rc/rid will be "verified" and promoted to the known_{rcs,rids}
-        // container
-        for (auto itr = unconfirmed_rids.begin(); itr != unconfirmed_rids.end();)
-        {
-            auto [id, votes] = *itr;
-            if (auto found = unconfirmed.find(id); found != unconfirmed.end())
-            {
-                if (++votes >= CONFIRMATION_THRESHOLD)
-                {
-                    known_rids.insert(id);
-                    itr = unconfirmed_rids.erase(itr);
-                }
-                else
-                {
-                    // Not enough votes yet, so leave it and continue.
-                    ++itr;
-                }
-                unconfirmed.erase(found);
-            }
-            else if (--votes <= -CONFIRMATION_THRESHOLD)
-                itr = unconfirmed_rids.erase(itr);
-            else
-                ++itr;
-        }
-
-        // Anything still left in `unconfirmed` wasn't found in unconfirmed_rids and so is a new
-        // item we hadn't seen before; insert them into the unconfirmed map with an initial vote
-        // count of 1 for this observation.
-        for (const auto& id : unconfirmed)
-            unconfirmed_rids[id] = 1;
-    }
-
-    /** We only call into this function after ensuring two conditions:
-          1) We have received all 12 responses from the queried RouterID sources, whether that
-            response was a timeout or not
-          2) Of those responses, less than 4 were errors of any sorts
-
-        Upon receiving each response from the rid fetch sources, the returned rid's are incremented
-        in fetch_counters. This greatly simplifies the analysis required by this function to the
-        determine success or failure:
-          - If the frequency of each rid is above a threshold, it is accepted
-          - If the number of accepted rids is below a certain amount, the set is rejected
-
-        Logically, this function performs the following basic analysis of the returned RIDs:
-          1) All responses are coalesced into a union set with no repetitions
-          2) If we are bootstrapping:
-              - The routerID's returned
-    */
-    void NodeDB::process_fetched_rids()
-    {
-        std::set<RouterID> union_set, confirmed_set, unconfirmed_set;
-
-        for (const auto& [rid, count] : rid_result_counters)
-        {
-            log::trace(logcat, "RID: {}, Freq: {}", rid.short_string(), count);
-            if (count >= MIN_RID_FETCH_FREQ)
-                union_set.insert(rid);
-            else
-                unconfirmed_set.insert(rid);
-        }
-
-        // get the intersection of accepted rids and local rids
-        std::set_intersection(
-            known_rids.begin(),
-            known_rids.end(),
-            union_set.begin(),
-            union_set.end(),
-            std::inserter(confirmed_set, confirmed_set.begin()));
-
-        // the total number of rids received
-        const auto num_received = (double)(rid_result_counters.size());
-        // the total number of received AND accepted rids
-        const auto union_size = union_set.size();
-
-        const auto fetch_threshold = (double)union_size / num_received;
-
-        bool success = (fetch_threshold >= GOOD_RID_FETCH_THRESHOLD) and (union_size >= MIN_GOOD_RID_FETCH_TOTAL);
-
-        log::trace(
-            logcat,
-            "Num received: {}, union size: {}, known rid size: {}, fetch_threshold: {}, status: {}",
-            num_received,
-            union_size,
-            known_rids.size(),
-            fetch_threshold,
-            success ? "SUCCESS" : "FAIL");
-
-        /** We are checking 2 things here:
-            1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
-            This tells us how well the rid source's sets of rids "agree" with one another
-            2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
-            receiving a sufficient amount to make a comparison of any sorts
-        */
-        if (success)
-        {
-            log::info(logcat, "RID fetch was successful: accumulated RID's accepted by trust model");
-            process_unconfirmed_rids(std::move(unconfirmed_set));
-            known_rids.merge(confirmed_set);
-            post_rid_fetch(false);
-        }
-        else
-        {
-            log::warning(logcat, "Accumulated RID's rejected by trust model; reselecting RID fetch sources...");
-            reselect_router_id_sources(fail_sources);
-        }
-    }
-
-    std::vector<RouterID> NodeDB::get_expired_rcs()
-    {
-        auto expired = known_rcs | std::views::filter([](const auto& id_rc) { return id_rc.second.is_outdated(); })
-            | std::views::keys;
-        return {expired.begin(), expired.end()};
+        return _root / std::filesystem::path{pubkey.to_string()}.replace_extension(RC_FILE_EXT);
     }
 
     void NodeDB::fetch_rcs()
     {
+        assert(_router.loop.inside());
         if (_router.is_stopping() || not _router.is_running())
         {
             log::debug(logcat, "NodeDB unable to continue RC fetch -- router is stopped!");
@@ -360,231 +214,349 @@ namespace llarp
             return;
         }
 
-        cycle_fetch_source();
+        std::vector<RouterID> to_fetch{};
+        for (const auto& rid : known_rids)
+        {
+            if (!known_rcs.contains(rid))
+                to_fetch.push_back(rid);
 
-        log::debug(logcat, "Dispatching FetchRC's request to {}!", fetch_source.short_string());
+            if (to_fetch.size() == RC_FETCH_COUNT)
+                break;
+        }
 
-        _router.link_manager().fetch_rcs(
-            fetch_source,
-            FetchRC::serialize(get_expired_rcs()),
-            [this, source = fetch_source](quic::message m) mutable {
-                std::string error;
-                if (m)
-                    try
+        if (to_fetch.empty())
+            return;
+
+        path::Path* selected_path = _router.session_endpoint().get_random_active_path();
+        if (!selected_path)
+        {
+            log::debug(logcat, "NodeDB fetch rcs, skipping because we have no paths.");
+            return;
+        }
+
+        selected_path->fetch_relay_contacts(to_fetch, [this](quic::message m) mutable {
+            std::string error;
+            if (m)
+            {
+                try
+                {
+                    auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
+                    log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
+                    for (auto& rc : rcs)
                     {
-                        auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
-                        log::trace(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
-                        return process_fetched_rcs(std::move(rcs));
+                        const auto& rid = rc.router_id();
+                        if (!put_rc(std::move(rc)))
+                            log::debug(logcat, "Not inserting RC for {}, either it is newer or (if relay) ours", rid);
                     }
-                    catch (const std::exception& e)
-                    {
-                        error = e.what();
-                    }
-                else
-                    error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
-
-                log::warning(logcat, "RC fetch from {} failed: {}; reselecting RC fetch source", source, error);
-                cycle_fetch_source();
-            });
+                }
+                catch (const std::exception& e)
+                {
+                    error = e.what();
+                }
+            }
+            else
+            {
+                error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
+            }
+        });
     }
 
-    // FIXME: all of this RouterID and RC fetching code is pretty nasty and jank,
-    //        but more importantly fragile and not working.
     void NodeDB::fetch_rids()
     {
+        assert(_router.loop.inside());
         if (_router.is_stopping() || not _router.is_running())
         {
-            log::debug(logcat, "NodeDB unable to continue RouterID fetch -- router is stopped!");
+            log::debug(logcat, "NodeDB skipping RouterID fetch -- router is stopped!");
             // FIXME: this *was* calling post_rid_fetch, but that seems wrong (and can segfault),
             //        might need to see *why* it was doing so, if for any logical reason
             return;
         }
 
-        if (rid_sources.empty())
+        auto results = std::make_shared<std::unordered_map<RouterID, std::unordered_set<RouterID>>>();
+        auto result_count = std::make_shared<size_t>(0);
+        size_t try_count{0};
+        std::vector<path::Path*> selected_paths;
+
+        // In the future, we may want to make paths to selected sources for RID fetching,
+        // but for now just use the first N paths that we already have for simplicity.  If
+        // fetching fails from one, or not all results agree, we probably want to drop that
+        // path anyway.
+        for (auto& path : _router.session_endpoint().active_paths())
         {
-            log::debug(logcat, "Client reselecting RID sources...");
-            reselect_router_id_sources(rid_sources);
-        }
-
-        fetch_counter = 0;
-        response_counter = 0;
-        fail_counter = 0;
-        fail_sources.clear();
-        rid_result_counters.clear();
-
-        do
-            cycle_fetch_source();
-        while (rid_sources.contains(fetch_source));
-
-        auto& src = fetch_source;
-        log::debug(logcat, "New fetch source is {}", src);
-
-        auto send_hook = [this, src = src](quic::BTRequestStream& control) mutable {
-            for (const RouterID& target : rid_sources)
+            if (try_count >= RID_SOURCE_COUNT)
+                break;
+            auto [itr, inserted] = results->emplace(path.terminal_rid(), std::unordered_set<RouterID>{});
+            if (inserted)
             {
-                if (target == src)
-                    return;
-
-                log::trace(logcat, "Sending FetchRIDs request to {} via {}", target, src);
-                control.command(
-                    "fetch_rids",
-                    FetchRID::serialize(target),
-                    [&, source = src, target = target](quic::message msg) mutable {
-                        // Since we batch send this without going through link_manager, wrap the response handler
-                        // in loop-call from here
-                        _router.loop()->call([&, m = std::move(msg)]() mutable {
-                            response_counter++;
-                            if (not m)
-                            {
-                                log::warning(
-                                    logcat,
-                                    "RID fetch from {} via {} {}",
-                                    target,
-                                    source,
-                                    m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
-                                ingest_fetched_rids(source);
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    std::unordered_set<RouterID> router_ids;
-                                    oxenc::bt_dict_consumer btdc{m.body()};
-
-                                    btdc.required("r");
-
-                                    {
-                                        auto sublist = btdc.consume_list_consumer();
-
-                                        while (not sublist.is_finished())
-                                            router_ids.emplace(sublist.consume_span<uint8_t, 32>());
-                                    }
-
-                                    btdc.require_signature(
-                                        "~", [&target](std::span<const std::byte> msg, std::span<const std::byte> sig) {
-                                            if (sig.size() != SIGSIZE)
-                                                throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                                            if (not crypto::verify(target, msg, sig.first<SIGSIZE>()))
-                                                throw std::runtime_error{
-                                                    "Failed to verify signature for fetch RouterIDs response."};
-                                        });
-
-                                    ingest_fetched_rids(source, std::move(router_ids));
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    log::warning(logcat, "Error handling fetch RouterIDs response: {}", e.what());
-                                    ingest_fetched_rids(source);
-                                }
-                            }
-                        });
-                    });
-
-                fetch_counter++;
+                try_count++;
+                selected_paths.push_back(&path);
             }
-        };
+        }
+        if (try_count < RID_SOURCE_COUNT)
+            log::info(
+                logcat,
+                "Fetching RIDs from {} sources (want minimum {}, but not enough paths)",
+                try_count,
+                RID_SOURCE_COUNT);
 
-        _router.link_manager().fetch_router_ids(src, std::move(send_hook));
+        for (auto* path : selected_paths)
+        {
+            auto result_cb = [this, results, result_count, source = path->terminal_rid()](quic::message m) {
+                (*result_count)++;
+                if (not m)
+                {
+                    log::warning(
+                        logcat,
+                        "RID fetch from {} {}",
+                        source,
+                        m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
+                }
+                else
+                {
+                    try
+                    {
+                        auto& router_ids = results->at(source);
+                        oxenc::bt_dict_consumer btdc{m.body()};
+
+                        btdc.required("r");
+
+                        {
+                            auto sublist = btdc.consume_list_consumer();
+
+                            while (not sublist.is_finished())
+                                router_ids.emplace(sublist.consume_span<uint8_t, 32>());
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(logcat, "Error handling fetch RouterIDs response: {}", e.what());
+                        results->at(source).clear();
+                    }
+                }
+                if (*result_count == results->size())
+                {
+                    handle_fetched_router_ids(*results);
+                }
+            };
+            path->send_path_control_message("fetch_rids"sv, {}, std::move(result_cb));
+        }
     }
 
-    void NodeDB::ingest_fetched_rids(const RouterID& source, std::optional<std::unordered_set<RouterID>> rids)
+    void NodeDB::handle_fetched_router_ids(const std::unordered_map<RouterID, std::unordered_set<RouterID>>& results)
     {
-        log::trace(logcat, "Ingesting {} RID's from {}", rids ? rids->size() : 0, source);
+        assert(_router.loop.inside());
+        std::unordered_set<RouterID> accepted{};
 
-        if (rids)
+        auto itr = results.begin();
+        while (itr != results.end())
         {
-            for (const auto& rid : *rids)
-                rid_result_counters[rid]++;
-        }
-        else
-        {
-            fail_sources.insert(source);
-            fail_counter++;
-            log::trace(logcat, "{} marked as a failed fetch source (currently: {})", source, fail_counter);
-        }
-
-        int n_fails = fail_counter.load();
-        int n_responses = response_counter.load();
-
-        if (n_responses < fetch_counter)
-        {
-            log::trace(logcat, "Received {}/{} fetch RID requests", n_responses, fetch_counter);
-            return;
-        }
-
-        log::trace(logcat, "Received {}/{} fetch RID requests! Processing...", n_responses, fetch_counter);
-
-        if (n_fails <= MAX_RID_ERRORS)
-        {
-            log::debug(logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
-            return process_fetched_rids();
+            for (const auto& rid : itr->second)
+            {
+                size_t count{0};
+                auto cur_itr = results.begin();
+                while (cur_itr != results.end())
+                {
+                    if (cur_itr->second.contains(rid))
+                        count++;
+                    cur_itr++;
+                }
+                // FIXME: better than "half-rounded-up agree"
+                if (count > (results.size() / 2))
+                    accepted.insert(rid);
+                else
+                    log::info(logcat, "Received a RouterID that not enough nodes agree is correct: {}", rid);
+            }
+            itr++;
         }
 
-        log::warning(logcat, "RID fetching found {} failures; reselecting failed RID fetch sources...", n_fails);
-        reselect_router_id_sources(fail_sources);
+        known_rids.clear();
+        for (const auto& rid : accepted)
+            known_rids.insert(rid);
     }
 
-    bool NodeDB::is_bootstrap_node(const RemoteRC& rc) const { return _bootstraps.contains(rc.router_id()); }
-
-    void NodeDB::start_tickers()
+    void NodeDB::start()
     {
         log::trace(logcat, "NodeDB starting tickers...");
 
-        // TODO FIXME: this startup pattern is very strange.  save_to_disk might fire before the
-        // first purge_rcs, but why?  Wouldn't we be better with just *one* ticker here that does a
-        // purge-then-save?
+        _purge_ticker = _router.loop.call_every(PURGE_INTERVAL, [this] { purge_rcs(); });
 
-        _flush_ticker = _router.loop()->call_every(FLUSH_INTERVAL, [this] { save_to_disk(); });
-        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { save_to_disk(); });
-
-        _purge_ticker = _router.loop()->call_every(PURGE_INTERVAL, [this] { purge_rcs(); }, not _needs_bootstrap);
-        if (not _needs_bootstrap)
-            _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { purge_rcs(); });
-
-        if (not _router.is_service_node())
+        auto need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+        if (not has_bootstraps())
         {
-            // start these immediately if we do not need to bootstrap
-            _rc_fetch_ticker =
-                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not _needs_bootstrap);
-
-            _rid_fetch_ticker =
-                _router.loop()->call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not _needs_bootstrap);
-
-            if (not _needs_bootstrap)
-            {
-                _router.loop()->call_later(
-                    uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rcs(); });
-                _router.loop()->call_later(
-                    uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] { fetch_rids(); });
-            }
+            log::warning(logcat, "Only {} known RCs, but no bootstrap nodes are configured", num_rcs());
+            need_bootstrap = false;
         }
+
+        if (not _router.is_service_node)
+        {
+            _rc_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
+
+            _rid_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
+        }
+
+        if (need_bootstrap)
+            bootstrap();
+    }
+
+    void NodeDB::on_bootstrap_done(bool success)
+    {
+        if (success)
+        {
+            log::debug(logcat, "Bootstrap attempt completed successfully");
+            _bootstrap_fails = 0;
+        }
+        else
+        {
+            _bootstrap_fails++;
+            log::debug(logcat, "Bootstrap attempt failed ({} consecutive failures)", _bootstrap_fails);
+        }
+
+        bool need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+        if (not need_bootstrap)
+        {
+            // TODO FIXME: we've now completed a bootstrap and so we want to fire off a full RID
+            // fetch.  This current logic, however, doesn't seem right (but isn't specific to here):
+            // we fire off an rid fetch *and* fire off an RC fetch back to back, on separate timers,
+            // when really they should be dependent.
+            //
+            // But I'm not fixing it here because it needs a more significant overhaul.
+            if (_rid_fetch_ticker)
+            {
+                _rid_fetch_ticker->start();
+                fetch_rids();
+            }
+            if (_rc_fetch_ticker)
+            {
+                _rc_fetch_ticker->start();
+                fetch_rcs();
+            }
+            return;
+        }
+
+        auto cooldown = std::min(BOOTSTRAP_COOLDOWN * (success ? 1 : _bootstrap_fails), BOOTSTRAP_COOLDOWN_MAX);
+        log::warning(
+            logcat,
+            "Not enough RCs ({}) after {} bootstrap attempt; trying again in {}",
+            num_rcs(),
+            success ? "successful" : "failed",
+            cooldown);
+        _router.loop.call_later(cooldown, [this] { bootstrap(); });
     }
 
     NodeDB::NodeDB(Router& r) : _router{r}, _root{_router.config().router.data_dir / nodedb_dirname}
     {
-        if (not fs::exists(_root))
-            fs::create_directory(_root);
-        if (not fs::is_directory(_root))
+        if (not exists(_root))
+            create_directory(_root);
+        if (not is_directory(_root))
             throw std::runtime_error{fmt::format("nodedb {} is not a directory", _root)};
 
-        auto seed = _router.config().bootstrap.seednode;
-        if (seed)
-            log::warning(logcat, "Local instance is bootstrap seed node!");
+        load_bootstraps();
 
-        _bootstraps.populate(
-            _router.netid(),
-            _router.config().bootstrap.files,
-            _router.config().router.data_dir / default_bootstrap,
-            not seed);
-
-        bootstrap_init();
         load_from_disk();
+    }
 
-        _needs_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
+    void NodeDB::load_bootstrap(const std::filesystem::path& fpath)
+    {
+        if (not exists(fpath))
+            throw std::runtime_error{"Bootstrap RC file '{}' does not exist"_format(fpath)};
+
+        auto content = util::file_to_string(fpath);
+        if (content.empty())
+            throw std::runtime_error{"Bootstrap RC file '{}' is empty"_format(fpath)};
+
+        load_bootstrap(content, "Bootstrap RC file '{}'"_format(fpath));
+
+        log::debug(logcat, "Successfully loaded BootstrapRC file {} ({}B)", fpath, content.size());
+    }
+
+    void NodeDB::load_bootstrap(std::string_view data, std::string_view input_desc)
+    {
+        try
+        {
+            // Bootstrap data can container either a list of bootstraps, or just a single bootstrap RC:
+            if (data.front() == 'l')
+            {
+                // list of bootstrap RCs
+                for (oxenc::bt_list_consumer l{data}; !l.is_finished();)
+                    _bootstraps.emplace_back(l.consume_dict_data(), _router.netid(), /*accept_expired=*/true);
+            }
+            else
+            {
+                // single bootstrap RC
+                _bootstraps.emplace_back(data, _router.netid(), /*accept_expired=*/true);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::debug(
+                logcat, "Failed to load the following bootstrap data from {}: {}", input_desc, buffer_printer{data});
+            throw std::runtime_error{"{} does not contain valid bootstrap data: {}"_format(input_desc, e.what())};
+        }
+    }
+
+    void NodeDB::load_bootstraps()
+    {
+        const auto def = _router.config().router.data_dir / default_bootstrap;
+        for (const auto& f : _router.config().bootstrap.files)
+        {
+            log::debug(logcat, "Loading BootstrapRC from file {}", f);
+            load_bootstrap(f);
+        }
+
+        if (_bootstraps.empty() && exists(def))
+        {
+            log::debug(logcat, "No configured bootstraps; loading from {}", def);
+            try
+            {
+                load_bootstrap(def);
+            }
+            catch (const std::exception& e)
+            {
+                log::warning(logcat, "Failed loading from default bootstrap file {}: {}.  Skipping it.", def, e.what());
+            }
+        }
+
+        auto obsolete = std::erase_if(_bootstraps, [](const auto& bs) { return bs.is_obsolete(); });
+        if (obsolete > 0)
+            log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
+
+        if (_bootstraps.empty())
+        {
+            log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
+            for (const auto& [n, rc_blob] : bootstrap_fallbacks)
+            {
+                if (n == _router.netid())
+                {
+                    load_bootstrap(rc_blob, "Fallback bootstrap data");
+                    break;
+                }
+            }
+
+            log::info(
+                logcat,
+                "Loaded {} {} default fallback bootstrap router contact(s)",
+                _bootstraps.size(),
+                _router.netid());
+
+            if (_bootstraps.empty())
+            {
+                log::warning(
+                    logcat,
+                    "No bootstrap router contacts were loaded.  The default bootstrap file {} does not "
+                    "exist, and this lokinet binary does not have any fallback bootstraps for the '{}' network.",
+                    def,
+                    _router.netid());
+            }
+        }
+
+        std::shuffle(_bootstraps.begin(), _bootstraps.end(), llarp::csrng);
+
+        log::debug(logcat, "We have {} Bootstrap router(s)!", _bootstraps.size());
     }
 
     void NodeDB::post_rid_fetch(bool shutdown)
     {
+        assert(_router.loop.inside());
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         fetch_counter = 0;
@@ -602,209 +574,113 @@ namespace llarp
             log::trace(logcat, "Client successfully completed RouterID fetch!");
     }
 
-    void NodeDB::stop_bootstrap(bool success)
+    bool NodeDB::handle_bootstrap_result(const RouterID& source, std::string_view body)
     {
-        _is_bootstrapping = false;
-        // this function is only called in success or lokinet shutdown, so we will never need bootstrapping
-        _needs_bootstrap = false;
-        _bootstrap_handler->stop();
+        assert(_router.loop.inside());
+        log::debug(logcat, "Received response to BootstrapRC fetch request...");
 
-        if (success)
+        int num = 0, accepted = 0;
+
+        try
         {
-            log::debug(
-                logcat, "{} completed processing BootstrapRC fetch!", _router.is_service_node() ? "Relay" : "Client");
+            oxenc::bt_dict_consumer btdc{body};
 
-            if (not _purge_ticker->is_running())
+            btdc.required("r");
+
             {
-                log::trace(logcat, "{} activating NodeDB purge ticker", _router.is_service_node() ? "Relay" : "Client");
-                _purge_ticker->start();
-            }
+                auto sublist = btdc.consume_list_consumer();
 
-            if (not _router.is_service_node())
-            {
-                if (not _rid_fetch_ticker->is_running())
+                while (not sublist.is_finished())
                 {
-                    log::trace(logcat, "Client starting RID fetch ticker");
-                    _rid_fetch_ticker->start();
-                }
-
-                if (not _rc_fetch_ticker->is_running())
-                {
-                    log::trace(logcat, "Client starting RC fetch ticker");
-                    _rc_fetch_ticker->start();
+                    // if we're trusting the bootstrap for RCs regardless of RouterID, we
+                    // should trust the RouterID as well.
+                    RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
+                    known_rids.insert(new_rc.router_id());
+                    accepted += put_rc(std::move(new_rc));
+                    ++num;
                 }
             }
+            btdc.finish();
         }
-        else
-            log::critical(
-                logcat,
-                "{} stopping bootstrap without a successful fetch!",
-                _router.is_service_node() ? "Relay" : "Client");
-    }
-
-    void NodeDB::bootstrap()
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (_router.is_stopping() || not _router.is_running())
+        catch (const std::exception& e)
         {
-            log::debug(logcat, "NodeDB unable to continue bootstrap fetch -- router is stopped!");
-            return stop_bootstrap(false);
+            log::warning(
+                logcat, "Failed to parse BootstrapRC fetch response from {}: {}", source.short_string(), e.what());
+            return false;
         }
 
-        auto rc = _is_bootstrapping.exchange(true) ? _bootstraps.next() : _bootstraps.current();
-        auto source = rc.router_id();
-
-        log::debug(logcat, "Dispatching BootstrapRC to {}", source.short_string());
-
-        auto num_needed =
-            _router.is_service_node() ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
-
-        _router.link_manager().fetch_bootstrap_rcs(
-            rc,
-            BootstrapFetch::serialize(
-                _router.is_service_node() ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
-            [this, source](quic::message m) {
-                log::debug(logcat, "Received response to BootstrapRC fetch request...");
-
-                if (not m)
-                {
-                    log::warning(logcat, "BootstrapRC fetch request to {} failed", source.short_string());
-                    return;
-                }
-
-                int num = 0, accepted = 0;
-
-                try
-                {
-                    oxenc::bt_dict_consumer btdc{m.body()};
-
-                    btdc.required("r");
-
-                    {
-                        auto sublist = btdc.consume_list_consumer();
-
-                        while (not sublist.is_finished())
-                        {
-                            // if we're trusting the bootstrap for RCs regardless of RouterID, we
-                            // should trust the RouterID as well.
-                            RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
-                            known_rids.insert(new_rc.router_id());
-                            accepted += put_rc(std::move(new_rc));
-                            ++num;
-                        }
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    log::warning(
-                        logcat,
-                        "Failed to parse BootstrapRC fetch response from {}: {}",
-                        source.short_string(),
-                        e.what());
-                    return;
-                }
-
-                if (num >= MIN_ACTIVE_RCS)
-                {
-                    log::info(
-                        logcat,
-                        "{} BootstrapRC fetch successfully produced {} RCs ({} minimum needed) with {} accepted",
-                        _router.is_service_node() ? "Relay" : "Client",
-                        num,
-                        MIN_ACTIVE_RCS,
-                        accepted);
-                    return stop_bootstrap(true);
-                }
-
-                log::warning(
-                    logcat,
-                    "BootstrapRC response from {} returned {} RCs ({} minimum needed); continuing bootstrapping...",
-                    source.short_string(),
-                    num,
-                    MIN_ACTIVE_RCS);
-            });
+        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, accepted);
+        return true;
     }
 
-    // Updates `current` to not contain any of the elements of `replace` and resamples (up to
-    // `target_size`) from population to refill it.
-    template <typename T, typename RNG>
-    static void replace_subset(
-        std::unordered_set<T>& current,
-        const std::unordered_set<T>& replace,
-        std::set<T> population,
-        size_t target_size,
-        RNG&& rng)
+    bool NodeDB::has_registered_relays() const
     {
-        for (auto it = replace.begin(); it != replace.end(); ++it)
-        {
-            // Remove the ones we are replacing from current:
-            current.erase(*it);
-            // Remove from the population to not reselect
-            population.erase(*it);
-        }
-
-        for (auto it = current.begin(); it != current.end(); ++it)
-            population.erase(*it);
-
-        if (current.size() < target_size)
-            std::sample(
-                population.begin(),
-                population.end(),
-                std::inserter(current, current.end()),
-                target_size - current.size(),
-                rng);
+        std::shared_lock lock{_registered_relays_mutex};
+        return not _registered_relays.empty();
     }
 
-    void NodeDB::reselect_router_id_sources(std::unordered_set<RouterID> specific)
+    void NodeDB::set_registered_relays(std::unordered_set<RouterID> relays)
     {
-        replace_subset(rid_sources, specific, known_rids, RID_SOURCE_COUNT, csrng);
+        log::debug(logcat, "Oxend provided {} whitelisted routers", relays.size());
 
-        if (auto sz = rid_sources.size(); sz < RID_SOURCE_COUNT)
-        {
-            log::warning(logcat, "Insufficient RID's (count: {}) held locally for fetching!", sz);
-        }
-    }
-
-    void NodeDB::set_router_whitelist(const std::vector<RouterID>& whitelist)
-    {
-        log::debug(logcat, "Oxend provided {} whitelisted routers", whitelist.size());
-
-        if (whitelist.empty())
+        if (relays.empty())
             return;
 
-        _registered_routers.clear();
-        _registered_routers.insert(whitelist.begin(), whitelist.end());
+        size_t size = relays.size();
+        {
+            std::unique_lock lock{_registered_relays_mutex};
+            std::swap(relays, _registered_relays);
+        }
 
-        log::info(
-            logcat, "Service node holding {} registered relays after oxend integration", _registered_routers.size());
+        if (relays.empty())
+            log::info(logcat, "Loaded initial SN list from oxend with {} registered relays", size);
+        else
+            log::debug(logcat, "Updated SN list from oxend with {} registered relays", size);
     }
 
-    std::optional<RouterID> NodeDB::get_random_registered_router() const
+    std::vector<RouterID> NodeDB::get_registered_relays() const
     {
-        auto result = std::make_optional<RouterID>();
-        std::function<bool(RouterID)> hook = [](const auto&) -> bool { return true; };
-        auto end = std::ranges::sample(_registered_routers, &*result, 1, llarp::csrng);
-        if (end == &*result)
-            result.reset();
+        std::vector<RouterID> result;
+        std::shared_lock lock{_registered_relays_mutex};
+        result.reserve(_registered_relays.size());
+        result.assign(_registered_relays.begin(), _registered_relays.end());
+        return result;
+    }
+
+    bool NodeDB::is_registered(const RouterID& relay) const
+    {
+        std::shared_lock lock{_registered_relays_mutex};
+        return _registered_relays.contains(relay);
+    }
+
+    std::optional<RouterID> NodeDB::get_random_registered_relay() const
+    {
+        std::optional<RouterID> result;
+        std::shared_lock lock{_registered_relays_mutex};
+        if (!_registered_relays.empty())
+            result = *std::next(
+                _registered_relays.begin(),
+                std::uniform_int_distribution<int>{0, static_cast<int>(_registered_relays.size())}(llarp::csrng));
         return result;
     }
 
     bool NodeDB::is_connection_allowed(const RouterID& remote) const
     {
-        if (not _router.is_service_node())
+        assert(_router.loop.inside());
+        if (not _router.is_service_node)
         {
-            if (_pinned_edges.size() && _pinned_edges.count(remote) == 0 && not _bootstraps.contains(remote))
+            if (_pinned_edges.size() and not _pinned_edges.contains(remote))
                 return false;
 
-            return known_rids.count(remote);
+            return known_rids.contains(remote);
         }
 
-        return known_rids.count(remote) and _registered_routers.empty() ? true : _registered_routers.count(remote);
+        return known_rids.contains(remote) and is_registered(remote);
     }
 
     bool NodeDB::is_first_hop_allowed(const RouterID& remote) const
     {
+        assert(_router.loop.inside());
         if (_pinned_edges.size() && _pinned_edges.count(remote) == 0)
             return false;
 
@@ -817,44 +693,18 @@ namespace llarp
         _pinned_edges = std::move(edges);
     }
 
-    void NodeDB::bootstrap_init()
-    {
-        log::trace(logcat, "NodeDB storing bootstraps...");
-
-        if (_bootstraps.empty())
-            return;
-
-        size_t counter{0};
-
-        for (size_t i = 0; i < _bootstraps.size(); i++)
-            counter += put_rc(_bootstraps.next());
-
-        auto success = counter == _bootstraps.size();
-        log::log(
-            logcat,
-            success ? log::Level::info : log::Level::err,
-            "NodeDB loaded {}/{} bootstrap routers",
-            counter,
-            _bootstraps.size());
-
-        _bootstrap_handler = _router.loop()->make_shared<EventTrigger>(
-            _router.loop(), FETCH_ATTEMPT_INTERVAL, [this]() { bootstrap(); }, FETCH_ATTEMPTS);
-    }
-
     void NodeDB::load_from_disk()
     {
-        Lock_t l{nodedb_mutex};
-
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (_root.empty())
             return;
 
-        std::vector<fs::path> purge;
+        std::vector<std::filesystem::path> purge;
 
         const auto now = time_now_ms();
 
-        for (const auto& f : fs::directory_iterator{_root})
+        for (const auto& f : std::filesystem::directory_iterator{_root})
         {
             if (not f.is_regular_file() or f.path().extension() != RC_FILE_EXT)
                 continue;
@@ -885,37 +735,12 @@ namespace llarp
         {
             log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
             for (const auto& fpath : purge)
-                fs::remove(fpath);
+                remove(fpath);
         }
-    }
-
-    void NodeDB::save_to_disk() const
-    {
-        // TODO FIXME: we should have a "changed" flag here so that we only write anything to disk
-        // if it has changed.  Otherwise we're writing 2000+ files to disk every few seconds.
-
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (_root.empty())
-            return;
-
-        log::trace(logcat, "Writing NodeDB contents to disk...");
-
-        for (const auto& [rid, rc] : known_rcs)
-            rc.write(get_path_by_pubkey(rid));
-
-        log::trace(logcat, "Done writing NodeDB contents");
     }
 
     void NodeDB::cleanup()
     {
-        if (_bootstrap_handler)
-        {
-            log::trace(logcat, "NodeDB clearing bootstrap handler...");
-            _bootstrap_handler->stop();
-            _bootstrap_handler.reset();
-        }
-
         if (_rid_fetch_ticker)
         {
             log::trace(logcat, "NodeDB clearing rid fetch ticker...");
@@ -937,62 +762,78 @@ namespace llarp
             _purge_ticker.reset();
         }
 
-        if (_flush_ticker)
-        {
-            log::trace(logcat, "NodeDB clearing flush ticker...");
-            _flush_ticker->stop();
-            _flush_ticker.reset();
-        }
-
         log::debug(logcat, "NodeDB cleared all tickers...");
     }
 
     const RemoteRC* NodeDB::get_rc(const RouterID& pk) const
     {
+        assert(_router.loop.inside());
         auto it = known_rcs.find(pk);
         return it != known_rcs.end() ? &it->second : nullptr;
     }
 
-    bool NodeDB::put_rc(RemoteRC rc)
+    bool NodeDB::put_rc(const RemoteRC& rc)
     {
-        Lock_t l{nodedb_mutex};
+        assert(_router.loop.inside());
 
-        const auto& rid = rc.router_id();
-
-        if (rid == _router.local_rid())
+        if (rc.router_id() == _router.local_rid())
             return false;
 
-        auto [it, inserted] = known_rcs.try_emplace(rc.router_id(), std::move(rc));
-        if (inserted)
-            return true;
-        if (it->second.other_is_newer(rc))
+        auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), rc);
+        auto& stored = it->second;
+        bool should_gossip;
+        if (new_rc)
         {
-            it->second = std::move(rc);
-            return true;
+            // If this is a brand new RC then we want to gossip it to make sure everyone gets it.
+            should_gossip = true;
         }
-        return false;
+        else if (!rc.newer_than(stored, RemoteRC::MIN_GOSSIP_RC_AGE))
+        {
+            // The RC is too new since the last one we stored, so drop it.
+            return false;
+        }
+        else
+        {
+            // This RC is an update of one we already have: we only gossip if this RC indicates a
+            // changed address (e.g. port or IP change) or was the first RC from this node in a long
+            // time, both of which are updates we want to waste a little extra network bandwidth for
+            // to get out everywhere ASAP via gossipping.  Otherwise it's a mundane update, and so
+            // we don't gossip it because the full-mesh network connections means it will send it
+            // directly to everyone (and other nodes don't need to update to be able to full mesh
+            // with it).
+            should_gossip = rc.newer_than(stored, RemoteRC::OUTDATED_AGE) || rc.address_changed(stored);
+            stored = rc;
+        }
+
+        // We inserted or updated the record, so queue saving it to disk on the disk loop
+        _router.disk_loop.call_soon([rc, path = get_path_by_pubkey(rc.router_id())] { rc.write(path); });
+
+        return should_gossip;
     }
 
-    size_t NodeDB::num_rcs() const { return known_rcs.size(); }
-
-    size_t NodeDB::num_rids() const { return known_rids.size(); }
-
-    void NodeDB::cycle_fetch_source()
+    bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
     {
-        if (known_rids.empty())
-            return fetch_source.zero();
+        assert(_router.loop.inside());
+        if (not is_registered(rc.router_id()))
+            return false;
+        return put_rc(rc);
+    }
 
-        fetch_source = *std::next(
-            known_rids.begin(),
-            std::uniform_int_distribution{0, static_cast<int>(known_rids.size()) - 1}(llarp::csrng));
+    int NodeDB::num_rcs() const
+    {
+        assert(_router.loop.inside());
+        return static_cast<int>(known_rcs.size());
+    }
 
-        log::debug(logcat, "Updated RC fetch source to {}", fetch_source);
+    int NodeDB::num_rids() const
+    {
+        assert(_router.loop.inside());
+        return static_cast<int>(known_rids.size());
     }
 
     void NodeDB::remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove)
     {
-        // only called from within event loop ticker
-        assert(_router.loop()->inside());
+        assert(_router.loop.inside());
 
         std::vector<RouterID> removed;
 
@@ -1012,45 +853,68 @@ namespace llarp
             remove_many_from_disk_async(std::move(removed));
     }
 
-    bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
-    {
-        return registered_routers().contains(rc.router_id()) && put_rc(rc);
-    }
-
     void NodeDB::remove_many_from_disk_async(const std::vector<RouterID>& remove) const
     {
+        assert(_router.loop.inside());
         if (_root.empty())
             return;
 
         // build file list
-        std::vector<fs::path> files;
+        std::vector<std::filesystem::path> files;
         files.reserve(remove.size());
         for (const auto& rid : remove)
             files.push_back(get_path_by_pubkey(rid));
 
         // remove them from the disk via the diskio thread
-        _router.queue_disk_io([files = std::move(files)] {
+        _router.disk_loop.call_soon([files = std::move(files)] {
             for (const auto& p : files)
-                fs::remove(p);
+                std::filesystem::remove(p);
         });
     }
 
-    std::vector<const RemoteRC*> NodeDB::find_many_closest_to(llarp::hash_key location, int num_routers) const
+    namespace
     {
+        inline uint64_t xor_condense(const AlignedBuffer<32>& x)
+        {
+            auto* y = reinterpret_cast<const uint64_t*>(x.data());
+            return y[0] ^ y[1] ^ y[2] ^ y[3];
+        }
+
+        // Metric for determining the "closest" router ID to a given blinded pubkey, used for
+        // blinded CC publishing.
+        //
+        // This consists of xoring all of the uint64_t chunks of the blinded pubkey with the router
+        // ID and returning the smallest value.
+        struct PublishLocationMetric
+        {
+            PublishLocationMetric(const PubKey& blinded_pk) : pk_xor{xor_condense(blinded_pk)} {}
+
+            const uint64_t pk_xor;  // xor of the blinded PK
+            bool operator()(const RouterID* left, const RouterID* right) const
+            {
+                auto l = xor_condense(*left) ^ pk_xor;
+                auto r = xor_condense(*right) ^ pk_xor;
+                return std::tie(l, *left) < std::tie(r, *right);
+            }
+        };
+    }  // namespace
+
+    std::vector<RouterID> NodeDB::find_many_closest_to(const PubKey& blinded_pk, int num_routers) const
+    {
+        assert(_router.loop.inside());
         if (num_routers <= 0)
             return {};
 
-        std::vector<const RemoteRC*> rcs;
-        rcs.reserve(known_rcs.size());
-        for (const auto& [id, rc] : known_rcs)
-            rcs.push_back(&rc);
-        if (num_routers >= static_cast<int>(rcs.size()))
-            return rcs;
-
-        std::ranges::nth_element(
-            rcs, rcs.begin() + num_routers, XorMetric{location}, [](const auto* a) -> auto& { return *a; });
-        rcs.resize(num_routers);
-        rcs.shrink_to_fit();
-        return rcs;
+        std::shared_lock lock{_registered_relays_mutex};
+        auto rr = _registered_relays | std::views::transform([](const auto& rid) { return &rid; });
+        std::vector<const RouterID*> rids{rr.begin(), rr.end()};
+        num_routers = std::min(num_routers, static_cast<int>(rids.size()));
+        std::ranges::partial_sort(rids, rids.begin() + num_routers, PublishLocationMetric{blinded_pk});
+        rids.resize(num_routers);
+        std::vector<RouterID> result;
+        result.reserve(rids.size());
+        for (auto* rid : rids)
+            result.push_back(*rid);
+        return result;
     }
 }  // namespace llarp

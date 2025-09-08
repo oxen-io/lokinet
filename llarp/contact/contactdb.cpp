@@ -1,5 +1,6 @@
 #include "contactdb.hpp"
 
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/router/router.hpp>
 
 namespace llarp
@@ -10,14 +11,17 @@ namespace llarp
 
     std::optional<ClientContact> ContactDB::get_decrypted_cc(RouterID remote) const
     {
-        if (auto* enc = get_encrypted_cc(hash_key::derive_from_rid(remote)))
+        PubKey blinded;
+        if (!crypto::blind(blinded, remote, crypto::blinding::CLIENT_CONTACT))
+            return std::nullopt;
+        if (auto* enc = get_encrypted_cc(blinded))
             return enc->decrypt(remote);
         return std::nullopt;
     }
 
-    const EncryptedClientContact* ContactDB::get_encrypted_cc(const hash_key& key) const
+    const EncryptedClientContact* ContactDB::get_encrypted_cc(const PubKey& blinded_key) const
     {
-        if (auto it = _storage.find(key); it != _storage.end() && not it->second.is_expired())
+        if (auto it = _storage.find(blinded_key); it != _storage.end() && not it->second.is_expired())
             return &it->second;
         return nullptr;
     }
@@ -26,18 +30,14 @@ namespace llarp
 
     void ContactDB::start_tickers()
     {
-        // FIXME: we do we delay this 5-10s?
-        _router.loop()->call_later(uniform_duration_distribution{5s, 10s}(llarp::csrng), [this] {
-            purge_ccs();
-            log::trace(logcat, "ContactDB starting purge ticker..");
-            _purge_ticker = _router.loop()->call_every(5min, [this] { purge_ccs(); });
-        });
+        // FIXME: this class is dumb...
+        //
+        // Need to periodically call purge_ccs?
     }
 
     void ContactDB::purge_ccs(std::chrono::milliseconds now)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        assert(_router.loop()->inside());
 
         if (_router.is_stopping() || not _router.is_running())
         {
@@ -45,21 +45,11 @@ namespace llarp
             return;
         }
 
-        size_t n = 0;
-
-        for (auto it = _storage.begin(); it != _storage.end();)
-        {
-            if (it->second.is_expired(now))
-            {
-                it = _storage.erase(it);
-                n += 1;
-            }
-            else
-                ++it;
-        }
-
-        if (n)
-            log::debug(logcat, "{} expired ClientContacts purged!", n);
+        size_t removed = std::erase_if(_storage, [&now](const auto& c) { return c.second.is_expired(now); });
+        if (removed)
+            log::debug(logcat, "{} expired ClientContacts purged, {} remaining", removed, _storage.size());
+        else
+            log::trace(logcat, "No ClientContacts current expired (of {})", _storage.size());
     }
 
     void ContactDB::put_cc(EncryptedClientContact enc)

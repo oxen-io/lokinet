@@ -16,8 +16,8 @@ namespace llarp::handlers
 
         virtual void start_poller() = 0;
 
-        virtual std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote) = 0;
-        virtual void unmap_session_to_local_ip(const NetworkAddress& remote) = 0;
+        virtual std::optional<ipv4> map(const NetworkAddress& remote) = 0;
+        virtual void unmap(const NetworkAddress& remote) = 0;
 
         virtual void handle_inbound_packet(IPPacket pkt, uint8_t type, NetworkAddress remote) = 0;
     };

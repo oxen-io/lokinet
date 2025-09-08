@@ -9,6 +9,7 @@
 
 #include <oxen/quic/address.hpp>
 #include <oxen/quic/udp.hpp>
+#include <oxenc/endian.h>
 
 namespace llarp
 {
@@ -35,17 +36,6 @@ namespace llarp
       private:
         std::vector<std::byte> _buf;
 
-        quic::Address _src_addr;
-        quic::Address _dst_addr;
-
-        bool _is_v4, _is_v6;
-        uint8_t _header_len;
-        uint16_t _payload_len;
-
-        net::IPProtocol _proto{};
-
-        void _init_internals();
-
       public:
         IPPacket() : IPPacket{size_t{0}} {}
         explicit IPPacket(size_t sz);
@@ -55,32 +45,8 @@ namespace llarp
         // Is this gross thing really needed?
         static std::optional<IPPacket> try_making(std::span<const std::byte> buf);
 
-        quic::Packet make_netpkt();
-
         // TESTNET: debug methods
         // uint16_t checksum() const { return _is_v4 ? header()->checksum : 0; }
-
-        bool is_ip() const { return _is_v4 || _is_v6; }
-        bool is_ipv4() const { return _is_v4; }
-        bool is_ipv6() const { return _is_v6; }
-
-        net::IPProtocol protocol() const { return _proto; }
-
-        const quic::Address& source() const { return _src_addr; }
-
-        uint16_t source_port() { return source().port(); }
-
-        ipv4 source_ipv4() { return _src_addr.to_ipv4(); }
-
-        ipv6 source_ipv6() { return _src_addr.to_ipv6(); }
-
-        const quic::Address& destination() const { return _dst_addr; }
-
-        uint16_t dest_port() { return destination().port(); }
-
-        ipv4 dest_ipv4() const { return _dst_addr.to_ipv4(); }
-
-        ipv6 dest_ipv6() const { return _dst_addr.to_ipv6(); }
 
         ip_header& header() { return *reinterpret_cast<ip_header*>(data()); }
         const ip_header& header() const { return *reinterpret_cast<const ip_header*>(data()); }
@@ -88,14 +54,70 @@ namespace llarp
         ipv6_header& v6_header() { return *reinterpret_cast<ipv6_header*>(data()); }
         const ipv6_header& v6_header() const { return *reinterpret_cast<const ipv6_header*>(data()); }
 
+        size_t header_size() const
+        {
+            return is_ipv4() ? static_cast<size_t>(header().header_len) * 4 : is_ipv6() ? 40 : 0;
+        }
+        size_t payload_size() const
+        {
+            auto hsz = header_size();
+            return hsz >= _buf.size() ? 0 : _buf.size() - hsz;
+        }
+
+        bool is_ipv4() const { return _buf.size() >= sizeof(ip_header) && header().version == 4; }
+        bool is_ipv6() const { return _buf.size() >= sizeof(ipv6_header) && ipv6_header().version == 6; }
+        bool is_ip() const { return is_ipv4() || is_ipv6(); }
+
+        net::IPProtocol protocol() const
+        {
+            return is_ipv4() ? net::IPProtocol{header().protocol}
+                : is_ipv6()  ? net::IPProtocol{ipv6_header().protocol}
+                             : net::IPProtocol{};
+        }
+
+      private:
+        std::optional<uint16_t> _s_d_port(int offset) const
+        {
+            auto pr = protocol();
+            if (pr == net::IPProtocol::TCP || pr == net::IPProtocol::UDP)
+                if (auto hs = header_size(); _buf.size() >= hs + 4)
+                    return oxenc::load_big_to_host<uint16_t>(_buf.data() + hs + offset);
+            return std::nullopt;
+        }
+
+      public:
+        std::optional<uint16_t> source_port() const { return _s_d_port(0); }
+        std::optional<uint16_t> dest_port() const { return _s_d_port(2); }
+
+        std::optional<ipv4> source_ipv4() const
+        {
+            if (is_ipv4())
+                return ipv4{oxenc::big_to_host(header().src)};
+            return std::nullopt;
+        }
+        std::optional<ipv4> dest_ipv4() const
+        {
+            if (is_ipv4())
+                return ipv4{oxenc::big_to_host(header().dest)};
+            return std::nullopt;
+        }
+
+        std::optional<ipv6> source_ipv6() const
+        {
+            if (is_ipv6())
+                return ipv6{ipv6_header().src};
+            return std::nullopt;
+        }
+        std::optional<ipv6> dest_ipv6() const
+        {
+            if (is_ipv6())
+                return ipv6{ipv6_header().dest};
+            return std::nullopt;
+        }
+
         std::span<const std::byte> udp_data();
 
-        void clear_addresses()
-        {
-            if (_is_v4)
-                return update_ipv4_address(ipv4{}, ipv4{});
-            return update_ipv6_address(ipv6{}, ipv6{});
-        }
+        void clear_addresses();
 
         void update_ipv4_address(const ipv4& src, const ipv4& dst);
 
@@ -114,9 +136,20 @@ namespace llarp
         std::span<std::byte> span() { return _buf; }
         std::span<const std::byte> span() const { return _buf; }
 
+        std::span<uint8_t> u8span() { return {reinterpret_cast<uint8_t*>(data()), size()}; }
+        std::span<const uint8_t> u8span() const { return {reinterpret_cast<const uint8_t*>(data()), size()}; }
+
         bool empty() const { return _buf.empty(); }
 
-        std::string info_line() const;
+        // Lightweight formattable proxy object:
+        struct info_printer
+        {
+            const IPPacket& pkt;
+            std::string to_string() const;
+            static constexpr bool to_string_formattable = true;
+        };
+
+        info_printer info_line() const { return {*this}; }
     };
 
 }  // namespace llarp

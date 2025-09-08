@@ -3,6 +3,8 @@
 #include "dns.hpp"
 #include "name.hpp"
 
+#include <nlohmann/json.hpp>
+
 namespace llarp::dns
 {
     static auto logcat = log::Cat("dns");

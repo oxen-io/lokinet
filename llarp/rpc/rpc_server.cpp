@@ -127,7 +127,7 @@ namespace llarp::rpc
             return;
         }
 
-        _router.loop()->call_soon([&]() { _router.stop(); });
+        _router.loop.call_soon([&]() { _router.stop(); });
 
         SetJSONResponse("OK", halt.response);
     }
@@ -306,7 +306,7 @@ namespace llarp::rpc
     {
         log_print_rpc(findcc);
 
-        if (_router.is_service_node())
+        if (_router.is_service_node)
         {
             SetJSONError("Not supported", findcc.response);
             return;
@@ -326,7 +326,7 @@ namespace llarp::rpc
             return;
         }
 
-        _router.loop()->call([this, netaddr = *maybe_netaddr, replier = findcc.move()]() mutable {
+        _router.loop.call([this, netaddr = *maybe_netaddr, replier = findcc.move()]() mutable {
             _router.session_endpoint().lookup_client_intro(
                 netaddr.router_id(), [&replier](std::optional<llarp::ClientContact> cc) {
                     nlohmann::json result;
@@ -350,7 +350,7 @@ namespace llarp::rpc
     {
         log_print_rpc(sessioninit);
 
-        if (_router.is_service_node())
+        if (_router.is_service_node)
         {
             SetJSONError("Not supported", sessioninit.response);
             return;
@@ -370,7 +370,7 @@ namespace llarp::rpc
             return;
         }
 
-        _router.loop()->call([this, netaddr = *maybe_netaddr]() {
+        _router.loop.call([this, netaddr = *maybe_netaddr]() {
             try
             {
                 log::debug(logcat, "Beginning session init to remote instance: {}", netaddr);
@@ -414,7 +414,7 @@ namespace llarp::rpc
 
         auto& netaddr = *maybe_netaddr;
 
-        _router.loop()->call([&]() {
+        _router.loop.call([&]() {
             try
             {
                 if (auto session = _router.session_endpoint().get_session(netaddr))
@@ -448,7 +448,7 @@ namespace llarp::rpc
                         replier.reply(result.dump());
                     };
 
-                    session->stop_session(true, std::move(hook));
+                    // session->stop_session(true, std::move(hook));
 
                     log::info(logcat, "RPC Server dispatched `session_close` to remote:{}", netaddr);
                 }
@@ -465,7 +465,7 @@ namespace llarp::rpc
     {
         log_print_rpc(lookupsnode);
 
-        if (not _router.is_service_node())
+        if (not _router.is_service_node)
         {
             SetJSONError("Not supported", lookupsnode.response);
             return;
@@ -710,14 +710,14 @@ namespace llarp::rpc
             return;
         }
 
-        fs::path conf_d{"conf.d"};
+        std::filesystem::path conf_d{"conf.d"};
 
         if (config.request.del and not config.request.filename.empty())
         {
             try
             {
-                if (fs::exists(conf_d / (config.request.filename)))
-                    fs::remove(conf_d / (config.request.filename));
+                if (exists(conf_d / config.request.filename))
+                    remove(conf_d / config.request.filename);
             }
             catch (std::exception& e)
             {
@@ -729,12 +729,12 @@ namespace llarp::rpc
         {
             try
             {
-                if (not fs::exists(conf_d))
-                    fs::create_directory(conf_d);
+                if (not exists(conf_d))
+                    create_directory(conf_d);
 
                 auto parser = ConfigParser();
                 parser.load_new_from_str(config.request.ini);
-                parser.set_filename(conf_d / (config.request.filename));
+                parser.set_filename(conf_d / config.request.filename);
                 parser.save_new();
             }
             catch (std::exception& e)

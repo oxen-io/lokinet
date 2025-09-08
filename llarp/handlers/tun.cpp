@@ -16,6 +16,8 @@
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/str.hpp>
 
+#include <nlohmann/json.hpp>
+
 namespace llarp::handlers
 {
     static auto logcat = log::Cat("tun");
@@ -99,7 +101,7 @@ namespace llarp::handlers
         ~TunDNS() override = default;
 
         explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
-            : dns::Server{ep->router().loop(), conf, 0},
+            : dns::Server{ep->router().loop, conf, 0},
               _tun{ep},
               _query_bind{conf._query_bind},
               _our_ip{ep->get_ipv4()}  // FIXME: What about IPv6?
@@ -135,6 +137,7 @@ namespace llarp::handlers
 
         if (dns_config.l3_intercept)
         {
+            // FIXME: this entire if block is so broken...
             _dns = std::make_unique<TunDNS>(this, dns_config);
             auto* dns = static_cast<TunDNS*>(_dns.get());
 
@@ -145,8 +148,11 @@ namespace llarp::handlers
                 try
                 {
                     _packet_router->add_udp_handler(p, [this, dns](IPPacket pkt) {
-                        if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(), pkt.udp_data()))
-                            return;
+                        // TODO FIXME
+                        log::critical(logcat, "TODO FIXME: L3 udp interceptor!");
+                        // if (dns->maybe_handle_payload(dns->pkt_source, pkt.destination(), pkt.source(),
+                        // pkt.udp_data()))
+                        //     return;
 
                         handle_outbound_packet(std::move(pkt));
                     });
@@ -159,7 +165,7 @@ namespace llarp::handlers
             }
         }
         else
-            _dns = std::make_unique<dns::Server>(_router.loop(), dns_config, info.index);
+            _dns = std::make_unique<dns::Server>(_router.loop, dns_config, info.index);
 
         _dns->add_resolver(weak_from_this());
         _dns->start();
@@ -268,14 +274,6 @@ namespace llarp::handlers
 
         _exit_policy = net_conf.traffic_policy;
 
-        if (net_conf.path_alignment_timeout)
-        {
-            if (is_service_node())
-                throw std::runtime_error{"Service nodes cannot specify path alignment timeout!"};
-
-            _path_alignment_timeout = *net_conf.path_alignment_timeout;
-        }
-
         ipv6_enabled = net_conf.enable_ipv6;
         if (ipv6_enabled)
         {
@@ -302,7 +300,7 @@ namespace llarp::handlers
         log::debug(logcat, "Tun constructing IPRange iterator on local network: {}", _local_net);
         _local_range_iterator = IPRangeIterator{_local_net};
 
-        _local_netaddr = NetworkAddress{_router.local_rid(), not _router.is_service_node()};
+        _local_netaddr = NetworkAddress{_router.local_rid(), !_router.is_service_node};
         _local_ipv4_mapping.insert_or_assign(_local_net.ip, std::move(_local_netaddr));
 
         vpn::InterfaceInfo info;
@@ -325,25 +323,6 @@ namespace llarp::handlers
         _if_name = _net_if->interface_info().ifname;
 
         log::info(logcat, "{} got network interface:{}", name(), _if_name);
-
-        auto pkt_hook = [this]() mutable {
-            for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
-            {
-                log::trace(logcat, "packet router receiving {}", pkt.info_line());
-                _packet_router->handle_ip_packet(std::move(pkt));
-            }
-        };
-
-#ifdef __linux__
-        _poller =
-            std::make_unique<LinuxPoller>(_net_if->PollFD(), _router.loop()->get_event_base(), std::move(pkt_hook));
-#endif
-        if (not _poller)
-        {
-            auto err = "{} failed to add network interface!"_format(name());
-            log::critical(logcat, "{}", err);
-            throw std::runtime_error{std::move(err)};
-        }
     }
 
     static bool is_random_snode(const dns::Message& msg) { return msg.questions[0].IsName("random.snode"); }
@@ -478,7 +457,7 @@ namespace llarp::handlers
             return false;
         }
 
-        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node());
+        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node).to_string();
 
         std::string qname = msg.questions[0].Name();
         const auto nameparts = split(qname, ".");
@@ -701,7 +680,7 @@ namespace llarp::handlers
             {
                 // TODO: handle .snode (if we want, or explicitly don't allow)
 
-                reply_with_mapped_address(map_session_to_local_ip(*maybe_netaddr));
+                reply_with_mapped_address(map(*maybe_netaddr));
                 return true;
             }
             else if (tld == "loki"sv)
@@ -711,7 +690,7 @@ namespace llarp::handlers
                     [this, reply, reply_with_mapped_address, msg](std::optional<NetworkAddress> maybe_netaddr) mutable {
                         if (maybe_netaddr)
                         {
-                            reply_with_mapped_address(map_session_to_local_ip(*maybe_netaddr));
+                            reply_with_mapped_address(map(*maybe_netaddr));
                             return;
                         }
                         msg.add_nx_reply();
@@ -864,7 +843,9 @@ namespace llarp::handlers
     const ipv4& TunEndpoint::get_ipv4() const { return _local_net.ip; }
     const ipv6* TunEndpoint::get_ipv6() const { return _local_ipv6_net ? &_local_ipv6_net->ip : nullptr; }
 
-    bool TunEndpoint::is_service_node() const { return _router.is_service_node(); }
+    const ipv4_net& TunEndpoint::get_ipv4_network() const { return _local_net; }
+
+    bool TunEndpoint::is_service_node() const { return _router.is_service_node; }
 
     bool TunEndpoint::is_exit_node() const { return _router.is_exit_node(); }
 
@@ -881,7 +862,7 @@ namespace llarp::handlers
         {
             const auto& file = *_persisting_addr_file;
             log::debug(logcat, "{} saving address map to {}", name(), file);
-            // if (auto maybe = util::OpenFileStream<fs::ofstream>(file, std::ios_base::binary))
+            // if (auto maybe = util::OpenFileStream<std::filesystem::ofstream>(file, std::ios_base::binary))
             // {
             //   std::map<std::string, std::string> addrmap;
             //   for (const auto& [ip, addr] : m_IPToAddr)
@@ -950,7 +931,7 @@ namespace llarp::handlers
         return get_next_local_ipvX(*_local_ipv6_range_iterator, *_local_ipv6_net, _local_ipv6_mapping);
     }
 
-    std::optional<ipv4> TunEndpoint::map_session_to_local_ip(const NetworkAddress& remote)
+    std::optional<ipv4> TunEndpoint::map(const NetworkAddress& remote)
     {
         std::optional<ipv4> ret = std::nullopt;
 
@@ -968,12 +949,12 @@ namespace llarp::handlers
             _local_ipv4_mapping.insert_or_assign(*maybe_next_ip, remote);
         }
         else
-            log::critical(logcat, "TUN device failed to assign local private IP for session to remote: {}", remote);
+            log::error(logcat, "TUN device failed to assign local private IP for remote: {}", remote);
 
         return ret;
     }
 
-    void TunEndpoint::unmap_session_to_local_ip(const NetworkAddress& remote)
+    void TunEndpoint::unmap(const NetworkAddress& remote)
     {
         if (_local_ipv4_mapping.has_remote(remote))
         {
@@ -988,21 +969,21 @@ namespace llarp::handlers
     void TunEndpoint::handle_outbound_packet(IPPacket pkt)
     {
         ipv4 src, dest;
-        if (pkt.is_ipv6())
+        if (!pkt.is_ipv4())
         {
-            log::debug(logcat, "Dropping IPv6 packet: not yet supported");
-            return;
-        }
-        if (!pkt.is_ip())
-        {
+            if (pkt.is_ipv6())
+            {
+                log::debug(logcat, "Dropping IPv6 packet: not yet supported");
+                return;
+            }
             log::debug(logcat, "Dropping non-IP packet");
             return;
         }
 
         log::trace(logcat, "outbound packet: {}: {}", pkt.info_line(), buffer_printer{pkt.span()});
 
-        src = pkt.source_ipv4();
-        dest = pkt.dest_ipv4();
+        src = *pkt.source_ipv4();
+        dest = *pkt.dest_ipv4();
 
         log::trace(logcat, "src:{}, dest:{}", src, dest);
 
@@ -1029,28 +1010,25 @@ namespace llarp::handlers
                     pkt.size(),
                     remote,
                     pkt.info_line());
-                session->send_path_data_message(pkt.span(), pkt.protocol());
+                session->send_session_data_message(pkt.span(), pkt.protocol());
             }
             else
             {
-                if (_router.session_endpoint().have_pending_session(remote))
-                {
-                    _router.session_endpoint().queue_session_packet(remote, std::move(pkt));
-                    return;
-                }
-
                 log::debug(logcat, "No session for remote: {} for outbound packet, attempting to create one!", remote);
 
-                if (remote.is_client())
+                // TODO FIXME: this lookup is not right to initiate a new lookup on each packet:
+                // rather, since we don't have a session, we need to initiate one, and let *it* do
+                // the lookup.
+                if (remote.client())
                 {
                     _router.session_endpoint().lookup_client_intro(
                         remote.router_id(),
                         [this, remote, pkt = std::move(pkt)](std::optional<llarp::ClientContact> cc) mutable {
                             if (cc)
                             {
-                                log::debug(logcat, "client intro for {} found:\n{}", remote, *cc);
-                                _router.session_endpoint().initiate_remote_session(remote, nullptr);
-                                _router.session_endpoint().queue_session_packet(remote, std::move(pkt));
+                                log::debug(logcat, "client intro for {} found: {}", remote, *cc);
+                                auto s = _router.session_endpoint().initiate_remote_session(remote, nullptr);
+                                s->send_session_data_message(pkt.span(), pkt.protocol());
                                 return;
                             }
                             log::debug(logcat, "It appears {} has no contact information available.", remote);
@@ -1065,9 +1043,9 @@ namespace llarp::handlers
                         [this, remote, pkt = std::move(pkt)](std::optional<llarp::RemoteRC> rc) mutable {
                             if (rc)
                             {
-                                log::debug(logcat, "Relay contact for {} found:\n{}", remote, *rc);
-                                _router.session_endpoint().initiate_remote_session(remote, nullptr);
-                                _router.session_endpoint().queue_session_packet(remote, std::move(pkt));
+                                log::debug(logcat, "Relay contact for {} found: {}", remote, *rc);
+                                auto s = _router.session_endpoint().initiate_remote_session(remote, nullptr);
+                                s->send_session_data_message(pkt.span(), pkt.protocol());
                                 return;
                             }
                             log::debug(logcat, "It appears {} has no contact information available.", remote);
@@ -1106,7 +1084,7 @@ namespace llarp::handlers
 
     void TunEndpoint::send_packet_to_net_if(IPPacket pkt)
     {
-        _router.loop()->call([this, pkt = std::move(pkt)]() mutable { _net_if->write_packet(std::move(pkt)); });
+        _router.loop.call([this, pkt = std::move(pkt)]() mutable { _net_if->write_packet(std::move(pkt)); });
     }
 
     void TunEndpoint::rewrite_and_send_packet(IPPacket&& pkt, const ipv4& src, const ipv4& dest)
@@ -1141,12 +1119,12 @@ namespace llarp::handlers
             if (pkt.is_ipv4())
             {
                 if (auto src = obtain_src_for_ipv4_remote(remote))
-                    return rewrite_and_send_packet(std::move(pkt), *src, pkt.dest_ipv4());
+                    return rewrite_and_send_packet(std::move(pkt), *src, *pkt.dest_ipv4());
             }
             else
             {
                 if (auto src = obtain_src_for_ipv6_remote(remote))
-                    return rewrite_and_send_packet(std::move(pkt), *src, pkt.dest_ipv6());
+                    return rewrite_and_send_packet(std::move(pkt), *src, *pkt.dest_ipv6());
             }
             return;
         }
@@ -1155,9 +1133,9 @@ namespace llarp::handlers
         {
             log::trace(logcat, "inbound return exit pkt: {}", pkt.info_line());
             if (pkt.is_ipv4())
-                return rewrite_and_send_packet(std::move(pkt), pkt.source_ipv4(), _local_net.ip);
+                return rewrite_and_send_packet(std::move(pkt), *pkt.source_ipv4(), _local_net.ip);
             if (_local_ipv6_net)
-                return rewrite_and_send_packet(std::move(pkt), pkt.source_ipv6(), _local_ipv6_net->ip);
+                return rewrite_and_send_packet(std::move(pkt), *pkt.source_ipv6(), _local_ipv6_net->ip);
             return;
         }
 
@@ -1176,9 +1154,14 @@ namespace llarp::handlers
 
     void TunEndpoint::start_poller()
     {
-        if (not _poller->start())
-            throw std::runtime_error{"TUN failed to start FD poller!"};
-        log::trace(logcat, "TUN successfully started FD poller!");
+        _poller = std::make_unique<ev::FDPoller>(_router.loop, _net_if->PollFD(), [this] {
+            for (auto pkt = _net_if->read_next_packet(); not pkt.empty(); pkt = _net_if->read_next_packet())
+            {
+                log::trace(logcat, "packet router receiving {}", pkt.info_line());
+                _packet_router->handle_ip_packet(std::move(pkt));
+            }
+        });
+        log::debug(logcat, "TUN successfully started FD poller!");
     }
 
     bool TunEndpoint::is_allowing_traffic(const IPPacket& pkt) const

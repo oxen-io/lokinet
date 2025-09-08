@@ -12,7 +12,7 @@ namespace llarp
 {
     static auto logcat = log::Cat("config.ini");
 
-    void ConfigParser::load_file(const fs::path& fname)
+    void ConfigParser::load_file(const std::filesystem::path& fname)
     {
         _data = util::file_to_string(fname);
         _filename = fname;
@@ -193,7 +193,8 @@ namespace llarp
         return visit(itr->second);
     }
 
-    void ConfigParser::add_override(fs::path fpath, std::string section, std::string key, std::string value)
+    void ConfigParser::add_override(
+        std::filesystem::path fpath, std::string section, std::string key, std::string value)
     {
         auto& data = _overrides[fpath];
         data[section].emplace(key, value);

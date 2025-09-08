@@ -7,6 +7,7 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/util/buffer.hpp>
 
+#include <nlohmann/json.hpp>
 #include <oxenc/endian.h>
 
 #include <array>

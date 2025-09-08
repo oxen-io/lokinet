@@ -2,7 +2,10 @@
 
 #include "client_contact.hpp"
 
-#include <llarp/ev/types.hpp>
+namespace oxen::quic
+{
+    struct Ticker;
+}
 
 namespace llarp
 {
@@ -19,7 +22,7 @@ namespace llarp
       private:
         Router& _router;
 
-        std::unordered_map<hash_key, EncryptedClientContact, AlignedHasher> _storage;
+        std::unordered_map<PubKey, EncryptedClientContact, AlignedHasher> _storage;
 
         std::shared_ptr<quic::Ticker> _purge_ticker;
 
@@ -28,7 +31,7 @@ namespace llarp
 
         std::optional<ClientContact> get_decrypted_cc(RouterID remote) const;
 
-        const EncryptedClientContact* get_encrypted_cc(const hash_key& key) const;
+        const EncryptedClientContact* get_encrypted_cc(const PubKey& blinded_pk) const;
 
         void put_cc(EncryptedClientContact enc);
 

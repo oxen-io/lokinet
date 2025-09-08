@@ -1,9 +1,10 @@
-
 #include "reachability_testing.hpp"
 
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/random.hpp>
 
 using std::chrono::steady_clock;
 
@@ -92,10 +93,7 @@ namespace llarp::consensus
 
         // We exhausted the queue so repopulate it and try again
 
-        testing_queue.clear();
-        const auto& all = router->get_whitelist();
-
-        testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
+        testing_queue = router->node_db().get_registered_relays();
 
         std::shuffle(testing_queue.begin(), testing_queue.end(), llarp::csrng);
 

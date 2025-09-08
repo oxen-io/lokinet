@@ -7,23 +7,35 @@
 
 namespace llarp::path
 {
-    /// maximum path length
-    inline constexpr int MAX_LEN{8};
-
-    /// default path length
-    inline constexpr int DEFAULT_LEN{4};
-
     /// pad messages to the nearest this many bytes
     inline constexpr std::size_t PAD_SIZE{128};
 
-    // default number of paths per PathHandler
-    inline constexpr size_t DEFAULT_PATHS_HELD{4};
+    /// Number of encryption "frames" inside path builds.  This implicitly defines the maximum
+    /// length of a path: shorter path builds still put data in all frames, but frame data beyond
+    /// the last hop are random unused data (so that the length of the path build message does not
+    /// reveal anything about the total number of hops for the path, and so that the final target
+    /// cannot tell how long the path was).
+    inline constexpr int BUILD_LENGTH = 8;
 
-    /// TESTNET: default path lifetime in ms;
-    inline constexpr std::chrono::milliseconds DEFAULT_LIFETIME{20min};
+    /// Length of each frame of a path build.
+    inline constexpr size_t BUILD_FRAME_SIZE = 169;
 
-    /// interval at which we try to build new paths for intros
-    inline constexpr std::chrono::milliseconds PATH_ROTATION_INTERVAL{DEFAULT_LIFETIME / DEFAULT_PATHS_HELD};
+    inline constexpr std::chrono::seconds MAX_LIFETIME = 20min;
+
+    /// The minimum expiry time slots for inbound paths.  See detailed comments in
+    /// SessionEndpoint::update_paths().
+    inline constexpr auto MAX_LIFETIME_SLOTS = 4;
+
+    static_assert(
+        std::chrono::seconds{MAX_LIFETIME} % MAX_LIFETIME_SLOTS == 0s,
+        "MAX_LIFETIME_SLOTS must evenly divide MAX_LIFETIME seconds");
+
+    /// How many locations a client contact gets published to.  The contact gets published to the
+    /// "closest" [this number] relays, using a metric based on the CC and relay IDs, for short term
+    /// redundancy for relays become unreachable or inactive via the Oxen chain.
+    ///
+    /// (Note that this value cannot be changed without upgrading relays and clients).
+    inline constexpr int CC_PUBLISH_LOCATIONS = 4;
 
     /// after this many ms a path build times out
     inline constexpr auto BUILD_TIMEOUT{10s};

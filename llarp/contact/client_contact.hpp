@@ -7,13 +7,12 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/net/policy.hpp>
-#include <llarp/router_version.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/file.hpp>
 #include <llarp/util/time.hpp>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <oxenc/bt_producer.h>
 
 #include <unordered_set>
@@ -48,6 +47,9 @@ namespace llarp
         inline static constexpr uint8_t VERSION{0};
 
         ClientContact() = default;
+
+        /// Constructs a ClientContact by parsing a serialized client contact value.  Throws if
+        /// invalid.
         explicit ClientContact(std::span<const std::byte> buf);
 
         /** Parameters:
@@ -58,31 +60,36 @@ namespace llarp
             - `policy` : exit-related traffic policy (optional)
          */
         ClientContact(
-            Ed25519PrivateData private_data,
             PubKey pk,
             std::unordered_set<dns::SRVData> srvs,
             protocol_flag protocols,
             std::optional<net::ExitPolicy> policy = std::nullopt);
 
-        EncryptedClientContact encrypt_and_sign() const;
+        // Encrypts and signs the client contact with the given blinded keypair
+        EncryptedClientContact encrypt_and_sign(const Ed25519BlindedKey& blinded) const;
 
-        void update_intros(sorted_intro_set intros);
+        /// Replaces the client intros in the current introset with the given values.  It is not
+        /// necessary for the given values to be pre-sorted (i.e. this functions sorts them as
+        /// required).
+        void update_intros(std::vector<ClientIntro> intros);
 
         const PubKey& pubkey() const { return _pubkey; }
-        const sorted_intro_set& intros() const& { return _intros; }
-        sorted_intro_set&& intros() && { return std::move(_intros); }
+        // Returns the current intros; these will always be sorted in descending expiry order (i.e.
+        // last entry is the first to expire).
+        std::span<const ClientIntro> intros() const& { return _intros; }
+
         const std::unordered_set<dns::SRVData>& SRVs() const { return _srv; }
+
         protocol_flag protocols() const { return _protos; }
+
         const std::optional<net::ExitPolicy>& exit_policy() const { return _exit_policy; }
 
         bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
       private:
-        Ed25519PrivateData derived_privatekey;
-
         PubKey _pubkey;
 
-        sorted_intro_set _intros;
+        std::vector<ClientIntro> _intros;
         std::unordered_set<dns::SRVData> _srv;
 
         protocol_flag _protos;
@@ -91,12 +98,6 @@ namespace llarp
         std::optional<net::ExitPolicy> _exit_policy;
 
         std::vector<std::byte> bt_encode() const;
-
-        // Throws on failure to parse
-        void bt_decode(std::string_view buf);
-
-        // Throws if unsuccessful
-        void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
         session_tag generate_session_tag() const;
 
@@ -115,8 +116,8 @@ namespace llarp
     // check that when we generate & sign as well to make sure we don't exceed it.
     //
     /** EncryptedClientContact
-            "i" blinded local PubKey (routerID)
-            "n" nounce
+            "i" blinded local Ed25519 pubkey
+            "n" nonce
             "t" signing time
             "x" encrypted payload
             "~" signature   (signed with blinded derived scalar `b`)
@@ -131,11 +132,10 @@ namespace llarp
       private:
         friend struct ClientContact;
 
-        hash_key blinded_pubkey;
+        PubKey blinded_pubkey;
         SymmNonce nonce;
         std::chrono::milliseconds signed_at{0s};
         std::vector<std::byte> encrypted;
-        Signature sig{};
 
         std::string _bt_payload;
 
@@ -145,13 +145,11 @@ namespace llarp
         void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
       public:
-        const hash_key& key() const { return blinded_pubkey; }
+        const PubKey& key() const { return blinded_pubkey; }
 
         std::optional<ClientContact> decrypt(const PubKey& root) const;
 
         std::string_view bt_payload() const { return _bt_payload; }
-
-        bool verify() const;
 
         bool is_expired(std::chrono::milliseconds now = time_now_ms()) const;
 

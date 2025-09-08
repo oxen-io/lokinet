@@ -1,27 +1,27 @@
 #pragma once
 
-#include <llarp/bootstrap.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/contact/router_id.hpp>
-#include <llarp/ev/types.hpp>
 #include <llarp/util/thread/threading.hpp>
 
 #include <atomic>
 #include <filesystem>
 #include <optional>
-#include <set>
+#include <shared_mutex>
 #include <unordered_set>
-#include <utility>
+
+namespace oxen::quic
+{
+    struct message;
+    struct Ticker;
+}  // namespace oxen::quic
 
 namespace llarp
 {
     class Router;
 
-    // TESTNET: the following constants have been shortened for testing purposes
-
     inline constexpr auto FETCH_INTERVAL{10min};
     inline constexpr auto PURGE_INTERVAL{5min};
-    inline constexpr auto FLUSH_INTERVAL{5min};
 
     /*  RC Fetch Constants  */
     // fallback to bootstrap if we have less than this many RCs
@@ -29,11 +29,9 @@ namespace llarp
     // max number of attempts we make in non-bootstrap fetch requests
     inline constexpr int MAX_FETCH_ATTEMPTS{10};
 
-    // TODO FIXME XXX: these are both zero right now which means we *never* rotate our RC source!
-    // the total number of returned rcs that are held locally should be at least this
-    inline constexpr int MIN_GOOD_RC_FETCH_TOTAL{};
-    // the ratio of returned rcs found locally to to total returned should be above this ratio
-    inline constexpr double MIN_GOOD_RC_FETCH_THRESHOLD{};
+    // when pro-actively fetching RCs, ask for this many for which we have RouterID but no RC
+    inline constexpr int RC_FETCH_COUNT{5};
+
     // the total number of accepted returned rids should be above this number
     inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
     // the ratio of accepted:rejected rids must be above this ratio
@@ -41,9 +39,9 @@ namespace llarp
 
     /*  RID Fetch Constants  */
     // the number of rid sources that we make rid fetch requests to
-    inline constexpr size_t RID_SOURCE_COUNT{8};
+    inline constexpr size_t RID_SOURCE_COUNT{5};
     // upper limit on how many rid fetch requests to rid sources can fail
-    inline constexpr int MAX_RID_ERRORS{2};
+    inline constexpr int MAX_RID_ERRORS{1};
     // each returned rid must appear this number of times across all responses
     inline constexpr int MIN_RID_FETCH_FREQ{6};  //  TESTNET:
 
@@ -53,9 +51,11 @@ namespace llarp
     inline constexpr size_t SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT{0};
     inline constexpr size_t CLIENT_BOOTSTRAP_SOURCE_COUNT{10};
 
-    // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
-    inline constexpr auto FETCH_ATTEMPT_INTERVAL{15s};
-    inline constexpr auto FETCH_ATTEMPTS{1};
+    // After a bootstrap (success or failure) that results in not enough RCs, this is how long we
+    // wait before bootstrapping again.  In the case of repeated failures, we apply an linear
+    // backoff in incrments of this value up to BOOTSTRAP_COOLDOWN_MAX.
+    inline constexpr auto BOOTSTRAP_COOLDOWN = 3s;
+    inline constexpr auto BOOTSTRAP_COOLDOWN_MAX = 60s;
 
     /*  Other Constants  */
     // threshold net number of verifications needed to promote an RID to known (positive) or drop
@@ -68,12 +68,9 @@ namespace llarp
         friend class Router;
 
         Router& _router;
-        const fs::path _root;
+        const std::filesystem::path _root;
 
         /******** RouterID/RelayContacts ********/
-
-        using Lock_t = util::NullLock;
-        mutable util::NullMutex nodedb_mutex;
 
         /** RouterID mappings
             Both the following are populated in NodeDB startup with RouterID's stored on disk.
@@ -89,16 +86,21 @@ namespace llarp
            requests senders into this container to "introduce" them to each other
             - _bootstraps: the standard container for bootstrap RemoteRCs
         */
-        std::set<RouterID> known_rids;
+        std::unordered_set<RouterID> known_rids;
         std::unordered_map<RouterID, int> unconfirmed_rids;  // Value is the number of votes: seeing
                                                              // the rid is +1, missing it is -1.
 
         std::unordered_map<RouterID, RemoteRC> known_rcs;
 
-        BootstrapList _bootstraps{};
+        static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
+        std::vector<RemoteRC> _bootstraps;
+        void load_bootstraps();
+        void load_bootstrap(const std::filesystem::path&);
+        void load_bootstrap(std::string_view data, std::string_view log_desc);
 
         // All registered relays (service nodes)
-        std::unordered_set<RouterID> _registered_routers;
+        std::unordered_set<RouterID> _registered_relays;
+        mutable std::shared_mutex _registered_relays_mutex;
 
         // if populated from a config file, lists specific exclusively used as path first-hops
         std::unordered_set<RouterID> _pinned_edges;
@@ -106,9 +108,6 @@ namespace llarp
         // if true, ONLY use pinned edges for first hop
         bool _strict_connect{false};
 
-        // source of "truth" for RC updating. This relay will also mediate requests to the
-        // 8 selected active RID's for RID fetching
-        RouterID fetch_source;
         // set of 8 randomly selected RID's from the client's set of routers
         std::unordered_set<RouterID> rid_sources{};
         // logs the RID's that resulted in an error during RID fetching
@@ -120,77 +119,58 @@ namespace llarp
         std::atomic<int> fail_counter{};
         std::atomic<int> response_counter{};
 
+        bool _bootstrap_running = false;
+        int _bootstrap_fails = 0;
+
         /// asynchronously remove the files for a set of rcs on disk given their public ident key
         void remove_many_from_disk_async(const std::vector<RouterID>& idents) const;
 
         /// get filename of an RC file given its public ident key
-        fs::path get_path_by_pubkey(const RouterID& pk) const;
-
-        // TESTNET: NEW MEMBERS FOR BOOTSTRAPPING MANAGED BY EVENTTRIGGER OBJECT
-        std::atomic<bool> _needs_bootstrap{false}, _is_bootstrapping{false}, _has_bstrap_connection{false},
-            _is_connecting_bstrap{false};
-
-        std::shared_ptr<EventTrigger> _bootstrap_handler;
+        std::filesystem::path get_path_by_pubkey(const RouterID& pk) const;
 
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
         std::shared_ptr<quic::Ticker> _rc_fetch_ticker;
 
         std::shared_ptr<quic::Ticker> _purge_ticker;
-        std::shared_ptr<quic::Ticker> _flush_ticker;
 
       public:
         explicit NodeDB(Router& r);
 
         bool strict_connect_enabled() const { return _strict_connect; }
 
-        void start_tickers();
+        // Starts the nodedb tickers for purge and fetch (clients), and initiates a bootstrap if the
+        // nodedb has too few RCs.
+        void start();
 
         // returns {num_rcs, num_rids, num_bootstraps}
-        std::tuple<size_t, size_t, size_t> db_stats() const;
+        std::array<int, 3> db_stats() const;
 
-        const std::set<RouterID>& get_known_rids() const { return known_rids; }
+        const std::unordered_set<RouterID>& get_known_rids() const { return known_rids; }
 
         const std::unordered_map<RouterID, RemoteRC>& get_known_rcs() const { return known_rcs; }
 
-        void process_fetched_rcs(std::vector<RemoteRC> rcs);
-
-        void ingest_fetched_rids(
-            const RouterID& source, std::optional<std::unordered_set<RouterID>> ids = std::nullopt);
-
-        void process_fetched_rids();
-
-        std::vector<RouterID> get_expired_rcs();
-
-        bool is_bootstrapping() const { return _is_bootstrapping; }
-        bool needs_bootstrap() const { return _needs_bootstrap; }
-        bool bootstrap_completed() const { return not(_is_bootstrapping or _needs_bootstrap); }
-        bool is_bootstrap_node(const RemoteRC& rc) const;
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
-        // Populate rid_sources with random sample from known_rids. A set of rids is passed
-        // if only specific RID's need to be re-selected; to re-select all, pass the member
-        // variable ::known_rids
-        void reselect_router_id_sources(std::unordered_set<RouterID> specific);
+        void set_registered_relays(std::unordered_set<RouterID> relays);
+        bool has_registered_relays() const;
+        std::vector<RouterID> get_registered_relays() const;
 
-        void set_router_whitelist(const std::vector<RouterID>& whitelist);
-
-        std::optional<RouterID> get_random_registered_router() const;
+        std::optional<RouterID> get_random_registered_relay() const;
 
         // client:
         //   if pinned edges were specified, connections are allowed only to those and
         //   to the configured bootstrap nodes.  otherwise, always allow.
         //
         // relay:
-        //   outgoing connections are allowed only to other registered, funded relays
-        //   (whitelist and greylist, respectively).
+        //   outgoing connections are allowed only to other registered relays
         bool is_connection_allowed(const RouterID& remote) const;
 
         // client:
         //   same as is_connection_allowed
         //
         // server:
-        //   we only build new paths through registered, not decommissioned relays
-        //   (i.e. whitelist)
+        //   we only build new paths through registered, non-decommissioned relays
+        //   TODO FIXME: What does this mean? Servers don't build paths?
         bool is_path_allowed(const RouterID& remote) const { return known_rids.count(remote); }
 
         // if pinned edges were specified, the remote must be in that set, else any remote
@@ -203,36 +183,30 @@ namespace llarp
         // paths starting with the given router IDs.
         void set_pinned_edges(std::unordered_set<RouterID> edges);
 
-        void bootstrap_init();
+        int num_bootstraps() const { return static_cast<int>(_bootstraps.size()); }
 
-        size_t num_bootstraps() const { return _bootstraps.size(); }
+        bool has_bootstraps() const { return !_bootstraps.empty(); }
 
-        bool has_bootstraps() const { return _bootstraps.empty(); }
-
-        const BootstrapList& bootstrap_list() const { return _bootstraps; }
-
-        const std::unordered_set<RouterID>& registered_routers() const { return _registered_routers; }
+        // Returns true if `relay` is a registered relay.  This uses a mutex (rather that event
+        // loop) protection so that it can be safely called from either event loop without disk a
+        // deadlock between the loops.
+        bool is_registered(const RouterID& relay) const;
 
         /// load all known_rcs from disk synchronously
         void load_from_disk();
-
-        /// explicit save all RCs to disk synchronously
-        void save_to_disk() const;
 
         /// called on close
         void cleanup();
 
         /// the number of known RC's currently held
-        size_t num_rcs() const;
+        int num_rcs() const;
 
-        size_t num_rids() const;
+        int num_rids() const;
 
-        /// do periodic tasks like flush to disk and expiration
-        bool tick(std::chrono::milliseconds now);
-
-        /// find the `num_routers` routers closest to dht key.  The order of returned elements is
-        /// arbitrary (that is: they will be the N closest routers, but in no particular order).
-        std::vector<const RemoteRC*> find_many_closest_to(hash_key location, int num_routers) const;
+        /// find the `num_relays` relays with IDs closest to the given blinded pubkey, in order
+        /// from closest to Nth-closest.  Note that this searches all network-registered rids, even
+        /// if we don't have the RC for that relay yet.
+        std::vector<RouterID> find_many_closest_to(const PubKey& blinded_pk, int num_relays) const;
 
         /// return true if we have an rc by its ident pubkey
         bool has_rc(const RouterID& pk) const { return get_rc(pk); }
@@ -248,30 +222,58 @@ namespace llarp
         /// Selects n random RCs from all known RCs (if a predicate is given, all that return true
         /// from the given predicate).  If there are fewer than `n` admissable RCs then all
         /// admissable RCs are returned.  The resulting RCs will also be shuffled before being
-        /// returned, unless the shuffle argument is set to false.
-        std::vector<std::reference_wrapper<const RemoteRC>> get_n_random_rcs(
+        /// returned, unless the shuffle argument is set to false.  The returned pointers are
+        /// guaranteed to be non-nullptr.
+        std::vector<const RemoteRC*> get_n_random_rcs(
             int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
-        /// put (or replace) the RC if has a known valid RouterID, and we either don't have an RC,
-        /// or the given rc is newer than what we have.  Returns true if put.
-        bool put_rc(RemoteRC rc);
+        /// Stores an RC broadcast to the network.  The return value indicates whether this RC
+        /// should be re-broadcast to all connected relays (true) or not (false).  In particular,
+        /// false does *not* necessarily mean that the RC was not updated, but could also simply
+        /// mean that the RC update was not significant enough to warrant rebroadcasting.
+        ///
+        /// This function does *not* check that the RC's router ID is actually a valid service node:
+        /// call `verify_store_gossip_rc` instead of this to also do that check.
+        ///
+        /// In particular, RC re-gossipping is determined by:
+        /// - The RC must be for a relay we haven't recently received an RC for (i.e. we didn't have
+        ///   it, or what we had was declared outdated (more than 12h old)).
+        /// - Alternatively, an RC will also be gossipped if it is an important update for
+        ///   reachability (i.e. changed IP or port, or other important RC properties).
+        /// - Gossips will not be accepted if the currently stored RC for the relay is not at least
+        ///   a minute older than the incoming one.
+        ///
+        /// `store_to_disk` is usually omitted to store the RC if it is accepted, but is false in
+        /// special cases such as when adding bootstrap fallbacks.
+        bool put_rc(const RemoteRC& rc);
 
+        /// Checks of the relay in the given rc is a registered network relay (either active or
+        /// decommissioned) and, if so, calls and returns put_rc with it.
+        ///
+        /// Returns true if the router ID is known *and* the rc was updated *and* the RC should be
+        /// re-gossipped (see put_rc); returns false otherwise.
         bool verify_store_gossip_rc(const RemoteRC& rc);
 
       private:
         void fetch_rcs();
         void fetch_rids();
+
+        /// Initiate a bootstrap fetch attempt.  This will try to bootstrap once from each
+        /// configured bootstrap node until bootstrapping succeeds, or all bootstraps have been
+        /// tried.  `on_bootstrap_done` will be called when the attempt finishes with a boolean
+        /// indicating whether bootstrapping was successful.
+        ///
+        /// While a bootstrap is running the regular rid- and rc-fetching routines are disabled.
         void bootstrap();
+        void on_bootstrap_done(bool success);
+
+        bool handle_bootstrap_result(const RouterID& source, std::string_view body);
 
         void post_rid_fetch(bool shutdown = false);
-
-        void stop_bootstrap(bool success);
-
-        void cycle_fetch_source();
 
         /// remove any stored RCs matching the given predicate
         void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);
 
-        void process_unconfirmed_rids(std::set<RouterID> unconfirmed);
+        void handle_fetched_router_ids(const std::unordered_map<RouterID, std::unordered_set<RouterID>>& results);
     };
 }  // namespace llarp

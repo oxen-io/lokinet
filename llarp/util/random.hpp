@@ -3,6 +3,7 @@
 #include <sodium/randombytes.h>
 
 #include <limits>
+#include <span>
 
 namespace llarp
 {
@@ -24,5 +25,7 @@ namespace llarp
     };
 
     extern CSRNG csrng;
+
+    inline void random_fill(std::span<std::byte> s) { randombytes_buf(s.data(), s.size()); }
 
 }  // namespace llarp

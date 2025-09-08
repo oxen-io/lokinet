@@ -1,5 +1,8 @@
 #include "router_id.hpp"
 
+#include <llarp/util/formattable.hpp>
+
+#include <nlohmann/json.hpp>
 #include <oxenc/base32z.h>
 
 #include <iterator>
@@ -13,11 +16,11 @@ namespace llarp
         constexpr auto B32Z_ID_SIZE = oxenc::to_base32z_size(RouterID::SIZE);
     }  // namespace
 
-    std::string RouterID::to_network_address(bool is_relay) const
+    std::string RouterID::AddressPrinter::to_string() const
     {
         std::string r;
         r.reserve(B32Z_ID_SIZE + (is_relay ? RELAY_DOT_TLD : CLIENT_DOT_TLD).size());
-        oxenc::to_base32z(begin(), end(), std::back_inserter(r));
+        oxenc::to_base32z(rid.begin(), rid.end(), std::back_inserter(r));
         r += is_relay ? RELAY_DOT_TLD : CLIENT_DOT_TLD;
         return r;
     }

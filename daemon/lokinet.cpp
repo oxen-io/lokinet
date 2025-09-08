@@ -53,7 +53,7 @@ namespace
     // operational function definitions
     int lokinet_main(int, char**);
     void handle_signal(int sig);
-    static void start_lokinet(std::optional<fs::path> confFile, bool snode);
+    static void start_lokinet(std::optional<std::filesystem::path> confFile, bool snode);
 
     // variable declarations
     static auto logcat = llarp::log::Cat("daemon");
@@ -361,7 +361,7 @@ namespace
             return cli.exit(e);
         }
 
-        std::optional<fs::path> configFile;
+        std::optional<std::filesystem::path> configFile;
 
         try
         {
@@ -406,7 +406,7 @@ namespace
         if (configFile.has_value())
         {
             // when we have an explicit filepath
-            fs::path basedir = configFile->parent_path();
+            std::filesystem::path basedir = configFile->parent_path();
             if (options.generate || options.generate_embedded)
             {
                 try
@@ -423,7 +423,7 @@ namespace
             {
                 try
                 {
-                    if (!fs::exists(*configFile))
+                    if (!exists(*configFile))
                     {
                         llarp::log::error(logcat, "Config file not found {}", *configFile);
                         return 1;
@@ -496,7 +496,7 @@ namespace
     }
 
     // this sets up, configures and runs the main context
-    static void start_lokinet(std::optional<fs::path> confFile, bool snode)
+    static void start_lokinet(std::optional<std::filesystem::path> confFile, bool snode)
     {
         llarp::log::info(logcat, "starting up {}", llarp::LOKINET_VERSION_FULL);
         try

@@ -4,7 +4,7 @@
 
 #include <llarp/address/map.hpp>
 #include <llarp/dns/server.hpp>
-#include <llarp/ev/types.hpp>
+#include <llarp/ev/fd_poller.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
@@ -16,6 +16,8 @@ namespace llarp::traffic_type
     constexpr uint8_t TCP = 1;
     constexpr uint8_t RAW = 2;
     constexpr uint8_t TUNNELED_QUIC = 3;
+
+    inline constexpr bool is_valid(uint8_t t) { return t >= UDP && t <= TUNNELED_QUIC; }
 }  // namespace llarp::traffic_type
 
 namespace llarp::handlers
@@ -54,18 +56,15 @@ namespace llarp::handlers
         std::string _if_name;
 
         std::shared_ptr<vpn::NetworkInterface> _net_if;
-        std::unique_ptr<FDPoller> _poller;
+        std::unique_ptr<ev::FDPoller> _poller;
 
         std::shared_ptr<vpn::PacketRouter> _packet_router;
 
         std::optional<net::ExitPolicy> _exit_policy = std::nullopt;
 
         /// a file to load / store the ephemeral address map to
-        std::optional<fs::path> _persisting_addr_file = std::nullopt;
+        std::optional<std::filesystem::path> _persisting_addr_file = std::nullopt;
         bool persist_addrs{false};
-
-        /// how long to wait for path alignment
-        std::chrono::milliseconds _path_alignment_timeout{30s};
 
         /// for raw packet dns
         std::shared_ptr<vpn::PacketIO> _raw_DNS;
@@ -96,6 +95,10 @@ namespace llarp::handlers
         const ipv4& get_ipv4() const;
         // Returns the lokinet tun IPv6 address by pointer, or nullptr if ipv6 is not configured.
         const ipv6* get_ipv6() const;
+
+        // Returns the lokinet tun IPv4 network; the address is set to this tun device's local
+        // address (i.e. the .1 address).
+        const ipv4_net& get_ipv4_network() const;
 
         nlohmann::json ExtractStatus() const;
 
@@ -129,19 +132,18 @@ namespace llarp::handlers
         // bool handle_inbound_packet(IPPacket pkt, NetworkAddress remote, bool is_exit_session, bool
         // is_outbound_session);
 
-        // Upon session creation, SessionHandler will instruct TunEndpoint to requisition a private IP through which
-        // to route session traffic
-        std::optional<ipv4> map_session_to_local_ip(const NetworkAddress& remote) override;
+        // Obtains an available IPv4 address from the tun device and associates the given lokinet
+        // remote address with it.  If the mapping already exists, this returns the existing IP,
+        // otherwise it assigns a new one.  The association persists until unmapped.  Returns the
+        // mapped ipv4 address, or nullptr if one could not be assigned.
+        std::optional<ipv4> map(const NetworkAddress& remote) override;
         // TODO:
-        // std::optional<ipv6> map_session_to_local_ipv6(const NetworkAddress& remote);
+        // std::optional<ipv6> map_address_to_local_ipv6(const NetworkAddress& remote);
 
-        void unmap_session_to_local_ip(const NetworkAddress& remote) override;
-
-        bool has_if_addr() const { return true; }
+        // Removes any mapped IP for the given remote from the tun IP map.
+        void unmap(const NetworkAddress& remote) override;
 
         std::optional<net::ExitPolicy> get_exit_policy() const { return _exit_policy; }
-
-        std::chrono::milliseconds get_path_alignment_timeout() const { return _path_alignment_timeout; }
 
         /// ip packet against any exit policies we have
         /// returns false if this traffic is disallowed by any of those policies
@@ -154,7 +156,7 @@ namespace llarp::handlers
 
         Router& router() { return _router; }
 
-        void start_poller();
+        void start_poller() override;
 
         // Stores assigned IP's for each session in/out of this lokinet instance
         //  - Reserved local addresses are directly pre-loaded from config

@@ -2,9 +2,9 @@
 
 #include "constants/proto.hpp"
 #include "contact/router_id.hpp"
-#include "ev/types.hpp"
 #include "util/thread/threading.hpp"
 
+#include <filesystem>
 #include <map>
 
 namespace oxenc
@@ -13,13 +13,18 @@ namespace oxenc
     class bt_dict_producer;
 }  // namespace oxenc
 
+namespace oxen::quic
+{
+    struct Ticker;
+}
+
 namespace llarp
 {
     class Router;
 
     namespace path
     {
-        struct Path;
+        class Path;
     }
 
     struct RouterProfile
@@ -36,11 +41,11 @@ namespace llarp
         uint64_t version = llarp::constants::proto_version;
 
         RouterProfile() = default;
-        RouterProfile(oxenc::bt_dict_consumer& btdc);
+        RouterProfile(oxenc::bt_dict_consumer&& btdc);
 
-        void bt_encode(oxenc::bt_dict_producer& btdp) const;
+        void bt_encode(oxenc::bt_dict_producer&& btdp) const;
 
-        void bt_decode(oxenc::bt_dict_consumer& btdc);
+        void bt_decode(oxenc::bt_dict_consumer&& btdc);
 
         bool bt_decode(std::string_view buf);
 
@@ -80,11 +85,11 @@ namespace llarp
 
         void connect_succeess(const RouterID& r);
 
-        void path_timeout(path::Path* p);
+        void path_timeout(path::Path& p);
 
-        void path_fail(path::Path* p);
+        void path_fail(path::Path& p);
 
-        void path_success(path::Path* p);
+        void path_success(path::Path& p);
 
         void hop_fail(const RouterID& r);
 
@@ -109,14 +114,14 @@ namespace llarp
 
         void stop_save_ticker();
 
-        void BEncode(oxenc::bt_dict_producer& dict) const;
+        std::string BEncode() const;
 
-        void BDecode(oxenc::bt_dict_consumer dict);
+        void BDecode(oxenc::bt_dict_consumer&& dict);
 
-        std::shared_ptr<quic::Ticker> _disk_saver;
+        std::shared_ptr<oxen::quic::Ticker> _disk_saver;
 
         mutable util::Mutex _m;
-        fs::path _profile_file;
+        std::filesystem::path _profile_file;
         std::map<RouterID, RouterProfile> _profiles;
         std::chrono::milliseconds _last_save{0s};
         std::atomic<bool> _profiling_disabled{false};

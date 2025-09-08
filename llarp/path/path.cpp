@@ -1,5 +1,9 @@
 #include "path.hpp"
 
+#include "path_handler.hpp"
+
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/link/endpoint.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
@@ -8,218 +12,229 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 
+#include <nlohmann/json.hpp>
+
+#include <chrono>
 #include <ranges>
 
 namespace llarp::path
 {
     static auto logcat = log::Cat("path");
 
-    size_t Path::next_path_uuid = 0;
+    size_t Path::next_path_log_id = 0;
 
-    Path::Path(Router& rtr, const std::vector<RemoteRC>& hop_rcs, std::weak_ptr<PathHandler> _handler)
-        : handler{std::move(_handler)}, _router{rtr}, num_hops{hop_rcs.size()}, path_id{++next_path_uuid}
+    Path::Path(
+        Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
+        : handler{handler.weak_from_this()}, _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
-        populate_internals(hop_rcs);
-        log::trace(logcat, "Path successfully constructed -> {} :{}", to_string(), hop_string());
-    }
+        hops.resize(hop_rcs.size());
 
-    Path::~Path()
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (is_linked())
-            log::warning(logcat, "Path (ID:{}) destructed with {} linked sessions!", path_id, _linked_sessions.size());
-    }
-
-    void Path::populate_internals(const std::vector<RemoteRC>& hop_rcs)
-    {
-        hops.resize(num_hops);
-
-        for (size_t i = 0; i < num_hops; ++i)
+        for (size_t i = 0; i < hop_rcs.size(); ++i)
         {
-            /** Conditions:
-                - First hop RXID is unique, the rest are the previous hop TXID
-                - Last hop upstream is it's own RID, the rest are the next hop RID
-                - First hop downstream is client's RID, the rest are the previous hop RID
-                - Local hop RXID is random, TXID is first hop RXID
-                - Local hop upstream is first hop RID, downstream is local instance RID
-            */
+            const bool last = i + 1 == hop_rcs.size();
+            auto& hop = hops[i];
+            hop.router_id = hop_rcs[i].router_id();
+            // First hop RXID is unique, the rest are the previous hop TXID
+            hop.rxid = i == 0 ? HopID::make_random() : hops[i - 1].txid;
+            // Pivot hop TXID is not useful, and so is simply set equal to the pivot RXID.
+            hop.txid = last ? hop.rxid : HopID::make_random();
+            // Last hop upstream is it's own RID, the rest are the next hop RID
+            hop.upstream = last ? hop.router_id : hop_rcs[i + 1].router_id();
+            // First hop downstream is client's RID, the rest are the previous hop RID
+            hop.downstream = i == 0 ? _router.local_rid() : hops[i - 1].router_id;
 
-            hops[i]._rid = hop_rcs[i].router_id();
-            hops[i]._txid = HopID::make_random();
-
-            if (i == 0)
-            {
-                hops[i]._rxid = HopID::make_random();
-                hops[i]._upstream = hop_rcs[i + 1].router_id();
-                hops[i]._downstream = _router.local_rid();
-            }
-            else if (i == num_hops - 1)
-            {
-                hops[i]._rxid = hops[i - 1]._txid;
-                hops[i]._upstream = hops[i]._rid;
-                hops[i]._downstream = hops[i - 1]._rid;
-            }
-            else
-            {
-                hops[i]._rxid = hops[i - 1]._txid;
-                hops[i]._upstream = hop_rcs[i + 1].router_id();
-                hops[i]._downstream = hops[i - 1]._rid;
-            }
-
-            // generate dh kx components
-            hops[i].kx = shared_kx_data::generate();
-
-            // Conditions written as ternaries
-            // hops[i]._rxid = i ? hops[i - 1]._txid : HopID::make_random();
-            // hops[i]._upstream = i == num_hops - 1 ? hops[i]._rid : hop_rcs[i + 1].router_id();
-            // hops[i]._downstream = i ? hops[i - 1]._rid : _router.local_rid();
+            // hop.shared_secret and hop.xor_nonce are not set yet: they get set via a call to
+            // PathHandler::path_build_onion when we make the actual build path message (because
+            // they also require generating and sending an ephemeral pubkey and dh nonce in the path
+            // build message, which aren't required again once sent in that message).
         }
 
         hops.back().terminal_hop = true;
 
         log::trace(logcat, "Path populated with hops: {}", hop_string());
 
-        // initialize parts of the clientintro
-        intro.pivot_rid = hops.back().router_id();
-        intro.pivot_txid = hops.back()._txid;
+        log::debug(logcat, "Path successfully constructed: {}", *this);
+    }
 
-        log::trace(
-            logcat, "Path client intro holding pivot_rid ({}) and pivot_txid ({})", intro.pivot_rid, intro.pivot_txid);
+    ClientIntro Path::make_intro() const
+    {
+        ClientIntro intro;
+        intro.relay = hops.back().router_id;
+        intro.hop = hops.back().txid;
+        intro.expiry = std::chrono::sys_seconds{std::chrono::floor<std::chrono::seconds>(_expiry)};
+        return intro;
+    }
+
+    std::string Path::ping_stats_printer::to_string() const
+    {
+        if (p.ping_responses == 0)
+            return "0.0%";
+
+        double mean = (double)p.ping_cumulative.count() / p.ping_responses;
+        double success_pct = p.ping_responses / (double)(p.ping_responses + p.ping_timeouts) * 100.0;
+        if (p.ping_responses == 1)
+            return "{:.1f}%, {:.0f}ms avg"_format(success_pct, mean);
+
+        double sd = std::sqrt(((double)p.ping_sq_cumulative - p.ping_responses * mean * mean) / (p.ping_responses - 1));
+        return "{:.1f}%, {:.0f}ms avg, {:.1f}ms s.d."_format(success_pct, mean, sd);
     }
 
     void Path::do_ping(std::chrono::milliseconds start_time)
     {
-        if (!is_active())
+        if (!is_active() || start_time < next_ping)
             return;
 
-        log::trace(logcat, "Pinging path TXID={}", edge().txid());
-        send_path_control_message("path_ping", {}, [self = get_weak(), start_time](quic::message m) {
-            auto shared_self = self.lock();
-            if (!shared_self)
+        // Subtract a few milliseconds so that jitter in the tick processing time doesn't affect the
+        // ping interval:
+        next_ping = start_time + _router.config().paths.ping_interval - 20ms;
+
+        log::trace(logcat, "Pinging path TXID={}", edge().txid);
+        send_path_control_message("path_ping", {}, [this, wself = weak_from_this(), start_time](quic::message m) {
+            auto sself = wself.lock();
+            if (!sself)
                 return;
             std::chrono::milliseconds now = llarp::time_now_ms();
             auto time_taken = now - start_time;
-            if (m && m.body() == messages::OK_RESPONSE)
+            if (m)
             {
-                log::trace(
-                    logcat,
-                    "Ping response for path TXID={} response received in {}",
-                    shared_self->edge().txid(),
-                    time_taken);
-                shared_self->recent_ping_failures = 0;
-                shared_self->ping_average = std::chrono::milliseconds{
-                    ((shared_self->ping_average * shared_self->ping_count) + time_taken) / ++shared_self->ping_count};
+                ping_responses++;
+                ping_recent_timeouts = 0;
+                ping_cumulative += time_taken;
+                ping_sq_cumulative += time_taken.count() * time_taken.count();
+
+                if (m.body() == messages::OK_RESPONSE)
+                    log::debug(
+                        logcat,
+                        "Ping response for path {} (txid={}) response received in {} ({})",
+                        *this,
+                        edge().txid,
+                        time_taken,
+                        printable_ping_stats());
+                else
+                    log::warning(
+                        logcat,
+                        "Path {} ping was successful (in {}) but had unexpected response body: {}",
+                        *this,
+                        time_taken,
+                        buffer_printer(m.body()));
             }
             else
             {
-                log::debug(
-                    logcat, "Ping response for path TXID={} timed out in {}", shared_self->edge().txid(), time_taken);
-                if (++shared_self->recent_ping_failures > 5)
+                bool expire = true;
+                if (m.timed_out)
                 {
+                    ping_timeouts++;
                     log::debug(
-                        logcat, "Path TXID={} had too many ping timeouts, expiring.", shared_self->edge().txid());
-                    shared_self->intro.expiry = start_time;
+                        logcat,
+                        "Ping response for path {} (txid={}) timed out after {} ({})",
+                        *this,
+                        edge().txid,
+                        time_taken,
+                        printable_ping_stats());
+                    expire = ++ping_recent_timeouts > _router.config().paths.max_missed_pings;
+                    if (expire)
+                        log::warning(
+                            logcat,
+                            "Path {} (txid={}) had too many ping timeouts ({}); expiring path.",
+                            *this,
+                            edge().txid,
+                            ping_recent_timeouts);
                 }
+                else
+                    log::warning(
+                        logcat,
+                        "{} path_ping returned a path error (in {}): {}",
+                        *this,
+                        time_taken,
+                        buffer_printer(m.body()));
+
+                if (expire)
+                    _expiry = start_time;
             }
         });
     }
 
-    void Path::link_session(session_tag t)
+    bool Path::operator==(const Path& other) const
     {
-        _linked_sessions.insert(t);
-        log::trace(logcat, "Current path has {} linked sessions!", _linked_sessions.size());
+        return std::ranges::equal(
+            hops, other.hops, [](const TransitHop& a, const TransitHop& b) { return a.same_transit(b); });
     }
 
-    bool Path::unlink_session(session_tag t)
+    void Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
     {
-        auto n = _linked_sessions.erase(t);
-        log::trace(logcat, "Current path has {} linked sessions!", _linked_sessions.size());
-        return n != 0;
+        send_path_control_message("fetch_rcs", FetchRC::serialize({&needed, 1}), std::move(func));
     }
 
-    bool Path::operator==(const Path& other) const { return hops == other.hops; }
-
-    bool Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
+    void Path::fetch_relay_contacts(std::span<const RouterID> needed, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("fetch_rcs", as_bspan(FetchRC::serialize({{needed}})), std::move(func));
+        send_path_control_message("fetch_rcs", FetchRC::serialize(needed), std::move(func));
     }
 
-    bool Path::find_client_contact(const hash_key& location, std::function<void(quic::message)> func)
+    void Path::find_client_contact(const PubKey& blinded_pk, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("find_cc", as_bspan(FindClientContact::serialize(location)), std::move(func));
+        send_path_control_message("find_cc", FindClientContact::serialize(blinded_pk), std::move(func));
     }
 
-    bool Path::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
+    void Path::publish_client_contact(
+        const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("publish_cc", as_bspan(PublishClientContact::serialize(ecc)), std::move(func));
+        send_path_control_message("publish_cc", PublishClientContact::serialize(ecc, location), std::move(func));
     }
 
-    bool Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)
+    void Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)
     {
-        return send_path_control_message("resolve_sns", as_bspan(ResolveSNS::serialize(name_hash)), std::move(func));
+        send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
 
-    std::string Path::make_path_message(std::span<std::byte> inner_payload)
+    void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type)
     {
-        auto nonce = SymmNonce::make_random();
+        auto& hopid = edge().rxid;
+        auto inner_size = data.size();
+        data.resize(inner_size + ENCRYPT_PATH_MESSAGE_OVERHEAD);
+
+        static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
+        static_assert(sizeof(HopID) == HopID::SIZE);
+
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(data);
+        assert(inner_payload.size() == inner_size);
 
         for (const auto& hop : std::ranges::reverse_view(hops))
         {
-            nonce = crypto::onion(inner_payload, hop.kx.shared_secret, nonce, hop.kx.xor_nonce);
+            crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
+            nonce ^= hop.xor_nonce;
         }
 
-        return ONION::serialize_hop(edge().rxid(), nonce, std::move(inner_payload));
+        nonce.copy_to(bnonce);
+        hopid.copy_to(bhop);
+        msgtype[0] = type;
     }
 
-    bool Path::send_path_data_message(std::span<std::byte> data)
+    void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
-        auto payload = make_path_message(data);
-        return _router.send_data_message(edge().router_id(), std::move(payload));
+        encrypt_path_message(data, std::move(nonce), DATA_MESSAGE_TYPE);
+        _router.link_endpoint().send_datagram(edge().router_id, std::move(data));
     }
 
-    bool Path::send_path_control_message(
+    void Path::send_path_control_message(
         std::string_view endpoint, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(endpoint, std::move(body));
-        auto outer_payload = make_path_message(as_bspan(inner_payload));
-        return _router.send_control_message(
-            edge().router_id(), "path_control", std::move(outer_payload), std::move(func));
+        auto inner_payload = PATH::CONTROL::serialize(endpoint, body);
+        std::vector<std::byte> payload;
+        payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD);
+        payload.resize(inner_payload.size());
+        std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
+        encrypt_path_message(payload, SymmNonce::make_random(), CONTROL_MESSAGE_TYPE);
+        _router.link_endpoint().send_command(edge().router_id, "path_control", std::move(payload), std::move(func));
     }
 
-    bool Path::is_active(std::chrono::milliseconds now) const { return _is_established ? !is_expired(now) : false; }
+    std::string Path::to_string() const { return "Path{{{}}}[{}]"_format(path_log_id, hop_string()); }
 
-    std::string Path::to_string() const
+    std::string path_hop_stringifier::to_string() const
     {
-        return debug_string();
-        // return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{}
-        // ]"_format(
-        //     is_active(),
-        //     is_linked(),
-        //     _router.local_rid().short_string(),
-        //     pivot().router_id().short_string(),
-        //     edge().rxid(),
-        //     pivot().txid());
+        return fmt::to_string(
+            fmt::join(hops | std::views::transform([](auto& h) { return h.router_id.short_string(); }), "⟷"));
     }
-
-    std::string Path::debug_string() const
-    {
-        return "Path:[ ID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{} ]{}"_format(
-            path_id, pivot().router_id().short_string(), edge().rxid(), pivot().txid(), hop_string());
-    }
-
-    std::string Path::hop_string() const
-    {
-        std::string hops_str;
-        hops_str.reserve(hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
-        for (const auto& hop : hops)
-        {
-            if (!hops.empty())
-                hops_str += " -> ";
-            hops_str += hop.router_id().short_string();
-        }
-        return hops_str;
-    }
+    path_hop_stringifier Path::hop_string() const { return {hops}; }
 
     nlohmann::json Path::ExtractStatus() const
     {
@@ -227,7 +242,6 @@ namespace llarp::path
 
         nlohmann::json obj{
             {"lastRecvMsg", to_json(last_recv_msg)},
-            {"lastLatencyTest", to_json(last_latency_test)},
             {"expired", is_expired(now)},
             {"ready", is_active()},
         };
@@ -240,24 +254,15 @@ namespace llarp::path
         return obj;
     }
 
-    void Path::Tick(std::chrono::milliseconds now)
-    {
-        if (not is_active())
-            return;
-
-        if (is_expired(now))
-            return;
-    }
-
     void Path::set_established()
     {
+        if (_is_established)
+            return;
+
         log::trace(logcat, "Path marked as successfully established!");
         _is_established = true;
-        intro.expiry = llarp::time_now_ms() + path::DEFAULT_LIFETIME;
     }
 
-    bool Path::is_expired(std::chrono::milliseconds now) const { return intro.is_expired(now); }
-
-    std::string Path::name() const { return "[ TX={} | RX={} ]"_format(edge().txid(), edge().rxid()); }
+    std::string Path::name() const { return "[ TX={} | RX={} ]"_format(edge().txid, edge().rxid); }
 
 }  // namespace llarp::path

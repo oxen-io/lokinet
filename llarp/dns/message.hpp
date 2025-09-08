@@ -4,6 +4,8 @@
 #include "rr.hpp"
 #include "serialize.hpp"
 
+#include <optional>
+
 namespace llarp
 {
     struct IPPacket;

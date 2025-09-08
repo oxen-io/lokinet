@@ -11,39 +11,41 @@ namespace llarp
 
         /** Bt-encoded contents:
             - 'e' : EncryptedClientContact
-            - 'i' : (Optional) RouterID of dispatching client, only sent on session paths
+            - 'n' : (only for network publishes, omitted for distribution through current inbound
+              sessions). 0-3 position indicator.  A client publishes their introset to the 4 closest
+              network locations by sending the introset down their inbound/utility paths to 4 random
+              routers; each message containing a value from 0 to 3 indicating where to forward the
+              CC to.
 
-            Note: we are bt-encoding to leave space for future fields (ex: version)
+              E.g.
+                client -> ...path1... -> relayA sends n=0 to ask relayA to forward to the best relay
+                client -> ...path2... -> relayB sends n=1 to ask relayB to forward to the second-best relay
+
+              and so on for n=2 and n=3.  The 4 publishing locations is for redundancy against
+              publishing failures that might miss one, and against service node composition changes
+              that might add or remove a service node (thus changing which 4 are the four best
+              storage locations).
          */
-        std::string serialize(const EncryptedClientContact& ecc, std::optional<RouterID> remote)
+        std::vector<std::byte> serialize(const EncryptedClientContact& ecc, std::optional<int> location)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("e", ecc.bt_payload());
-            if (remote)
-                btdp.append("i", remote->span());
+            btdp.append("n", location);
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
-        std::pair<EncryptedClientContact, std::optional<RouterID>> deserialize(oxenc::bt_dict_consumer&& btdc)
+        std::pair<EncryptedClientContact, std::optional<int>> deserialize(oxenc::bt_dict_consumer&& btdc)
         {
-            std::pair<EncryptedClientContact, std::optional<RouterID>> ret;
-            auto& [ecc, sender] = ret;
-
             try
             {
-                ecc = EncryptedClientContact{btdc.require_span<std::byte>("e")};
-
-                if (btdc.skip_until("i"))
-                    sender.emplace(btdc.consume_span<std::byte, RouterID::SIZE>());
+                return {EncryptedClientContact{btdc.require_span<std::byte>("e")}, btdc.maybe<int>("n")};
             }
             catch (const std::exception& e)
             {
                 throw std::runtime_error{"Exception caught deserializing EncryptedClientContact: {}"_format(e.what())};
             }
-
-            return ret;
         }
     }  // namespace PublishClientContact
 
@@ -54,26 +56,26 @@ namespace llarp
         const std::string INVALID_ORDER = messages::serialize_status_response("INVALID ORDER");
 
         /** Bt-encoded contents:
-            - 'k' : DHT key corresponding to client contact
+            - 'k' : blinded pubkey corresponding to client contact
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const hash_key& location)
+        std::vector<std::byte> serialize(const PubKey& location)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("k", location.span());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
-        hash_key deserialize(oxenc::bt_dict_consumer&& btdc)
+        PubKey deserialize(oxenc::bt_dict_consumer&& btdc)
         {
-            hash_key key;
+            PubKey key;
 
             try
             {
-                key.assign(btdc.require_span<std::byte, hash_key::SIZE>("k"));
+                key.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
             }
             catch (const std::exception& e)
             {
@@ -89,13 +91,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedClientContact& ecc)
+        std::vector<std::byte> serialize_response(const EncryptedClientContact& ecc)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("x", ecc.bt_payload());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         EncryptedClientContact deserialize_response(oxenc::bt_dict_consumer&& btdc)
@@ -124,13 +126,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash)
+        std::vector<std::byte> serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("s", name_hash);
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         std::string deserialize(oxenc::bt_dict_consumer&& btdc)
@@ -151,13 +153,13 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedSNSRecord& enc)
+        std::vector<std::byte> serialize_response(const EncryptedSNSRecord& enc)
         {
             oxenc::bt_dict_producer btdp;
 
             btdp.append("x", enc.bt_payload());
 
-            return std::move(btdp).str();
+            return to_bytes(btdp);
         }
 
         EncryptedSNSRecord deserialize_response(oxenc::bt_dict_consumer&& btdc)

@@ -3,11 +3,15 @@
 #include <llarp/contact/router_id.hpp>
 #include <llarp/contact/sns.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/ev/types.hpp>
 #include <llarp/util/logging.hpp>
 
 #include <oxenmq/address.h>
 #include <oxenmq/oxenmq.h>
+
+namespace oxen::quic
+{
+    struct Ticker;
+}
 
 namespace llarp
 {
@@ -91,7 +95,7 @@ namespace llarp
             // Handles notification of a new block
             void handle_new_block(oxenmq::Message& msg);
 
-            std::shared_ptr<quic::Ticker> _ping_ticker;
+            std::shared_ptr<oxen::quic::Ticker> _ping_ticker;
 
             std::optional<oxenmq::ConnectionID> _conn;
             oxenmq::OxenMQ& _omq;

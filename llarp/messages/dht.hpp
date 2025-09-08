@@ -12,9 +12,9 @@ namespace llarp
         extern const std::string INVALID;
         extern const std::string EXPIRED;
 
-        std::string serialize(const EncryptedClientContact& ecc, std::optional<RouterID> remote = std::nullopt);
+        std::vector<std::byte> serialize(const EncryptedClientContact& ecc, std::optional<int> location = std::nullopt);
 
-        std::pair<EncryptedClientContact, std::optional<RouterID>> deserialize(oxenc::bt_dict_consumer&& btdc);
+        std::pair<EncryptedClientContact, std::optional<int>> deserialize(oxenc::bt_dict_consumer&& btdc);
 
     }  // namespace PublishClientContact
 
@@ -25,20 +25,20 @@ namespace llarp
         extern const std::string INVALID_ORDER;
 
         /** Bt-encoded contents:
-            - 'k' : DHT key corresponding to client contact
+            - 'k' : blinded pubkey of the queried client contact
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(const hash_key& location);
+        std::vector<std::byte> serialize(const PubKey& location);
 
-        hash_key deserialize(oxenc::bt_dict_consumer&& btdc);
+        PubKey deserialize(oxenc::bt_dict_consumer&& btdc);
 
         /** Bt-encoded contents:
             - 'x' : EncryptedClientContact
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedClientContact& ecc);
+        std::vector<std::byte> serialize_response(const EncryptedClientContact& ecc);
 
         EncryptedClientContact deserialize_response(oxenc::bt_dict_consumer&& btdc);
 
@@ -53,7 +53,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash);
+        std::vector<std::byte> serialize(std::span<const std::byte, SHORTHASHSIZE> name_hash);
 
         std::string deserialize(oxenc::bt_dict_consumer&& btdc);
 
@@ -62,7 +62,7 @@ namespace llarp
 
             Note: we are bt-encoding to leave space for future fields (ex: version)
          */
-        std::string serialize_response(const EncryptedSNSRecord& enc);
+        std::vector<std::byte> serialize_response(const EncryptedSNSRecord& enc);
 
         EncryptedSNSRecord deserialize_response(oxenc::bt_dict_consumer&& btdc);
 

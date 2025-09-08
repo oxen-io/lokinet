@@ -1,5 +1,6 @@
 #include "rpc_client.hpp"
 
+#include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 
@@ -25,7 +26,7 @@ namespace llarp::rpc
 
     void RPCClient::connect_async(oxenmq::address url)
     {
-        if (not _router.is_service_node())
+        if (not _router.is_service_node)
         {
             throw std::runtime_error("we cannot talk to lokid while not a service node");
         }
@@ -37,7 +38,7 @@ namespace llarp::rpc
             [](oxenmq::ConnectionID) {},
             [this, url](oxenmq::ConnectionID, std::string_view f) {
                 log::info(logcat, "Failed to connect to oxend at {}", f);
-                _router.loop()->call([this, url]() { connect_async(url); });
+                _router.loop.call([this, url]() { connect_async(url); });
             });
     }
 
@@ -79,16 +80,7 @@ namespace llarp::rpc
         if (_is_updating_list.exchange(true))
             return;  // update already in progress
 
-        nlohmann::json req{
-            {"fields",
-             {
-                 {"pubkey_ed25519", true},
-                 {"service_node_pubkey", true},
-                 {"funded", true},
-                 {"active", true},
-                 {"block_hash", true},
-             }},
-        };
+        nlohmann::json req{{"fields", {"pubkey_ed25519", "block_hash"}}};
         if (!_last_hash_update.empty())
             req["poll_block_hash"] = _last_hash_update;
 
@@ -171,13 +163,12 @@ namespace llarp::rpc
 
         log::info(logcat, "Starting RPCClient ping ticker...");
         ping();
-        _ping_ticker = _router.loop()->call_every(PING_INTERVAL, [this] { ping(); });
+        _ping_ticker = _router.loop.call_every(PING_INTERVAL, [this] { ping(); });
     }
 
     void RPCClient::handle_new_service_node_list(const nlohmann::json& j)
     {
-        std::unordered_map<RouterID, PubKey> keymap;
-        std::vector<RouterID> active_list;
+        std::unordered_set<RouterID> registered;
         if (not j.is_array())
             throw std::runtime_error{"Invalid service node list: expected array of service node states"};
 
@@ -186,54 +177,37 @@ namespace llarp::rpc
             const auto ed_itr = snode.find("pubkey_ed25519");
             if (ed_itr == snode.end() or not ed_itr->is_string())
                 continue;
-            const auto svc_itr = snode.find("service_node_pubkey");
-            if (svc_itr == snode.end() or not svc_itr->is_string())
-                continue;
-            const auto active_itr = snode.find("active");
-            if (active_itr == snode.end() or not active_itr->is_boolean())
-                continue;
-            const bool active = active_itr->get<bool>();
 
             RouterID rid;
-            PubKey pk;
-            if (not rid.FromHex(ed_itr->get<std::string_view>()) or not pk.FromHex(svc_itr->get<std::string_view>()))
-                continue;
-
-            keymap[rid] = pk;
-            if (active)
-                active_list.emplace_back(std::move(rid));
+            if (rid.FromHex(ed_itr->get<std::string_view>()))
+                registered.insert(rid);
         }
 
-        if (active_list.empty())
+        if (registered.empty())
         {
-            log::warning(logcat, "Received empty service node list, ignoring.");
+            log::warning(logcat, "Ignoring empty/invalid service node list received from oxend");
             return;
         }
 
-        _router.loop()->call([this, active = std::move(active_list), keymap = std::move(keymap)]() mutable {
-            _key_map = std::move(keymap);
-            _router.set_router_whitelist(std::move(active));
-        });
+        // Thread-safe; doesn't need to be in a loop call:
+        _router.node_db().set_registered_relays(std::move(registered));
     }
 
     void RPCClient::inform_connection(RouterID router, bool success)
     {
-        _router.loop()->call([router, success, this]() {
-            if (auto itr = _key_map.find(router); itr != _key_map.end())
-            {
-                const nlohmann::json req = {{"passed", success}, {"pubkey", itr->second.ToHex()}, {"type", "lokinet"}};
-                request(
-                    "admin.report_peer_status",
-                    [](bool success, std::vector<std::string>) {
-                        if (not success)
-                        {
-                            log::error(logcat, "Failed to report connection status to oxend");
-                            return;
-                        }
-                        log::debug(logcat, "Reported connection status to core");
-                    },
-                    req.dump());
-            }
+        _router.loop.call([router, success, this]() {
+            const nlohmann::json req = {{"passed", success}, {"pubkey", router.ToHex()}, {"type", "lokinet"}};
+            request(
+                "admin.report_peer_status",
+                [](bool success, std::vector<std::string>) {
+                    if (not success)
+                    {
+                        log::error(logcat, "Failed to report connection status to oxend");
+                        return;
+                    }
+                    log::debug(logcat, "Reported connection status to core");
+                },
+                req.dump());
         });
     }
 
@@ -305,7 +279,7 @@ namespace llarp::rpc
                         log::error(logcat, "Failed to parse response from ONS lookup: {}", ex.what());
                     }
                 }
-                _router.loop()->call([resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
+                _router.loop.call([resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
             },
             req.dump());
     }

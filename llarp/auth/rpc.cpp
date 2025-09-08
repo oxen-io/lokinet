@@ -33,7 +33,7 @@ namespace llarp::auth
             },
             [this](oxenmq::ConnectionID, std::string_view fail) {
                 log::warning(logcat, "OMQ failed to connect to endpoint auth server: {}", fail);
-                _router.loop()->call_later(1s, [this] { start(); });
+                _router.loop.call_later(1s, [this] { start(); });
             });
     }
 

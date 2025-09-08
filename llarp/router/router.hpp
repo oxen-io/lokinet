@@ -2,13 +2,13 @@
 
 #include "route_poker.hpp"
 
-#include <llarp/bootstrap.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/key_manager.hpp>
 #include <llarp/handlers/session.hpp>
 #include <llarp/handlers/tun_base.hpp>
+#include <llarp/path/build_stats.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/util/buffer.hpp>
@@ -19,9 +19,9 @@
 
 #include <oxen/quic/loop.hpp>
 
+#include <chrono>
 #include <functional>
 #include <memory>
-#include <vector>
 
 namespace oxenmq
 {
@@ -34,6 +34,8 @@ namespace llarp
     namespace link
     {
         struct Connection;
+        class Endpoint;
+        class Manager;
     }  // namespace link
 
     namespace rpc
@@ -44,29 +46,17 @@ namespace llarp
 
     namespace quic = oxen::quic;
 
-    class LinkManager;
+    inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{10min};
 
-    /// number of routers to publish to
-    inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
-
-    /// number of dht locations handled per relay
-    // DISCUSS: do we need this??
-    // inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
-    // inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{(INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
-
-    // TESTNET: these constants are shortened for testing purposes
-    inline uniform_duration_distribution TESTNET_GOSSIP_INTERVAL{5min, 5min + 30s};
-    inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
-    inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
     // as we advance towards full mesh, we try to connect to this number per tick
     inline constexpr int FULL_MESH_ITERATION{1};
-    inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
 
     // DISCUSS: ask tom and jason about this
     // how big of a time skip before we reset network state
     inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
 
-    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{10s};
+    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{1min};
+    inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL_DEBUG{10s};
 
     inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
 
@@ -93,21 +83,20 @@ namespace llarp
         void start();
 
         Config _config;
-        std::shared_ptr<quic::Loop> _loop;
+        const std::shared_ptr<quic::Loop> _loop;
         std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
-        fs::path our_rc_file;
+        std::filesystem::path our_rc_file;
 
         // our router contact
         LocalRC relay_contact;
         std::shared_ptr<oxenmq::OxenMQ> _omq{};
-        path::BuildLimiter _pathbuild_limiter;
 
         std::atomic<bool> _is_stopping{false};
         std::atomic<bool> _is_running{false};
 
-        bool _is_service_node{_config.router.is_relay};
+        bool _is_connected{false};
 
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
@@ -121,7 +110,8 @@ namespace llarp
 
         std::unique_ptr<handlers::SessionEndpoint> _session_endpoint;
 
-        std::unique_ptr<LinkManager> _link_manager;
+        std::unique_ptr<link::Manager> _link_manager;
+        link::Endpoint* _link_endpoint = nullptr;
 
         // These are only created in full platform mode (not embedded clients)
         std::shared_ptr<handlers::TunEPBase> _tun;
@@ -139,12 +129,11 @@ namespace llarp
         std::shared_ptr<quic::Ticker> _service_stat_ticker;
         std::shared_ptr<quic::Ticker> _reachability_ticker;
 
-        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
-        quic::Loop _disk_loop;
+        std::shared_ptr<quic::Ticker> _gossip_ticker;
 
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
-        std::chrono::milliseconds _next_decomm_warning{time_now_ms() + 15s};
+        std::chrono::milliseconds _next_dereg_warning{time_now_ms() + 15s};
 
         std::chrono::milliseconds _last_path_ping{0s};
 
@@ -153,16 +142,13 @@ namespace llarp
         std::shared_ptr<rpc::RPCServer> _rpc_server;
         std::shared_ptr<rpc::RPCClient> _rpc_client;
 
-        bool whitelist_received{false};
-
         Profiling _router_profiling;
 
-        int min_client_outbounds{};
-        std::atomic<bool> initial_client_connect_complete{false};
+        int _client_target_outbounds = 0;
 
         bool should_report_stats(std::chrono::milliseconds now) const;
 
-        std::string _stats_line();
+        std::string _stats_line(std::chrono::milliseconds now) const;
 
         void report_stats();
 
@@ -176,8 +162,6 @@ namespace llarp
 
         void process_netconfig();
 
-        std::chrono::milliseconds _gossip_interval;
-
         void _relay_tick(std::chrono::milliseconds now);
 
         void _client_tick(std::chrono::milliseconds now);
@@ -188,15 +172,14 @@ namespace llarp
 
       public:
         path::PathContext path_context{*this};
+        path::BuildStats path_builds{};
         KeyManager key_manager;
+
+        const bool is_service_node{_config.router.is_relay};
 
         bool is_fully_meshed() const;
 
-        int client_outbounds_needed() const { return min_client_outbounds; }
-
-        std::unordered_set<RouterID> get_current_remotes() const;
-
-        void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
+        int client_target_outbounds() const { return _client_target_outbounds; }
 
         const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 
@@ -208,8 +191,18 @@ namespace llarp
         handlers::SessionEndpoint& session_endpoint() { return *_session_endpoint; }
         const handlers::SessionEndpoint& session_endpoint() const { return *_session_endpoint; }
 
-        LinkManager& link_manager() { return *_link_manager; }
-        const LinkManager& link_manager() const { return *_link_manager; }
+        link::Manager& link_manager() { return *_link_manager; }
+        const link::Manager& link_manager() const { return *_link_manager; }
+        link::Endpoint& link_endpoint()
+        {
+            assert(_link_endpoint);
+            return *_link_endpoint;
+        }
+        const link::Endpoint& link_endpoint() const
+        {
+            assert(_link_endpoint);
+            return *_link_endpoint;
+        }
 
         const Config& config() const { return _config; }
 
@@ -239,8 +232,6 @@ namespace llarp
 
         bool embedded() const { return _config.embedded(); }
 
-        path::BuildLimiter& pathbuild_limiter() { return _pathbuild_limiter; }
-
         oxenmq::OxenMQ* omq() { return _omq.get(); }
         const oxenmq::OxenMQ* omq() const { return _omq.get(); }
 
@@ -252,46 +243,24 @@ namespace llarp
 
         Profiling& router_profiling() { return _router_profiling; }
 
-        const std::shared_ptr<quic::Loop>& loop() const { return _loop; }
+        quic::Loop& loop{*_loop};
 
-        std::chrono::milliseconds gossip_interval() const { return _gossip_interval; }
+        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
+        quic::Loop disk_loop;
 
         const LocalRC& rc() const { return relay_contact; }
 
-        // Updates and resigns the local RC, saves it, then returns it converted to a RemoteRC for
-        // gossipping.
-        RemoteRC update_rc_for_gossiping();
+        // Updates and re-signs the local RC and queues it for saving to disk.
+        void update_rc();
 
-        quic::Address listen_addr() const;
+        const quic::Address& listen_addr() const { return _listen_address; }
 
         nlohmann::json ExtractStatus() const;
 
         nlohmann::json ExtractSummaryStatus() const;
 
-        void queue_disk_io(std::function<void()> func);
-
-        const std::unordered_set<RouterID>& get_whitelist() const;
-
-        void set_router_whitelist(const std::vector<RouterID>& whitelist);
-
-        /// Return true if we are operating as a service node and have received a service node
-        /// whitelist
-        bool has_whitelist() const;
-
-        /// return true if we look like we are a decommissioned service node
-        bool appears_decommed() const;
-
-        /// return true if we look like we are a registered, fully-staked service node (either
-        /// active or decommissioned).  This condition determines when we are allowed to (and
-        /// attempt to) connect to other peers when running as a service node.
-        bool appears_funded() const;
-
-        /// return true if we a registered service node; not that this only requires a partial
-        /// stake, and does not imply that this service node is *active* or fully funded.
+        /// return true if we a registered service node (either active or decommissioned).
         bool appears_registered() const;
-
-        /// return true if we look like we are allowed and able to test other routers
-        bool can_test_routers() const;
 
         std::chrono::milliseconds Uptime() const;
 
@@ -308,11 +277,17 @@ namespace llarp
 
         std::string status_line();
 
+        // Client connectivity status: we enter "client connected" state when we have reached our
+        // target number of router connections, and we lose connected state when we fall to 0 router
+        // connections.  These log when we flip from disconnected to connected (info) or vice versa
+        // (warning).
+        void set_connected();
+        void set_disconnected();
+        bool is_connected() const;
+
         bool is_running() const { return _is_running; }
 
         bool is_stopping() const { return _is_stopping; }
-
-        bool is_service_node() const;
 
         bool is_exit_node() const;
 
@@ -323,36 +298,10 @@ namespace llarp
         /// stop running the router logic gracefully
         void stop();
 
-        /// non graceful stop router
-        void stop_immediately();
-
-        /// close all sessions and shutdown all links
-        void stop_outbounds();
-
-        void persist_connection_until(const RouterID& remote, std::chrono::milliseconds until);
-
         void fetch_snode_identity();
-
-        bool send_data_message(const RouterID& remote, std::string payload);
-
-        bool send_control_message(
-            const RouterID& remote,
-            std::string endpoint,
-            std::string body,
-            std::function<void(quic::message)> func = nullptr);
-
-        // bool is_bootstrap_node(RouterID rid) const;
 
         std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
 
-        /// count the number of unique service nodes connected via pubkey
-        size_t num_router_connections(bool active_only = true) const;
-
-        /// count the number of unique clients connected by pubkey
-        size_t num_client_connections() const;
-
         void teardown();
-
-        void cleanup();
     };
 }  // namespace llarp

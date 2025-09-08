@@ -3,6 +3,7 @@
 #include "path.hpp"
 #include "path_context.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
@@ -11,9 +12,13 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/random.hpp>
+#include <llarp/util/time.hpp>
 
+#include <nlohmann/json.hpp>
 #include <sodium/randombytes.h>
 
+#include <chrono>
 #include <functional>
 #include <random>
 
@@ -21,114 +26,35 @@ namespace llarp::path
 {
     static auto logcat = log::Cat("pathhandler");
 
-    bool BuildLimiter::Attempt(const RouterID& router) { return _edge_limiter.Insert(router); }
-
-    void BuildLimiter::Decay(std::chrono::milliseconds now) { _edge_limiter.Decay(now); }
-
-    bool BuildLimiter::Limited(const RouterID& router) const { return _edge_limiter.Contains(router); }
-
-    nlohmann::json BuildStats::ExtractStatus() const
-    {
-        return nlohmann::json{
-            {"success", success}, {"attempts", attempts}, {"timeouts", timeouts}, {"fails", build_fails}};
-    }
-
-    void BuildStats::update(std::chrono::milliseconds now)
-    {
-        if (attempts > 50 && attempts >= (success * 4) && now - last_warn_time > 5s)
-        {
-            log::warning(logcat, "Low path build success: {}", *this);
-            last_warn_time = now;
-        }
-    }
-
-    std::string BuildStats::to_string() const
-    {
-        return "Stats:[ success:{} | attempts:{} | timeouts:{} | fails:{} ]"_format(
-            success, attempts, timeouts, build_fails);
-    }
-
-    PathHandler::PathHandler(Router& r, size_t num_paths, int n_hops)
-        : _running{true}, num_paths_desired{num_paths}, _router{r}, num_hops{n_hops}
+    PathHandler::PathHandler(Router& r, int target_paths, int num_hops)
+        : router{r}, _running{true}, _num_hops{num_hops}, _target_paths{target_paths}
     {}
 
-    static const std::shared_ptr<Path> NULL_PATH{nullptr};
-
-    void PathHandler::path_rotation_succeeded(const std::shared_ptr<Path>& new_path)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        path_build_succeeded(std::move(new_path));
-        drop_oldest_path();
-    }
-
-    static constexpr auto path_expiry_cmp = [](const auto& a, const auto& b) {
-        return a.second->intro.expiry < b.second->intro.expiry;
-    };
-    const std::shared_ptr<Path>& PathHandler::get_oldest_path() const
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        Lock_t l{paths_mutex};
-        if (_paths.empty())
-            return NULL_PATH;
-        return std::ranges::min_element(_paths, path_expiry_cmp)->second;
-    }
-
-    const std::shared_ptr<Path>& PathHandler::get_newest_path() const
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        Lock_t l{paths_mutex};
-        if (_paths.empty())
-            return NULL_PATH;
-        return std::ranges::max_element(_paths, path_expiry_cmp)->second;
-    }
-
-    void PathHandler::add_path(std::shared_ptr<Path> p)
+    void PathHandler::add_path(Path& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l(paths_mutex);
 
-        _paths.insert_or_assign(p->edge().rxid(), p);
-        _router.path_context.add_path(p);
+        _paths.insert_or_assign(p.edge().rxid, p.shared_from_this());
+        router.path_context.add_path(p.shared_from_this());
     }
 
-    void PathHandler::drop_path(const std::shared_ptr<Path>& p)
+    void PathHandler::drop_path(const Path& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        Lock_t l{paths_mutex};
 
-        if (auto itr = _paths.find(p->edge().rxid()); itr != _paths.end())
-            _paths.erase(itr);
+        _paths.erase(p.edge().rxid);
 
-        _router.path_context.drop_path(*p);
+        router.path_context.drop(p);
     }
 
-    const std::shared_ptr<Path>& PathHandler::get_random_path() const
+    Path* PathHandler::get_random_active_path() const
     {
-        if (_paths.empty())
-            return NULL_PATH;
-        int i = std::uniform_int_distribution<int>{0, static_cast<int>(_paths.size()) - 1}(csrng);
-        return std::next(_paths.begin(), i)->second;
-    }
+        int n_paths = num_active_paths();
+        if (!n_paths)
+            return nullptr;
 
-    const std::shared_ptr<Path>& PathHandler::find_path(std::function<bool(const Path&)> filter) const
-    {
-        for (auto& p : _paths)
-            if (filter(*p.second))
-                return p.second;
-        return NULL_PATH;
-    }
-
-    void PathHandler::tick_paths()
-    {
-        Lock_t l{paths_mutex};
-
-        const auto now = llarp::time_now_ms();
-
-        for (const auto& [h, p] : _paths)
-            if (p)
-                p->Tick(now);
+        return &*std::next(active_paths().begin(), std::uniform_int_distribution<int>{0, n_paths - 1}(llarp::csrng));
     }
 
     void PathHandler::ping_paths(std::chrono::milliseconds now)
@@ -140,66 +66,42 @@ namespace llarp::path
                 p->do_ping(now);
     }
 
-    std::chrono::milliseconds PathHandler::now() const { return _router.now(); }
+    std::chrono::milliseconds PathHandler::now() const { return router.now(); }
 
     void PathHandler::expire_paths(std::chrono::milliseconds now)
     {
         Lock_t lock{paths_mutex};
 
-        std::vector<HopID> to_drop;
-
+        int n = 0;
         for (auto itr = _paths.begin(); itr != _paths.end();)
         {
-            if (itr->second and itr->second->is_established() and itr->second->is_expired(now))
+            if (itr->second and itr->second->is_expired(now))
             {
-                to_drop.push_back(itr->second->edge().rxid());
-                to_drop.push_back(itr->second->pivot().txid());
+                router.path_context.drop(*itr->second);
                 itr = _paths.erase(itr);
+                n++;
             }
             else
                 ++itr;
         }
 
-        if (not to_drop.empty())
-        {
-            log::debug(logcat, "{} paths expired; giving path-ctx droplist", to_drop.size());
-            _router.path_context.drop_paths(std::move(to_drop));
-        }
+        if (n)
+            log::debug(logcat, "{} expired paths dropped", n);
     }
 
-    const std::shared_ptr<Path>& PathHandler::get_path(HopID hid) const
+    Path* PathHandler::get_path_by_edge(const HopID& edge_hop_id)
     {
-        Lock_t lock{paths_mutex};
-
-        if (auto itr = _paths.find(hid); itr != _paths.end())
-            return itr->second;
-
-        return NULL_PATH;
+        if (auto it = _paths.find(edge_hop_id); it != _paths.end())
+            return it->second.get();
+        return nullptr;
     }
 
-    void PathHandler::for_each_path(std::function<void(const Path&)> visit) const
+    Path* PathHandler::get_path_by_terminus(const HopID& terminal_hop_id)
     {
-        Lock_t lock{paths_mutex};
-
-        for (const auto& [_, p] : _paths)
-            if (p)
-                visit(*p);
-    }
-
-    sorted_intro_set PathHandler::get_local_client_intros() const
-    {
-        Lock_t lock{paths_mutex};
-
-        sorted_intro_set intros{};
-        auto now = llarp::time_now_ms();
-
-        for (const auto& [_, p] : _paths)
-        {
-            if (p and p->is_active(now))
-                intros.emplace(p->intro);
-        }
-
-        return intros;
+        for (auto& p : std::views::values(_paths))
+            if (p && p->terminal_hopid() == terminal_hop_id)
+                return p.get();
+        return nullptr;
     }
 
     void PathHandler::tick(std::chrono::milliseconds now)
@@ -208,15 +110,20 @@ namespace llarp::path
 
         Lock_t l{paths_mutex};
 
-        _router.pathbuild_limiter().Decay(now);
-
         expire_paths(now);
 
-        if (auto n = should_build_more(); n > 0)
-            build_more(n);
+        if (not router.is_service_node and not router.link_endpoint().is_client_connected())
+            // If we are not yet fully connected then we can't initiate path builds.  (In theory we
+            // could whe not yet fully connected, but don't want to because that would bias edge
+            // router selection towards faster ones).
+            return;
 
-        tick_paths();
-        _build_stats.update(now);
+        if (!is_stopped())
+            update_paths(now);
+
+        router.path_builds.update(now);
+
+        ping_paths(now);
     }
 
     nlohmann::json PathHandler::ExtractStatus() const
@@ -226,65 +133,75 @@ namespace llarp::path
             if (path)
                 paths.push_back(path->ExtractStatus());
 
-        return nlohmann::json{
-            {"buildStats", _build_stats.ExtractStatus()},
-            {"numHops", num_hops},
-            {"numPaths", num_paths_desired},
-            {"paths", std::move(paths)}};
+        return nlohmann::json{{"numHops", _num_hops}, {"targetPaths", _target_paths}, {"paths", std::move(paths)}};
     }
 
-    std::optional<RemoteRC> PathHandler::select_first_hop(const std::unordered_set<RouterID>& exclude) const
+    std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
     {
-        std::unordered_set<RouterID> current_remotes = _router.node_db().strict_connect_enabled()
-            ? _router.node_db().pinned_edges()
-            : _router.get_current_remotes();
+        auto current_remotes = router.node_db().strict_connect_enabled()
+            ? router.node_db().pinned_edges()
+            : router.link_manager().endpoint.get_current_relays();
 
         RouterID edge;
-        auto* out = std::ranges::sample(
-            current_remotes | std::views::filter([this, &exclude](const RouterID& rid) {
-                if (exclude.count(rid))
-                    return false;
-                if (build_cooldown_hit(rid))
-                    return false;
-                // always returns false on testnet builds
-                if (_router.router_profiling().is_bad_for_path(rid))
-                    return false;
-                return true;
-            }),
-            &edge,
-            1,
-            csrng);
+        int acceptable = 0;
+        for (auto& rid : current_remotes)
+        {
+            if (pred && !pred(rid))
+                log::trace(
+                    logcat, "Not considering {} for first hop selection because it failed the given predicate", rid);
+            else if (router.router_profiling().is_bad_for_path(rid))  // always returns false on testnet
+                log::trace(logcat, "Not considering {} for first hop because of router profiling", rid);
+            else
+            {
+                log::trace(logcat, "Router {} is an acceptable first hop", rid);
 
-        if (out != (&edge + 1))
+                // DIY reservoir sample because doing this with a filter and a view calls the filter
+                // code multiple times, which we don't want.
+                if (acceptable == 0 || std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0)
+                    edge = rid;
+                acceptable++;
+            }
+        }
+
+        if (acceptable == 0)
+        {
+            log::debug(logcat, "Failed to select first hop: no acceptable candidates found");
             return std::nullopt;
-        if (auto* rc = _router.node_db().get_rc(edge))
+        }
+        if (auto* rc = router.node_db().get_rc(edge))
+        {
+            log::debug(logcat, "Selected {} as edge router", edge);
             return *rc;
+        }
+
+        log::debug(logcat, "Selected {} as edge router, but no RC found for that relay", edge);
         return std::nullopt;
     }
 
-    size_t PathHandler::num_active_paths() const
+    int PathHandler::num_active_paths(std::chrono::milliseconds expiry_ts) const
     {
         Lock_t l(paths_mutex);
 
-        size_t n{};
-
+        int n = 0;
         for (const auto& [_, p] : _paths)
-        {
-            if (p and p->is_active())
-                n += 1;
-        }
-
+            if (p and p->is_active() and not p->is_expired(expiry_ts))
+                n++;
         return n;
     }
 
-    size_t PathHandler::num_paths() const
+    int PathHandler::num_paths(std::chrono::milliseconds expiry_ts) const
     {
         Lock_t l(paths_mutex);
 
-        return _paths.size();
+        int n = 0;
+        for (const auto& [_, p] : _paths)
+            // TODO FIXME: what does a nullptr path mean?
+            if (p and not p->is_expired(expiry_ts))
+                n++;
+        return n;
     }
 
-    void PathHandler::stop(bool)
+    void PathHandler::stop()
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _running = false;
@@ -303,50 +220,19 @@ namespace llarp::path
 
     bool PathHandler::is_stopped() const { return !_running.load(); }
 
-    bool PathHandler::should_remove() const { return is_stopped() and num_active_paths() == 0; }
-
-    bool PathHandler::build_cooldown_hit(RouterID edge) const { return _router.pathbuild_limiter().Limited(edge); }
-
-    bool PathHandler::build_cooldown() const { return llarp::time_now_ms() < last_build + build_interval_limit; }
-
-    size_t PathHandler::should_build_more() const
-    {
-        if (is_stopped())
-            return {};
-
-        if (build_cooldown())
-            return {};
-
-        auto n_paths = num_paths();
-
-        return num_paths_desired >= n_paths ? num_paths_desired - n_paths : 0;
-    }
-
-    std::optional<std::vector<RemoteRC>> PathHandler::get_hops_to_random()
+    std::optional<std::vector<RemoteRC>> PathHandler::select_hops_to_remote(const RouterID& pivot)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        assert(_num_hops);
 
-        if (auto maybe = _router.node_db().get_random_rc([&r = _router](const RemoteRC& rc) {
-                return not r.router_profiling().is_bad_for_path(rc.router_id(), 1);
-            }))
-            return aligned_hops_to_remote(maybe->router_id());
-
-        return std::nullopt;
-    }
-
-    std::optional<std::vector<RemoteRC>> PathHandler::aligned_hops_to_remote(const RouterID& pivot)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        assert(num_hops);
-
-        auto hops_needed = num_hops;
+        int hops_needed = _num_hops;
 
         auto hops = std::make_optional<std::vector<RemoteRC>>();
 
-        auto* pivot_rc = _router.node_db().get_rc(pivot);
+        auto* pivot_rc = router.node_db().get_rc(pivot);
         if (!pivot_rc)
         {
-            log::warning(logcat, "Failed to select aligned hops: no RC found for requested pivot {}", pivot);
+            log::warning(logcat, "Failed to select path hops: no RC found for requested pivot {}", pivot);
             return std::nullopt;
         }
 
@@ -357,11 +243,11 @@ namespace llarp::path
             return hops;
         }
 
-        auto netmask = _router.config().paths.unique_hop_netmask;
+        auto netmask = router.config().paths.unique_hop_netmask;
         std::unordered_set<RouterID> to_exclude{{pivot}};
         std::vector<ipv4_net> excluded_ranges{};
         if (netmask)
-            excluded_ranges.reserve(num_hops);
+            excluded_ranges.reserve(_num_hops);
 
         auto exclude = [&netmask, &to_exclude, &excluded_ranges](const RemoteRC& rc) {
             to_exclude.insert(rc.router_id());
@@ -372,22 +258,29 @@ namespace llarp::path
         exclude(*pivot_rc);
 
         // First hop selection has its own distinct criteria:
-        if (auto maybe = select_first_hop(to_exclude))
+        auto maybe_first = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); });
+
+        // If that failed, retry first hop selection *without* the IP range exclusion being applied:
+        // this is so that if the pivot happens to be in the same range as all your current (or
+        // allowed) edges, you can still connect to it.
+        if (!maybe_first)
+            maybe_first = select_first_hop();
+
+        if (maybe_first)
         {
             --hops_needed;
-            hops->push_back(std::move(*maybe));
+            hops->push_back(std::move(*maybe_first));
             exclude(hops->back());
         }
         else
         {
-            log::warning(logcat, "No first hop candidate for aligned hops!");
+            log::warning(logcat, "No suitable first hop candidate for path to {}", pivot);
             return std::nullopt;
         }
 
         log::trace(logcat, "First/last hop selected, {} hops remaining to select", hops_needed);
 
-        auto filter =
-            [&rp = _router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RemoteRC& rc) -> bool {
+        auto filter = [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RemoteRC& rc) {
             auto& rid = rc.router_id();
             if (to_exclude.contains(rid))
                 return false;
@@ -412,15 +305,15 @@ namespace llarp::path
             // because of no-replacement but also because of the unique range setting.  (And we
             // can't use a mutating filter because the random selection potentially calls the filter
             // for every possible node, whether or not they end up being in the final selection).
-            auto maybe_hop = _router.node_db().get_random_rc(filter);
+            auto* maybe_hop = router.node_db().get_random_rc(filter);
             if (!maybe_hop)
             {
                 log::warning(
                     logcat,
                     "Failed to find enough acceptable RCs for aligned path to pivot {}: {} required but only found {}",
                     pivot,
-                    num_hops,
-                    num_hops - hops_needed);
+                    _num_hops,
+                    _num_hops - hops_needed);
                 return std::nullopt;
             }
 
@@ -435,27 +328,13 @@ namespace llarp::path
         return hops;
     }
 
-    bool PathHandler::build_path_to_random()
+    bool PathHandler::build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime)
     {
         Lock_t l(paths_mutex);
 
-        if (auto maybe_hops = get_hops_to_random())
+        if (auto maybe_hops = select_hops_to_remote(remote))
         {
-            build(*maybe_hops);
-            return true;
-        }
-
-        log::warning(logcat, "Failed to get hops for path-build to random");
-        return false;
-    }
-
-    bool PathHandler::build_path_aligned_to_remote(const RouterID& remote)
-    {
-        Lock_t l(paths_mutex);
-
-        if (auto maybe_hops = aligned_hops_to_remote(remote))
-        {
-            build(*maybe_hops);
+            build(*maybe_hops, llarp::time_now_ms() + lifetime);
             return true;
         }
 
@@ -463,7 +342,7 @@ namespace llarp::path
         return false;
     }
 
-    bool PathHandler::pre_build(const std::vector<RemoteRC>& hops)
+    bool PathHandler::can_build(std::span<const RemoteRC> hops)
     {
         if (is_stopped())
         {
@@ -471,47 +350,93 @@ namespace llarp::path
             return false;
         }
 
-        last_build = llarp::time_now_ms();
-        const auto& edge = hops[0].router_id();
-
-        if (not _router.pathbuild_limiter().Attempt(edge))
+        if (hops.empty())
         {
-            log::warning(logcat, "Building too quickly to edge router {}", edge);
+            log::error(logcat, "Error: cannot build an empty path!");
             return false;
         }
+
+        if (hops.size() > path::BUILD_LENGTH)
+        {
+            log::error(
+                logcat,
+                "Error: cannot build a path of size {} (exceeds max path length {})",
+                hops.size(),
+                path::BUILD_LENGTH);
+            return false;
+        }
+
+        _last_build = llarp::time_now_ms();
 
         return true;
     }
 
-    std::shared_ptr<Path> PathHandler::build1(const std::vector<RemoteRC>& hops)
+    std::shared_ptr<Path> PathHandler::build_init_path(
+        std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
     {
-        auto path = std::make_shared<path::Path>(_router, hops, get_weak());
+        auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
 
+        Lock_t l{paths_mutex};
+
+        if (auto [it, b] = _paths.try_emplace(path->edge().rxid, path); not b)
         {
-            Lock_t l{paths_mutex};
-
-            if (auto [it, b] = _paths.try_emplace(path->edge().rxid(), path); not b)
-            {
-                log::debug(logcat, "Pending build to {} already underway... aborting...", path->edge().rxid());
-                return nullptr;
-            }
+            // TODO FIXME: doesn't this mean we somehow selected an invalid rxid for the path
+            // build, not that there is a path to the same remote?
+            log::debug(logcat, "Pending build to {} already underway... aborting...", path->edge().rxid);
+            return nullptr;
         }
 
-        log::debug(logcat, "Building -> {}", path->to_string());
+        log::debug(logcat, "Building -> {}", *path);
 
         return path;
     }
 
-    std::string PathHandler::build2(const std::shared_ptr<Path>& path)
+    static consteval size_t bt_pair_bytes(size_t value_len, size_t key_len = 1)
     {
-        std::vector<std::string> frames(path::MAX_LEN);
-        auto& path_hops = path->hops;
-        int n_hops = static_cast<int>(path->num_hops);
-        size_t last_len{0};
+        if (value_len > 999)
+            throw std::invalid_argument{"value_len too big"};
+        if (key_len > 9)
+            throw std::invalid_argument{"key_len too big"};
+        return (2 + key_len /*n:KEY*/) + (value_len < 10 ? 2 : value_len < 100 ? 3 : 4) + value_len /*NN:DATA*/;
+    }
+    static_assert(
+        BUILD_FRAME_SIZE
+        == 2 /*de*/ + bt_pair_bytes(PubKey::SIZE) /*k*/ + bt_pair_bytes(SymmNonce::SIZE) /*n*/ + /*x*/
+            bt_pair_bytes(
+                2 /*de*/ + bt_pair_bytes(sizeof(uint32_t)) /*l*/ + bt_pair_bytes(HopID::SIZE) /*r*/
+                + bt_pair_bytes(HopID::SIZE) /*t*/ + bt_pair_bytes(RouterID::SIZE) /*u*/));
+
+    std::vector<std::byte> PathHandler::path_build_onion(Path& path)
+    {
+        // Note: we aren't using bt serialization here of the actual build frames, mainly because
+        // one step of the build is to onion en/decrypt all following frame data, and that is much
+        // simpler if it's just packed together without another serialization layer in it.
+
+        if (not path.set_built())
+            throw std::logic_error{"Cannot build a path from a Path object ({}) multiple times!"_format(path)};
+
+        std::vector<std::byte> result;
+        result.resize(BUILD_FRAME_SIZE * BUILD_LENGTH);
+        std::span rspan{result};
+
+        auto& path_hops = path.hops;
+        int n_hops = static_cast<int>(path.num_hops());
+
+        auto path_expiry = oxenc::host_to_little(
+            static_cast<uint32_t>(std::chrono::round<std::chrono::seconds>(path.expires_in()).count()));
+        std::span<const std::byte, 4> path_expiry_encoded{
+            reinterpret_cast<const std::byte*>(&path_expiry), sizeof(path_expiry)};
+
+        if (n_hops < BUILD_LENGTH)
+        {
+            // append junk data when our path is shorter than the max path length: path build
+            // request must always have exactly BUILD_LENGTH frames
+            random_fill(rspan.last(BUILD_FRAME_SIZE * (BUILD_LENGTH - n_hops)));
+        }
 
         // each hop will be able to read the outer part of its frame and decrypt
         // the inner part with that information.  It will then do an onion step on the
-        // remaining frames so the next hop can read the outer part of its frame,
+        // remaining frame data so the next hop can read the outer part of its frame,
         // and so on.  As this de-onion happens from hop 1 to n, we create and onion
         // the frames from hop n downto 1 (i.e. reverse order).  The first frame is
         // not onioned.
@@ -520,282 +445,265 @@ namespace llarp::path
         // the same entity from knowing they are part of the same path
         // (unless they're adjacent in the path; nothing we can do about that obviously).
 
-        // i from n_hops down to 0
         for (int i = n_hops - 1; i >= 0; --i)
         {
-            frames[i] = PATH::BUILD::serialize_hop(path_hops[i]);
+            /** For each hop:
+                - Generate an Ed keypair for the hop (`shared_key`)
+                - Generate a symmetric nonce for subsequent DH
+                - Derive the shared secret (`hop.shared`) for DH key-exchange using the Ed keypair, hop pubkey, and
+                    symmetric nonce
+                - Encrypt the hop info in-place using `hop.shared` and the generated symmetric nonce from DH
+                - Generate the XOR nonce by hashing the symmetric key from DH (`hop.shared`) and truncating
 
-            if (last_len and frames[i].size() != last_len)
+                Bt-encoded contents:
+                - 'k' : ephemeral pubkey used to derive DH shared secret for this hop
+                - 'n' : nonce used for DH secret calculation *and* for the encrypted payload (next item)
+                - 'x' : encrypted payload
+                    - 'l' : path lifetime in seconds, as a 4-byte, little-endian encoded integer (because we require an
+               exact size)
+                    - 'r' : rxID (the path ID for messages going *to* the hop)
+                    - 't' : txID (the path ID for messages coming *from* the client/path origin)
+                    - 'u' : upstream hop RouterID
+
+                All of these frames are inserted sequentially into the list and padded with any needed dummy frames
+            */
+            // TODO FIXME: poly1305 MAC for path build encryption
+            auto& hop = path_hops[i];
+
+            std::string hop_payload;
             {
-                assert(frames[i].size() == last_len);
-                log::critical(logcat, "All frames must be the same length!");
+                oxenc::bt_dict_producer info;
+                info.append("l", path_expiry_encoded);
+                info.append("r", hop.rxid.to_view());
+                info.append("t", hop.txid.to_view());
+                info.append("u", hop.upstream.to_view());
+                hop_payload = std::move(info).str();
             }
 
-            last_len = frames[i].size();
+            auto dh_nonce = SymmNonce::make_random();
+            auto eph_key = crypto::generate_ed25519();
 
-            for (auto j = i + 1; j < n_hops; ++j)
+            if (!crypto::dh_client(hop.shared_secret, hop.router_id, eph_key, dh_nonce))
+                throw std::runtime_error{"Client DH failed for hop[{}] with rid {}"_format(i, hop.router_id)};
+
+            hop.xor_nonce.assign(crypto::shorthash(hop.shared_secret).first<SymmNonce::SIZE>());
+
+            crypto::xchacha20(as_bspan(hop_payload), hop.shared_secret, dh_nonce);
+
+            oxenc::bt_dict_producer btdp;
+            btdp.append("k", eph_key.pubkey_span());
+            btdp.append("n", dh_nonce.span());
+            btdp.append("x", hop_payload);
+            auto frame = btdp.view();
+
+            if (frame.size() != BUILD_FRAME_SIZE)
             {
-                auto _onion_nonce = path_hops[i].kx.nonce ^ path_hops[i].kx.xor_nonce;
-
-                crypto::onion(as_bspan(frames[j]), path_hops[i].kx.shared_secret, _onion_nonce, _onion_nonce);
+                assert(frame.size() == BUILD_FRAME_SIZE);
+                log::critical(logcat, "Internal error: unexpected path build frame size!");
+                throw std::runtime_error{"Internal error: frame size mismatch in path build!"};
             }
+
+            auto mine = rspan.subspan(i * BUILD_FRAME_SIZE, BUILD_FRAME_SIZE);
+            std::memcpy(mine.data(), frame.data(), BUILD_FRAME_SIZE);
+
+            if (auto following_frames = n_hops - 1 - i; following_frames > 0)
+                // We only onion the real frames that follow this one, not the junk frames, because
+                // the junk frames are never actually used.  When *de*-onioning we deonion all
+                // following frames because we have no idea where the real frames end and junk
+                // frames begin (because of frame rotation), which also has a nice side effect of
+                // scrambling the junk frames so that junk values don't link path builds.  (This
+                // also means the junk recovered isn't the same junk we produced, but that's fine).
+                crypto::xchacha20(
+                    rspan.subspan((i + 1) * BUILD_FRAME_SIZE, following_frames * BUILD_FRAME_SIZE),
+                    hop.shared_secret,
+                    dh_nonce ^ hop.xor_nonce);
         }
 
-        // append dummy frames; path build request must always have MAX_LEN frames
-        for (size_t i = n_hops; i < path::MAX_LEN; ++i)
-        {
-            frames[i].resize(last_len);
-            randombytes_buf(reinterpret_cast<uint8_t*>(frames[i].data()), frames[i].size());
-        }
+        router.path_builds.attempts++;
 
-        _build_stats.attempts++;
-
-        return ONION::serialize_frames(std::move(frames));
+        return result;
     }
 
-    void PathHandler::build(std::vector<RemoteRC> hops)
+    // Constructs a TransitHop from a serialized path build frame, i.e. undoing one layer of the
+    // path build onioning, above.  Returns the constructed TransitHop and the dh_nonce for the path
+    // build.
+    std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> PathHandler::decrypt_build_frame(
+        std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
+        const Router& r,
+        const RouterID& src,
+        std::chrono::milliseconds now)
+    {
+        std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> ret;
+        auto& [hop_ptr, dh_nonce] = ret;
+        auto& hop = *(hop_ptr = std::make_shared<path::TransitHop>());
+        hop.downstream = src;
+
+        PubKey eph_pubkey;
+        std::vector<std::byte> payload;
+        try
+        {
+            oxenc::bt_dict_consumer btdc{frame};
+            eph_pubkey.assign(btdc.require_span<std::byte, PubKey::SIZE>("k"));
+            dh_nonce.assign(btdc.require_span<std::byte, SymmNonce::SIZE>("n"));
+            // Need to copy this because we decrypt in place below:
+            auto payld = btdc.require<std::span<const std::byte>>("x");
+            payload.assign(payld.begin(), payld.end());
+            btdc.finish();
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Exception caught deserializing hop dict: {}", e.what());
+            throw path::TransitHopError::INVALID_DATA();
+        }
+
+        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.identity(), dh_nonce))
+        {
+            log::warning(logcat, "Failed to derive shared secret!");
+            throw path::TransitHopError::DH_PUBKEY();
+        }
+
+        crypto::xchacha20(payload, hop.shared_secret, dh_nonce);
+        hop.xor_nonce.assign(crypto::shorthash(hop.shared_secret).first<SymmNonce::SIZE>());
+
+        try
+        {
+            oxenc::bt_dict_consumer inner{std::move(payload)};
+
+            std::chrono::seconds lifetime{
+                oxenc::load_little_to_host<uint32_t>(inner.require_span<std::byte, sizeof(uint32_t)>("l").data())};
+            if (lifetime > path::MAX_LIFETIME)
+                throw std::runtime_error{
+                    "Path lifetime {} exceeds maximum allowed path lifetime {}"_format(lifetime, path::MAX_LIFETIME)};
+            hop.expiry = now + lifetime;
+            hop.rxid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
+            hop.txid.assign(inner.require_span<std::byte, HopID::SIZE>("t"));
+            hop.upstream.assign(inner.require_span<std::byte, RouterID::SIZE>("u"));
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "TransitHop caught bt parsing exception: {}", e.what());
+            throw path::TransitHopError::INVALID_PAYLOAD();
+        }
+
+        // If we are a terminal hop then two things must be true: upstream must be this router, and
+        // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
+        hop.terminal_hop = hop.upstream == r.local_rid();
+        bool terminal_mismatch = hop.terminal_hop != (hop.txid == hop.rxid);
+        if (hop.txid.is_zero() || hop.rxid.is_zero() || terminal_mismatch)
+            throw path::TransitHopError::INVALID_HOP_ID();
+
+        log::trace(logcat, "TransitHop data successfully decrypted/deserialized: {}", hop);
+
+        return ret;
+    }
+
+    // TODO FIXME: investigate return type?
+    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
     {
         Lock_t lock{paths_mutex};
 
         // error message logs in function scope
-        if (not pre_build(hops))
-            return;
-
-        if (auto new_path = build1(hops))
+        if (can_build(hops))
         {
-            assert(new_path);
-
-            path_build_onepass(
-                std::move(new_path),
-                [this](const std::shared_ptr<Path>& new_path) { path_build_succeeded(new_path); },
-                [this](const std::shared_ptr<Path>& new_path, int ec) { return path_build_failed(new_path, ec); });
-        }
-    }
-
-    void PathHandler::path_build_recursive(
-        sorted_intro_set intros,
-        NetworkAddress remote,
-        std::function<void(const std::shared_ptr<Path>&, ClientIntro)> cb,
-        bool keep_path)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        // we can recurse through this function as we remove the first pivot of the set of introductions every
-        // invocation
-        if (intros.empty())
-        {
-            log::warning(
-                logcat, "Failed to build a path to remote {}: failed to connect to any published pivot", remote);
-            return;
-        }
-
-        auto remote_intro = intros.extract(intros.begin()).value();
-
-        auto& pivot = remote_intro.pivot_rid;
-
-        log::debug(logcat, "Initiating recursive path-build to remote ({}) via pivot {}", remote, pivot.short_string());
-
-        auto maybe_hops = aligned_hops_to_remote(pivot);
-
-        if (not maybe_hops)
-        {
-            log::error(logcat, "Failed to get hops for path-build to pivot {}", pivot.short_string());
-            return path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
-        }
-
-        auto& hops = *maybe_hops;
-        assert(pivot == hops.back().router_id());
-
-        std::shared_ptr<path::Path> new_path;
-
-        if (keep_path)
-        {
-            new_path = build1(hops);
-
-            if (not new_path)
+            if (auto new_path = build_init_path(hops, expiry_ts))
             {
-                log::warning(logcat, "Aborting recursive path-build in favor of in-progress build...");
-                return;
+                auto id = ++_path_counter;
+                send_path_build(std::move(new_path), id);
+                // send_path_build calls the appropriate success/failure method
+                return id;
             }
         }
-        else
-        {
-            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak());
-            log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
-        }
 
-        auto on_success = [cb, remote_intro](const auto& new_path) mutable {
-            return cb(new_path, std::move(remote_intro));
-        };
-        auto on_failure = [this, intros = std::move(intros), remote = std::move(remote), cb = std::move(cb), keep_path](
-                              const auto& new_path, int ec) mutable {
-            if (keep_path)
-                path_build_failed(new_path, ec);
-            path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
-        };
-        return path_build_onepass(std::move(new_path), std::move(on_success), std::move(on_failure));
+        path_build_failed(0, nullptr, false);
+        return 0;
     }
 
-    void PathHandler::path_build_recursive(
-        int n_tries,
-        RemoteRC rc,
-        NetworkAddress remote,
-        std::function<void(const std::shared_ptr<Path>&)> cb,
-        bool keep_path)
+    void PathHandler::send_path_build(const std::shared_ptr<Path>& new_path, int64_t id)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (n_tries == 0)
-        {
-            log::warning(logcat, "Exhausted all attempts to build path to router {}", remote);
-            return;
-        }
+        auto payload = path_build_onion(*new_path);
+        const auto& upstream = new_path->edge().router_id;
 
-        log::debug(logcat, "Initiating iterative path-build (remaining attempts:{}) to router {}", n_tries, remote);
+        router.link_endpoint().send_command(
+            upstream, "path_build", std::move(payload), [this, new_path, id](quic::message m) {
+                if (m)
+                {
+                    log::info(logcat, "PATH ESTABLISHED: {}", *new_path);
+                    log::trace(logcat, "path build response: {}", buffer_printer{m.body()});
+                    return path_build_succeeded(id, *new_path);
+                }
 
-        auto maybe_hops = aligned_hops_to_remote(rc.router_id());
-
-        if (not maybe_hops)
-        {
-            log::error(logcat, "Failed to get hops for path-build to router {}", remote);
-            return path_build_recursive(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
-        }
-
-        auto& hops = *maybe_hops;
-        assert(rc.router_id() == hops.back().router_id());
-
-        std::shared_ptr<path::Path> new_path;
-
-        if (keep_path)
-        {
-            new_path = build1(hops);
-
-            if (not new_path)
-            {
-                log::warning(logcat, "Aborting recursive path-build in favor of in-progress build...");
-                return;
-            }
-        }
-        else
-        {
-            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak());
-            log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
-        }
-
-        assert(new_path);
-
-        return path_build_onepass(
-            std::move(new_path),
-            [cb](auto new_path) mutable { return cb(std::move(new_path)); },
-            [this, n_tries, rc = std::move(rc), remote = std::move(remote), cb, keep_path](
-                auto new_path, int ec) mutable {
-                if (keep_path)
-                    path_build_failed(new_path, ec);
-                path_build_recursive(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
-            });
-    }
-
-    void PathHandler::path_build_onepass(
-        std::shared_ptr<Path> new_path, path_build_success_hook success_cb, path_build_fail_hook fail_cb)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        auto payload = build2(new_path);
-        auto upstream = new_path->edge().router_id();
-
-        if (!_router.send_control_message(
-                std::move(upstream),
-                "path_build",
-                std::move(payload),
-                [new_path, success_cb = std::move(success_cb), fail_cb](quic::message m) mutable {
-                    if (m)
-                    {
-                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->to_string());
-                        return success_cb(std::move(new_path));
-                    }
-
+                if (m.timed_out)
+                    log::warning(logcat, "Path-build request timed out!");
+                else
                     try
                     {
-                        if (m.timed_out)
-                        {
-                            log::warning(logcat, "Path-build request timed out!");
-                        }
-                        else
-                        {
-                            oxenc::bt_dict_consumer d{m.body()};
-                            auto status = d.require<std::string_view>(messages::STATUS_KEY);
-                            log::warning(logcat, "Onepass path-build returned failure status: {}", status);
-                        }
+                        oxenc::bt_dict_consumer d{m.body()};
+                        auto status = d.require<std::string_view>(messages::STATUS_KEY);
+                        log::warning(logcat, "Onepass path-build returned failure status: {}", status);
                     }
                     catch (const std::exception& e)
                     {
                         log::warning(
-                            logcat, "Exception caught parsing path_build response: {}; input: {}", e.what(), m.body());
+                            logcat,
+                            "Exception caught parsing path_build response: {}; response body: {}",
+                            e.what(),
+                            llarp::buffer_printer{m.body()});
                     }
 
-                    return fail_cb(std::move(new_path), m.timed_out);
-                }))
-        {
-            log::warning(logcat, "Error sending path_build control message");
-            return fail_cb(std::move(new_path), false);
-        }
+                return path_build_failed(id, new_path.get(), m.timed_out);
+            });
     }
 
-    void PathHandler::rotate_paths(std::vector<RemoteRC> hops)
+    void PathHandler::path_build_failed(int64_t build_id, Path* p, bool timeout)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (auto new_path = build1(hops))
-        {
-            assert(new_path);
-
-            log::debug(logcat, "Attempting path-rotation to new path...");
-            path_build_onepass(
-                std::move(new_path),
-                [this](auto new_path) mutable { path_rotation_succeeded(std::move(new_path)); },
-                [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
-        }
-    }
-
-    void PathHandler::path_build_failed(const std::shared_ptr<Path>& p, bool timeout)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        drop_path(p);
+        if (p)
+            drop_path(*p);
 
         if (timeout)
         {
-            _router.router_profiling().path_timeout(p.get());
-            _build_stats.timeouts += 1;
+            if (p)
+                router.router_profiling().path_timeout(*p);
+            router.path_builds.timeouts++;
         }
         else
-            _build_stats.build_fails += 1;
+            router.path_builds.build_fails++;
 
-        path_build_backoff();
+        _last_failure = llarp::time_now_ms();
+        _consecutive_failures++;
+
+        on_path_build_failure(build_id, p, timeout);
     }
 
-    void PathHandler::path_build_succeeded(const std::shared_ptr<Path>& p)
+    void PathHandler::path_build_succeeded(int64_t build_id, Path& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        p->set_established();
+        p.set_established();
         add_path(p);
-        build_interval_limit = PATH_BUILD_RATE;
-        _router.router_profiling().path_success(p.get());
-        _build_stats.success += 1;
+        router.router_profiling().path_success(p);
+        router.path_builds.success++;
+
+        _consecutive_failures = 0;
+
+        on_path_build_success(build_id, p);
     }
 
-    void PathHandler::path_build_backoff()
+    bool PathHandler::cooldown(std::chrono::milliseconds now) const
     {
-        static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
-        // linear backoff
-        build_interval_limit = std::min(PATH_BUILD_RATE + build_interval_limit, MaxBuildInterval);
-        log::warning(logcat, "Build interval is now {}", build_interval_limit);
+        if (_consecutive_failures < BACKOFF_THRESHOLD)
+            return false;
+
+        return now < _last_failure + BACKOFF_INCREMENT * (1 + _consecutive_failures - BACKOFF_THRESHOLD);
     }
 
-    void PathHandler::path_died(const std::shared_ptr<Path>& p)
+    // TODO FIXME: something should be calling this!
+    void PathHandler::path_died(const Path& p)
     {
-        log::warning(logcat, "Path {} died post-build", p->to_string());
-        _build_stats.path_fails++;
+        log::warning(logcat, "Path {} died post-build", p);
+        router.path_builds.path_fails++;
     }
 }  // namespace llarp::path

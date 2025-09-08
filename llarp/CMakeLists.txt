@@ -12,8 +12,9 @@ endfunction()
 
 lokinet_add_library(lokinet-cryptography
   crypto/crypto.cpp
-  crypto/types.cpp
   crypto/key_manager.cpp
+  crypto/keys.cpp
+  crypto/types.cpp
 )
 
 if(LOKINET_FULL)
@@ -46,12 +47,13 @@ lokinet_add_library(lokinet-core
   
   consensus/reachability_testing.cpp
   
+  link/connection.cpp
+  link/endpoint.cpp
   link/link_manager.cpp
-  
+
   router/router.cpp
 
   session/session.cpp
-  session/map.cpp
 )
 
 if (LOKINET_FULL)
@@ -68,20 +70,16 @@ if (LOKINET_FULL)
   )
 endif()
 
-lokinet_add_library(lokinet-wire
-  link/connection.cpp
-  link/link_manager.cpp
-)
-
-# config, crypto, timeplace, nodedb, bootstrap.cpp, net, router
+# config, crypto, timeplace, nodedb, net, router
 lokinet_add_library(lokinet-utils
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/buffer.cpp
   util/file.cpp
+  util/logging.cpp
   util/mem.cpp
   util/str.cpp
-  util/thread/threading.cpp
   util/thread/queue_manager.cpp  
+  util/thread/threading.cpp
   util/time.cpp
 )
 
@@ -91,7 +89,6 @@ lokinet_add_library(lokinet-contact
   contact/client_contact.cpp
   contact/client_intro.cpp
   contact/contactdb.cpp
-  contact/keys.cpp
   contact/relay_contact.cpp
   contact/router_id.cpp
   contact/sns.cpp
@@ -112,10 +109,8 @@ lokinet_add_library(lokinet-addressing
   address/ip_range.cpp
   address/utils.cpp
 
+  ev/fd_poller.cpp
   ev/tcp.cpp
-  ev/types.cpp
-
-  router_version.cpp  # to be deleted shortly
 )
 
 lokinet_add_library(lokinet-dns
@@ -184,7 +179,6 @@ endif()
 # lokinet-nodedb holds all types and logic for storing parsing and constructing
 # nodedb data published to the network and versions of it stored locally
 lokinet_add_library(lokinet-nodedb
-  bootstrap.cpp   # config, router.hpp
   nodedb.cpp
   profiling.cpp # path, router, service::endpoint
 )
@@ -198,8 +192,8 @@ foreach(bs IN ITEMS MAINNET TESTNET)
     set(BOOTSTRAP_FALLBACKS "${BOOTSTRAP_FALLBACKS}        {NetID::${bs}, \"${bs_data}\"sv},\n")
   endif()
 endforeach()
-configure_file("bootstrap-fallbacks.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp" @ONLY)
-target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp")
+configure_file("nodedb-bootstraps.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/nodedb-bootstraps.cpp" @ONLY)
+target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/nodedb-bootstraps.cpp")
 
 # lokinet-config is for all configuration types and parsers
 lokinet_add_library(lokinet-config
@@ -210,6 +204,8 @@ lokinet_add_library(lokinet-config
 
 # All path objects; link directly to lokinet-core
 lokinet_add_library(lokinet-path
+  path/build_stats.cpp
+  path/hopid.cpp
   path/path.cpp
   path/path_context.cpp
   path/path_handler.cpp
@@ -217,14 +213,12 @@ lokinet_add_library(lokinet-path
 )
 
 # Link libraries to their internals
-target_link_libraries(lokinet-wire PUBLIC lokinet-addressing)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
 target_link_libraries(lokinet-contact PUBLIC lokinet-dns)
 if(LOKINET_FULL)
-  target_link_libraries(lokinet-rpc PUBLIC lokinet-wire lokinet-contact lokinet-config)
+  target_link_libraries(lokinet-rpc PUBLIC lokinet-contact lokinet-config)
 endif()
 target_link_libraries(lokinet-addressing PUBLIC lokinet-utils lokinet-cryptography lokinet-contact lokinet-ip)
-target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
 target_link_libraries(lokinet-config PUBLIC lokinet-cryptography lokinet-addressing)
 if(LOKINET_FULL)
   target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-ip)
@@ -245,7 +239,6 @@ target_link_libraries(lokinet-path
 target_link_libraries(lokinet-core-utils 
   PUBLIC 
   lokinet-config
-  lokinet-wire 
   lokinet-dns
 )
 

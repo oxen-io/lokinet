@@ -7,8 +7,8 @@
 #include <llarp/address/ip_range.hpp>
 #include <llarp/auth/auth.hpp>
 #include <llarp/auth/file.hpp>
-#include <llarp/bootstrap.hpp>
 #include <llarp/constants/files.hpp>
+#include <llarp/constants/path.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/dns/srv_data.hpp>
@@ -48,7 +48,7 @@ namespace llarp
         ConfigGenParameters(ConfigGenParameters&&) = delete;
 
         config::Type type;
-        fs::path default_data_dir;
+        std::filesystem::path default_data_dir;
 
         /// get network platform (virtual for unit test mocks)
         virtual const llarp::net::Platform* net_ptr();
@@ -60,7 +60,7 @@ namespace llarp
 
         NetID net_id = NetID::MAINNET;
 
-        fs::path data_dir;
+        std::filesystem::path data_dir;
 
         bool block_bogons = false;
 
@@ -69,25 +69,57 @@ namespace llarp
 
         size_t job_que_size = 0;
 
-        std::optional<fs::path> rc_file;
+        std::optional<std::filesystem::path> rc_file;
 
         bool is_relay = false;
 
-        std::optional<std::string> public_ip;
-        std::optional<uint16_t> public_port;
+        std::optional<quic::Address> public_addr;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
     /// config for path hop selection
-    struct PeerSelectionConfig
+    struct PathConfig
     {
+        /// Number of paths to maintain for inbound reachability and network queries (such as
+        /// looking up client contacts).
+        int inbound_paths = 4;
+
+        /// Length of the "inbound" paths we use for inbound connections and network queries.
+        /// If unset, use client_hops.
+        std::optional<int> inbound_hops_;
+
+        // Retrieves the above, with built-in fallback to the client_hops value if not set.
+        int inbound_hops() const { return inbound_hops_.value_or(client_hops); }
+
+        /// Number of paths to maintain to *each* outgoing remote (relay or snode).
+        int outbound_paths = 2;
+
+        /// Number of hops when establishing a session to a relay (i.e. to a .snode, not *through* a
+        /// relay to reach a client).
+        std::optional<int> relay_hops_;
+
+        /// Retrieves the working value for relay-hops: the value if explicitly set, else one more
+        /// than the configured client hops.
+        int relay_hops() const { return relay_hops_.value_or(std::min(client_hops + 1, path::BUILD_LENGTH)); }
+
+        /// Number of hops when building an aligned path to a relay to reach a client on the other
+        /// side.
+        int client_hops = 3;
+
         /// in our hops what netmask will we use for unique ips for hops
         /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
-        uint8_t unique_hop_netmask;
+        uint8_t unique_hop_netmask{0};
 
         // TODO: some day, if we ever support routers using IPv6, there would need to be a different
         // ipv6 netmask value.
+
+        std::chrono::seconds min_expiry = 1min;
+        std::chrono::seconds acceptable_expiry = 5min;
+
+        std::chrono::milliseconds build_timeout{10s};
+        std::chrono::seconds ping_interval{5s};
+        int max_missed_pings{5};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
@@ -119,14 +151,11 @@ namespace llarp
 
     struct NetworkConfig
     {
-        bool enable_profiling;
-        bool save_profiles;
+        bool enable_profiling{false};
+        bool save_profiles{false};
         std::unordered_set<RouterID> pinned_edges;
 
-        std::optional<fs::path> keyfile;
-
-        std::optional<int> hops;
-        std::optional<int> paths;
+        std::optional<std::filesystem::path> keyfile;
 
         bool enable_ipv6{false};
         bool is_reachable{false};
@@ -144,16 +173,14 @@ namespace llarp
 
         std::unordered_set<std::string> auth_static_tokens;
 
-        std::vector<fs::path> auth_files;
+        std::vector<std::filesystem::path> auth_files;
 
         std::unordered_set<llarp::dns::SRVData> srv_records;
-
-        std::optional<std::chrono::milliseconds> path_alignment_timeout;
 
         /* TESTNET: Under modification */
 
         // Contents of this file are read directly into ::_reserved_local_addrs
-        std::optional<fs::path> addr_map_persist_file;
+        std::optional<std::filesystem::path> addr_map_persist_file;
 
         // the only member that refers to an actual interface
         std::optional<std::string> _if_name;
@@ -176,17 +203,17 @@ namespace llarp
         std::optional<net::ExitPolicy> traffic_policy;
 
         // TESTNET: move into ExitConfig!
-        bool enable_route_poker;
-        bool blackhole_routes;
+        bool enable_route_poker{false};
+        bool blackhole_routes{false};
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 
     struct DnsConfig
     {
-        bool l3_intercept;
+        bool l3_intercept{false};
 
-        std::vector<fs::path> hostfiles;
+        std::vector<std::filesystem::path> hostfiles;
 
         /* TESTNET: Under modification */
         std::vector<quic::Address> _upstream_dns;
@@ -207,10 +234,8 @@ namespace llarp
 
     struct LinksConfig
     {
-        // DEPRECATED -- use [Router]:public_addr
-        std::optional<std::string> public_addr;
-        // DEPRECATED -- use [Router]:public_port
-        std::optional<uint16_t> public_port;
+        // DEPRECATED -- use [router]:public_addr/port instead
+        std::optional<quic::Address> public_addr;
 
         std::optional<quic::Address> listen_addr;
 
@@ -227,7 +252,7 @@ namespace llarp
 
     struct LokidConfig
     {
-        fs::path id_keyfile;
+        std::filesystem::path id_keyfile;
         std::string rpc_addr;
         bool disable_testing = false;
 
@@ -236,8 +261,7 @@ namespace llarp
 
     struct BootstrapConfig
     {
-        std::vector<fs::path> files;
-        bool seednode;
+        std::vector<std::filesystem::path> files;
 
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
@@ -264,12 +288,15 @@ namespace llarp
         // client), loading configuration data from the given string, if given (all default config
         // otherwise).  The default data directory (if not explicit set in the given config string)
         // can optionally be provided.  If omitted (and not set in the string) it defaults to cwd.
-        Config(config::Type type, std::string config = "", fs::path default_data_dir = fs::current_path());
+        Config(
+            config::Type type,
+            std::string config = "",
+            std::filesystem::path default_data_dir = std::filesystem::current_path());
 
         // Creates a config for the given lokinet instance type (relay, full client, or embedded
         // client), loading configuration data from an existing file.  The default data directory
         // (if not set in the config itself) will be the directory containing the given config file.
-        Config(config::Type type, fs::path config_file);
+        Config(config::Type type, std::filesystem::path config_file);
 
         Config(Config&&) = default;
         Config(const Config&) = default;
@@ -284,7 +311,7 @@ namespace llarp
         RouterConfig router;
         ExitConfig exit;
         NetworkConfig network;
-        PeerSelectionConfig paths;
+        PathConfig paths;
         DnsConfig dns;
         LinksConfig links;
         ApiConfig api;
@@ -314,18 +341,19 @@ namespace llarp
         bool client() const { return !relay(); }
 
       private:
-        void load_config_data(std::string ini, std::optional<fs::path> fname = std::nullopt);
+        void load_config_data(std::string ini, std::optional<std::filesystem::path> fname = std::nullopt);
 
         void load_overrides(ConfigDefinition& conf) const;
 
         std::vector<std::array<std::string, 3>> additional;
         ConfigParser parser;
-        fs::path data_dir{fs::current_path()};
+        std::filesystem::path data_dir{std::filesystem::current_path()};
         config::Type type;
     };
 
     // Ensures that a conf file exists, writing a default one if not present.  Only for full
     // clients/routers (i.e. not embedded clients).
-    void ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, config::Type type);
+    void ensure_config(
+        std::filesystem::path dataDir, std::filesystem::path confFile, bool overwrite, config::Type type);
 
 }  // namespace llarp

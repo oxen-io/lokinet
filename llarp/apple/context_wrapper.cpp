@@ -45,10 +45,10 @@ void* llarp_apple_init(llarp_apple_config* appleconf)
 
     try
     {
-        auto config_dir = fs::u8path(appleconf->config_dir);
+        auto config_dir = std::filesystem::u8path(appleconf->config_dir);
         auto config = std::make_shared<llarp::Config>(config_dir);
-        fs::path config_path = config_dir / "lokinet.ini";
-        if (!fs::exists(config_path))
+        std::filesystem::path config_path = config_dir / "lokinet.ini";
+        if (!exists(config_path))
             llarp::ensure_config(config_dir, config_path, false, llarp::config::Type::FullClient);
         config->load(config_path);
 
@@ -95,7 +95,7 @@ void* llarp_apple_init(llarp_apple_config* appleconf)
 
         // If no explicit bootstrap then set the system default one included with the app bundle
         if (config->bootstrap.files.empty())
-            config->bootstrap.files.push_back(fs::u8path(appleconf->default_bootstrap));
+            config->bootstrap.files.push_back(std::filesystem::u8path(appleconf->default_bootstrap));
 
         auto inst = std::make_unique<instance_data>();
         inst->context.Configure(std::move(config));

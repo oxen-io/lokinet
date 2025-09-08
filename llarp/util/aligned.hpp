@@ -14,18 +14,9 @@ namespace llarp
 {
     /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
     template <size_t sz>
-    // Microsoft C malloc(3C) cannot return pointers aligned wider than 8 ffs
-#ifdef _WIN32
-    struct alignas(uint64_t) AlignedBuffer
-#else
-    struct alignas(std::max_align_t) AlignedBuffer
-#endif
+    struct alignas(8) AlignedBuffer
     {
-        static_assert(alignof(std::max_align_t) <= 16, "insane alignment");
-        static_assert(
-            sz >= 8,
-            "AlignedBuffer cannot be used with buffers smaller than 8 "
-            "bytes");
+        static_assert(sz % 8 == 0, "AlignedBuffer cannot be used with buffers that aren't a multiple of 8");
 
         static constexpr size_t SIZE = sz;
 
@@ -44,8 +35,13 @@ namespace llarp
             assign(buf);
             return *this;
         }
+        // Assigns to the aligned buffer contents from a spannable input of the same size
         void assign(std::span<const uint8_t, SIZE> buf) { std::memcpy(_data.data(), buf.data(), SIZE); }
         void assign(std::span<const std::byte, SIZE> buf) { std::memcpy(_data.data(), buf.data(), SIZE); }
+
+        // Copies the aligned buffer contents into a writeable span of the same size
+        void copy_to(std::span<std::byte, SIZE> buf) const { std::memcpy(buf.data(), _data.data(), SIZE); }
+        void copy_to(std::span<uint8_t, SIZE> buf) const { std::memcpy(buf.data(), _data.data(), SIZE); }
 
         /// bitwise NOT
         AlignedBuffer<sz> operator~() const
@@ -115,6 +111,22 @@ namespace llarp
         operator std::span<const std::byte, SIZE>() const { return span(); }
         operator std::span<const std::byte>() const { return span(); }
 
+        // Shortcut for .span().first/last:
+        std::span<std::byte> first(size_t n) { return span().first(n); }
+        template <size_t N>
+            requires(N <= SIZE)
+        std::span<std::byte, N> first()
+        {
+            return span().template first<N>();
+        }
+        std::span<std::byte> last(size_t n) { return span().last(n); }
+        template <size_t N>
+            requires(N <= SIZE)
+        std::span<std::byte, N> last()
+        {
+            return span().template last<N>();
+        }
+
         bool is_zero() const
         {
             const auto* ptr = reinterpret_cast<const uint64_t*>(data());
@@ -154,11 +166,7 @@ namespace llarp
 
         std::string_view to_view() const { return {reinterpret_cast<const char*>(data()), sz}; }
 
-        std::string to_string() const { return ToHex(); }
-
         std::string ToHex() const { return oxenc::to_hex(begin(), end()); }
-
-        std::string short_string() const { return oxenc::to_base32z(begin(), begin() + 5); }
 
         bool FromHex(std::string_view str)
         {
@@ -168,13 +176,27 @@ namespace llarp
             return true;
         }
 
+        std::string to_string() const { return ToHex(); }
         static constexpr bool to_string_formattable = true;
+
+        // Deferred conversion object meant for log statements to be able to log a shortened b32z
+        // value without needing to do the conversion when the log statement is skipped.
+        struct short_log_printer
+        {
+            const AlignedBuffer<sz>& buf;
+            std::string to_string() const { return oxenc::to_base32z(buf.begin(), buf.begin() + 5); }
+            static constexpr bool to_string_formattable = true;
+        };
+        // Used in log statements to log the value as its first 8 base32z characters:
+        short_log_printer short_string() const { return {*this}; }
 
       private:
         std::array<uint8_t, SIZE> _data;
     };
 
     static_assert(sizeof(AlignedBuffer<32>) == 32, "AlignedBuffer should have no overhead");
+    static_assert(sizeof(AlignedBuffer<24>) == 24, "AlignedBuffer should have no overhead");
+    static_assert(sizeof(AlignedBuffer<8>) == 8, "AlignedBuffer should have no overhead");
 
     struct AlignedHasher
     {
