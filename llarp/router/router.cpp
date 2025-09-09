@@ -18,6 +18,7 @@
 #include <oxen/log.hpp>
 
 #include <chrono>
+#include <nlohmann/json.hpp>
 
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/handlers/tun.hpp>
