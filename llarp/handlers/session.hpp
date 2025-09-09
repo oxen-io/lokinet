@@ -175,20 +175,21 @@ namespace llarp
             void resolve_sns_mappings();
 
             // Initiates a session to the given remote client or snode address.  Calls
-            // `on_established` when the connection is established (or immediately, if a session to
-            // the target is already established).  If the session cannot be established within the
-            // given timeout then `on_established` will be called with the not-yet-established
-            // session and a `true` second argument.  If omitted/nullopt the timeout defaults to the
-            // [paths]build-timeout config option.
+            // `on_attempted` when the connection is either established (immediately, if a session
+            // to the target is already established) or when the connection attempt times out (the
+            // caller can check `session.is_established()` to figure out which one occured).
+            //
+            // The timeout, if omitted/nullopt, defaults to the [paths]build-timeout config option.
             //
             // Note that this resulting session could be outbound or inbound: i.e. if the target is
             // a client (.loki) that has already established a session to this lokinet instance then
             // that existing session is used rather than building a new outbound one.
             //
-            // NB: this method can be called from outside the event loop (e.g. in embedded usage).
+            // NB: this method can be safely called from outside the event loop (e.g. in embedded
+            // usage).
             std::shared_ptr<session::Session> initiate_remote_session(
                 const NetworkAddress& remote,
-                std::function<void(session::Session& session, bool timeout)> on_established,
+                std::function<void(session::Session& session)> on_established,
                 std::optional<std::chrono::milliseconds> timeout = std::nullopt);
 
             // More internal version of initiate_remote_session: this may only be called from inside

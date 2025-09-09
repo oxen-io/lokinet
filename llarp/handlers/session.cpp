@@ -1081,33 +1081,30 @@ namespace llarp::handlers
 
     std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(
         const NetworkAddress& remote,
-        std::function<void(session::Session& session, bool timeout)> on_established,
+        std::function<void(session::Session& session)> on_attempted,
         std::optional<std::chrono::milliseconds> timeout)
     {
-        std::function<void(session::Session&)> on_est;
-        if (on_established)
-            on_est = [cb = std::move(on_established)](session::Session& s) { cb(s, !s.is_established()); };
-        return router.loop.call_get([this, &remote, &on_est, &timeout] {
+        return router.loop.call_get([this, &remote, &on_attempted, &timeout] {
             auto& s = _sessions[remote];
             if (s && !s->is_closed())
             {
-                if (on_est)
+                if (on_attempted)
                 {
                     if (s->is_established())
-                        on_est(*s);
+                        on_attempted(*s);
                     else
                     {
                         assert(s->is_outbound);  // Inbound sessions are always established
                         // We have an already-in-progress but not-yet-established session, so just
                         // hook the callback up to it to be fired when it finishes establishing:
-                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_est), timeout);
+                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_attempted), timeout);
                     }
                 }
             }
             else if (remote.client())
-                s = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_est), timeout);
+                s = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_attempted), timeout);
             else
-                s = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_est), timeout);
+                s = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_attempted), timeout);
 
             return s;
         });

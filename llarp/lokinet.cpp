@@ -85,8 +85,8 @@ namespace lokinet
              port,
              netaddr,
              on_established = std::move(on_established),
-             failure = std::move(failure)](llarp::session::Session& s, bool success) {
-                if (!success || !s.is_established())
+             failure = std::move(failure)](llarp::session::Session& s) {
+                if (!s.is_established())
                 {
                     auto err = "Failed to establish remote session to {} for UDP tunnel[port={}]"_format(netaddr, port);
                     llarp::log::warning(logcat, "{}", err);
