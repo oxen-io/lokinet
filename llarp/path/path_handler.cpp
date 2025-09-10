@@ -112,7 +112,7 @@ namespace llarp::path
 
         expire_paths(now);
 
-        if (not router.is_service_node and not router.link_endpoint().is_client_connected())
+        if (not router.is_service_node and not router.is_connected())
             // If we are not yet fully connected then we can't initiate path builds.  (In theory we
             // could whe not yet fully connected, but don't want to because that would bias edge
             // router selection towards faster ones).

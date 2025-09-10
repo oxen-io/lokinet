@@ -310,7 +310,7 @@ namespace llarp::link
                 // We are a client, and so *all* connections are outbound to a relay that we
                 // initiated: Unlike the above, we would never initiate to an already pending or
                 // already connected node, so don't have to worry about duplicates.
-                c = static_cast<int>(client_conns.size() + pending_outbound.size());
+                c = static_cast<int>(client_conns.size() + (include_pending ? pending_outbound.size() : 0));
             }
             return c;
         });
@@ -570,6 +570,9 @@ namespace llarp::link
         }
 
         pending_outbound.erase(pit);
+
+        if (not router.is_service_node)
+            router.on_edge_conn_change();
     }
 
     void Endpoint::on_conn_established(quic::Connection& conn)
@@ -579,8 +582,9 @@ namespace llarp::link
         std::shared_ptr<quic::BTRequestStream> inbound_cstream;
         if (conn.is_inbound())
             // We have to set up the control stream here, before the router loop transfer below,
-            // because the stream must be queued before stream data gets processed which could
-            // happen immediately after this callback.
+            // because the stream must be queued before stream data gets processed (which could
+            // happen immediately after this method call returns) so that we don't accidentally end
+            // up with a plain Stream for the stream id rather than a BTRequestStream.
             inbound_cstream = make_control(conn, RouterID{conn.remote_key().first<32>()}, conn.selected_alpn());
 
         router.loop.call([this, weak = conn.weak_from_this(), inbound_cstream = std::move(inbound_cstream)]() {
@@ -595,18 +599,6 @@ namespace llarp::link
                 on_inbound_conn(std::move(conn), std::move(inbound_cstream));
             else
                 on_outbound_conn(std::move(conn));
-
-            if (not router.is_service_node and not _client_connected)
-                if (int n = num_relay_conns(/*include_pending=*/false); n >= router.client_target_outbounds())
-                {
-                    _client_connected = true;
-                    log::info(
-                        log_global,
-                        "Lokinet is now connected to the network ({}) with {} relay connections",
-                        router.config().network.is_reachable ? router.local_rid().to_network_address(false).to_string()
-                                                             : "outgoing-only",
-                        n);
-                }
         });
     }
 
@@ -687,17 +679,9 @@ namespace llarp::link
                     ref_id,
                     ec);
             }
-            if (not router.is_service_node and _client_connected and num_relay_conns(/*include_pending=*/false) == 0)
-            {
-                _client_connected = false;
-                log::warning(log_global, "Lokinet is no longer connected to the network!");
-            }
+            if (not router.is_service_node)
+                router.on_edge_conn_change();
         });
-    }
-
-    bool Endpoint::is_client_connected() const
-    {
-        return router.loop.call_get([this] { return _client_connected; });
     }
 
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(

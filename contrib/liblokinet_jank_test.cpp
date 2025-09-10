@@ -1,28 +1,55 @@
 #include <lokinet.hpp>
 
-#include <thread>
-#include <iostream>
-#include <cstdint>
+#include <exception>
 #include <filesystem>
+#include <future>
+#include <iostream>
+#include <thread>
 
 using namespace std::literals;
 
-int main(int argc, char** argv) {
-  lokinet::Lokinet loki{std::filesystem::path{"lokinet.ini"}};
-  //lokinet::Lokinet loki{lokinet::Network::TESTNET};
-  std::this_thread::sleep_for(5s);
-  std::string ignored;
-  if (argc > 1) {
-    std::string target{argv[1]};
-    std::cout << "\nPRESS ENTER TO START SESSION TO " << target << "\n";
-    std::getline(std::cin, ignored);
-    try {
-      auto udp_info = loki.establish_udp_blocking(target, 12345);
-      std::cout << "\nudp bound to port " << udp_info.local_port << "\n";
+int main(int argc, char** argv)
+{
+    if (argc <= 1)
+    {
+        std::cerr << "USAGE: " << argv[0] << " {WHATEVER.loki | WHATEVER.snode}\n";
+        return 1;
     }
-    catch (const std::exception& e) {
-      std::cerr << "\nError establishing session to " << target << ": " << e.what() << "\n";
-      return 1;
+
+    std::string target{argv[1]};
+
+    lokinet::Lokinet loki{std::filesystem::path{"lokinet.ini"}};
+
+    std::promise<void> prom;
+    loki.on_connected([&] {
+        std::cout << "\n\x1b[32;1mLokinet connected!\x1b[0m\n\n\x1b[33;1mINITIATING SESSION TO " << target
+                  << "\x1b[0m\n\n"
+                  << std::flush;
+        loki.establish_udp(
+            target,
+            12345,
+            [](auto udp_info) {
+                std::cout << "\n\x1b[32;1mUDP bound to port " << udp_info.local_port << "\x1b[0m\n\n" << std::flush;
+            },
+            [&prom](std::string_view fail_msg) {
+                try
+                {
+                    throw std::runtime_error{std::string{fail_msg}};
+                }
+                catch (...)
+                {
+                    prom.set_exception(std::current_exception());
+                }
+            });
+    });
+    try
+    {
+        prom.get_future().get();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "\n\n\x1b[31;1mError establishing session to " << target << ": " << e.what() << "\x1b[0m\n\n";
+        return 1;
     }
 
     /*
@@ -34,8 +61,8 @@ int main(int argc, char** argv) {
           std::cerr << "\nTCP Tunnel map error: " << error_str << "\n";
         });
     */
-  }
-  std::cout << "\nPRESS ENTER TO EXIT\n";
-  std::getline(std::cin, ignored);
-  std::cout << "\nEXITING\n";
+    std::cout << "\nPRESS ENTER TO EXIT\n";
+    std::string ignored;
+    std::getline(std::cin, ignored);
+    std::cout << "\nEXITING\n";
 }

@@ -1006,6 +1006,99 @@ namespace llarp
         return 0s;
     }
 
+    bool Router::is_connected() const
+    {
+        return loop.call_get([this] { return _is_connected; });
+    }
+
+    void Router::on_connected(std::function<void()> callback, bool persistent)
+    {
+        if (!callback)
+            return;
+        loop.call([this, callback = std::move(callback), persistent] {
+            if (_is_connected)
+                try
+                {
+                    callback();
+                }
+                catch (const std::exception& e)
+                {
+                    log::error(logcat, "Uncaught exception calling on_connected callback: {}", e.what());
+                }
+
+            if (persistent or not _is_connected)
+                _on_connected.emplace_back(std::move(callback), persistent);
+        });
+    }
+
+    void Router::on_disconnected(std::function<void()> callback, bool persistent)
+    {
+        if (!callback)
+            return;
+        loop.call([this, callback = std::move(callback), persistent] {
+            if (not _is_connected)
+                try
+                {
+                    callback();
+                }
+                catch (const std::exception& e)
+                {
+                    log::error(logcat, "Uncaught exception calling on_disconnected callback: {}", e.what());
+                }
+
+            if (persistent or _is_connected)
+                _on_disconnected.emplace_back(std::move(callback), persistent);
+        });
+    }
+
+    static void process_on_conn_callbacks(
+        std::list<std::pair<std::function<void()>, bool>> callbacks, std::string_view type)
+    {
+        for (auto it = callbacks.begin(); it != callbacks.end();)
+        {
+            auto& [f, persist] = *it;
+            try
+            {
+                f();
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Uncaught exception calling {} callback: {}", type, e.what());
+            }
+            if (persist)
+                ++it;
+            else
+                it = callbacks.erase(it);
+        }
+    }
+
+    void Router::on_edge_conn_change()
+    {
+        assert(loop.inside());
+
+        int conns = link_endpoint().num_relay_conns();
+        if (conns == 0 and _is_connected)
+        {
+            _is_connected = false;
+
+            log::warning(log_global, "Lokinet is no longer connected to the network!");
+
+            process_on_conn_callbacks(_on_disconnected, "on_disconnected");
+        }
+        else if (not _is_connected and conns >= _client_target_outbounds)
+        {
+            _is_connected = true;
+
+            log::info(
+                log_global,
+                "Lokinet is now connected to the network ({}) with {} relay connections",
+                config().network.is_reachable ? local_rid().to_network_address(false).to_string() : "outgoing-only",
+                conns);
+
+            process_on_conn_callbacks(_on_connected, "on_connected");
+        }
+    }
+
     void Router::stop()
     {
         if (!_is_running)

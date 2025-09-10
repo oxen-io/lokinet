@@ -73,7 +73,7 @@ namespace llarp
             Config conf,
             std::shared_ptr<quic::Loop> loop,
             std::shared_ptr<vpn::Platform> vpnPlatform,
-            std::promise<void> p);
+            std::promise<void> close_promise);
 
         ~Router();
 
@@ -136,6 +136,15 @@ namespace llarp
         std::chrono::milliseconds _next_dereg_warning{time_now_ms() + 15s};
 
         std::chrono::milliseconds _last_path_ping{0s};
+
+        // Application callback(s) to fire as soon as we reach "connected" or "disconnected" status,
+        // which means when we have established our target number of edge connections or lost all
+        // edge connections, respectively.  Typically used as a "ready-to-go" callback during
+        // initialization.  The bool value indicates whether the callback is persistent (true) or
+        // one-time (false).  Note that callbacks are only called when the connected state changes:
+        // that is when we were disconnected and became connected, or were connected and became
+        // disconnected.
+        std::list<std::pair<std::function<void()>, bool>> _on_connected, _on_disconnected;
 
         // These aren't actually shared, but we unique_ptr requires destructor visibility, which
         // embedded-only clients won't have as they don't compile any RPC code.
@@ -277,13 +286,24 @@ namespace llarp
 
         std::string status_line();
 
-        // Client connectivity status: we enter "client connected" state when we have reached our
-        // target number of router connections, and we lose connected state when we fall to 0 router
-        // connections.  These log when we flip from disconnected to connected (info) or vice versa
-        // (warning).
-        void set_connected();
-        void set_disconnected();
+        // Returns the client connectivity status: we enter "connected" state once the target number
+        // of edge router connections is reached, and we lose connected state when we lose all edge
+        // connections.  Application code can monitor this state by setting callbacks via
+        // `on_connected`/`on_disconnected`.
         bool is_connected() const;
+
+        // Adds an application callback to invoke when the connectivity state changes to
+        // "connected".  If the state is already connected when this is called, the callback will be
+        // invoked immediately.  If `persistent` is true then the callback will be stored and called
+        // again if the state leaves and re-enters the connected state.
+        void on_connected(std::function<void()> callback, bool persistent);
+
+        // Like `is_connected`, but fires on disconnections.
+        void on_disconnected(std::function<void()> callback, bool persistent);
+
+        // Internal method: called from link::Endpoint to re-check and possibly change connected
+        // state when a client edge connection is established or lost.
+        void on_edge_conn_change();
 
         bool is_running() const { return _is_running; }
 
