@@ -1097,14 +1097,17 @@ namespace llarp::handlers
                         assert(s->is_outbound);  // Inbound sessions are always established
                         // We have an already-in-progress but not-yet-established session, so just
                         // hook the callback up to it to be fired when it finishes establishing:
-                        static_cast<session::OutboundSession*>(s.get())->on_established(std::move(on_attempted), timeout);
+                        static_cast<session::OutboundSession*>(s.get())->on_established(
+                            std::move(on_attempted), timeout);
                     }
                 }
             }
             else if (remote.client())
-                s = router.loop.make_shared<session::OutboundClientSession>(remote, *this, std::move(on_attempted), timeout);
+                s = router.loop.make_shared<session::OutboundClientSession>(
+                    remote, *this, std::move(on_attempted), timeout);
             else
-                s = router.loop.make_shared<session::OutboundRelaySession>(remote, *this, std::move(on_attempted), timeout);
+                s = router.loop.make_shared<session::OutboundRelaySession>(
+                    remote, *this, std::move(on_attempted), timeout);
 
             return s;
         });

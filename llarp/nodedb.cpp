@@ -28,8 +28,8 @@ namespace llarp
 
 #ifdef LOKINET_DEBUG_PATH_SEED
     static std::vector<const std::pair<const RouterID, RemoteRC>*> debug_sort_admissable(
-            const std::unordered_map<RouterID, RemoteRC>& known_rcs,
-            const std::function<bool(const RemoteRC&)>& predicate) {
+        const std::unordered_map<RouterID, RemoteRC>& known_rcs, const std::function<bool(const RemoteRC&)>& predicate)
+    {
         std::vector<const std::pair<const RouterID, RemoteRC>*> admitted;
         if (!predicate)
             admitted.reserve(known_rcs.size());
@@ -38,8 +38,7 @@ namespace llarp
                 admitted.push_back(&x);
         // We need a sorted list of known rcs because of the potentially non-reproducible order
         // of elements in an unordered map:
-        std::sort(admitted.begin(), admitted.end(), [](const auto& a, const auto& b) {
-            return a->first < b->first; });
+        std::sort(admitted.begin(), admitted.end(), [](const auto& a, const auto& b) { return a->first < b->first; });
         return admitted;
     }
 #endif
@@ -47,12 +46,13 @@ namespace llarp
     const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
     {
 #ifdef LOKINET_DEBUG_PATH_SEED
-        if (auto& s = _router.config().paths.debug_path_seed) {
+        if (auto& s = _router.config().paths.debug_path_seed)
+        {
             auto admitted = debug_sort_admissable(known_rcs, predicate);
             if (admitted.empty())
                 return nullptr;
             std::mt19937_64 rng{*s};
-            return &admitted[std::uniform_int_distribution<size_t>{0, admitted.size()-1}(rng)]->second;
+            return &admitted[std::uniform_int_distribution<size_t>{0, admitted.size() - 1}(rng)]->second;
         }
 #endif
         const RemoteRC* result = nullptr;
@@ -77,14 +77,15 @@ namespace llarp
         rand.resize(n);
 
 #ifdef LOKINET_DEBUG_PATH_SEED
-        if (auto& s = _router.config().paths.debug_path_seed) {
+        if (auto& s = _router.config().paths.debug_path_seed)
+        {
             auto admitted = debug_sort_admissable(known_rcs, predicate);
             log::warning(logcat, "DPS mode with {}", admitted.size());
             for (auto& a : admitted)
                 log::warning(logcat, "   - {}", a->first);
             std::mt19937_64 rng{*s};
-            auto end = std::ranges::sample(admitted | std::views::transform([](const auto* x) { return &x->second; }),
-                    rand.begin(), n, rng);
+            auto end = std::ranges::sample(
+                admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
             if (auto len = std::distance(rand.begin(), end); len < n)
                 rand.resize(len);
             if (shuffle && rand.size() > 1)

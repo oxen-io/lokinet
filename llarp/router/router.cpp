@@ -15,10 +15,10 @@
 #include <llarp/util/service_manager.hpp>
 #include <llarp/util/time.hpp>
 
+#include <nlohmann/json.hpp>
 #include <oxen/log.hpp>
 
 #include <chrono>
-#include <nlohmann/json.hpp>
 
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/handlers/tun.hpp>
