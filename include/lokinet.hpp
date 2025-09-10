@@ -80,7 +80,7 @@ namespace lokinet
         // Destructor stops the lokinet instance.  The destructor blocks until shutdown is complete.
         ~Lokinet();
 
-        // Schedules the given callback to be fired when Lokinet edge connections are fully
+        // Schedules the given callback to be fired when Lokinet edge connections are mostly
         // established (and thus Lokinet is ready to start building paths).  If lokinet is already
         // established, this will schedule an immediate invocation of the callback.
         //

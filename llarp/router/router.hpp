@@ -62,6 +62,13 @@ namespace llarp
 
     inline constexpr auto SERVICE_MANAGER_REPORT_INTERVAL{5s};
 
+    // The proportion of its target number of edge connections a client needs to have established
+    // connections with before we consider it "connected" to the network.  We allow less than full
+    // connectivity so that a single relay connection timeout doesn't stall connectivity for the
+    // full timeout duration, but generally want more than 1 so that we don't end up clustering all
+    // initial path builds through a single edge.
+    using CLIENT_CONNECTED_THRESHOLD = std::ratio<2, 3>;
+
     class ContactDB;
     class NodeDB;
 

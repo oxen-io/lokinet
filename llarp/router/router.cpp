@@ -1085,15 +1085,18 @@ namespace llarp
 
             process_on_conn_callbacks(_on_disconnected, "on_disconnected");
         }
-        else if (not _is_connected and conns >= _client_target_outbounds)
+        else if (
+            not _is_connected
+            and conns * CLIENT_CONNECTED_THRESHOLD::den >= _client_target_outbounds * CLIENT_CONNECTED_THRESHOLD::num)
         {
             _is_connected = true;
 
             log::info(
                 log_global,
-                "Lokinet is now connected to the network ({}) with {} relay connections",
+                "Lokinet is now connected to the network ({}) with {}/{} relay connections",
                 config().network.is_reachable ? local_rid().to_network_address(false).to_string() : "outgoing-only",
-                conns);
+                conns,
+                _client_target_outbounds);
 
             process_on_conn_callbacks(_on_connected, "on_connected");
         }
