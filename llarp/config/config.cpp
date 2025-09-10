@@ -1569,6 +1569,11 @@ namespace llarp
                 "misses more than this, the path will be considered to have died and be replaced."},
             lower_bounded_assignment_acceptor(max_missed_pings, 0, "[paths]:max-missed-pings"));
 
+#ifdef LOKINET_DEBUG_PATH_SEED
+        conf.define_option<uint64_t>(
+            "paths", "debug-path-seed", ClientOnly, Hidden, assignment_acceptor(debug_path_seed));
+#endif
+
 #ifdef WITH_GEOIP
         conf.defineOption<std::string>(
             "paths",

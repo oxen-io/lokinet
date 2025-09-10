@@ -138,9 +138,25 @@ namespace llarp::path
 
     std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
     {
-        auto current_remotes = router.node_db().strict_connect_enabled()
-            ? router.node_db().pinned_edges()
-            : router.link_manager().endpoint.get_current_relays();
+#ifdef LOKINET_DEBUG_PATH_SEED
+        auto current_remotes_unsorted =
+#else
+        auto current_remotes =
+#endif
+            router.node_db().strict_connect_enabled() ? router.node_db().pinned_edges()
+                                                      : router.link_manager().endpoint.get_current_relays();
+
+#ifdef LOKINET_DEBUG_PATH_SEED
+        std::vector<RouterID> current_remotes;
+        current_remotes.reserve(current_remotes_unsorted.size());
+        current_remotes.assign(current_remotes_unsorted.begin(), current_remotes_unsorted.end());
+        std::optional<std::mt19937_64> rng;
+        if (router.config().paths.debug_path_seed)
+        {
+            rng.emplace(*router.config().paths.debug_path_seed);
+            std::sort(current_remotes.begin(), current_remotes.end());
+        }
+#endif
 
         RouterID edge;
         int acceptable = 0;
@@ -157,7 +173,12 @@ namespace llarp::path
 
                 // DIY reservoir sample because doing this with a filter and a view calls the filter
                 // code multiple times, which we don't want.
-                if (acceptable == 0 || std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0)
+                if (acceptable == 0
+                    || (
+#ifdef LOKINET_DEBUG_PATH_SEED
+                        rng ? std::uniform_int_distribution<int>{0, acceptable}(*rng) :
+#endif
+                            std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0))
                     edge = rid;
                 acceptable++;
             }

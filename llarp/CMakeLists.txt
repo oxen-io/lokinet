@@ -212,6 +212,12 @@ lokinet_add_library(lokinet-path
   path/transit_hop.cpp
 )
 
+if(LOKINET_DEBUG_PATH_SEED)
+  target_compile_definitions(lokinet-nodedb PRIVATE LOKINET_DEBUG_PATH_SEED)
+  target_compile_definitions(lokinet-config PRIVATE LOKINET_DEBUG_PATH_SEED)
+  target_compile_definitions(lokinet-path PRIVATE LOKINET_DEBUG_PATH_SEED)
+endif()
+
 # Link libraries to their internals
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-addressing lokinet-cryptography)
 target_link_libraries(lokinet-contact PUBLIC lokinet-dns)

@@ -121,6 +121,11 @@ namespace llarp
         std::chrono::seconds ping_interval{5s};
         int max_missed_pings{5};
 
+        // DEBUG ONLY: if set, this uses a repeatable RNG with the given seed for reproducible path
+        // selection.  This option only has an effect if lokinet is configured with
+        // -DLOKINET_DEBUG_PATH_SEED=ON (which is disabled by default).
+        std::optional<uint64_t> debug_path_seed;
+
         void define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
     };
 

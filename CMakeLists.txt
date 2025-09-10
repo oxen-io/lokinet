@@ -70,6 +70,7 @@ option(LOKINET_HIVE "build simulation stubs" OFF)
 option(LOKINET_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(LOKINET_PEERSTATS "build with experimental peerstats db support" OFF)
 option(LOKINET_STRIP "strip off all debug symbols into an external archive for all executables built" OFF)
+option(LOKINET_DEBUG_PATH_SEED "enable support for the debug-mode [paths]:debug-path-seed option for reproducible, non-random paths" OFF)
 
 set(LOKINET_BOOTSTRAP_FALLBACK_MAINNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed" CACHE PATH "Fallback bootstrap path (mainnet)")
 set(LOKINET_BOOTSTRAP_FALLBACK_TESTNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/testnet.signed" CACHE PATH "Fallback bootstrap path (testnet)")
