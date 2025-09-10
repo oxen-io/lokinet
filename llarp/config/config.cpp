@@ -1427,7 +1427,7 @@ namespace llarp
                 "Setting this value to 1 is allowed, but may result in occassional packet loss during",
                 "as paths expire and rotate.",
             },
-            bounded_assignment_acceptor(inbound_paths, 1, 4, "[paths]:outbound-paths"));
+            bounded_assignment_acceptor(outbound_paths, 1, 4, "[paths]:outbound-paths"));
 
         conf.define_option<int>(
             "paths",
