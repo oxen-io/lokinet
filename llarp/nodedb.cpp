@@ -80,9 +80,6 @@ namespace llarp
         if (auto& s = _router.config().paths.debug_path_seed)
         {
             auto admitted = debug_sort_admissable(known_rcs, predicate);
-            log::warning(logcat, "DPS mode with {}", admitted.size());
-            for (auto& a : admitted)
-                log::warning(logcat, "   - {}", a->first);
             std::mt19937_64 rng{*s};
             auto end = std::ranges::sample(
                 admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
