@@ -28,13 +28,15 @@ namespace llarp
 
 #ifdef LOKINET_DEBUG_PATH_SEED
     static std::vector<const std::pair<const RouterID, RemoteRC>*> debug_sort_admissable(
-        const std::unordered_map<RouterID, RemoteRC>& known_rcs, const std::function<bool(const RemoteRC&)>& predicate)
+        const std::unordered_map<RouterID, RemoteRC>& known_rcs,
+        const std::function<bool(const RemoteRC&)>& predicate,
+        std::chrono::milliseconds now = llarp::time_now_ms())
     {
         std::vector<const std::pair<const RouterID, RemoteRC>*> admitted;
         if (!predicate)
             admitted.reserve(known_rcs.size());
         for (const auto& x : known_rcs)
-            if (!predicate || predicate(x.second))
+            if (not x.second.is_expired(now) and (not predicate or predicate(x.second)))
                 admitted.push_back(&x);
         // We need a sorted list of known rcs because of the potentially non-reproducible order
         // of elements in an unordered map:
@@ -45,10 +47,12 @@ namespace llarp
 
     const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
     {
+        auto now = llarp::time_now_ms();
+
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, predicate);
+            auto admitted = debug_sort_admissable(known_rcs, predicate, now);
             if (admitted.empty())
                 return nullptr;
             std::mt19937_64 rng{*s};
@@ -59,7 +63,7 @@ namespace llarp
         int admitted = 0;
         for (const auto& rc : std::views::values(known_rcs))
         {
-            if (!predicate || predicate(rc))
+            if (not rc.is_expired(now) and (not predicate or predicate(rc)))
             {
                 if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
                     result = &rc;
@@ -72,6 +76,7 @@ namespace llarp
     std::vector<const RemoteRC*> NodeDB::get_n_random_rcs(
         int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
     {
+        auto now = llarp::time_now_ms();
         assert(_router.loop.inside());
         std::vector<const RemoteRC*> rand;
         rand.resize(n);
@@ -79,7 +84,7 @@ namespace llarp
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, predicate);
+            auto admitted = debug_sort_admissable(known_rcs, predicate, now);
             std::mt19937_64 rng{*s};
             auto end = std::ranges::sample(
                 admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
@@ -91,11 +96,15 @@ namespace llarp
         }
 #endif
 
-        auto all_rcs = known_rcs | std::views::values;
-        auto to_ptr = std::views::transform([](const auto& rc) { return &rc; });
-        auto end = predicate
-            ? std::ranges::sample(all_rcs | std::views::filter(predicate) | to_ptr, rand.begin(), n, csrng)
-            : std::ranges::sample(all_rcs | to_ptr, rand.begin(), n, csrng);
+        auto pred = [&predicate, &now](const RemoteRC& rc) {
+            return not rc.is_expired(now) and (not predicate or predicate(rc));
+        };
+        auto end = std::ranges::sample(
+            known_rcs | std::views::values | std::views::filter(pred)
+                | std::views::transform([](const auto& rc) { return &rc; }),
+            rand.begin(),
+            n,
+            csrng);
         if (auto len = std::distance(rand.begin(), end); len < n)
             rand.resize(len);
         if (shuffle && rand.size() > 1)

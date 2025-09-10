@@ -234,7 +234,7 @@ namespace llarp::link
         log::critical(logcat, "Handling bootstrap fetch request...");
 
         std::optional<RemoteRC> remote;
-        size_t quantity;
+        int quantity;
 
         try
         {
@@ -242,7 +242,7 @@ namespace llarp::link
             if (btdc.skip_until("l"))
                 remote.emplace(btdc.consume_dict_data(), router.netid());
 
-            quantity = btdc.require<size_t>("q");
+            quantity = btdc.require<int>("q");
         }
         catch (const std::exception& e)
         {
@@ -253,53 +253,53 @@ namespace llarp::link
 
         if (remote)
         {
-            auto& remote_rc = *remote;
-            if (router.node_db().is_registered(remote_rc.router_id()))
+            if (router.node_db().is_registered(remote->router_id()))
             {
-                router.node_db().put_rc(remote_rc);
+                router.node_db().put_rc(*remote);
                 log::debug(
                     logcat,
-                    "Bootstrap node confirmed RID:{} is registered; approving fetch request and saving RC!",
-                    remote_rc.router_id());
+                    "Bootstrap node confirmed {} is registered; approving fetch request and saving RC!",
+                    remote->router_id().to_network_address(true));
             }
             else
-                log::warning(
-                    logcat,
-                    "Bootstrap node failed to confirm RID:{} is not registered; something is wrong",
-                    remote_rc.router_id());
+                log::debug(logcat, "Ignoring bootstrap fetch with unregistered RC from RID:{}", remote->router_id());
         }
-
-        auto& src = router.node_db().get_known_rcs();
-        auto count = src.size();
-
-        // if quantity is 0, then the service node requesting this wants all the RC's; otherwise,
-        // send the amount requested in the message
-        quantity = quantity == 0 || quantity > count ? count : quantity;
-
-        auto now = llarp::time_now_ms();
 
         std::vector<std::string_view> rcs;
-        rcs.reserve(quantity);
-        for (const auto& [rid, rc] : src)
+        if (quantity == 0)
         {
-            if (not rc.is_expired(now))
-            {
-                rcs.push_back(rc.view());
-                if (rcs.size() > quantity)
-                    break;
-            }
+            // 0 means "all"
+            auto& src = router.node_db().get_known_rcs();
+
+            rcs.reserve(src.size());
+            auto now = llarp::time_now_ms();
+            for (const auto& rc : std::views::values(src))
+                if (not rc.is_expired(now))
+                    rcs.push_back(rc.view());
+
+            std::ranges::shuffle(rcs, llarp::csrng);
         }
+        else
+        {
+            rcs.reserve(quantity);
+            for (auto* rc : router.node_db().get_n_random_rcs(quantity))
+                rcs.push_back(rc->view());
+        }
+
         if (rcs.empty())
         {
             m.respond("No RCs", true);
             return;
         }
 
-        std::ranges::shuffle(rcs, llarp::csrng);
+        size_t reserve = 7;  // d1:rl...ee  (not counting the "...")
+        for (auto& rc : rcs)
+            reserve += rc.size();  // Pre-encoded bt data, so no additional overhead
+
         oxenc::bt_dict_producer btdp;
+        btdp.reserve(reserve);
         {
             auto rc_list = btdp.append_list("r");
-            rc_list.reserve(rcs[0].size() * (rcs.size() + 1));  // might be a waste of time
             for (const auto& rc : rcs)
                 rc_list.append_encoded(rc);
         }
