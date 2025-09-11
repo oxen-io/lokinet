@@ -102,12 +102,6 @@ namespace llarp
         std::unordered_set<RouterID> _registered_relays;
         mutable std::shared_mutex _registered_relays_mutex;
 
-        // if populated from a config file, lists specific exclusively used as path first-hops
-        std::unordered_set<RouterID> _pinned_edges;
-
-        // if true, ONLY use pinned edges for first hop
-        bool _strict_connect{false};
-
         // set of 8 randomly selected RID's from the client's set of routers
         std::unordered_set<RouterID> rid_sources{};
         // logs the RID's that resulted in an error during RID fetching
@@ -136,8 +130,6 @@ namespace llarp
       public:
         explicit NodeDB(Router& r);
 
-        bool strict_connect_enabled() const { return _strict_connect; }
-
         // Starts the nodedb tickers for purge and fetch (clients), and initiates a bootstrap if the
         // nodedb has too few RCs.
         void start();
@@ -157,38 +149,14 @@ namespace llarp
 
         std::optional<RouterID> get_random_registered_relay() const;
 
-        // client:
-        //   if pinned edges were specified, connections are allowed only to those and
-        //   to the configured bootstrap nodes.  otherwise, always allow.
-        //
-        // relay:
-        //   outgoing connections are allowed only to other registered relays
-        bool is_connection_allowed(const RouterID& remote) const;
-
-        // client:
-        //   same as is_connection_allowed
-        //
-        // server:
-        //   we only build new paths through registered, non-decommissioned relays
-        //   TODO FIXME: What does this mean? Servers don't build paths?
-        bool is_path_allowed(const RouterID& remote) const { return known_rids.count(remote); }
-
-        // if pinned edges were specified, the remote must be in that set, else any remote
-        // is allowed as first hop.
-        bool is_first_hop_allowed(const RouterID& remote) const;
-
-        const std::unordered_set<RouterID>& pinned_edges() const { return _pinned_edges; }
-
-        // Sets the bootstrap list in strict-connect, pinned-edge mode, where we will only make
-        // paths starting with the given router IDs.
-        void set_pinned_edges(std::unordered_set<RouterID> edges);
+        const std::unordered_set<RouterID>& strict_edges() const;
 
         int num_bootstraps() const { return static_cast<int>(_bootstraps.size()); }
 
         bool has_bootstraps() const { return !_bootstraps.empty(); }
 
         // Returns true if `relay` is a registered relay.  This uses a mutex (rather that event
-        // loop) protection so that it can be safely called from either event loop without disk a
+        // loop) protection so that it can be safely called from either event loop without risking a
         // deadlock between the loops.
         bool is_registered(const RouterID& relay) const;
 
@@ -214,17 +182,24 @@ namespace llarp
         /// maybe get an rc by its ident pubkey.  Returns nullptr if not found.
         const RemoteRC* get_rc(const RouterID& pk) const;
 
-        /// Selects a random RC from all known RCs that return true from the given predicate (from
-        /// all known RCs if no predicate is given).  Returns nullptr if there are no acceptable
-        /// RCs.
+        /// Selects a random RC from all unexpired, non-blacklisted RCs (optionally filtering by
+        /// those that return true from the given predicate).  Returns nullptr if there are no
+        /// acceptable RCs.
         const RemoteRC* get_random_rc(const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
-        /// Selects n random RCs from all known RCs (if a predicate is given, all that return true
-        /// from the given predicate).  If there are fewer than `n` admissable RCs then all
-        /// admissable RCs are returned.  The resulting RCs will also be shuffled before being
-        /// returned, unless the shuffle argument is set to false.  The returned pointers are
-        /// guaranteed to be non-nullptr.
+        /// Selects n random RCs from all known, unexpired, non-blocklisted RCs (if a predicate is
+        /// given, they must also pass the given predicate).  If there are fewer than `n` admissable
+        /// RCs then all admissable RCs are returned.  The resulting RCs will also be shuffled
+        /// before being returned, unless the shuffle argument is set to false.  The returned
+        /// pointers are guaranteed to be non-nullptr.
         std::vector<const RemoteRC*> get_n_random_rcs(
+            int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
+
+        /// Same as `get_n_random_rcs`, except that this only returns RCs that are eligible for
+        /// direct connections.  For a relay, or a client not using strict edges, this is exactly
+        /// the same as `get_n_random_rcs`, but when strict edges are active, only listed strict
+        /// router IDs are considered.
+        std::vector<const RemoteRC*> get_n_random_edge_rcs(
             int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
         /// Stores an RC broadcast to the network.  The return value indicates whether this RC

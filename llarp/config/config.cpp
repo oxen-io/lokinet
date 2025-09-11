@@ -113,22 +113,7 @@ namespace llarp
             Comment{"Network ID; this is '{}' for mainnet, '{}' for testnet."_format(NetID::MAINNET, NetID::TESTNET)},
             [this](std::string arg) { net_id = netid_from_string(arg); });
 
-        conf.define_option<int>(
-            "router",
-            "relay-connections",
-            Default{CLIENT_ROUTER_CONNECTIONS},
-            ClientOnly,
-            Comment{
-                "Minimum number of routers lokinet client will attempt to maintain connections to.",
-                "If [network]:strict-connect is defined, the number of maintained client <-> router",
-                "connections set by [router]:relay-connections will be at MOST the number of pinned edges"},
-            [this](int arg) {
-                if (arg < CLIENT_ROUTER_CONNECTIONS)
-                    throw std::invalid_argument{
-                        "Client relay connections must be >= {}"_format(CLIENT_ROUTER_CONNECTIONS)};
-
-                client_router_connections = arg;
-            });
+        conf.define_option<int>("router", "relay-connections", Deprecated);
 
         conf.define_option<int>("router", "min-connections", Deprecated);
 
@@ -421,24 +406,6 @@ namespace llarp
         conf.define_option<bool>("network", "profiling", Default{true}, Hidden, assignment_acceptor(enable_profiling));
 
         conf.define_option<std::string>("network", "profiles", Deprecated);
-
-        conf.define_option<std::string>(
-            "network",
-            "strict-connect",
-            ClientOnly,
-            MultiValue,
-            [this](std::string value) {
-                RouterID router;
-                if (not router.from_relay_address(value))
-                    throw std::invalid_argument{"bad .snode pubkey: {}"_format(value)};
-                if (not pinned_edges.insert(router).second)
-                    throw std::invalid_argument{"duplicate strict connect .snode: {}"_format(value)};
-            },
-            Comment{
-                "Public keys of routers which will act as pinned first-hops. This may be used to",
-                "provide a trusted router (consider that you are not fully anonymous with your",
-                "first hop).  This REQUIRES two or more nodes to be specified.",
-            });
 
         conf.define_option<std::string>(
             "network",
@@ -741,25 +708,6 @@ namespace llarp
                 {
                     throw std::invalid_argument{"[endpoint]:mapaddr invalid entry '{}': {}"_format(arg, e.what())};
                 }
-            });
-
-        conf.define_option<std::string>(
-            "network",
-            "blacklist-snode",
-            ClientOnly,
-            MultiValue,
-            Comment{
-                "Adds a lokinet relay `.snode` address to the list of relays to avoid when",
-                "building paths. Can be specified multiple times.",
-            },
-            [this](std::string arg) {
-                RouterID id;
-                if (not id.from_relay_address(arg))
-                    throw std::invalid_argument{"Invalid RouterID: {}"_format(arg)};
-
-                auto itr = snode_blacklist.emplace(std::move(id));
-                if (not itr.second)
-                    throw std::invalid_argument{"Duplicate blacklist-snode: {}"_format(arg)};
             });
 
         // TODO: support SRV records for routers, but for now client only
@@ -1412,6 +1360,19 @@ namespace llarp
 
         conf.define_option<int>(
             "paths",
+            "edge-connections",
+            Default{CLIENT_ROUTER_CONNECTIONS},
+            ClientOnly,
+            Comment{
+                "Minimum number of routers lokinet client will attempt to maintain direct (i.e. \"edge\")",
+                "connections to.  All paths will start through one of these edges.",
+                "",
+                "Lokinet may use more than this number of edges in single-hop connection mode",
+                "(see [paths]:client-hops) and may use fewer connections if limited by [paths]:strict-edge."},
+            lower_bounded_assignment_acceptor(edge_connections, 1, "[paths]:edge-connections"));
+
+        conf.define_option<int>(
+            "paths",
             "outbound-paths",
             ClientOnly,
             Default{2},
@@ -1424,8 +1385,8 @@ namespace llarp
                 "connections to 5 clients and 3 snodes, lokinet will maintain 16 outbound paths (at the",
                 "default setting of 2).",
                 "",
-                "Setting this value to 1 is allowed, but may result in occassional packet loss during",
-                "as paths expire and rotate.",
+                "Setting this value to 1 is allowed, but will result in brief periods of packet loss",
+                "whenever paths expire due to the lack of allowed backup path.",
             },
             bounded_assignment_acceptor(outbound_paths, 1, 4, "[paths]:outbound-paths"));
 
@@ -1440,7 +1401,11 @@ namespace llarp
                 "",
                 "The overall number of hops to the remote client is this value PLUS the number of inbound",
                 "hops the other client has configured for their inbound hops (via [paths]:inbound-hops).",
-            },
+                "",
+                "Setting this value to 1 puts lokinet into single-hop mode for the connection from this",
+                "client to the aligned pivot router, which potentially weakens connection privacy as",
+                "your public IP will be observable to any service node listed as a pivot for any remote",
+                "client that you connect to."},
             bounded_assignment_acceptor(client_hops, 1, path::BUILD_LENGTH, "[paths]:client-hops"));
 
         conf.define_option<int>(
@@ -1450,14 +1415,18 @@ namespace llarp
             Comment{
                 "Number of hops to use when establishing a connection to talk to a service node.",
                 "",
-                "A value of 1 results in establishing direct connection to the snode (i.e. only encryption",
-                "but no onion routing), 2 would select one intermediate snode to onion route through, 4",
-                "uses three intermediates, and so on.",
+                "A value of 1 results in establishing direct connection to the snode (i.e. only",
+                "encryption but no onion routing); 2 would select one intermediate snode to onion",
+                "route through; 4 uses three intermediates, and so on, up to the maximum of 8.",
                 "",
-                "Additional hops increases privacy but reduces network performance through the path.",
+                "Additional hops increases privacy but also increase latency and reduces network",
+                "performance through the path.",
                 "",
                 "If not set, this default to one greater than the value of [paths]:client-hops.",
-            },
+                "",
+                "Setting this value to 1 puts lokinet into single-hop mode for the connection from this",
+                "client to service node (i.e. `.snode` addresses) which potentially weakens connection",
+                "privacy as any service nodes you connect to will be able to observe your public IP."},
             bounded_assignment_acceptor(relay_hops_, 1, path::BUILD_LENGTH, "[paths]:relay-hops"));
 
         conf.define_option<int>(
@@ -1573,6 +1542,72 @@ namespace llarp
         conf.define_option<uint64_t>(
             "paths", "debug-path-seed", ClientOnly, Hidden, assignment_acceptor(debug_path_seed));
 #endif
+
+        conf.define_option<std::string>(
+            "paths",
+            "strict-edge",
+            ClientOnly,
+            MultiValue,
+            [this](std::string value) {
+                RouterID router;
+                if (value.size() == 64 && oxenc::is_hex(value))
+                    oxenc::from_hex(value.begin(), value.end(), router.begin());
+                else if (not router.from_relay_address(value))
+                    throw std::invalid_argument{"[paths]:strict-edge: Invalid .snode pubkey: {}"_format(value)};
+
+                if (not strict_edges.insert(router).second)
+                    throw std::invalid_argument{
+                        "[paths]:strict-edge: Duplicate strict connect .snode value: {}"_format(value)};
+            },
+            Comment{
+                R"(List of service node public keys of "edge" nodes (also known as "first hops") that)",
+                "Lokinet will exclusively use when establishing paths through the network.  You can use",
+                "this to always use closer (i.e. lower latency) first hops, or to limit which network",
+                "nodes see connections from your IP address.",
+                "",
+                "Public keys can be provided either in native lokinet address format (ADDR.snode), or using",
+                "the 64-character hexademical pubkey notation common used for Session service nodes.",
+                "Specify this option multiple times to specify multiple allowed edge nodes.",
+                "",
+                "Note that only registered service node pubkeys will be used, and so connectivity will be",
+                "lost entirely if all of the listed pubkeys are or become deregistered.",
+                "",
+                "This option is incompatible with single-hop outbound path mode (see `[paths]:client-hops`",
+                "and `[paths]:relay-hops`).",
+                "",
+                "Note that if bootstrapping is needed a connection will be made to the configured bootstrap",
+                "nodes to obtain an initial router list.  See [bootstrap]:add-node if you want to also",
+                "override the nodes used for bootstrapping."});
+
+        conf.add_options_validator([this] {
+            if (strict_edges.empty())
+                return;
+            if (client_hops == 1)
+                throw std::invalid_argument{
+                    "[paths]:strict-edge cannot be used with [paths]:client-hops=1 single hop mode"};
+            if (relay_hops_ and *relay_hops_ == 1)
+                throw std::invalid_argument{
+                    "[paths]:strict-edge cannot be used with [paths]:relay-hops=1 single hop mode"};
+        });
+
+        conf.define_option<std::string>(
+            "paths",
+            "blacklist-snode",
+            ClientOnly,
+            MultiValue,
+            Comment{
+                "Adds a lokinet relay `.snode` address to the list of relays to avoid when",
+                "connecting to edges or building paths. Can be specified multiple times.",
+            },
+            [this](std::string arg) {
+                RouterID id;
+                if (not id.from_relay_address(arg))
+                    throw std::invalid_argument{"Invalid RouterID: {}"_format(arg)};
+
+                auto itr = snode_blacklist.emplace(std::move(id));
+                if (not itr.second)
+                    throw std::invalid_argument{"Duplicate blacklist-snode: {}"_format(arg)};
+            });
 
 #ifdef WITH_GEOIP
         conf.defineOption<std::string>(

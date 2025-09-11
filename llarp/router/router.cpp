@@ -350,10 +350,8 @@ namespace llarp
             llarp::logRingBuffer.reset();
     }
 
-    void Router::process_routerconfig()
+    void Router::process_config()
     {
-        _client_target_outbounds = config().router.client_router_connections;
-
         if (is_service_node && embedded())
             throw std::runtime_error{"Invalid config: service node and embedded modes are incompatible!"};
 
@@ -452,97 +450,95 @@ namespace llarp
                 throw std::runtime_error{
                     "public-ip/port ({}) and listen address ({}) are both public addresses but do not match!"_format(
                         _public_address, _listen_address)};
+
+            log::info(
+                log_global,
+                "Lokinet relay listening on {}{}",
+                _listen_address,
+                _public_address ? " with public address {}"_format(*_public_address) : "");
         }
         else  // Not a service node:
         {
             _listen_address = _config.links.listen_addr.value_or(DEFAULT_CLIENT_ADDR);
 
-            log::info(logcat, "Using {} for Lokinet communications", _listen_address);
+            log::info(log_global, "Lokinet client connection using {}", _listen_address);
         }
 
         RelayContact::BLOCK_BOGONS = _config.router.block_bogons;
-    }
 
-    void Router::process_netconfig()
-    {
-        auto& conf = _config.network;
+        auto& netconf = _config.network;
 
         if (!embedded())
         {
             assert(net());
 
-            if (!conf._if_name)
-                conf._if_name = net()->find_free_tun();
+            if (!netconf._if_name)
+                netconf._if_name = net()->find_free_tun();
 
-            if (!(conf._local_ip_net && conf._local_ip_net->ip.addr))
+            if (!(netconf._local_ip_net && netconf._local_ip_net->ip.addr))
             {
-                if (auto maybe = net()->find_free_ipv4_net(conf._local_ip_net ? conf._local_ip_net->mask : 16))
-                    conf._local_ip_net = std::move(*maybe);
+                if (auto maybe = net()->find_free_ipv4_net(netconf._local_ip_net ? netconf._local_ip_net->mask : 16))
+                    netconf._local_ip_net = std::move(*maybe);
                 else
                     throw std::runtime_error("cannot find free IPv4 address range!");
             }
-            log::info(logcat, "Lokinet IPv4 local network is {}", *conf._local_ip_net);
+            log::info(logcat, "Lokinet IPv4 local network is {}", *netconf._local_ip_net);
 
-            if (conf.enable_ipv6)
+            if (netconf.enable_ipv6)
             {
-                if (!conf._local_ipv6_net || (!conf._local_ipv6_net->ip.hi && !conf._local_ipv6_net->ip.lo))
+                if (!netconf._local_ipv6_net || (!netconf._local_ipv6_net->ip.hi && !netconf._local_ipv6_net->ip.lo))
                 {
-                    if (auto maybe = net()->find_free_ipv6_net(conf._local_ipv6_net ? conf._local_ipv6_net->mask : 64))
-                        conf._local_ipv6_net = std::move(*maybe);
+                    if (auto maybe =
+                            net()->find_free_ipv6_net(netconf._local_ipv6_net ? netconf._local_ipv6_net->mask : 64))
+                        netconf._local_ipv6_net = std::move(*maybe);
                     else
                         throw std::runtime_error("cannot find free IPv6 address range!");
                 }
-                log::info(logcat, "Lokinet IPv6 local network is {}", *conf._local_ipv6_net);
+                log::info(logcat, "Lokinet IPv6 local network is {}", *netconf._local_ipv6_net);
                 log::warning(
                     logcat,
                     "Lokinet IPv6 support is a work-in-progress and unsupported; enabling it is not recommended");
             }
 
             // Make sure any reserved addresses are within our local network range:
-            std::erase_if(conf._reserved_local_ipv4, [&conf](const auto& addr_ip) {
-                return !conf._local_ip_net->contains(addr_ip.second);
+            std::erase_if(netconf._reserved_local_ipv4, [&netconf](const auto& addr_ip) {
+                return !netconf._local_ip_net->contains(addr_ip.second);
             });
-            if (conf._local_ipv6_net)
-                std::erase_if(conf._reserved_local_ipv6, [&conf](const auto& addr_ip) {
-                    return !conf._local_ipv6_net->contains(addr_ip.second);
+            if (netconf._local_ipv6_net)
+                std::erase_if(netconf._reserved_local_ipv6, [&netconf](const auto& addr_ip) {
+                    return !netconf._local_ipv6_net->contains(addr_ip.second);
                 });
         }
 
-        // parse strict-connet pubkeys
-        if (auto& conf_edges = conf.pinned_edges; not conf_edges.empty())
+        if (not is_service_node)
         {
-            if (is_service_node)
-                throw std::runtime_error("cannot use strict-connect option as service node");
+            auto& pathconf = _config.paths;
 
-            auto n_edges = static_cast<int>(conf_edges.size());
-
-            // bad inputs throw in config parsing, so we should never have 0 pinned_edges
-            assert(n_edges > 0);
-
-            if (not n_edges)
-                throw std::runtime_error(
-                    "Must specify at least ONE valid strict-connect relay if using [network]:strict-connect");
-
-            node_db().set_pinned_edges(std::move(conf_edges));
-
-            // TODO: load strict-connects as bootstraps as well
-
-            log::debug(logcat, "Local client configured to strictly use {} edge relays", n_edges);
-
-            if (_client_target_outbounds > n_edges)
+            if (int conf_edges = static_cast<int>(_config.paths.strict_edges.size()); conf_edges > 0)
             {
-                _client_target_outbounds = n_edges;
-                log::warning(logcat, "Minimum router connections reduced to {} to match strict-connect edges", n_edges);
+                if (pathconf.edge_connections > conf_edges)
+                {
+                    log::warning(
+                        logcat,
+                        "[paths]:edge-connections is set to {0}, but only {1} strict edges are defined; lowering "
+                        "edge-connections to {1}",
+                        pathconf.edge_connections,
+                        conf_edges);
+                    pathconf.edge_connections = conf_edges;
+                }
+                else
+                    log::debug(
+                        logcat,
+                        "Local client configured to maintain {} of {} possible strict edge relays",
+                        pathconf.edge_connections,
+                        conf_edges);
             }
+            else
+                log::debug(
+                    logcat,
+                    "Local client configured to maintain {} random router edge connections",
+                    config().paths.edge_connections);
         }
-        else
-            log::debug(
-                logcat,
-                "Local client configured to maintain {} router connections at minimum",
-                _client_target_outbounds);
-
-        if (not _client_target_outbounds)
-            throw std::runtime_error{"Client must be configured to have at least 1 outbound router connection!"};
     }
 
     void Router::configure()
@@ -602,21 +598,7 @@ namespace llarp
 
         log::trace(logcat, "Initializing from configuration");
 
-        process_routerconfig();
-
-        if (is_service_node)
-            log::info(
-                log_global,
-                "Lokinet relay listening on {}{}",
-                _listen_address,
-                _public_address ? " with public address {}"_format(*_public_address) : "");
-        else
-            log::info(log_global, "Lokinet client connection using {}", _listen_address);
-
-        // We process the relevant netconfig values (ip_range, address, and ip) here; in case the range or interface
-        // is bad, we search for a free one and set it BACK into the config. Every subsequent object configuring
-        // using the NetworkConfig (ex: tun/null, exit::Handler, etc) will have processed values
-        process_netconfig();
+        process_config();
 
         _node_db = std::make_unique<NodeDB>(*this);
 
@@ -783,6 +765,8 @@ namespace llarp
             }
         }
 
+        // FIXME: we don't connect to ourself, so this needs a -1 once the nodedb has our own pubkey
+        // in it.
         if (registered and link_endpoint().num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
         {
             log::debug(
@@ -803,18 +787,18 @@ namespace llarp
         if (should_report_stats(now))
             report_stats();
 
-        // TODO: make "use_pinned_edges" boolean to only connect to pinned edges
         // if we need more sessions to routers we shall connect out to others
-        if (int n_conns = link_endpoint().num_relay_conns(/*include_pending=*/true); n_conns < _client_target_outbounds)
+        if (int n_conns = link_endpoint().num_relay_conns(/*include_pending=*/true);
+            n_conns < config().paths.edge_connections)
         {
-            auto num_needed = _client_target_outbounds - n_conns;
+            auto num_needed = config().paths.edge_connections - n_conns;
 
             log::debug(
                 logcat,
-                "Client connecting to {} random routers to keep alive (current:{}, needed:{})",
+                "Client connecting to {} random routers to keep alive (current:{}, target:{})",
                 num_needed,
                 n_conns,
-                _client_target_outbounds);
+                config().paths.edge_connections);
             _link_manager->connect_to_keep_alive(num_needed);
         }
 
@@ -1087,7 +1071,8 @@ namespace llarp
         }
         else if (
             not _is_connected
-            and conns * CLIENT_CONNECTED_THRESHOLD::den >= _client_target_outbounds * CLIENT_CONNECTED_THRESHOLD::num)
+            and conns * CLIENT_CONNECTED_THRESHOLD::den
+                >= config().paths.edge_connections * CLIENT_CONNECTED_THRESHOLD::num)
         {
             _is_connected = true;
 
@@ -1096,7 +1081,7 @@ namespace llarp
                 "Lokinet is now connected to the network ({}) with {}/{} relay connections",
                 config().network.is_reachable ? local_rid().to_network_address(false).to_string() : "outgoing-only",
                 conns,
-                _client_target_outbounds);
+                config().paths.edge_connections);
 
             process_on_conn_callbacks(_on_connected, "on_connected");
         }

@@ -160,8 +160,6 @@ namespace llarp
 
         Profiling _router_profiling;
 
-        int _client_target_outbounds = 0;
-
         bool should_report_stats(std::chrono::milliseconds now) const;
 
         std::string _stats_line(std::chrono::milliseconds now) const;
@@ -174,9 +172,7 @@ namespace llarp
 
         void init_logging();
 
-        void process_routerconfig();
-
-        void process_netconfig();
+        void process_config();
 
         void _relay_tick(std::chrono::milliseconds now);
 
@@ -194,8 +190,6 @@ namespace llarp
         const bool is_service_node{_config.router.is_relay};
 
         bool is_fully_meshed() const;
-
-        int client_target_outbounds() const { return _client_target_outbounds; }
 
         const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 

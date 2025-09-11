@@ -30,6 +30,7 @@ namespace llarp
 #ifdef LOKINET_DEBUG_PATH_SEED
     static std::vector<const std::pair<const RouterID, RemoteRC>*> debug_sort_admissable(
         const std::unordered_map<RouterID, RemoteRC>& known_rcs,
+        const std::unordered_set<RouterID>& blacklist,
         const std::function<bool(const RemoteRC&)>& predicate,
         std::chrono::milliseconds now = llarp::time_now_ms())
     {
@@ -37,7 +38,8 @@ namespace llarp
         if (!predicate)
             admitted.reserve(known_rcs.size());
         for (const auto& x : known_rcs)
-            if (not x.second.is_expired(now) and (not predicate or predicate(x.second)))
+            if (not x.second.is_expired(now) and not blacklist.contains(x.first)
+                and (not predicate or predicate(x.second)))
                 admitted.push_back(&x);
         // We need a sorted list of known rcs because of the potentially non-reproducible order
         // of elements in an unordered map:
@@ -53,7 +55,7 @@ namespace llarp
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, predicate, now);
+            auto admitted = debug_sort_admissable(known_rcs, _router.config().paths.snode_blacklist, predicate, now);
             if (admitted.empty())
                 return nullptr;
             std::mt19937_64 rng{*s};
@@ -64,7 +66,8 @@ namespace llarp
         int admitted = 0;
         for (const auto& rc : std::views::values(known_rcs))
         {
-            if (not rc.is_expired(now) and (not predicate or predicate(rc)))
+            if (not rc.is_expired(now) and not _router.config().paths.snode_blacklist.contains(rc.router_id())
+                and (not predicate or predicate(rc)))
             {
                 if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
                     result = &rc;
@@ -85,7 +88,7 @@ namespace llarp
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, predicate, now);
+            auto admitted = debug_sort_admissable(known_rcs, _router.config().paths.snode_blacklist, predicate, now);
             std::mt19937_64 rng{*s};
             auto end = std::ranges::sample(
                 admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
@@ -97,8 +100,9 @@ namespace llarp
         }
 #endif
 
-        auto pred = [&predicate, &now](const RemoteRC& rc) {
-            return not rc.is_expired(now) and (not predicate or predicate(rc));
+        auto pred = [&predicate, &now, &blacklist = _router.config().paths.snode_blacklist](const RemoteRC& rc) {
+            return not rc.is_expired(now) and not blacklist.contains(rc.router_id())
+                and (not predicate or predicate(rc));
         };
         auto end = std::ranges::sample(
             known_rcs | std::views::values | std::views::filter(pred)
@@ -110,6 +114,74 @@ namespace llarp
             rand.resize(len);
         if (shuffle && rand.size() > 1)
             std::ranges::shuffle(rand, csrng);
+        return rand;
+    }
+
+    std::vector<const RemoteRC*> NodeDB::get_n_random_edge_rcs(
+        int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
+    {
+        assert(_router.loop.inside());
+        auto& strict = _router.config().paths.strict_edges;
+        if (_router.is_service_node || strict.empty())
+            return get_n_random_rcs(n, shuffle, predicate);
+
+        n = std::min(n, static_cast<int>(strict.size()));
+
+        auto now = llarp::time_now_ms();
+
+        std::vector<const RemoteRC*> rand;
+        rand.resize(n);
+        int admitted = 0;
+
+#ifdef LOKINET_DEBUG_PATH_SEED
+        if (auto& s = _router.config().paths.debug_path_seed)
+        {
+            std::vector<RouterID> sorted_strict;
+            sorted_strict.reserve(strict.size());
+            sorted_strict.assign(strict.begin(), strict.end());
+            std::sort(sorted_strict.begin(), sorted_strict.end());
+            std::mt19937_64 rng{*s};
+            for (const auto& rid : sorted_strict)
+            {
+                auto* rc = get_rc(rid);
+                if (not rc or rc->is_expired(now) or _router.config().paths.snode_blacklist.contains(rid)
+                    or (predicate and not predicate(*rc)))
+                    continue;
+
+                int pos = admitted < n ? admitted : std::uniform_int_distribution{0, admitted}(llarp::csrng);
+                admitted++;
+                if (pos < n)
+                    rand[pos] = rc;
+            }
+            if (admitted < n)
+                rand.resize(admitted);
+
+            if (shuffle && rand.size() > 1)
+                std::ranges::shuffle(rand, rng);
+
+            return rand;
+        }
+#endif
+
+        for (const auto& rid : strict)
+        {
+            auto* rc = get_rc(rid);
+            if (not rc or rc->is_expired(now) or _router.config().paths.snode_blacklist.contains(rid)
+                or (predicate and not predicate(*rc)))
+                continue;
+
+            int pos = admitted < n ? admitted : std::uniform_int_distribution{0, admitted}(llarp::csrng);
+            admitted++;
+            if (pos < n)
+                rand[pos] = rc;
+        }
+
+        if (admitted < n)
+            rand.resize(admitted);
+
+        if (shuffle && rand.size() > 1)
+            std::ranges::shuffle(rand, llarp::csrng);
+
         return rand;
     }
 
@@ -226,7 +298,7 @@ namespace llarp
                     return false;
                 }
 
-                if (not is_connection_allowed(rc.router_id()))
+                if (not is_registered(rc.router_id()))
                 {
                     log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
                     return true;
@@ -442,9 +514,11 @@ namespace llarp
 
         if (not _router.is_service_node)
         {
-            _rc_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
+            _rc_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
 
-            _rid_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
+            _rid_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
         }
 
         if (need_bootstrap)
@@ -721,35 +795,6 @@ namespace llarp
                 _registered_relays.begin(),
                 std::uniform_int_distribution<int>{0, static_cast<int>(_registered_relays.size())}(llarp::csrng));
         return result;
-    }
-
-    bool NodeDB::is_connection_allowed(const RouterID& remote) const
-    {
-        assert(_router.loop.inside());
-        if (not _router.is_service_node)
-        {
-            if (_pinned_edges.size() and not _pinned_edges.contains(remote))
-                return false;
-
-            return known_rids.contains(remote);
-        }
-
-        return known_rids.contains(remote) and is_registered(remote);
-    }
-
-    bool NodeDB::is_first_hop_allowed(const RouterID& remote) const
-    {
-        assert(_router.loop.inside());
-        if (_pinned_edges.size() && _pinned_edges.count(remote) == 0)
-            return false;
-
-        return true;
-    }
-
-    void NodeDB::set_pinned_edges(std::unordered_set<RouterID> edges)
-    {
-        _strict_connect = true;
-        _pinned_edges = std::move(edges);
     }
 
     void NodeDB::load_from_disk()

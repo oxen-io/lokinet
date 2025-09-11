@@ -143,8 +143,7 @@ namespace llarp::path
 #else
         auto current_remotes =
 #endif
-            router.node_db().strict_connect_enabled() ? router.node_db().pinned_edges()
-                                                      : router.link_manager().endpoint.get_current_relays();
+            router.link_manager().endpoint.get_current_relays();
 
 #ifdef LOKINET_DEBUG_PATH_SEED
         std::vector<RouterID> current_remotes;

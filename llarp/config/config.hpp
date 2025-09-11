@@ -56,8 +56,6 @@ namespace llarp
 
     struct RouterConfig
     {
-        int client_router_connections{CLIENT_ROUTER_CONNECTIONS};
-
         NetID net_id = NetID::MAINNET;
 
         std::filesystem::path data_dir;
@@ -81,6 +79,15 @@ namespace llarp
     /// config for path hop selection
     struct PathConfig
     {
+        int edge_connections{CLIENT_ROUTER_CONNECTIONS};
+
+        // If non-empty then *only* use these nodes for first hops.  (Except for single-hop outbound
+        // paths, which ignore this).
+        std::unordered_set<RouterID> strict_edges;
+
+        // Blacklist of relays to avoid using for edges or path hops
+        std::unordered_set<RouterID> snode_blacklist;
+
         /// Number of paths to maintain for inbound reachability and network queries (such as
         /// looking up client contacts).
         int inbound_paths = 4;
@@ -158,14 +165,11 @@ namespace llarp
     {
         bool enable_profiling{false};
         bool save_profiles{false};
-        std::unordered_set<RouterID> pinned_edges;
 
         std::optional<std::filesystem::path> keyfile;
 
         bool enable_ipv6{false};
         bool is_reachable{false};
-
-        std::set<RouterID> snode_blacklist;
 
         /*   Auth specific config   */
         auth::AuthType auth_type = auth::AuthType::NONE;

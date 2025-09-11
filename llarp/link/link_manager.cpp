@@ -155,26 +155,16 @@ namespace llarp::link
 
     void Manager::connect_to_keep_alive(int num_conns)
     {
-        if (router.node_db().strict_connect_enabled())
-        {
-            assert(not router.is_service_node);
+        auto rcs = router.node_db().get_n_random_edge_rcs(
+            num_conns, false /* shuffling not needed */, [this](const RemoteRC& rc) {
+                return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
+            });
 
-            // TESTNET: TODO: if given strict-connects, fetch their RCs SPECIFICALLY in bootstrapping
-            // TODO FIXME: why?  That sounds rather metadata-leaky.
-            log::warning(logcat, "FINISH STRICT CONNECT (SEE COMMENT)");
-        }
+        for (const auto* rc : rcs)
+            endpoint.ensure_connection(*rc);
 
-        if (auto rcs = router.node_db().get_n_random_rcs(
-                num_conns,
-                true,
-                [this](const RemoteRC& rc) {
-                    return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
-                });
-            !rcs.empty())
-            for (const auto* rc : rcs)
-                endpoint.ensure_connection(*rc);
-        else
-            log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
+        if (rcs.empty())
+            log::debug(logcat, "NodeDB query for {} edge RCs returned none", num_conns);
     }
 
     int Manager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
