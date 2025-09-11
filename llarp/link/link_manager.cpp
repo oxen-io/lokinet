@@ -16,6 +16,7 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <nlohmann/json.hpp>
 #include <oxen/quic/btstream.hpp>
@@ -220,90 +221,76 @@ namespace llarp::link
                 rc.router_id().short_string());
     }
 
-    void Manager::fetch_bootstrap_rcs(
-        const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func)
-    {
-        assert(router.loop.inside());
-        endpoint.send_command(source, "bfetch_rcs", std::move(payload), std::move(func));
-    }
-
     void Manager::handle_fetch_bootstrap_rcs(quic::message m)
     {
         // this handler should not be registered for clients
         assert(router.is_service_node);
-        log::critical(logcat, "Handling bootstrap fetch request...");
-
-        std::optional<RemoteRC> remote;
-        int quantity;
-
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            if (btdc.skip_until("l"))
-                remote.emplace(btdc.consume_dict_data(), router.netid());
-
-            quantity = btdc.require<int>("q");
-        }
-        catch (const std::exception& e)
-        {
-            log::critical(logcat, "Exception handling bootstrap RC Fetch request (body:{}): {}", m.body(), e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-
-        if (remote)
-        {
-            if (router.node_db().is_registered(remote->router_id()))
-            {
-                router.node_db().put_rc(*remote);
-                log::debug(
-                    logcat,
-                    "Bootstrap node confirmed {} is registered; approving fetch request and saving RC!",
-                    remote->router_id().to_network_address(true));
-            }
-            else
-                log::debug(logcat, "Ignoring bootstrap fetch with unregistered RC from RID:{}", remote->router_id());
-        }
+        log::info(logcat, "Handling bootstrap fetch request");
 
         std::vector<std::string_view> rcs;
-        if (quantity == 0)
-        {
-            // 0 means "all"
-            auto& src = router.node_db().get_known_rcs();
+        rcs.push_back("l"sv);
+        auto& src = router.node_db().get_known_rcs();
 
-            rcs.reserve(src.size());
-            auto now = llarp::time_now_ms();
-            for (const auto& rc : std::views::values(src))
-                if (not rc.is_expired(now))
-                    rcs.push_back(rc.view());
+        rcs.reserve(src.size());
+        auto now = llarp::time_now_ms();
+        for (const auto& rc : std::views::values(src))
+            if (not rc.is_expired(now))
+                rcs.push_back(rc.view());
+        rcs.push_back("e"sv);
 
-            std::ranges::shuffle(rcs, llarp::csrng);
-        }
-        else
-        {
-            rcs.reserve(quantity);
-            for (auto* rc : router.node_db().get_n_random_rcs(quantity))
-                rcs.push_back(rc->view());
-        }
-
-        if (rcs.empty())
+        if (rcs.size() == 2)
         {
             m.respond("No RCs", true);
             return;
         }
 
-        size_t reserve = 7;  // d1:rl...ee  (not counting the "...")
-        for (auto& rc : rcs)
-            reserve += rc.size();  // Pre-encoded bt data, so no additional overhead
+        if (!compressor)
+            compressor.emplace();
 
-        oxenc::bt_dict_producer btdp;
-        btdp.reserve(reserve);
+        // Our output is a dict containing a single key `z` which contains the zstd-compressed bytes
+        // of a bt-encoded list of all RCs.
+
+        std::vector<std::byte> response_raw;
+        // We don't know the size in advance, so write a dummy value, compress, then fill it in:
+        constexpr auto compress_template = "d1:z999999999:"sv;
+        try
         {
-            auto rc_list = btdp.append_list("r");
-            for (const auto& rc : rcs)
-                rc_list.append_encoded(rc);
+            response_raw = compressor->compress(rcs, zstd::compressor::DEFAULT_LEVEL, compress_template);
         }
-        m.respond(std::move(btdp).str());
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Bootstrap request RCs compression failed: {}", e.what());
+            m.respond("Compress failed", true);
+            return;
+        }
+
+        size_t comp_size = response_raw.size() - compress_template.size();
+
+#ifndef NDEBUG
+        size_t rcs_size = 0;
+        for (auto& rc : rcs)
+            rcs_size += rc.size();
+        log::debug(
+            logcat,
+            "compressed RC list to {}B ({:.1f}% of raw {}B)",
+            comp_size,
+            comp_size * 100.0 / rcs_size,
+            rcs_size);
+#endif
+
+        // Now we need to rewrite the actual `d1:ZNNN:` prefix with the correct NNN for the
+        // compressed data:
+        std::string actual = "d1:Z{}:"_format(comp_size);
+        assert(actual.size() <= compress_template.size());
+        // Our actual size is almost certainly shorter than the 999999999 value we used, so we skip
+        // however many leading bytes as needed to represent the proper final value without needing
+        // to shift the compressed data around in the buffer:
+        size_t skip = compress_template.size() - actual.size();
+        std::memcpy(response_raw.data() + skip, actual.data(), actual.size());
+        // Response dict terminator:
+        response_raw.push_back(std::byte{'e'});
+
+        m.respond(std::span{response_raw.data() + skip, response_raw.size() - skip});
     }
 
     void Manager::handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)

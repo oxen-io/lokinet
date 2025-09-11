@@ -11,6 +11,7 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <oxen/quic/btstream.hpp>
 #include <oxen/quic/connection.hpp>
@@ -75,6 +76,8 @@ namespace llarp::link
 
         std::atomic<bool> is_stopping{false};
 
+        std::optional<zstd::compressor> compressor;
+
         // Registers commands on the client or relay end of a client-relay or relay-relay connection
         // NB: this could be called from either the network or router loop thread!
         void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
@@ -120,8 +123,6 @@ namespace llarp::link
       private:
         void handle_gossip_rc(quic::message);
 
-        void fetch_bootstrap_rcs(
-            const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
         void handle_fetch_bootstrap_rcs(quic::message m);
 
         // Inner handlers for relayed requests

@@ -5,6 +5,7 @@
 #include <llarp/messages/fetch.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <oxen/quic/btstream.hpp>
 #include <sodium/crypto_generichash.h>
@@ -127,7 +128,7 @@ namespace llarp
         {
             NodeDB& nodedb;
             size_t rc_i = 0;
-            std::vector<std::byte> body;
+            std::string body;
             RouterID source;
 
             // Shared pointer to ourself to keep us alive.  This is released once we run out of rcs,
@@ -180,9 +181,8 @@ namespace llarp
         };
         auto bs = std::make_shared<bs_data>(*this);
         bs->keep_alive = bs;
-        bs->body = BootstrapFetch::serialize(
-            _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt,
-            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT);
+
+        bs->body = "de";
 
         bs->try_next();
     }
@@ -632,28 +632,34 @@ namespace llarp
         assert(_router.loop.inside());
         log::debug(logcat, "Received response to BootstrapRC fetch request...");
 
-        int num = 0, accepted = 0;
+        int num = 0, n_new = 0;
 
         try
         {
             oxenc::bt_dict_consumer btdc{body};
 
-            btdc.required("r");
+            auto compressed_rcs = btdc.require_span<std::byte>("Z");
 
-            {
-                auto sublist = btdc.consume_list_consumer();
-
-                while (not sublist.is_finished())
-                {
-                    // if we're trusting the bootstrap for RCs regardless of RouterID, we
-                    // should trust the RouterID as well.
-                    RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
-                    known_rids.insert(new_rc.router_id());
-                    accepted += put_rc(std::move(new_rc));
-                    ++num;
-                }
-            }
             btdc.finish();
+
+            zstd::decompressor decompressor;
+            // 20M here is just a safety margin so that a malicious bootstrap can't feed us some
+            // tiny data that decompresses into something that exhausts memory:
+            auto rcs_data = zstd::decompressor{}.decompress(compressed_rcs, 20'000'000);
+            if (!rcs_data)
+                throw std::runtime_error{"Failed to decompress RC list"};
+
+            oxenc::bt_list_consumer rclist{*rcs_data};
+
+            while (not rclist.is_finished())
+            {
+                RemoteRC new_rc{rclist.consume_dict_data(), _router.netid()};
+                // if we're trusting the bootstrap for RCs regardless of RouterID, we
+                // should trust the RouterID as well.
+                known_rids.insert(new_rc.router_id());
+                n_new += put_rc(std::move(new_rc));
+                ++num;
+            }
         }
         catch (const std::exception& e)
         {
@@ -662,7 +668,7 @@ namespace llarp
             return false;
         }
 
-        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, accepted);
+        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, n_new);
         return true;
     }
 
