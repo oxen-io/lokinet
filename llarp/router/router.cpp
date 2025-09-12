@@ -696,7 +696,7 @@ namespace llarp
         }
         else
         {
-            log::warning(
+            log::debug(
                 logcat, "NodeDB refused our own RC; perhaps we restarted too soon since the last regeneration?");
         }
     }
