@@ -27,94 +27,64 @@ namespace llarp
 
     std::array<int, 3> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
 
-#ifdef LOKINET_DEBUG_PATH_SEED
-    static std::vector<const std::pair<const RouterID, RemoteRC>*> debug_sort_admissable(
-        const std::unordered_map<RouterID, RemoteRC>& known_rcs,
-        const std::unordered_set<RouterID>& blacklist,
-        const std::function<bool(const RemoteRC&)>& predicate,
-        std::chrono::milliseconds now = llarp::time_now_ms())
-    {
-        std::vector<const std::pair<const RouterID, RemoteRC>*> admitted;
-        if (!predicate)
-            admitted.reserve(known_rcs.size());
-        for (const auto& x : known_rcs)
-            if (not x.second.is_expired(now) and not blacklist.contains(x.first)
-                and (not predicate or predicate(x.second)))
-                admitted.push_back(&x);
-        // We need a sorted list of known rcs because of the potentially non-reproducible order
-        // of elements in an unordered map:
-        std::sort(admitted.begin(), admitted.end(), [](const auto& a, const auto& b) { return a->first < b->first; });
-        return admitted;
-    }
-#endif
-
-    const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
+    template <typename RCContainer, std::predicate<const RemoteRC&> Pred, typename RNG>
+    static std::vector<const RemoteRC*> sample_rcs(
+        Router& router, const RCContainer& rcs, int n, const Pred& predicate, RNG& rng, bool shuffle)
     {
         auto now = llarp::time_now_ms();
+        const auto& blacklist = router.config().paths.snode_blacklist;
 
-#ifdef LOKINET_DEBUG_PATH_SEED
-        if (auto& s = _router.config().paths.debug_path_seed)
-        {
-            auto admitted = debug_sort_admissable(known_rcs, _router.config().paths.snode_blacklist, predicate, now);
-            if (admitted.empty())
-                return nullptr;
-            std::mt19937_64 rng{*s};
-            return &admitted[std::uniform_int_distribution<size_t>{0, admitted.size() - 1}(rng)]->second;
-        }
-#endif
-        const RemoteRC* result = nullptr;
+        std::vector<const RemoteRC*> rand;
+        rand.resize(n);
         int admitted = 0;
-        for (const auto& rc : std::views::values(known_rcs))
+
+        for (const RemoteRC& rc : rcs)
         {
-            if (not rc.is_expired(now) and not _router.config().paths.snode_blacklist.contains(rc.router_id())
-                and (not predicate or predicate(rc)))
-            {
-                if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
-                    result = &rc;
-                admitted++;
-            }
+            if (rc.is_expired(now))
+                continue;
+            if (blacklist.contains(rc.router_id()))
+                continue;
+            if (predicate and not predicate(rc))
+                continue;
+
+            auto pos = admitted < n ? admitted : std::uniform_int_distribution<int>{0, admitted}(rng);
+            admitted++;
+            if (pos < n)
+                rand[pos] = &rc;
         }
-        return result;
+        if (admitted < n)
+            rand.resize(admitted);
+        if (shuffle && rand.size() > 1)
+            std::ranges::shuffle(rand, rng);
+        return rand;
     }
 
     std::vector<const RemoteRC*> NodeDB::get_n_random_rcs(
         int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
     {
-        auto now = llarp::time_now_ms();
         assert(_router.loop.inside());
-        std::vector<const RemoteRC*> rand;
-        rand.resize(n);
-
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, _router.config().paths.snode_blacklist, predicate, now);
+            std::vector<std::reference_wrapper<const RemoteRC>> rcs;
+            rcs.reserve(known_rcs.size());
+            for (const auto& rc : known_rcs | std::views::values)
+                rcs.push_back(std::cref(rc));
+            // We need a sorted list of known rcs because of the potentially non-reproducible order
+            // of elements in an unordered map:
+            std::ranges::sort(rcs, [](const RemoteRC& a, const RemoteRC& b) { return a.router_id() < b.router_id(); });
             std::mt19937_64 rng{*s};
-            auto end = std::ranges::sample(
-                admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
-            if (auto len = std::distance(rand.begin(), end); len < n)
-                rand.resize(len);
-            if (shuffle && rand.size() > 1)
-                std::ranges::shuffle(rand, rng);
-            return rand;
+            return sample_rcs(_router, rcs, n, predicate, rng, shuffle);
         }
 #endif
 
-        auto pred = [&predicate, &now, &blacklist = _router.config().paths.snode_blacklist](const RemoteRC& rc) {
-            return not rc.is_expired(now) and not blacklist.contains(rc.router_id())
-                and (not predicate or predicate(rc));
-        };
-        auto end = std::ranges::sample(
-            known_rcs | std::views::values | std::views::filter(pred)
-                | std::views::transform([](const auto& rc) { return &rc; }),
-            rand.begin(),
-            n,
-            csrng);
-        if (auto len = std::distance(rand.begin(), end); len < n)
-            rand.resize(len);
-        if (shuffle && rand.size() > 1)
-            std::ranges::shuffle(rand, csrng);
-        return rand;
+        return sample_rcs(_router, known_rcs | std::views::values, n, predicate, llarp::csrng, shuffle);
+    }
+
+    const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
+    {
+        auto randos = get_n_random_rcs(1, false, predicate);
+        return randos.empty() ? nullptr : randos.front();
     }
 
     std::vector<const RemoteRC*> NodeDB::get_n_random_edge_rcs(
@@ -127,62 +97,25 @@ namespace llarp
 
         n = std::min(n, static_cast<int>(strict.size()));
 
-        auto now = llarp::time_now_ms();
-
-        std::vector<const RemoteRC*> rand;
-        rand.resize(n);
-        int admitted = 0;
+        // With strict edges the set of edges is typically small, so we iterate through just those
+        // edges rather than sampling from *everything* with an "is in strict" lookups added to the
+        // predicate.
+        std::vector<std::reference_wrapper<const RemoteRC>> strict_rcs;
+        for (const auto& rid : strict)
+            if (auto* rc = get_rc(rid))
+                strict_rcs.emplace_back(std::cref(*rc));
 
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            std::vector<RouterID> sorted_strict;
-            sorted_strict.reserve(strict.size());
-            sorted_strict.assign(strict.begin(), strict.end());
-            std::sort(sorted_strict.begin(), sorted_strict.end());
+            std::ranges::sort(
+                strict_rcs, [](const RemoteRC& a, const RemoteRC& b) { return a.router_id() < b.router_id(); });
             std::mt19937_64 rng{*s};
-            for (const auto& rid : sorted_strict)
-            {
-                auto* rc = get_rc(rid);
-                if (not rc or rc->is_expired(now) or _router.config().paths.snode_blacklist.contains(rid)
-                    or (predicate and not predicate(*rc)))
-                    continue;
-
-                int pos = admitted < n ? admitted : std::uniform_int_distribution{0, admitted}(llarp::csrng);
-                admitted++;
-                if (pos < n)
-                    rand[pos] = rc;
-            }
-            if (admitted < n)
-                rand.resize(admitted);
-
-            if (shuffle && rand.size() > 1)
-                std::ranges::shuffle(rand, rng);
-
-            return rand;
+            return sample_rcs(_router, strict_rcs, n, predicate, rng, shuffle);
         }
 #endif
 
-        for (const auto& rid : strict)
-        {
-            auto* rc = get_rc(rid);
-            if (not rc or rc->is_expired(now) or _router.config().paths.snode_blacklist.contains(rid)
-                or (predicate and not predicate(*rc)))
-                continue;
-
-            int pos = admitted < n ? admitted : std::uniform_int_distribution{0, admitted}(llarp::csrng);
-            admitted++;
-            if (pos < n)
-                rand[pos] = rc;
-        }
-
-        if (admitted < n)
-            rand.resize(admitted);
-
-        if (shuffle && rand.size() > 1)
-            std::ranges::shuffle(rand, llarp::csrng);
-
-        return rand;
+        return sample_rcs(_router, strict_rcs, n, predicate, llarp::csrng, shuffle);
     }
 
     void NodeDB::bootstrap()
@@ -775,7 +708,8 @@ namespace llarp
     {
         std::unique_lock lock{_registered_relays_mutex};
 
-        if (not _registered_relays.empty()) {
+        if (not _registered_relays.empty())
+        {
             // Perhaps a race with a result fetch?
             log::debug(logcat, "Not loading registered relay fallback: we already have registered relays");
             return;
