@@ -696,8 +696,7 @@ namespace llarp
         }
         else
         {
-            log::debug(
-                logcat, "NodeDB refused our own RC; perhaps we restarted too soon since the last regeneration?");
+            log::debug(logcat, "NodeDB refused our own RC; perhaps we restarted too soon since the last regeneration?");
         }
     }
 
@@ -794,9 +793,8 @@ namespace llarp
             }
         }
 
-        // FIXME: we don't connect to ourself, so this needs a -1 once the nodedb has our own pubkey
-        // in it.
-        if (registered and link_endpoint().num_relay_conns(/*include_pending=*/true) < node_db().num_rcs())
+        if (registered
+            and link_endpoint().num_relay_conns(/*include_pending=*/true) < node_db().num_rcs(/*include_self=*/false))
         {
             log::debug(
                 logcat, "Service Node connecting to {} random routers to achieve full mesh", FULL_MESH_ITERATION);

@@ -171,8 +171,9 @@ namespace llarp
         /// called on close
         void cleanup();
 
-        /// the number of known RC's currently held
-        int num_rcs() const;
+        /// the number of known RC's currently held.  If `include_self` is false then we subtract
+        /// one if the current service node RC is included in the nodedb.
+        int num_rcs(bool include_self=true) const;
 
         // The number of known RIDs.  For relays, this is the number of registered relays (as
         // received from oxend); for clients this is the number of known router IDs fetched from

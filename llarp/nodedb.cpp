@@ -921,10 +921,13 @@ namespace llarp
         return put_rc(std::move(rc));
     }
 
-    int NodeDB::num_rcs() const
+    int NodeDB::num_rcs(bool include_self) const
     {
         assert(_router.loop.inside());
-        return static_cast<int>(known_rcs.size());
+        int total = static_cast<int>(known_rcs.size());
+        if (not include_self and _router.is_service_node and known_rcs.contains(_router.id()))
+            --total;
+        return total;
     }
 
     int NodeDB::num_rids() const
