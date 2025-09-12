@@ -75,10 +75,13 @@ namespace llarp::rpc
         update_service_node_list();
     }
 
-    void OxendRPC::update_service_node_list()
+    void OxendRPC::update_service_node_list(std::shared_ptr<std::promise<void>> on_updated)
     {
         if (_is_updating_list.exchange(true))
-            return;  // update already in progress
+        {
+            assert(!on_updated);  // When using a promise it should be the first call
+            return;               // update already in progress
+        }
 
         nlohmann::json req{{"fields", {"pubkey_ed25519", "block_hash"}}};
         if (!_last_hash_update.empty())
@@ -86,11 +89,12 @@ namespace llarp::rpc
 
         request(
             "rpc.get_service_nodes",
-            [this](bool success, std::vector<std::string> data) {
+            [this, on_updated = std::move(on_updated)](bool success, std::vector<std::string> data) mutable {
+                std::string fail_msg;
                 if (not success)
-                    log::warning(logcat, "Failed to update service node list");
+                    fail_msg = "Failed to update service node list";
                 else if (data.size() < 2)
-                    log::warning(logcat, "Oxend gave empty reply for service node list");
+                    fail_msg = "Oxend gave empty reply for service node list";
                 else
                 {
                     try
@@ -107,11 +111,14 @@ namespace llarp::rpc
                                 _last_hash_update = it->get<std::string>();
                             else
                                 _last_hash_update.clear();
+                            if (on_updated)
+                                on_updated->set_value();
                         }
                     }
                     catch (const std::exception& ex)
                     {
-                        log::error(logcat, "Failed to process service node list: {}", ex.what());
+                        fail_msg = fmt::format("Failed to process service node list: {}", ex.what());
+                        log::error(logcat, "{}", fail_msg);
                     }
                 }
 
@@ -119,6 +126,18 @@ namespace llarp::rpc
                 // finished with the previous update; and 2) so that m_UpdatingList also guards
                 // m_LastUpdateHash
                 _is_updating_list = false;
+
+                if (!fail_msg.empty() && on_updated)
+                {
+                    try
+                    {
+                        throw std::runtime_error{fail_msg};
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        on_updated->set_exception(std::current_exception());
+                    }
+                }
             },
             req.dump());
     }

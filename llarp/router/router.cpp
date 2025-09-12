@@ -611,6 +611,31 @@ namespace llarp
             throw std::runtime_error{err};
         }
 
+#ifndef LOKINET_EMBEDDED_ONLY
+        if (is_service_node)
+        {
+            // Wait, synchronously, for the oxend SN list update, for up to 10s.  If we still don't
+            // get it, then fall back to using our current nodedb list.
+            auto on_update = std::make_shared<std::promise<void>>();
+            auto fut = on_update->get_future();
+            _oxend->update_service_node_list(std::move(on_update));
+            bool fallback = false;
+            try {
+                if (fut.wait_for(10s) == std::future_status::timeout)
+                    throw std::runtime_error{"request timed out"};
+                fut.get();
+            } catch (std::exception& e) {
+                log::warning(log_global, "Oxend SN request failed: {}. Proceeding with stored RC database as a fallback, which may be out of date",
+                        e.what());
+                fallback = true;
+            }
+
+            if (fallback)
+                _node_db->load_registered_relays_fallback();
+        }
+#endif
+
+
         _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
 
         log::debug(logcat, "Creating QUIC link manager");

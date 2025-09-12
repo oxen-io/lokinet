@@ -46,15 +46,16 @@ namespace llarp::rpc
 
         void start_pings();
 
+        /// triggers a service node list refresh from oxend; thread-safe and will do nothing if
+        /// an update is already in progress.  The promise is for router.cpp to attempt a
+        /// synchronous update on startup, and should not be used otherwise.
+        void update_service_node_list(std::shared_ptr<std::promise<void>> on_update = nullptr);
+
       private:
         void ping();
 
         /// do a lmq command on the current connection
         void command(std::string_view cmd);
-
-        /// triggers a service node list refresh from oxend; thread-safe and will do nothing if
-        /// an update is already in progress.
-        void update_service_node_list();
 
         template <typename HandlerFunc_t, typename Args_t>
         void request(std::string_view cmd, HandlerFunc_t func, const Args_t& args)
