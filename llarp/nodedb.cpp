@@ -531,7 +531,7 @@ namespace llarp
                                  // doesn't otherwise matter.
             remove(self_signed, ec);
             create_symlink(
-                self_signed, std::filesystem::path{_router.id().to_string()}.replace_extension(RC_FILE_EXT), ec);
+                std::filesystem::path{_router.id().to_string()}.replace_extension(RC_FILE_EXT), self_signed, ec);
         }
     }
 
