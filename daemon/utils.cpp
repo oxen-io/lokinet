@@ -8,34 +8,7 @@ namespace llarp::controller
 {
     size_t lokinet_instance::next_id = 0;
 
-    static constexpr auto omq_cat_logger = [](omq::LogLevel lvl, const char* file, int line, std::string buf) {
-        auto msg = "[{}:{}] {}"_format(file, line, buf);
-
-        switch (lvl)
-        {
-            case oxenmq::LogLevel::fatal:
-                log::critical(logcat, "{}", msg);
-                break;
-            case oxenmq::LogLevel::error:
-                log::error(logcat, "{}", msg);
-                break;
-            case oxenmq::LogLevel::warn:
-                log::warning(logcat, "{}", msg);
-                break;
-            case oxenmq::LogLevel::info:
-                log::info(logcat, "{}", msg);
-                break;
-            case oxenmq::LogLevel::debug:
-                log::debug(logcat, "{}", msg);
-                break;
-            case oxenmq::LogLevel::trace:
-            default:
-                log::trace(logcat, "{}", msg);
-                break;
-        }
-    };
-
-    rpc_controller::rpc_controller(omq::LogLevel level) : _omq{std::make_shared<omq::OxenMQ>(omq_cat_logger, level)} {}
+    rpc_controller::rpc_controller() : _omq{std::make_shared<omq::OxenMQ>()} {}
 
     void rpc_controller::_initiate(omq::address src, std::string remote)
     {

@@ -33,7 +33,7 @@
 #include <ranges>
 
 #ifndef LOKINET_EMBEDDED_ONLY
-#include <llarp/rpc/rpc_client.hpp>
+#include <llarp/rpc/oxend_rpc.hpp>
 #endif
 
 namespace llarp::link
@@ -366,7 +366,8 @@ namespace llarp::link
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        router.rpc_client()->lookup_sns_hash(
+        assert(router.oxend());
+        router.oxend()->lookup_sns_hash(
             name_hash, [prev_msg = std::move(m)](std::optional<EncryptedSNSRecord> maybe_enc) mutable {
                 if (maybe_enc)
                 {

@@ -771,6 +771,22 @@ namespace llarp
             log::debug(logcat, "Updated SN list from oxend with {} registered relays", size);
     }
 
+    void NodeDB::load_registered_relays_fallback()
+    {
+        std::unique_lock lock{_registered_relays_mutex};
+
+        if (not _registered_relays.empty()) {
+            // Perhaps a race with a result fetch?
+            log::debug(logcat, "Not loading registered relay fallback: we already have registered relays");
+            return;
+        }
+
+        auto now = llarp::time_now_ms();
+        for (auto& [rid, rc] : known_rcs)
+            if (!rc.is_expired(now))
+                _registered_relays.insert(rid);
+    }
+
     std::vector<RouterID> NodeDB::get_registered_relays() const
     {
         std::vector<RouterID> result;

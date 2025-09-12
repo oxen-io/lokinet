@@ -1,9 +1,10 @@
 #pragma once
 
 #include <llarp.hpp>
-#include <llarp/rpc/rpc_client.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+
+#include <oxenmq/oxenmq.h>
 
 namespace omq = oxenmq;
 
@@ -29,13 +30,9 @@ namespace llarp::controller
 
     struct rpc_controller
     {
-        static std::shared_ptr<rpc_controller> make(omq::LogLevel level)
-        {
-            return std::shared_ptr<rpc_controller>{new rpc_controller{level}};
-        }
+        rpc_controller();
 
       private:
-        rpc_controller(omq::LogLevel level);
 
         std::shared_ptr<omq::OxenMQ> _omq;
         std::unordered_map<omq::address, lokinet_instance> _binds;

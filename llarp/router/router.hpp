@@ -41,7 +41,7 @@ namespace llarp
     namespace rpc
     {
         class RPCServer;
-        class RPCClient;
+        class OxendRPC;
     }  // namespace rpc
 
     namespace quic = oxen::quic;
@@ -156,7 +156,7 @@ namespace llarp
         // These aren't actually shared, but we unique_ptr requires destructor visibility, which
         // embedded-only clients won't have as they don't compile any RPC code.
         std::shared_ptr<rpc::RPCServer> _rpc_server;
-        std::shared_ptr<rpc::RPCClient> _rpc_client;
+        std::shared_ptr<rpc::OxendRPC> _oxend;
 
         Profiling _router_profiling;
 
@@ -245,7 +245,7 @@ namespace llarp
         oxenmq::OxenMQ* omq() { return _omq.get(); }
         const oxenmq::OxenMQ* omq() const { return _omq.get(); }
 
-        const std::shared_ptr<rpc::RPCClient>& rpc_client() const { return _rpc_client; }
+        rpc::OxendRPC* oxend() const { return _oxend.get(); }
 
         const Ed25519SecretKey& identity() const { return key_manager.identity_key; }
 

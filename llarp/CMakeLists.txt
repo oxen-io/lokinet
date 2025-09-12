@@ -64,7 +64,7 @@ if (LOKINET_FULL)
   lokinet_add_library(lokinet-rpc
     rpc/json_binary_proxy.cpp
     rpc/json_conversions.cpp
-    rpc/rpc_client.cpp
+    rpc/oxend_rpc.cpp
     rpc/rpc_request_parser.cpp
     rpc/rpc_server.cpp
   )

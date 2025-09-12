@@ -22,7 +22,7 @@
 
 #ifndef LOKINET_EMBEDDED_ONLY
 #include <llarp/handlers/tun.hpp>
-#include <llarp/rpc/rpc_client.hpp>
+#include <llarp/rpc/oxend_rpc.hpp>
 #include <llarp/rpc/rpc_server.hpp>
 
 #include <oxenmq/oxenmq.h>
@@ -240,7 +240,7 @@ namespace llarp
 #ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node)
         {
-            _rpc_client->start_pings();
+            _oxend->start_pings();
 
             auto delay = uniform_duration_distribution{10s, 15s}(llarp::csrng);
             log::debug(logcat, "Delaying initial RC broadcast for {}", delay);
@@ -287,13 +287,13 @@ namespace llarp
             numTries++;
             try
             {
-                key_manager.update_idkey(rpc_client()->obtain_identity_key());
-                log::warning(logcat, "Obtained oxend identity key: {}", key_manager.router_id());
+                key_manager.update_idkey(_oxend->obtain_identity_key());
+                log::info(log_global, "Obtained service node identity from oxend: {}", key_manager.router_id());
                 break;
             }
             catch (const std::exception& e)
             {
-                log::warning(logcat, "Failed attempt {} of {} to get oxend id keys: ", numTries, maxTries, e.what());
+                log::warning(log_global, "Failed attempt {} of {} to get oxend id keys: ", numTries, maxTries, e.what());
 
                 if (numTries == maxTries)
                     throw;
@@ -564,12 +564,10 @@ namespace llarp
         log::info(log_global, "Operating as a Lokinet {}", is_service_node ? "relay (service node)" : "client");
 
 #ifndef LOKINET_EMBEDDED_ONLY
-        _omq->log_level(oxenlog_to_omq_level(log::get_level_default()));
-
         if (is_service_node)
         {
-            log::debug(logcat, "Starting RPC client");
-            _rpc_client = std::make_shared<rpc::RPCClient>(*_omq, *this);
+            log::debug(logcat, "Starting oxend RPC client");
+            _oxend = std::make_shared<rpc::OxendRPC>(*_omq, *this);
         }
 
         if (_config.api.enable_rpc_server)
@@ -584,8 +582,8 @@ namespace llarp
 
         if (is_service_node)
         {
-            log::trace(logcat, "RPC client connecting to RPC bind address");
-            _rpc_client->connect_async(oxenmq::address(_config.lokid.rpc_addr));
+            log::debug(logcat, "Connecting to oxend @ {}", _config.lokid.rpc_addr);
+            _oxend->connect_async(oxenmq::address(_config.lokid.rpc_addr));
         }
 #endif
 
@@ -942,7 +940,7 @@ namespace llarp
                                 rid,
                                 previous ? "after {} previous failures"_format(previous) : "");
                             router_testing.remove_node_from_failing(rid);
-                            _rpc_client->inform_connection(rid, true);
+                            _oxend->inform_connection(rid, true);
                             conn.close_connection();
                         },
                         [this, rid = router, previous = fails](quic::connection_interface&, uint64_t ec) {

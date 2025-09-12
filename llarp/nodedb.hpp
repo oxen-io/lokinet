@@ -147,6 +147,11 @@ namespace llarp
         bool has_registered_relays() const;
         std::vector<RouterID> get_registered_relays() const;
 
+        // Called if our initial oxend SN request fails to load the router IDs of any RCs in our
+        // nodedb as our initial registered relay list until some future oxend update comes along to
+        // correct the list.
+        void load_registered_relays_fallback();
+
         std::optional<RouterID> get_random_registered_relay() const;
 
         const std::unordered_set<RouterID>& strict_edges() const;
