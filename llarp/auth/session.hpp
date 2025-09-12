@@ -20,7 +20,7 @@ namespace llarp::auth
       public:
         SessionAuthPolicy(Router& r, RouterID& remote, bool is_snode, bool is_exit = false);
 
-        bool load_identity_from_file(const char* fname);
+        bool load_key_from_file(const char* fname);
 
         std::optional<std::string_view> fetch_auth_token();
 

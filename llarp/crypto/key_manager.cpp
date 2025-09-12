@@ -47,16 +47,16 @@ namespace llarp
         {
             if (config.network.keyfile)
             {
-                load_from_file(identity_key, *config.network.keyfile);
+                load_from_file(secret_key, *config.network.keyfile);
                 log::info(logcat, "Successfully loaded persistent client key from config path");
             }
             else
             {
-                log::debug(logcat, "Client generating identity key...");
-                identity_key = crypto::generate_ed25519();
+                log::debug(logcat, "Client generating secret key...");
+                secret_key = crypto::generate_ed25519();
             }
 
-            public_key.assign(identity_key.pubkey_span());
+            public_key.assign(secret_key.pubkey_span());
 
             log::info(logcat, "Client public key: {}", public_key);
         }
@@ -66,8 +66,8 @@ namespace llarp
 
     void KeyManager::update_idkey(Ed25519SecretKey&& newkey)
     {
-        identity_key = std::move(newkey);
-        public_key.assign(identity_key.pubkey_span());
+        secret_key = std::move(newkey);
+        public_key.assign(secret_key.pubkey_span());
         log::info(logcat, "Relay key manager updated secret key; new public key: {}", public_key);
     }
 

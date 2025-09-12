@@ -1060,7 +1060,7 @@ namespace llarp::session
                 _remote);
 
             auto [payload, session_key] = InitiateSession::serialize_encrypt(
-                _r.local_rid(), _remote.router_id(), local_pivot_txid, _remote_pivot_txid, std::nullopt);
+                _r.id(), _remote.router_id(), local_pivot_txid, _remote_pivot_txid, std::nullopt);
 
             _shared_secret = session_key;
             path.send_path_control_message(

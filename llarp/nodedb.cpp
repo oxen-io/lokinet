@@ -44,7 +44,7 @@ namespace llarp
                 continue;
             if (router.is_service_node)
             {
-                if (rc.router_id() == router.local_rid())
+                if (rc.router_id() == router.id())
                     continue;
             }
             else if (blacklist.contains(rc.router_id()))
@@ -835,7 +835,7 @@ namespace llarp
     {
         assert(_router.loop.inside());
 
-        if (rc.router_id() == _router.local_rid())
+        if (rc.router_id() == _router.id())
             return false;
 
         auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), rc);

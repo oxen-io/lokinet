@@ -111,7 +111,7 @@ namespace llarp
 
         return {
             {"instance",
-             {{"id", local_rid().to_network_address(is_service_node).to_string()},
+             {{"id", id().to_network_address(is_service_node).to_string()},
               {"running", true},
               {"relay", is_service_node}}},
             {"links", std::move(links)},
@@ -266,7 +266,7 @@ namespace llarp
 
     bool Router::is_fully_meshed() const { return link_endpoint().num_relay_conns() >= _node_db->num_rcs(); }
 
-    void Router::fetch_snode_identity()
+    void Router::fetch_snode_keys()
     {
         assert(is_service_node);
 #ifndef LOKINET_EMBEDDED_ONLY
@@ -590,7 +590,7 @@ namespace llarp
         log::debug(logcat, "Initializing key manager");
 
         if (is_service_node)
-            fetch_snode_identity();
+            fetch_snode_keys();
         else
             key_manager = KeyManager{_config, is_service_node};
 
@@ -600,7 +600,7 @@ namespace llarp
 
         _node_db = std::make_unique<NodeDB>(*this);
 
-        relay_contact = {identity(), is_service_node and _public_address ? *_public_address : _listen_address, netid()};
+        relay_contact = {secret_key(), is_service_node and _public_address ? *_public_address : _listen_address, netid()};
 
         if (is_service_node and not relay_contact.addr().is_public())
         {
@@ -679,7 +679,7 @@ namespace llarp
         return std::nullopt;
     }
 
-    bool Router::appears_registered() const { return is_service_node and node_db().is_registered(local_rid()); }
+    bool Router::appears_registered() const { return is_service_node and node_db().is_registered(id()); }
 
     void Router::update_rc()
     {
@@ -998,7 +998,7 @@ namespace llarp
             log_global,
             "{} started @ {}",
             is_service_node ? "Relay" : "Client",
-            local_rid().to_network_address(is_service_node));
+            id().to_network_address(is_service_node));
 
         // Fire a tick right now to start making connections immediately (rather than waiting until
         // the first tick):
@@ -1102,7 +1102,7 @@ namespace llarp
             log::info(
                 log_global,
                 "Lokinet is now connected to the network ({}) with {}/{} relay connections",
-                config().network.is_reachable ? local_rid().to_network_address(false).to_string() : "outgoing-only",
+                config().network.is_reachable ? id().to_network_address(false).to_string() : "outgoing-only",
                 conns,
                 config().paths.edge_connections);
 

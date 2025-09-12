@@ -1,5 +1,4 @@
 #pragma once
-#include "platform.hpp"
 
 #include <filesystem>
 
@@ -10,13 +9,10 @@
 
 namespace llarp
 {
-    constexpr auto our_rc_filename = "self.signed";
-    constexpr auto our_identity_filename = "identity.key";
-    constexpr auto our_enc_key_filename = "encryption.key";
-    constexpr auto our_transport_key_filename = "transport.key";
-
+    inline const std::filesystem::path our_rc_filename{"self.signed"};
     inline const std::filesystem::path nodedb_dirname{"nodedb"};
     inline const std::filesystem::path default_bootstrap{"bootstrap.signed"};
+    inline const std::filesystem::path default_config_filename{"lokinet.ini"};
 
     inline std::filesystem::path GetDefaultDataDir()
     {
@@ -35,9 +31,7 @@ namespace llarp
 #endif
     }
 
-    inline std::filesystem::path GetDefaultConfigFilename() { return "lokinet.ini"; }
-
-    inline std::filesystem::path GetDefaultConfigPath() { return GetDefaultDataDir() / GetDefaultConfigFilename(); }
+    inline std::filesystem::path GetDefaultConfigPath() { return GetDefaultDataDir() / default_config_filename; }
 
     inline std::filesystem::path GetDefaultBootstrap() { return GetDefaultDataDir() / default_bootstrap; }
 

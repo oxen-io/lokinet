@@ -491,7 +491,7 @@ namespace llarp::link
 
             const auto& rid = closest_rids[*location];
 
-            if (rid == router.local_rid())
+            if (rid == router.id())
             {
                 // Special case: we *are* the intended location
                 router.contact_db().put_cc(std::move(enc));
@@ -531,7 +531,7 @@ namespace llarp::link
         // Oxen block update with a new or removed registration at just the wrong time could shift
         // indices, and we still want to store it even if we shifted (e.g. from 3nd to 2nd).
         for (auto& rid : closest_rids)
-            if (rid == router.local_rid())
+            if (rid == router.id())
             {
                 router.contact_db().put_cc(std::move(enc));
                 m.respond(messages::OK_RESPONSE);
@@ -567,7 +567,7 @@ namespace llarp::link
         // We don't provide the answer ourselves unless we are in the closest-4 set because it's
         // possible we *were* in the closest 4 but then dropped out, but still have a stale record
         // hanging around.
-        auto authoritative = std::ranges::count(closest_rids, router.local_rid());
+        auto authoritative = std::ranges::count(closest_rids, router.id());
         assert(authoritative <= 1);
 
         if (authoritative)
@@ -631,7 +631,7 @@ namespace llarp::link
         auto forwarded_find_cc = FindClientContact::serialize(blinded_pubkey);
         for (const auto& rid : closest_rids)
         {
-            if (rid == router.local_rid())
+            if (rid == router.id())
                 continue;
             endpoint.send_command(rid, "find_cc", forwarded_find_cc, hook);
         }
@@ -1125,10 +1125,10 @@ namespace llarp::link
         {
             if (inner_body)
             {
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.identity());
+                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.secret_key());
             }
             else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.identity());
+                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.secret_key());
         }
         catch (const std::exception& e)
         {
@@ -1136,7 +1136,7 @@ namespace llarp::link
             return;
         }
 
-        if (params.remote.router_id() == router.local_rid())
+        if (params.remote.router_id() == router.id())
         {
             log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
             return m.respond(InitiateSession::BAD_ADDRESS, true);

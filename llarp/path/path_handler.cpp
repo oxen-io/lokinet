@@ -576,7 +576,7 @@ namespace llarp::path
             throw path::TransitHopError::INVALID_DATA();
         }
 
-        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.identity(), dh_nonce))
+        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.secret_key(), dh_nonce))
         {
             log::warning(logcat, "Failed to derive shared secret!");
             throw path::TransitHopError::DH_PUBKEY();
@@ -607,7 +607,7 @@ namespace llarp::path
 
         // If we are a terminal hop then two things must be true: upstream must be this router, and
         // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
-        hop.terminal_hop = hop.upstream == r.local_rid();
+        hop.terminal_hop = hop.upstream == r.id();
         bool terminal_mismatch = hop.terminal_hop != (hop.txid == hop.rxid);
         if (hop.txid.is_zero() || hop.rxid.is_zero() || terminal_mismatch)
             throw path::TransitHopError::INVALID_HOP_ID();

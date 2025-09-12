@@ -68,7 +68,7 @@ namespace llarp::consensus
 
         // Pull the next element off the queue, but skip ourself, any that are no longer registered,
         // and any that are currently known to be failing (those are queued for testing separately).
-        auto local_pk = router->local_rid();
+        auto local_pk = router->id();
 
         while (!testing_queue.empty())
         {

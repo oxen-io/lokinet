@@ -247,9 +247,8 @@ namespace llarp
 
         rpc::OxendRPC* oxend() const { return _oxend.get(); }
 
-        const Ed25519SecretKey& identity() const { return key_manager.identity_key; }
-
-        const RouterID& local_rid() const { return key_manager.router_id(); }
+        const Ed25519SecretKey& secret_key() const { return key_manager.secret_key; }
+        const RouterID& id() const { return key_manager.router_id(); }
 
         Profiling& router_profiling() { return _router_profiling; }
 
@@ -319,7 +318,7 @@ namespace llarp
         /// stop running the router logic gracefully
         void stop();
 
-        void fetch_snode_identity();
+        void fetch_snode_keys();
 
         std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
 

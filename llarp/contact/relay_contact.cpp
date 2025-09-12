@@ -190,14 +190,12 @@ namespace llarp
 
     void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
     {
-        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) -> std::span<const std::byte, SIGSIZE> {
-            _secret_key.sign(_signature, to_sign);
-            return _signature;
+        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) {
+            std::array<std::byte, SIGSIZE> sig;
+            _secret_key.sign(sig, to_sign);
+            return sig;
         });
-
-        auto v = btdp.view();
-        _payload.resize(v.size());
-        std::memcpy(_payload.data(), v.data(), v.size());
+        _payload = std::move(btdp).str();
     }
 
     oxenc::bt_dict_producer LocalRC::bt_encode_for_signing()

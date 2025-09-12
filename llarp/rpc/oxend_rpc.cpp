@@ -145,7 +145,7 @@ namespace llarp::rpc
     void OxendRPC::ping()
     {
         // send a ping
-        auto pk = _router.local_rid();
+        auto pk = _router.id();
 
         nlohmann::json payload = {
             {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},

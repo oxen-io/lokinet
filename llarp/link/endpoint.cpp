@@ -70,8 +70,8 @@ namespace llarp::link
           router{lm.router},
           loop{std::make_unique<quic::Loop>()},
           tls_creds{quic::GNUTLSCreds::make_from_ed_keys(
-              {reinterpret_cast<const char*>(router.identity().data()), 32},
-              {reinterpret_cast<const char*>(router.local_rid().data()), 32})}
+              {reinterpret_cast<const char*>(router.secret_key().data()), 32},
+              {reinterpret_cast<const char*>(router.id().data()), 32})}
     {
         std::optional<quic::opt::inbound_alpns> inbound_alpn;
         if (router.is_service_node)
@@ -80,7 +80,7 @@ namespace llarp::link
         endpoint = quic::Endpoint::endpoint(
             *loop,
             router.listen_addr(),
-            quic::opt::static_secret{make_static_secret(router.identity())},
+            quic::opt::static_secret{make_static_secret(router.secret_key())},
             [this](quic::Connection& conn) { on_conn_established(conn); },
             [this](quic::Connection& conn, uint64_t ec) { on_conn_closed(conn, ec); },
             [this](quic::datagram dgram) {
@@ -115,7 +115,7 @@ namespace llarp::link
 
                 RouterID other{key.first<32>()};
 
-                if (other == router.local_rid())
+                if (other == router.id())
                 {
                     log::error(
                         logcat,
@@ -480,7 +480,7 @@ namespace llarp::link
 
         if (is_relay)
         {
-            auto [it, ins] = relay_conns.emplace(rid, rid < router.local_rid());
+            auto [it, ins] = relay_conns.emplace(rid, rid < router.id());
             auto& relcon = it->second;
             assert(ins ? !relcon.conn : !!relcon.conn);
             bool already_had_inbound{relcon.inbound};
@@ -529,7 +529,7 @@ namespace llarp::link
 
         if (router.is_service_node)
         {
-            auto [it, ins] = relay_conns.emplace(rid, rid < router.local_rid());
+            auto [it, ins] = relay_conns.emplace(rid, rid < router.id());
             auto& relcon = it->second;
             assert(ins ? !relcon.conn : !!relcon.conn);
             bool already_had_outbound{relcon.outbound};

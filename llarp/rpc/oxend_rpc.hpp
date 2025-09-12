@@ -31,7 +31,7 @@ namespace llarp::rpc
         /// Connect to lokid async
         void connect_async(oxenmq::address url);
 
-        /// blocking request identity key from lokid
+        /// blocking request identity secret key from lokid
         /// throws on failure
         Ed25519SecretKey obtain_identity_key();
 

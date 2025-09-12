@@ -25,7 +25,7 @@ namespace llarp::handlers
 
     SessionEndpoint::SessionEndpoint(Router& r)
         : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()},
-          cc_blind_keys{r.identity(), crypto::blinding::CLIENT_CONTACT}
+          cc_blind_keys{r.secret_key(), crypto::blinding::CLIENT_CONTACT}
     {
         const auto& netconf = router.config().network;
 
