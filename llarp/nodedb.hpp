@@ -187,18 +187,18 @@ namespace llarp
         /// maybe get an rc by its ident pubkey.  Returns nullptr if not found.
         const RemoteRC* get_rc(const RouterID& pk) const;
 
-        /// Selects a random RC from all unexpired, non-blacklisted RCs (optionally filtering by
-        /// those that return true from the given predicate).  Returns nullptr if there are no
-        /// acceptable RCs.
-        const RemoteRC* get_random_rc(const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
-
         /// Selects n random RCs from all known, unexpired, non-blocklisted RCs (if a predicate is
-        /// given, they must also pass the given predicate).  If there are fewer than `n` admissable
-        /// RCs then all admissable RCs are returned.  The resulting RCs will also be shuffled
-        /// before being returned, unless the shuffle argument is set to false.  The returned
-        /// pointers are guaranteed to be non-nullptr.
+        /// given, they must also pass the given predicate).  If this is a service node, it will not
+        /// include its own RC.  If there are fewer than `n` admissable RCs then all admissable RCs
+        /// are returned.  The resulting RCs will also be shuffled before being returned, unless the
+        /// shuffle argument is set to false.  The returned pointers are guaranteed to be
+        /// non-nullptr.
         std::vector<const RemoteRC*> get_n_random_rcs(
             int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
+
+        /// Wrapper around get_n_random_rcs to select a single random RC.  Returns nullptr if there
+        /// are no acceptable RCs.
+        const RemoteRC* get_random_rc(const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
 
         /// Same as `get_n_random_rcs`, except that this only returns RCs that are eligible for
         /// direct connections.  For a relay, or a client not using strict edges, this is exactly

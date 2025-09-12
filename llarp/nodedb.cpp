@@ -42,7 +42,12 @@ namespace llarp
         {
             if (rc.is_expired(now))
                 continue;
-            if (blacklist.contains(rc.router_id()))
+            if (router.is_service_node)
+            {
+                if (rc.router_id() == router.local_rid())
+                    continue;
+            }
+            else if (blacklist.contains(rc.router_id()))
                 continue;
             if (predicate and not predicate(rc))
                 continue;
