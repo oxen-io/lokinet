@@ -877,9 +877,6 @@ namespace llarp
     {
         assert(_router.loop.inside());
 
-        if (rc.router_id() == _router.id())
-            return false;
-
         auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), std::move(rc));
         auto& stored = it->second;
         bool should_gossip;
