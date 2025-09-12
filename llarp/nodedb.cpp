@@ -600,6 +600,9 @@ namespace llarp
         if (obsolete > 0)
             log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
 
+        if (std::erase_if(_bootstraps, [this](const auto& bs) { return bs.router_id() == _router.id(); }) > 0)
+            log::info(logcat, "Found and removed ourself ({}) from the bootstrap list", _router.id());
+
         if (_bootstraps.empty())
         {
             log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
