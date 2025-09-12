@@ -786,7 +786,7 @@ namespace llarp
             RouterID filename_rid;
 
             // Ignoring anything that doesn't look like PUBKEY.signed:
-            if (auto no_ext = std::filesystem::path{f.path()}.replace_extension().u8string();
+            if (auto no_ext = f.path().stem().u8string();
                 no_ext.size() == oxenc::to_base32z_size(RouterID::SIZE)
                 and oxenc::is_base32z(no_ext.begin(), no_ext.end()))
             {
