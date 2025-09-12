@@ -4,22 +4,6 @@
 
 namespace llarp
 {
-    namespace BootstrapFetch
-    {
-        // the LocalRC is converted to a RemoteRC type to send to the bootstrap seed
-        std::vector<std::byte> serialize(std::optional<LocalRC> local_rc, size_t quantity)
-        {
-            oxenc::bt_dict_producer btdp;
-
-            if (local_rc)
-                btdp.append_encoded("l", local_rc->view());
-
-            btdp.append("q", quantity);
-
-            return to_bytes(btdp);
-        }
-    }  // namespace BootstrapFetch
-
     namespace FetchRC
     {
         const std::string INVALID_REQUEST = messages::serialize_status_response("Invalid relay ID requested");

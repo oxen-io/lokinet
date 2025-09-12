@@ -219,12 +219,9 @@ namespace llarp
         /// - The RC must be for a relay we haven't recently received an RC for (i.e. we didn't have
         ///   it, or what we had was declared outdated (more than 12h old)).
         /// - Alternatively, an RC will also be gossipped if it is an important update for
-        ///   reachability (i.e. changed IP or port, or other important RC properties).
+        ///   reachability (i.e. changed IP or port, or other crucial RC properties).
         /// - Gossips will not be accepted if the currently stored RC for the relay is not at least
         ///   a minute older than the incoming one.
-        ///
-        /// `store_to_disk` is usually omitted to store the RC if it is accepted, but is false in
-        /// special cases such as when adding bootstrap fallbacks.
         bool put_rc(const RemoteRC& rc);
 
         /// Checks of the relay in the given rc is a registered network relay (either active or
