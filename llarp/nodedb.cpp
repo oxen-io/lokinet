@@ -933,6 +933,11 @@ namespace llarp
     int NodeDB::num_rids() const
     {
         assert(_router.loop.inside());
+        if (_router.is_service_node)
+        {
+            std::shared_lock lock{_registered_relays_mutex};
+            return static_cast<int>(_registered_relays.size());
+        }
         return static_cast<int>(known_rids.size());
     }
 

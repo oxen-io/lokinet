@@ -174,6 +174,9 @@ namespace llarp
         /// the number of known RC's currently held
         int num_rcs() const;
 
+        // The number of known RIDs.  For relays, this is the number of registered relays (as
+        // received from oxend); for clients this is the number of known router IDs fetched from
+        // relays.
         int num_rids() const;
 
         /// find the `num_relays` relays with IDs closest to the given blinded pubkey, in order
