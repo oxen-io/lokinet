@@ -280,7 +280,7 @@ namespace llarp::handlers
             _target_paths);
 
         // Exclude any inbound pivots we are already using so that we diversify:
-        auto filter = [this](const RemoteRC& rc) {
+        auto filter = [this](const RelayContact& rc) {
             const auto& rid = rc.router_id();
             for (const auto& p : paths())
                 if (p.terminal_rid() == rid)
@@ -440,7 +440,7 @@ namespace llarp::handlers
                     "Unable to build {} new inbound paths: {} unused/acceptable pivots currently available",
                     needed,
                     new_pivots.size());
-            for (const llarp::RemoteRC* rc : new_pivots)
+            for (const llarp::RelayContact* rc : new_pivots)
             {
                 log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
                 auto hops = select_hops_to_remote(rc->router_id());
@@ -606,7 +606,7 @@ namespace llarp::handlers
         }
     }
 
-    void SessionEndpoint::lookup_relay_contact(RouterID remote, std::function<void(std::optional<RemoteRC>)> func)
+    void SessionEndpoint::lookup_relay_contact(RouterID remote, std::function<void(std::optional<RelayContact>)> func)
     {
         if (auto* maybe_rc = router.node_db().get_rc(remote))
         {
@@ -626,7 +626,7 @@ namespace llarp::handlers
                 return;
             }
 
-            std::optional<RemoteRC> rc;
+            std::optional<RelayContact> rc;
             try
             {
                 if (m)

@@ -12,7 +12,7 @@ namespace llarp
 
         std::vector<std::byte> serialize(std::span<const RouterID> explicit_ids);
 
-        std::vector<RemoteRC> deserialize_response(NetID netid, oxenc::bt_dict_consumer&& btdc);
+        std::vector<RelayContact> deserialize_response(NetID netid, oxenc::bt_dict_consumer&& btdc);
 
     }  // namespace FetchRC
 

@@ -136,7 +136,7 @@ namespace llarp::path
         return nlohmann::json{{"numHops", _num_hops}, {"targetPaths", _target_paths}, {"paths", std::move(paths)}};
     }
 
-    std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
+    std::optional<RelayContact> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
     {
 #ifdef LOKINET_DEBUG_PATH_SEED
         auto current_remotes_unsorted =
@@ -240,14 +240,14 @@ namespace llarp::path
 
     bool PathHandler::is_stopped() const { return !_running.load(); }
 
-    std::optional<std::vector<RemoteRC>> PathHandler::select_hops_to_remote(const RouterID& pivot)
+    std::optional<std::vector<RelayContact>> PathHandler::select_hops_to_remote(const RouterID& pivot)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         assert(_num_hops);
 
         int hops_needed = _num_hops;
 
-        auto hops = std::make_optional<std::vector<RemoteRC>>();
+        auto hops = std::make_optional<std::vector<RelayContact>>();
 
         auto* pivot_rc = router.node_db().get_rc(pivot);
         if (!pivot_rc)
@@ -269,7 +269,7 @@ namespace llarp::path
         if (netmask)
             excluded_ranges.reserve(_num_hops);
 
-        auto exclude = [&netmask, &to_exclude, &excluded_ranges](const RemoteRC& rc) {
+        auto exclude = [&netmask, &to_exclude, &excluded_ranges](const RelayContact& rc) {
             to_exclude.insert(rc.router_id());
             if (netmask)
                 excluded_ranges.push_back(rc.addr().to_ipv4() % netmask);
@@ -300,24 +300,25 @@ namespace llarp::path
 
         log::trace(logcat, "First/last hop selected, {} hops remaining to select", hops_needed);
 
-        auto filter = [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RemoteRC& rc) {
-            auto& rid = rc.router_id();
-            if (to_exclude.contains(rid))
-                return false;
+        auto filter =
+            [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RelayContact& rc) {
+                auto& rid = rc.router_id();
+                if (to_exclude.contains(rid))
+                    return false;
 
-            if (netmask)
-            {
-                auto v4 = rc.addr().to_ipv4();
-                for (auto& r : excluded_ranges)
-                    if (r.contains(v4))
-                        return false;
-            }
+                if (netmask)
+                {
+                    auto v4 = rc.addr().to_ipv4();
+                    for (auto& r : excluded_ranges)
+                        if (r.contains(v4))
+                            return false;
+                }
 
-            if (rp.is_bad_for_path(rc.router_id(), 1))
-                return false;
+                if (rp.is_bad_for_path(rc.router_id(), 1))
+                    return false;
 
-            return true;
-        };
+                return true;
+            };
         for (; hops_needed > 0; hops_needed--)
         {
             // We can't use get_n_random_rcs here to select hops_needed all at once because as we
@@ -362,7 +363,7 @@ namespace llarp::path
         return false;
     }
 
-    bool PathHandler::can_build(std::span<const RemoteRC> hops)
+    bool PathHandler::can_build(std::span<const RelayContact> hops)
     {
         if (is_stopped())
         {
@@ -392,7 +393,7 @@ namespace llarp::path
     }
 
     std::shared_ptr<Path> PathHandler::build_init_path(
-        std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
+        std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
     {
         auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
 
@@ -618,7 +619,7 @@ namespace llarp::path
     }
 
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
+    int64_t PathHandler::build(std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
     {
         Lock_t lock{paths_mutex};
 

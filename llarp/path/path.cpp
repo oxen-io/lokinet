@@ -24,7 +24,7 @@ namespace llarp::path
     size_t Path::next_path_log_id = 0;
 
     Path::Path(
-        Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
+        Router& rtr, std::span<const RelayContact> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
         : handler{handler.weak_from_this()}, _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
         hops.resize(hop_rcs.size());

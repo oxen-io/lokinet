@@ -84,16 +84,16 @@ namespace llarp
               and periodic RC fetching
             - bootstrap_seeds: if we are the seed node, we insert the rc's of bootstrap fetch
            requests senders into this container to "introduce" them to each other
-            - _bootstraps: the standard container for bootstrap RemoteRCs
+            - _bootstraps: the standard container for bootstrap RelayContacts
         */
         std::unordered_set<RouterID> known_rids;
         std::unordered_map<RouterID, int> unconfirmed_rids;  // Value is the number of votes: seeing
                                                              // the rid is +1, missing it is -1.
 
-        std::unordered_map<RouterID, RemoteRC> known_rcs;
+        std::unordered_map<RouterID, RelayContact> known_rcs;
 
         static const std::vector<std::pair<NetID, std::string_view>> bootstrap_fallbacks;
-        std::vector<RemoteRC> _bootstraps;
+        std::vector<RelayContact> _bootstraps;
         void load_bootstraps();
         void load_bootstrap(const std::filesystem::path&);
         void load_bootstrap(std::string_view data, std::string_view log_desc);
@@ -139,7 +139,7 @@ namespace llarp
 
         const std::unordered_set<RouterID>& get_known_rids() const { return known_rids; }
 
-        const std::unordered_map<RouterID, RemoteRC>& get_known_rcs() const { return known_rcs; }
+        const std::unordered_map<RouterID, RelayContact>& get_known_rcs() const { return known_rcs; }
 
         void purge_rcs(std::chrono::milliseconds now = llarp::time_now_ms());
 
@@ -185,7 +185,7 @@ namespace llarp
         bool has_rc(const RouterID& pk) const { return get_rc(pk); }
 
         /// maybe get an rc by its ident pubkey.  Returns nullptr if not found.
-        const RemoteRC* get_rc(const RouterID& pk) const;
+        const RelayContact* get_rc(const RouterID& pk) const;
 
         /// Selects n random RCs from all known, unexpired, non-blocklisted RCs (if a predicate is
         /// given, they must also pass the given predicate).  If this is a service node, it will not
@@ -193,19 +193,19 @@ namespace llarp
         /// are returned.  The resulting RCs will also be shuffled before being returned, unless the
         /// shuffle argument is set to false.  The returned pointers are guaranteed to be
         /// non-nullptr.
-        std::vector<const RemoteRC*> get_n_random_rcs(
-            int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
+        std::vector<const RelayContact*> get_n_random_rcs(
+            int n, bool shuffle = true, const std::function<bool(const RelayContact&)>& predicate = nullptr) const;
 
         /// Wrapper around get_n_random_rcs to select a single random RC.  Returns nullptr if there
         /// are no acceptable RCs.
-        const RemoteRC* get_random_rc(const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
+        const RelayContact* get_random_rc(const std::function<bool(const RelayContact&)>& predicate = nullptr) const;
 
         /// Same as `get_n_random_rcs`, except that this only returns RCs that are eligible for
         /// direct connections.  For a relay, or a client not using strict edges, this is exactly
         /// the same as `get_n_random_rcs`, but when strict edges are active, only listed strict
         /// router IDs are considered.
-        std::vector<const RemoteRC*> get_n_random_edge_rcs(
-            int n, bool shuffle = true, const std::function<bool(const RemoteRC&)>& predicate = nullptr) const;
+        std::vector<const RelayContact*> get_n_random_edge_rcs(
+            int n, bool shuffle = true, const std::function<bool(const RelayContact&)>& predicate = nullptr) const;
 
         /// Stores an RC broadcast to the network.  The return value indicates whether this RC
         /// should be re-broadcast to all connected relays (true) or not (false).  In particular,
@@ -222,14 +222,17 @@ namespace llarp
         ///   reachability (i.e. changed IP or port, or other crucial RC properties).
         /// - Gossips will not be accepted if the currently stored RC for the relay is not at least
         ///   a minute older than the incoming one.
-        bool put_rc(const RemoteRC& rc);
+        ///
+        /// If storing *our own* RC then this returns true if it was stored, false otherwise,
+        /// because we always want to gossip to our peers when we update our own RC.
+        bool put_rc(RelayContact rc);
 
-        /// Checks of the relay in the given rc is a registered network relay (either active or
-        /// decommissioned) and, if so, calls and returns put_rc with it.
+        /// Checks of the relay in the given rc is a registered remote network relay (either active
+        /// or decommissioned, and not ourself) and, if so, calls and returns put_rc with it.
         ///
         /// Returns true if the router ID is known *and* the rc was updated *and* the RC should be
         /// re-gossipped (see put_rc); returns false otherwise.
-        bool verify_store_gossip_rc(const RemoteRC& rc);
+        bool verify_store_gossip_rc(RelayContact rc);
 
       private:
         void fetch_rcs();
@@ -249,7 +252,7 @@ namespace llarp
         void post_rid_fetch(bool shutdown = false);
 
         /// remove any stored RCs matching the given predicate
-        void remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove);
+        void remove_rcs_if(const std::function<bool(const RelayContact&)>& remove);
 
         void handle_fetched_router_ids(const std::unordered_map<RouterID, std::unordered_set<RouterID>>& results);
     };

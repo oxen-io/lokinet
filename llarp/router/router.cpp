@@ -243,17 +243,19 @@ namespace llarp
             _oxend->start_pings();
 
             auto delay = uniform_duration_distribution{10s, 15s}(llarp::csrng);
+            if (auto* rc = _node_db->get_rc(id());
+                rc && rc->age(llarp::time_now_ms()) < RelayContact::MIN_GOSSIP_RC_AGE)
+            {
+                // If we already have our own RC, and it's very new then the network won't accept it
+                // right now anyway, so delay by an additional minimum acceptable gossip age before
+                // sending out the first one.
+                delay += RelayContact::MIN_GOSSIP_RC_AGE;
+            }
             log::debug(logcat, "Delaying initial RC broadcast for {}", delay);
             loop.call_later(delay, [this] {
-                update_rc();
-                int count = _link_manager->gossip_rc(rc().to_remote());
-
-                log::debug(logcat, "Sent initial RC to {} peers; starting RC regen ticker", count);
-                _gossip_ticker = loop.call_every(RC_UPDATE_INTERVAL, [this] {
-                    update_rc();
-                    int count = _link_manager->gossip_rc(rc().to_remote());
-                    log::debug(logcat, "Updated RC broadcast to {} peers", count);
-                });
+                regenerate_rc();
+                log::debug(logcat, "Starting RC regen ticker");
+                _gossip_ticker = loop.call_every(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
             });
         }
         else
@@ -293,7 +295,8 @@ namespace llarp
             }
             catch (const std::exception& e)
             {
-                log::warning(log_global, "Failed attempt {} of {} to get oxend id keys: ", numTries, maxTries, e.what());
+                log::warning(
+                    log_global, "Failed attempt {} of {} to get oxend id keys: ", numTries, maxTries, e.what());
 
                 if (numTries == maxTries)
                     throw;
@@ -600,17 +603,6 @@ namespace llarp
 
         _node_db = std::make_unique<NodeDB>(*this);
 
-        relay_contact = {secret_key(), is_service_node and _public_address ? *_public_address : _listen_address, netid()};
-
-        if (is_service_node and not relay_contact.addr().is_public())
-        {
-            auto err =
-                "Router is configured as relay but '{}' is not a public IP; perhaps"
-                " you need to specify the [router]:public-ip/public-port settings?"_format(relay_contact.addr());
-            log::critical(logcat, "{}", err);
-            throw std::runtime_error{err};
-        }
-
 #ifndef LOKINET_EMBEDDED_ONLY
         if (is_service_node)
         {
@@ -620,13 +612,19 @@ namespace llarp
             auto fut = on_update->get_future();
             _oxend->update_service_node_list(std::move(on_update));
             bool fallback = false;
-            try {
+            try
+            {
                 if (fut.wait_for(10s) == std::future_status::timeout)
                     throw std::runtime_error{"request timed out"};
                 fut.get();
-            } catch (std::exception& e) {
-                log::warning(log_global, "Oxend SN request failed: {}. Proceeding with stored RC database as a fallback, which may be out of date",
-                        e.what());
+            }
+            catch (std::exception& e)
+            {
+                log::warning(
+                    log_global,
+                    "Oxend SN request failed: {}. Proceeding with stored RC database as a fallback, which may be "
+                    "out of date",
+                    e.what());
                 fallback = true;
             }
 
@@ -634,7 +632,6 @@ namespace llarp
                 _node_db->load_registered_relays_fallback();
         }
 #endif
-
 
         _session_endpoint = std::make_unique<handlers::SessionEndpoint>(*this);
 
@@ -681,18 +678,27 @@ namespace llarp
 
     bool Router::appears_registered() const { return is_service_node and node_db().is_registered(id()); }
 
-    void Router::update_rc()
+    void Router::regenerate_rc()
     {
-        relay_contact.resign();
-        save_rc();
-    }
+        if (not appears_registered())
+        {
+            log::debug(logcat, "Not regenerating RC: not currently a registered service node");
+            return;
+        }
 
-    void Router::save_rc()
-    {
-        disk_loop.call([this] {
-            log::info(logcat, "Saving RC file to {}", our_rc_file);
-            relay_contact.write(our_rc_file);
-        });
+        RelayContact rc{*this};
+        if (_node_db->put_rc(std::move(rc)))
+        {
+            auto* rc = _node_db->get_rc(id());
+            assert(rc);
+            int count = _link_manager->gossip_rc(*rc);
+            log::debug(logcat, "Regenerated RC and gossiped to {} peers", count);
+        }
+        else
+        {
+            log::warning(
+                logcat, "NodeDB refused our own RC; perhaps we restarted too soon since the last regeneration?");
+        }
     }
 
     bool Router::should_report_stats(std::chrono::milliseconds now) const
@@ -863,8 +869,6 @@ namespace llarp
 
         if (is_service_node)
         {
-            save_rc();
-
             log::debug(logcat, "Router accepting transit traffic");
             path_context.allow_transit();
 

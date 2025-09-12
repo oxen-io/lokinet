@@ -99,7 +99,7 @@ namespace llarp::link
         // void test_reachability(const RouterID& rid, connection_established_callback, connection_closed_callback);
 
         void connect_to(
-            const RemoteRC& rc, connection_established_callback = nullptr, connection_closed_callback = nullptr);
+            const RelayContact& rc, connection_established_callback = nullptr, connection_closed_callback = nullptr);
 
         // Closes all connections and releases the network event loop.
         void stop();
@@ -116,7 +116,7 @@ namespace llarp::link
         // Sends the given RC to all our relay peers, excluding connections to the RC pubkey itself,
         // and (if not-nullptr) the given quic connection.  Returns the number of relay connections
         // we sent it to.
-        int gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender = nullptr);
+        int gossip_rc(const RelayContact& rc, const quic::ConnectionID* sender = nullptr);
 
         ~Manager();
 

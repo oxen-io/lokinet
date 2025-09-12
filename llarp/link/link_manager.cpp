@@ -156,7 +156,7 @@ namespace llarp::link
     void Manager::connect_to_keep_alive(int num_conns)
     {
         auto rcs = router.node_db().get_n_random_edge_rcs(
-            num_conns, false /* shuffling not needed */, [this](const RemoteRC& rc) {
+            num_conns, false /* shuffling not needed */, [this](const RelayContact& rc) {
                 return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
             });
 
@@ -167,12 +167,12 @@ namespace llarp::link
             log::debug(logcat, "NodeDB query for {} edge RCs returned none", num_conns);
     }
 
-    int Manager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
+    int Manager::gossip_rc(const RelayContact& rc, const quic::ConnectionID* sender)
     {
         int count = 0;
         endpoint.for_each_relay_conn([&rc, &sender, &count](const RouterID& rid, link::Connection& conn) {
             // Don't gossip this to RC's origin, or back along the connection that sent it to us:
-            if (rid == rc.router_id() or (sender && *sender == conn.conn->reference_id()))
+            if (rid == rc.router_id() or (sender and *sender == conn.conn->reference_id()))
                 return;
 
             conn.control_stream->command("gossip_rc", rc.view());
@@ -184,11 +184,11 @@ namespace llarp::link
 
     void Manager::handle_gossip_rc(quic::message m)
     {
-        RemoteRC rc;
+        RelayContact rc;
 
         try
         {
-            rc = RemoteRC{m.body(), router.netid()};
+            rc = RelayContact{m.body(), router.netid()};
         }
         catch (const std::exception& e)
         {

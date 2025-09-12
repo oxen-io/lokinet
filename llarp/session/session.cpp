@@ -824,7 +824,7 @@ namespace llarp::session
         std::optional<std::chrono::milliseconds> on_est_timeout)
         : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), std::move(on_est), on_est_timeout}
     {
-        _parent.lookup_relay_contact(_remote.router_id(), [this](std::optional<llarp::RemoteRC> rc) mutable {
+        _parent.lookup_relay_contact(_remote.router_id(), [this](std::optional<llarp::RelayContact> rc) mutable {
             if (rc)
             {
                 log::debug(logcat, "Relay contact for {} found: {}", _remote, *rc);

@@ -316,7 +316,7 @@ namespace llarp::link
         });
     }
 
-    std::pair<bool, quic::BTRequestStream*> Endpoint::ctrl_stream_impl(const RemoteRC& rc)
+    std::pair<bool, quic::BTRequestStream*> Endpoint::ctrl_stream_impl(const RelayContact& rc)
     {
         assert(router.loop.inside());
         std::pair<bool, quic::BTRequestStream*> result;
@@ -352,20 +352,20 @@ namespace llarp::link
         return result;
     }
 
-    bool Endpoint::ensure_connection(const RemoteRC& rc)
+    bool Endpoint::ensure_connection(const RelayContact& rc)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return ctrl_stream_impl(rc).first;
     }
 
-    quic::BTRequestStream& Endpoint::control_stream_for(const RemoteRC& rc)
+    quic::BTRequestStream& Endpoint::control_stream_for(const RelayContact& rc)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return *ctrl_stream_impl(rc).second;
     }
 
     void Endpoint::send_command(
-        const RemoteRC& rc,
+        const RelayContact& rc,
         std::string endpoint,
         std::vector<std::byte> body,
         std::function<void(quic::message)> response_handler)
@@ -685,7 +685,7 @@ namespace llarp::link
     }
 
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
-        const RemoteRC& rc)
+        const RelayContact& rc)
     {
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> ret;
         auto& [conn, control] = ret;

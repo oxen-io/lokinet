@@ -21,9 +21,9 @@ namespace llarp
             return to_bytes(btdp);
         }
 
-        std::vector<RemoteRC> deserialize_response(NetID netid, oxenc::bt_dict_consumer&& btdc)
+        std::vector<RelayContact> deserialize_response(NetID netid, oxenc::bt_dict_consumer&& btdc)
         {
-            std::vector<RemoteRC> rcs;
+            std::vector<RelayContact> rcs;
 
             for (auto sublist = btdc.require<oxenc::bt_list_consumer>("r"); not sublist.is_finished();)
                 rcs.emplace_back(sublist.consume_dict_data(), netid);

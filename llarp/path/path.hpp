@@ -49,7 +49,11 @@ namespace llarp::path
     class Path final : public std::enable_shared_from_this<Path>
     {
       public:
-        Path(Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts);
+        Path(
+            Router& rtr,
+            std::span<const RelayContact> hop_rcs,
+            PathHandler& handler,
+            std::chrono::milliseconds expiry_ts);
 
         // hops on constructed path
         std::vector<TransitHop> hops;

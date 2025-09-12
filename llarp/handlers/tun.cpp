@@ -1040,7 +1040,7 @@ namespace llarp::handlers
                 {
                     _router.session_endpoint().lookup_relay_contact(
                         remote.router_id(),
-                        [this, remote, pkt = std::move(pkt)](std::optional<llarp::RemoteRC> rc) mutable {
+                        [this, remote, pkt = std::move(pkt)](std::optional<llarp::RelayContact> rc) mutable {
                             if (rc)
                             {
                                 log::debug(logcat, "Relay contact for {} found: {}", remote, *rc);

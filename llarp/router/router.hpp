@@ -96,8 +96,6 @@ namespace llarp
         // path to write our self signed rc to
         std::filesystem::path our_rc_file;
 
-        // our router contact
-        LocalRC relay_contact;
         std::shared_ptr<oxenmq::OxenMQ> _omq{};
 
         std::atomic<bool> _is_stopping{false};
@@ -112,8 +110,13 @@ namespace llarp
 
         consensus::reachability_testing router_testing;
 
-        std::optional<quic::Address> _public_address;  // public addr for relays
+        // The actual network address we use for communications:
         quic::Address _listen_address;
+
+        // The advertised public IP address for relays.  This is often the same as _listen_address,
+        // but can be different in exotic setups (e.g. where a known public IP is forwarded to an
+        // internal IP).  Always set for a relay.
+        std::optional<quic::Address> _public_address;
 
         std::unique_ptr<handlers::SessionEndpoint> _session_endpoint;
 
@@ -165,8 +168,6 @@ namespace llarp
         std::string _stats_line(std::chrono::milliseconds now) const;
 
         void report_stats();
-
-        void save_rc();
 
         bool insufficient_peers() const;
 
@@ -257,12 +258,18 @@ namespace llarp
         // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
         quic::Loop disk_loop;
 
-        const LocalRC& rc() const { return relay_contact; }
-
-        // Updates and re-signs the local RC and queues it for saving to disk.
-        void update_rc();
+        // If this router is not a registered service node, does nothing.  Otherwise this regenerate
+        // the RC for this router, add it to the nodedb, saves it to disk, and gossips it.
+        void regenerate_rc();
 
         const quic::Address& listen_addr() const { return _listen_address; }
+
+        // Returns the relay's advertised public address.  MUST NOT BE CALLED ON A CLIENT INSTANCE!
+        const quic::Address& public_addr() const
+        {
+            assert(_public_address);
+            return *_public_address;
+        }
 
         nlohmann::json ExtractStatus() const;
 
