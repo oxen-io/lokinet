@@ -33,7 +33,6 @@ namespace llarp::controller
         rpc_controller();
 
       private:
-
         std::shared_ptr<omq::OxenMQ> _omq;
         std::unordered_map<omq::address, lokinet_instance> _binds;
         std::map<size_t, omq::address> _indexes;

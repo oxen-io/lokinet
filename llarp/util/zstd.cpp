@@ -43,7 +43,8 @@ namespace llarp::zstd
     }
 
     template <typename B>
-    static std::vector<std::byte> compress_piecewise(ZSTD_CCtx* ctx, std::span<const B> buffers, int level, const B prefix)
+    static std::vector<std::byte> compress_piecewise(
+        ZSTD_CCtx* ctx, std::span<const B> buffers, int level, const B prefix)
     {
         ZSTD_CCtx_reset(ctx, ZSTD_reset_session_and_parameters);
         size_t in_size = 0;
@@ -55,7 +56,8 @@ namespace llarp::zstd
         compressed.resize(prefix.size() + ZSTD_compressBound(in_size));
         if (!prefix.empty())
             std::memcpy(compressed.data(), prefix.data(), prefix.size());
-        ZSTD_outBuffer output{.dst = compressed.data() + prefix.size(), .size = compressed.size() - prefix.size(), .pos = 0};
+        ZSTD_outBuffer output{
+            .dst = compressed.data() + prefix.size(), .size = compressed.size() - prefix.size(), .pos = 0};
         for (const auto& buf : buffers)
         {
             const auto last = &buf == &buffers.back();
@@ -76,11 +78,13 @@ namespace llarp::zstd
         return compressed;
     }
 
-    std::vector<std::byte> compressor::compress(std::span<const std::string_view> buffers, int level, std::string_view prefix)
+    std::vector<std::byte> compressor::compress(
+        std::span<const std::string_view> buffers, int level, std::string_view prefix)
     {
         return compress_piecewise(cctx(_context), buffers, level, prefix);
     }
-    std::vector<std::byte> compressor::compress(std::span<const std::span<const std::byte>> buffers, int level, const std::span<const std::byte> prefix)
+    std::vector<std::byte> compressor::compress(
+        std::span<const std::span<const std::byte>> buffers, int level, const std::span<const std::byte> prefix)
     {
         return compress_piecewise(cctx(_context), buffers, level, prefix);
     }

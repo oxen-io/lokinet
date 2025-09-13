@@ -110,6 +110,16 @@ namespace llarp::link
             router.loop.call([this, msg = std::move(m)]() mutable { handle_resolve_sns(std::move(msg)); });
         });
 
+        // Endpoint called to test connectivity by other relays during relay testing.  It simply
+        // replies with "pong" (we don't actually need a loop transfer here for the reply, but do it anyway so
+        // that ping requests check that our router loop isn't stuck).
+        s.register_handler("ping"s, [this](quic::message m) {
+            router.loop.call([this, m = std::move(m)] {
+                m.respond("pong");
+                router.on_test_ping();
+            });
+        });
+
         log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
     }
 
@@ -1125,7 +1135,8 @@ namespace llarp::link
         {
             if (inner_body)
             {
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.secret_key());
+                params =
+                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.secret_key());
             }
             else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
                 params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.secret_key());

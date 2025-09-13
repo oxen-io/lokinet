@@ -1,6 +1,7 @@
 #include "router.hpp"
 
 #include <llarp/config/config.hpp>
+#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/version.hpp>
@@ -51,12 +52,9 @@ namespace llarp
         Config conf, std::shared_ptr<quic::Loop> loop, std::shared_ptr<vpn::Platform> vpnPlatform, std::promise<void> p)
         : _config{std::move(conf)},
           _loop{std::move(loop)},
-          _next_explore_at{std::chrono::steady_clock::now()},
           _vpn{std::move(vpnPlatform)},
           _close_promise{std::move(p)},
           _contact_db{std::make_unique<ContactDB>(*this)},
-          // TODO FIXME: what about non-testnet?  And do we really want a fixed random interval,
-          // or do we want a randomized interval on each node's gossip?
           _last_tick{llarp::time_now_ms()}
     {
 #ifndef LOKINET_EMBEDDED_ONLY
@@ -257,6 +255,9 @@ namespace llarp
                 log::debug(logcat, "Starting RC regen ticker");
                 _gossip_ticker = loop.call_every(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
             });
+
+            if (not _config.lokid.disable_testing)
+                _router_testing.start();
         }
         else
 #endif
@@ -671,7 +672,7 @@ namespace llarp
     {
         // If we're in the registered list then we *should* be establishing connections to other
         // routers, so if we have almost no peers then something is almost certainly wrong.
-        if (insufficient_peers() and not _testing_disabled)
+        if (insufficient_peers() and not _config.lokid.disable_testing)
             return "too few peer connections; lokinet is not adequately connected to the network";
         return std::nullopt;
     }
@@ -904,89 +905,7 @@ namespace llarp
         log::debug(logcat, "Starting Router main tick interval");
         _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
-        _started_at = now();
-
-#ifndef LOKINET_EMBEDDED_ONLY
-        if (is_service_node and not _testing_disabled)
-        {
-            // TODO FIXME: this reachability testing implementation is definitely not right: it
-            // involves establishing a new connection to the remote, and then closing it, but that
-            // definitely isn't right because the new connection will replace the existing one at
-            // the remote end, *both* of which can break in-flight data through that connection.
-            //
-            // Perhaps we should just issue a ping request on the current connection, and call it a
-            // day?
-            // - what about if the IP/port of the current connection doesn't match the RC?
-            //
-            // Perhaps we should always establish a new connection to the RC, but *not* using our
-            // current keys (i.e. using a client ALPN), not putting it into link endpoint, and close
-            // it as soon as we get a ping?
-            log::critical(logcat, "Reachability testing disabled - TODO FIXME");
-#if 0   // FIXME
-            log::debug(logcat, "Creating reachability testing ticker...");
-            _reachability_ticker = _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, [this] {
-
-                // dont run tests if we are not running or we are stopping
-                if (not _is_running)
-                    return;
-
-                // Don't run testing if we are not a registered service node, because other service
-                // nodes in that case wouldn't allow our connection.
-                if (not appears_registered())
-                    return;
-
-                auto tests = router_testing.get_failing();
-
-                if (auto maybe = router_testing.next_random(this))
-                {
-                    tests.emplace_back(*maybe, 0);
-                }
-                for (const auto& [router, fails] : tests)
-                {
-                    if (not _node_db->is_connection_allowed(router))
-                    {
-                        log::debug(
-                            logcat,
-                            "{} is no longer a registered service node; dropping from test "
-                            "list",
-                            router);
-                        router_testing.remove_node_from_failing(router);
-                        continue;
-                    }
-
-                    log::critical(logcat, "Establishing session to {} for service node testing", router);
-
-                    // try to make a session to this random router
-                    // this will do a dht lookup if needed
-                    _link_manager->test_reachability(
-                        router,
-                        [this, rid = router, previous = fails](quic::connection_interface& conn) {
-                            log::info(
-                                logcat,
-                                "Successful SN reachability test to {}{}",
-                                rid,
-                                previous ? "after {} previous failures"_format(previous) : "");
-                            router_testing.remove_node_from_failing(rid);
-                            _oxend->inform_connection(rid, true);
-                            conn.close_connection();
-                        },
-                        [this, rid = router, previous = fails](quic::connection_interface&, uint64_t ec) {
-                            if (ec != 0)
-                            {
-                                log::info(
-                                    logcat,
-                                    "Unsuccessful SN reachability test to {} after {} previous "
-                                    "failures",
-                                    rid,
-                                    previous);
-                                router_testing.add_failing_node(rid, previous);
-                            }
-                        });
-                }
-            });
-#endif  // FIXME
-        }
-#endif
+        _started_at = llarp::time_now_ms();
 
         start_tickers();
         _is_running = true;
@@ -1009,9 +928,9 @@ namespace llarp
 
     std::chrono::milliseconds Router::Uptime() const
     {
-        const std::chrono::milliseconds _now = now();
-        if (_started_at > 0s && _now > _started_at)
-            return _now - _started_at;
+        const std::chrono::milliseconds now = llarp::time_now_ms();
+        if (_started_at > 0s && now > _started_at)
+            return now - _started_at;
         return 0s;
     }
 
@@ -1112,6 +1031,8 @@ namespace llarp
         }
     }
 
+    void Router::on_test_ping() { _router_testing.incoming_ping(); }
+
     void Router::stop()
     {
         if (!_is_running)
@@ -1136,6 +1057,8 @@ namespace llarp
                 llarp::sys::service_manager->stopping();
             }
 #endif
+
+            _router_testing.stop();
 
             _session_endpoint->stop(true);
 

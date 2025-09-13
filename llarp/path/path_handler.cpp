@@ -66,8 +66,6 @@ namespace llarp::path
                 p->do_ping(now);
     }
 
-    std::chrono::milliseconds PathHandler::now() const { return router.now(); }
-
     void PathHandler::expire_paths(std::chrono::milliseconds now)
     {
         Lock_t lock{paths_mutex};

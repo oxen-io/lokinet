@@ -218,6 +218,18 @@ namespace llarp::link
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> bootstrap_connect(
             const RelayContact& rc);
 
+        // Makes a new connection to the given relay as a Lokinet client (i.e. using the client
+        // ALPN, even if this node is a relay) *without* using an existing connection or tracking it
+        // in existing connections.  This is primarily used for service node testing to ensure we
+        // can establish a new connection and avoid having the connection get treated as a regular
+        // relay connection on either side of the connection.  The connection does not use
+        // keep-alive and is expected to be short lived.
+        //
+        // Returns the connection and the control stream through which a ping command can be
+        // issued.
+        std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> testing_client_connect(
+            const RelayContact& rc);
+
       private:
         std::shared_ptr<quic::BTRequestStream> make_control(
             quic::Connection& conn, const RouterID& rid, std::string_view alpn);

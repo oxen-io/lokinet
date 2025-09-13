@@ -91,7 +91,6 @@ namespace llarp
 
         Config _config;
         const std::shared_ptr<quic::Loop> _loop;
-        std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
         std::filesystem::path our_rc_file;
@@ -106,9 +105,7 @@ namespace llarp
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
 
-        bool _testing_disabled{_config.lokid.disable_testing};
-
-        consensus::reachability_testing router_testing;
+        consensus::reachability_testing _router_testing{*this};
 
         // The actual network address we use for communications:
         quic::Address _listen_address;
@@ -144,8 +141,6 @@ namespace llarp
         std::chrono::milliseconds _started_at;
         std::chrono::milliseconds _last_stats_report{0s};
         std::chrono::milliseconds _next_dereg_warning{time_now_ms() + 15s};
-
-        std::chrono::milliseconds _last_path_ping{0s};
 
         // Application callback(s) to fire as soon as we reach "connected" or "disconnected" status,
         // which means when we have established our target number of edge connections or lost all
@@ -286,7 +281,7 @@ namespace llarp
 
         void set_router_close_cb(std::function<void(void)> hook) { _router_close_cb = hook; }
 
-        bool looks_alive() const { return now() - _last_tick <= 30s; }
+        bool looks_alive() const { return llarp::time_now_ms() - _last_tick <= 30s; }
 
         // RoutePoker& route_poker() { return *_route_poker; }
         // const RoutePoker& route_poker() const { return *_route_poker; }
@@ -312,6 +307,10 @@ namespace llarp
         // state when a client edge connection is established or lost.
         void on_edge_conn_change();
 
+        // Called when we get a relay testing ping to pass through to the router tester so that it
+        // can warn if we haven't received pings in a long time.
+        void on_test_ping();
+
         bool is_running() const { return _is_running; }
 
         bool is_stopping() const { return _is_stopping; }
@@ -326,8 +325,6 @@ namespace llarp
         void stop();
 
         void fetch_snode_keys();
-
-        std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
 
         void teardown();
     };

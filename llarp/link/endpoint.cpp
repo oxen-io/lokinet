@@ -7,6 +7,7 @@
 
 #include <oxen/quic/btstream.hpp>
 #include <oxen/quic/context.hpp>  // TODO FIXME: can't construct an Endpoint without this!
+#include <oxen/quic/opt.hpp>
 #include <sodium/crypto_generichash_blake2b.h>
 
 namespace llarp::link
@@ -684,22 +685,27 @@ namespace llarp::link
         });
     }
 
-    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
-        const RelayContact& rc)
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> special_connect_impl(
+        quic::Endpoint& endpoint,
+        std::shared_ptr<quic::GNUTLSCreds> tls_creds,
+        const RelayContact& rc,
+        std::string_view alpn)
     {
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> ret;
         auto& [conn, control] = ret;
+
         log::debug(
             logcat,
-            "Initiating new bootstrap connection to {} @ {}",
+            "Initiating new {} connection to {} @ {}",
+            alpn,
             rc.router_id().to_network_address(true),
             rc.addr());
 
-        conn = endpoint->connect(
+        conn = endpoint.connect(
             quic::RemoteAddress{rc.router_id().to_view(), rc.addr()},
-            tls_creds,
+            std::move(tls_creds),
             quic::opt::idle_timeout{BOOTSTRAP_IDLE_TIMEOUT},
-            quic::opt::outbound_alpns{{BOOTSTRAP_ALPN}},
+            quic::opt::outbound_alpn(alpn),
             [](quic::Connection& conn) {
                 log::debug(
                     logcat,
@@ -727,6 +733,18 @@ namespace llarp::link
         control = conn->open_stream<quic::BTRequestStream>();
 
         return ret;
+    }
+
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
+        const RelayContact& rc)
+    {
+        return special_connect_impl(*endpoint, tls_creds, rc, BOOTSTRAP_ALPN);
+    }
+
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>>
+    Endpoint::testing_client_connect(const RelayContact& rc)
+    {
+        return special_connect_impl(*endpoint, tls_creds, rc, CLIENT_ALPN);
     }
 
 }  // namespace llarp::link

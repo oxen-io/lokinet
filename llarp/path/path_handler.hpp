@@ -137,8 +137,6 @@ namespace llarp
 
             bool is_stopped() const;
 
-            std::chrono::milliseconds now() const;
-
             /// Called each path handler tick to allow subclasses to perform path checks, updates,
             /// rotations, start new paths, etc. as needed.  If not overridden this does nothing.
             virtual void update_paths(std::chrono::milliseconds /*now*/) {}
