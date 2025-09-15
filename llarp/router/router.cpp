@@ -718,13 +718,14 @@ namespace llarp
         {
             auto [relays, rout, rin, rpending, clients] = link_endpoint().relay_connection_counts();
             return fmt::format(
-                "relays: {relays} conns ({rin}↓, {rout}↑{pending}), RC/RIDs: {rcs}/{rids}; "
+                "relays: {relays} conns ({rin}↓, {rout}↑{pending}{full_mesh}), RC/RIDs: {rcs}/{rids}; "
                 "{clients} clients; sessions: {sess_in}↓; paths: {paths_in}",
 
                 "relays"_a = relays,
                 "rin"_a = rin,
                 "rout"_a = rout,
                 "pending"_a = rpending ? ", {} pending"_format(rpending) : "",
+                "full_mesh"_a = relays >= rids - 1 ? ", #" : "",
                 "clients"_a = clients,
                 "sess_in"_a = s_in,
                 "paths_in"_a = in_paths,
