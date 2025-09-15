@@ -42,8 +42,6 @@
 #include <systemd/sd-daemon.h>
 #endif
 
-static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL{250ms};
-
 namespace llarp
 {
     static auto logcat = log::Cat("router");
@@ -795,12 +793,16 @@ namespace llarp
             }
         }
 
-        if (registered
-            and link_endpoint().num_relay_conns(/*include_pending=*/true) < node_db().num_rcs(/*include_self=*/false))
+        if (registered)
         {
-            log::debug(
-                logcat, "Service Node connecting to {} random routers to achieve full mesh", FULL_MESH_ITERATION);
-            _link_manager->connect_to_keep_alive(FULL_MESH_ITERATION);
+            int want = std::min(
+                node_db().num_rcs(/*include_self=*/false) - link_endpoint().num_relay_conns(/*include_pending=*/true),
+                RELAY_CONNECTS_PER_TICK);
+            if (want > 0)
+            {
+                log::debug(logcat, "Service Node connecting to {} random routers to achieve full mesh", want);
+                _link_manager->connect_to_keep_alive(want);
+            }
         }
 
         path_context.expire_hops(now);

@@ -46,10 +46,17 @@ namespace llarp
 
     namespace quic = oxen::quic;
 
+    inline constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL{250ms};
+
     inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{10min};
 
-    // as we advance towards full mesh, we try to connect to this number per tick
-    inline constexpr int FULL_MESH_ITERATION{1};
+    // Upon startup, relays will attempt to connect to this many nodes per second (divided into the
+    // number of ticks per second) to try to reach full mesh as quickly as possible.  Note that a
+    // single node restarting will full mesh almost instantly regardless of this setting (because
+    // all other nodes will want to re-connect to it), and so this mainly affects how quickly the
+    // network reestablishes after a significant number of nodes restart or regain connectivity all
+    // at once.
+    inline constexpr int RELAY_CONNECTS_PER_TICK{10};
 
     // DISCUSS: ask tom and jason about this
     // how big of a time skip before we reset network state
