@@ -112,8 +112,24 @@ namespace llarp::consensus
 
     void reachability_testing::check_incoming_tests(const time_point_t& now)
     {
+        if (not router.appears_registered())
+        {
+            if (not last.was_unregistered and last.was_failing)
+                log::info(log_global, "Disabling incoming ping warnings: service node is no longer registered");
+            else
+                log::debug(logcat, "Not checking incoming tests: not a registered relay");
+            last.was_unregistered = true;
+            last.was_failing = false;
+            return;
+        }
+
         const auto elapsed = now - std::max(startup, last.last_test);
-        bool failing = elapsed > MAX_TIME_WITHOUT_PING;
+
+        // If we just became registered then use a longer threshold without pings before we flag it
+        // as a problem: it can take some time for nodes to get through their current queues and
+        // build a new queue that includes us.
+        bool failing = elapsed > (last.was_unregistered ? MAX_TIME_INITIAL : MAX_TIME_WITHOUT_PING);
+
         bool whine = failing != last.was_failing || (failing && now - last.last_whine > WHINING_INTERVAL);
 
         last.was_failing = failing;

@@ -40,6 +40,7 @@ namespace llarp::consensus
             time_point_t last_test{};
             time_point_t last_whine{};
             bool was_failing = false;
+            bool was_unregistered = false;
         };
 
     }  // namespace detail
@@ -84,6 +85,11 @@ namespace llarp::consensus
         // Maximum time without an incoming testing ping before we start whining about it (if we are
         // registered), as that likely means that we are currently unreachable.
         static constexpr auto MAX_TIME_WITHOUT_PING = 2min;
+
+        // When we transition from unregistered to register, hold off on whining about incoming
+        // pings for this long because we won't get added to other nodes' testing queues until they
+        // get through their current list and regenerate a new testing queue.
+        static constexpr auto MAX_TIME_INITIAL = 15min;
 
         // Rate-limit for how often we whine in the logs about looking unreachable because we
         // haven't received any recent pings.
