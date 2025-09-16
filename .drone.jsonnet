@@ -12,6 +12,7 @@ local default_deps_base = std.set([
   'libsystemd-dev',
   'libunbound-dev',
   'libzmq3-dev',
+  'libzstd-dev',
   'make',
   'nettle-dev',
   'nlohmann-json3-dev',
