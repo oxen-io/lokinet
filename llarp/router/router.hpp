@@ -134,6 +134,12 @@ namespace llarp
 
         std::promise<void> _close_promise;
 
+      public:
+        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.  (It
+        // is up here because it must destroy after _node_db, which uses it.)
+        quic::Loop disk_loop;
+
+      private:
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
@@ -256,9 +262,6 @@ namespace llarp
         Profiling& router_profiling() { return _router_profiling; }
 
         quic::Loop& loop{*_loop};
-
-        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
-        quic::Loop disk_loop;
 
         // If this router is not a registered service node, does nothing.  Otherwise this regenerate
         // the RC for this router, add it to the nodedb, saves it to disk, and gossips it.

@@ -5,6 +5,7 @@
 #include <llarp/util/thread/threading.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <optional>
 #include <shared_mutex>
@@ -14,6 +15,7 @@ namespace oxen::quic
 {
     struct message;
     struct Ticker;
+    class Wakeable;
 }  // namespace oxen::quic
 
 namespace llarp
@@ -62,6 +64,13 @@ namespace llarp
     // (negative) an unconfirmed rid.  Each observation or omission contributes +1 or -1 vote until
     // we have ± this threshold.
     inline constexpr int CONFIRMATION_THRESHOLD{3};
+
+    // Maximum number of 0rtt tickets we will store, per relay.  The server generally sends new ones
+    // shortly after reconnecting so there is no much benefit in storing lots of these.
+    inline constexpr size_t MAX_0RTT_TICKETS = 2;
+
+    inline const std::filesystem::path RC_FILE_EXT{".signed"};
+    inline const std::filesystem::path ZRTT_FILE_EXT{".zrtt"};
 
     class NodeDB
     {
@@ -119,13 +128,21 @@ namespace llarp
         /// asynchronously remove the files for a set of rcs on disk given their public ident key
         void remove_many_from_disk_async(const std::vector<RouterID>& idents) const;
 
-        /// get filename of an RC file given its public ident key
-        std::filesystem::path get_path_by_pubkey(const RouterID& pk) const;
+        /// get filename of an RC file (or other, similar file extension) given its public ident key
+        std::filesystem::path get_path_by_pubkey(
+            const RouterID& pk, const std::filesystem::path& extension = RC_FILE_EXT) const;
 
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
         std::shared_ptr<quic::Ticker> _rc_fetch_ticker;
 
         std::shared_ptr<quic::Ticker> _purge_ticker;
+
+        std::unordered_map<RouterID, std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>>>
+            _0rtt_tickets;
+        std::unordered_set<RouterID> _0rtt_dirty;
+        std::mutex _0rtt_mutex;
+        std::shared_ptr<quic::Wakeable> _0rtt_saver;
+        void _0rtt_save();
 
       public:
         explicit NodeDB(Router& r);
@@ -238,6 +255,16 @@ namespace llarp
         /// re-gossipped (see put_rc); returns false otherwise.
         bool verify_store_gossip_rc(RelayContact rc);
 
+        /// Stores a 0rtt ticket received from a relay.  This is both written to disk and stored in
+        /// memory so that it can reused quickly in the current session, or after restarting.  (NB:
+        /// this does not have to be called from the router loop).
+        void store_0rtt(const RouterID& rid, std::vector<unsigned char> data, std::chrono::sys_seconds expiry);
+
+        /// Looks up a 0rtt ticket for the given router ID.  If at least one unexpired ticker is
+        /// found, it is removed from storage and returned; otherwise nullopt is returned.  NB: This
+        /// does not have to be called from the router loop.
+        [[nodiscard]] std::optional<std::vector<unsigned char>> extract_0rtt(const RouterID& rid);
+
       private:
         void fetch_rcs();
         void fetch_rids();
@@ -259,5 +286,8 @@ namespace llarp
         void remove_rcs_if(const std::function<bool(const RelayContact&)>& remove);
 
         void handle_fetched_router_ids(const std::unordered_map<RouterID, std::unordered_set<RouterID>>& results);
+
+        // Called on the disk thread to store/update/erase 0rtt tickets for a router id.
+        void save_0rtt(const RouterID& rid);
     };
 }  // namespace llarp

@@ -7,6 +7,8 @@
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/compare_ptr.hpp>
 
+#include <oxen/quic/connection_ids.hpp>
+
 namespace llarp
 {
     class Router;
@@ -30,18 +32,19 @@ namespace llarp::path
     };
 
     // TransitHop holds the raw data associated with a single hop in a path, e.g. hop ids, keys,
-    // expiry, and so on.  It is primarily just a container to hold this data.
+    // expiry, and so on.  It is primarily just a container to hold this data, and lives at the
+    // relevant hop on the relay.
     struct TransitHop
     {
         HopID txid, rxid;
 
-        // Along a path "upstream" is the next router away from the client, "downstream" is the
-        // hop towards the client.  The pivot (which has no upstream) is identified by the
-        // upstream value being equal to itself.
+        // Along a path "upstream" is the next router away from the client, "downstream" is the hop
+        // towards the client (or the connection itself, at the edge).  The pivot (which has no
+        // upstream) is identified by the upstream value being equal to itself.
         //
         // For an example path client-A-B-C-pivot, then:
         //
-        // A: downstream=client's ephemeral key; upstream=B
+        // A: downstream=client's connection id; upstream=B
         // B: downstream=A, upstream=C
         // C: downstream=B, upstream=pivot
         // pivot: downstream=C, upstream=pivot
@@ -54,7 +57,7 @@ namespace llarp::path
         // TODO FIXME: why is router_id here at all?
         RouterID upstream;
         RouterID router_id;
-        RouterID downstream;
+        std::variant<RouterID, oxen::quic::ConnectionID> downstream;
 
         TransitHop() = default;
 
@@ -78,7 +81,7 @@ namespace llarp::path
         // been dropped.
         bool is_dead{false};
 
-        std::optional<std::pair<RouterID, HopID>> next_id(const HopID& h) const;
+        std::optional<std::pair<std::variant<RouterID, oxen::quic::ConnectionID>, HopID>> next_id(const HopID& h) const;
 
         // Returns true if this TransitHop matches the same transit components as other, that is,
         // has the same tx/rxids and upstream/downstream.  This is not equality, however, as this

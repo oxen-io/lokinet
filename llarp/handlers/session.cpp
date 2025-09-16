@@ -228,9 +228,6 @@ namespace llarp::handlers
 
         if (_path_rotater)
         {
-            if (_path_rotater->is_running())
-                _path_rotater->stop();
-
             _path_rotater.reset();
             log::trace(logcat, "Path rotation ticker stopped!");
         }

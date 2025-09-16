@@ -226,9 +226,6 @@ namespace llarp::path
 
         if (_path_rotater)
         {
-            if (_path_rotater->is_running())
-                _path_rotater->stop();
-
             _path_rotater.reset();
             log::trace(logcat, "Path rotation ticker stopped!");
         }
@@ -549,7 +546,7 @@ namespace llarp::path
     std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> PathHandler::decrypt_build_frame(
         std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
         const Router& r,
-        const RouterID& src,
+        const std::variant<RouterID, quic::ConnectionID>& src,
         std::chrono::milliseconds now)
     {
         std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> ret;

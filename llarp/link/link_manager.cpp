@@ -20,6 +20,7 @@
 
 #include <nlohmann/json.hpp>
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/context.hpp>
 #include <oxen/quic/opt.hpp>
 #include <oxenc/bt_producer.h>
@@ -56,18 +57,15 @@ namespace llarp::link
             {"path_switch"sv, &Manager::handle_path_switch},
             {"path_ping"sv, &Manager::handle_path_ping}};
 
-    void Manager::register_commands(quic::BTRequestStream& s, const RouterID& remote_rid, bool client_only)
+    void Manager::register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote)
     {
-        // TODO FIXME: registering all these commands on every stream feels icky; a quic fallback
-        // handler could do this better.
-
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         s.register_handler("path_control"s, [this](quic::message m) {
             router.loop.call([this, msg = std::move(m)]() mutable { handle_path_control(std::move(msg)); });
         });
 
-        if (client_only)
+        if (not router.is_service_node)
         {
             log::trace(logcat, "Registered all client-only BTStream commands!");
             return;
@@ -85,9 +83,9 @@ namespace llarp::link
             router.loop.call([this, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
         });
 
-        s.register_handler("path_build"s, [this, remote_rid](quic::message m) {
+        s.register_handler("path_build"s, [this, remote](quic::message m) {
             router.loop.call(
-                [this, remote_rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote_rid); });
+                [this, remote, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote); });
         });
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
@@ -119,8 +117,6 @@ namespace llarp::link
                 router.on_test_ping();
             });
         });
-
-        log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
     }
 
     void Manager::register_bootstrap_commands(quic::BTRequestStream& s)
@@ -647,7 +643,7 @@ namespace llarp::link
         }
     }
 
-    void Manager::handle_path_build(quic::message m, const RouterID& from)
+    void Manager::handle_path_build(quic::message m, const std::variant<RouterID, quic::ConnectionID>& from)
     {
         if (!router.path_context.is_transit_allowed())
         {
@@ -827,7 +823,7 @@ namespace llarp::link
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        const auto& [next_rid, next_hopid] = *next;
+        const auto& [next_target, next_hopid] = *next;
 
         // We're relaying this message down a path, and we've already done our decryption to the
         // inner_payload so now we just need to replace the nonce and next hop ID in the outer
@@ -836,7 +832,7 @@ namespace llarp::link
         next_hopid.copy_to(bhop);
 
         endpoint.send_command(
-            next_rid,
+            next_target,
             "path_control",
             std::move(payload),
             [hop_weak = std::weak_ptr{hop}, hop_id, prev_message = std::move(m)](quic::message response) mutable {
@@ -1071,7 +1067,7 @@ namespace llarp::link
             log::error(logcat, "No next hop found in transit hop?!");
             return;
         }
-        auto& [next_rid, next_hopid] = *next;
+        auto& [next_target, next_hopid] = *next;
 
         // We chopped off the 0x01, hop_id, and nonce at the top of this function, but now lets put
         // the new ones back on to make it suitable for the next hop.  (We're just resizing a vector
@@ -1084,7 +1080,7 @@ namespace llarp::link
         next_hopid.copy_to(bhop);
         bmsgtype[0] = std::byte{0x01};
 
-        endpoint.send_datagram(next_rid, std::move(message));
+        endpoint.send_datagram(next_target, std::move(message));
     }
 
     void Manager::handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)

@@ -3,11 +3,13 @@
 #include <llarp/crypto/types.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/fetch.hpp>
+#include <llarp/util/file.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
 #include <llarp/util/zstd.hpp>
 
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/loop.hpp>
 #include <oxenc/base32z.h>
 #include <sodium/crypto_generichash.h>
 
@@ -23,8 +25,6 @@
 namespace llarp
 {
     static auto logcat = llarp::log::Cat("nodedb");
-
-    static const std::filesystem::path RC_FILE_EXT{".signed"};
 
     std::array<int, 3> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
 
@@ -263,9 +263,9 @@ namespace llarp
         }
     }
 
-    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
+    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey, const std::filesystem::path& ext) const
     {
-        return _root / std::filesystem::path{pubkey.to_string()}.replace_extension(RC_FILE_EXT);
+        return _root / std::filesystem::path{pubkey.to_string()}.replace_extension(ext);
     }
 
     void NodeDB::fetch_rcs()
@@ -454,10 +454,15 @@ namespace llarp
 
         if (not _router.is_service_node)
         {
-            _rc_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
+            _rc_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
 
-            _rid_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
+            _rid_fetch_ticker = _router.loop.call_every(
+                FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
         }
+
+        _0rtt_saver = _router.disk_loop.make_wakeable([this] { _0rtt_save(); });
+        _0rtt_saver->wake();
 
         if (need_bootstrap)
             bootstrap();
@@ -778,15 +783,15 @@ namespace llarp
         std::vector<std::filesystem::path> purge;
 
         const auto now = time_now_ms();
+        const auto real_now = std::chrono::system_clock::now();
 
         for (const auto& f : std::filesystem::directory_iterator{_root})
         {
-            if (not f.is_regular_file() or f.path().extension() != RC_FILE_EXT)
+            if (not f.is_regular_file())
                 continue;
 
             RouterID filename_rid;
-
-            // Ignoring anything that doesn't look like PUBKEY.signed:
+            // Ignoring anything that doesn't look like PUBKEY.ext:
             if (auto no_ext = f.path().stem().u8string(); no_ext.size() == oxenc::to_base32z_size(RouterID::SIZE)
                 and oxenc::is_base32z(no_ext.begin(), no_ext.end()))
             {
@@ -794,48 +799,107 @@ namespace llarp
             }
             else
             {
-                log::debug(logcat, "Skipping {}: does not match PUBKEY.signed filename format", f.path());
+                log::debug(logcat, "Skipping {}: does not match PUBKEY.(ext) filename format", f.path());
                 continue;
             }
 
-            std::optional<RelayContact> rc;
-            try
+            auto ext = f.path().extension();
+            if (ext == RC_FILE_EXT)
             {
-                rc.emplace(f.path(), _router.netid());
+                std::optional<RelayContact> rc;
+                try
+                {
+                    rc.emplace(f.path(), _router.netid());
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(logcat, "Failed to load {} from stored RCs: {}", f.path(), e.what());
+                }
+
+                if (not rc or rc->is_expired(now))
+                {
+                    // try loading it, purge it if it is junk or expired
+                    purge.push_back(f);
+                    continue;
+                }
+
+                auto rid = rc->router_id();
+
+                if (rid != filename_rid)
+                {
+                    log::error(
+                        logcat,
+                        "Invalid stored RC: RC contains pubkey {} which does not match filename {}",
+                        rid,
+                        f.path());
+                    purge.push_back(f);
+                    continue;
+                }
+
+                if (not _router.is_service_node)
+                    known_rids.insert(rid);  // Only clients use this container
+                known_rcs.emplace(std::move(rid), std::move(*rc));
             }
-            catch (const std::exception& e)
+            else if (ext == ZRTT_FILE_EXT)
             {
-                log::warning(logcat, "Failed to load {} from stored RCs: {}", f.path(), e.what());
+                std::string content;
+                try
+                {
+                    content = util::file_to_string(f.path());
+                    oxenc::bt_dict_consumer top{content};
+                    RouterID rid{top.require_span<std::byte, RouterID::SIZE>("@")};
+                    if (rid != filename_rid)
+                    {
+                        log::error(
+                            logcat, "Invalid stored 0RTT ticket: pubkey {} does not match filename {}", rid, f.path());
+                        purge.push_back(f);
+                        continue;
+                    }
+
+                    std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>> tickets;
+                    auto recs = top.consume_list_consumer();
+                    while (!recs.is_finished())
+                    {
+                        auto rec = recs.consume_dict_consumer();
+                        auto data_sp = rec.require_span<unsigned char>("d");
+                        std::vector<unsigned char> data{data_sp.begin(), data_sp.end()};
+                        std::chrono::sys_seconds expiry{std::chrono::seconds{rec.require<int64_t>("e")}};
+                        if (expiry > real_now)
+                            tickets.emplace_back(std::move(data), expiry);
+                        rec.finish();
+                    }
+                    top.finish();
+
+                    if (tickets.empty())
+                    {
+                        // Everything expired
+                        log::debug(logcat, "Deleting 0RTT ticket file {}: no unexpired tickets found", f.path());
+                        purge.push_back(f);
+                        continue;
+                    }
+                    _0rtt_tickets[rid] = std::move(tickets);
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(
+                        logcat, "Failed to load {} from stored 0RTT data: {}; deleting it.", f.path(), e.what());
+                    purge.push_back(f);
+                    continue;
+                }
             }
-
-            if (not rc or rc->is_expired(now))
-            {
-                // try loading it, purge it if it is junk or expired
-                purge.push_back(f);
-                continue;
-            }
-
-            auto rid = rc->router_id();
-
-            if (rid != filename_rid)
-            {
-                log::error(
-                    logcat, "Invalid stored RC: RC contains pubkey {} which does not match filename {}", rid, f.path());
-                purge.push_back(f);
-                continue;
-            }
-
-            if (not _router.is_service_node)
-                known_rids.insert(rid);  // Only clients use this container
-            known_rcs.emplace(std::move(rid), std::move(*rc));
+            else
+                log::trace(logcat, "Skipping file with unknown extension: {}", f.path());
         }
 
         if (not purge.empty())
         {
-            log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+            log::info(logcat, "removing {} invalid or expired RC/0RTT files from disk", purge.size());
             for (const auto& fpath : purge)
                 remove(fpath);
         }
+
+        log::info(
+            logcat, "Loaded {} RCs + 0-RTT tickets for {} relays from disk", known_rcs.size(), _0rtt_tickets.size());
     }
 
     void NodeDB::cleanup()
@@ -1025,4 +1089,108 @@ namespace llarp
             result.push_back(*rid);
         return result;
     }
+
+    void NodeDB::store_0rtt(const RouterID& rid, std::vector<unsigned char> data, std::chrono::sys_seconds expiry)
+    {
+        std::lock_guard lock{_0rtt_mutex};
+        auto& tickets = _0rtt_tickets[rid];
+        while (tickets.size() >= MAX_0RTT_TICKETS)
+            tickets.pop_front();
+        tickets.emplace_back(std::move(data), expiry);
+        _0rtt_dirty.insert(rid);
+        _0rtt_saver->wake();
+    }
+
+    std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
+    {
+        std::lock_guard lock{_0rtt_mutex};
+        std::optional<std::vector<unsigned char>> ret;
+        auto now = std::chrono::system_clock::now();
+        auto it = _0rtt_tickets.find(rid);
+        if (it != _0rtt_tickets.end())
+        {
+            auto& tickets = it->second;
+            // Delete any expired tickets:
+            while (!tickets.empty() && tickets.front().second < now)
+                tickets.pop_front();
+            if (!tickets.empty())
+            {
+                ret = std::move(tickets.front().first);
+                tickets.pop_front();
+            }
+            _0rtt_dirty.insert(rid);
+            _0rtt_saver->wake();
+        }
+        return ret;
+    }
+
+    void NodeDB::_0rtt_save()
+    {
+        std::list<std::pair<std::filesystem::path, std::string>> rewrite;
+        std::list<std::filesystem::path> erase;
+
+        {
+            std::lock_guard lock{_0rtt_mutex};
+            auto now = std::chrono::system_clock::now();
+            for (const auto& rid : _0rtt_dirty)
+            {
+                auto path = get_path_by_pubkey(rid, ZRTT_FILE_EXT);
+                auto it = _0rtt_tickets.find(rid);
+                if (it == _0rtt_tickets.end())
+                    erase.push_back(std::move(path));
+                else
+                {
+                    auto& tickets = it->second;
+                    // Delete any expired tickets:
+                    while (!tickets.empty() && tickets.front().second < now)
+                        tickets.pop_front();
+
+                    if (!tickets.empty())
+                    {
+                        oxenc::bt_dict_producer top;
+                        top.append("@", rid.span());
+                        auto recs = top.append_list("r");
+                        for (const auto& [data, exp] : tickets)
+                        {
+                            auto e = recs.append_dict();
+                            e.append("d", std::span{reinterpret_cast<const std::byte*>(data.data()), data.size()});
+                            e.append("e", exp.time_since_epoch().count());
+                        }
+                        rewrite.emplace_back(std::move(path), std::move(top).str());
+                        ++it;
+                    }
+                    else
+                    {
+                        erase.push_back(std::move(path));
+                        it = _0rtt_tickets.erase(it);
+                    }
+                }
+            }
+            _0rtt_dirty.clear();
+        }
+
+        for (const auto& path : erase)
+        {
+            try
+            {
+                std::filesystem::remove(path);
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Failed to remove expired 0RTT ticket file {}: {}", path, e.what());
+            }
+        }
+        for (const auto& [path, data] : rewrite)
+        {
+            try
+            {
+                util::buffer_to_file(path, data);
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Failed to update 0RTT ticket file {}: {}", path, e.what());
+            }
+        }
+    }
+
 }  // namespace llarp

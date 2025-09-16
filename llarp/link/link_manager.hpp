@@ -15,6 +15,7 @@
 
 #include <oxen/quic/btstream.hpp>
 #include <oxen/quic/connection.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/endpoint.hpp>
 #include <oxen/quic/format.hpp>
 #include <oxen/quic/loop.hpp>
@@ -80,7 +81,7 @@ namespace llarp::link
 
         // Registers commands on the client or relay end of a client-relay or relay-relay connection
         // NB: this could be called from either the network or router loop thread!
-        void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
+        void register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote);
 
         // Registered the bootstrap command (bfetch_rcs) on the server (i.e. incoming) bootstrap
         // connection (i.e.  to the relay being used as a bootstrap).  The client side of such a
@@ -138,7 +139,7 @@ namespace llarp::link
         void handle_path_ping(quic::message, std::optional<std::string> = std::nullopt);
 
         // Path messages
-        void handle_path_build(quic::message, const RouterID& from);
+        void handle_path_build(quic::message, const std::variant<RouterID, quic::ConnectionID>& from);
         void handle_path_latency(quic::message);
 
         // These requests come over a path (as a "path_control" request),
