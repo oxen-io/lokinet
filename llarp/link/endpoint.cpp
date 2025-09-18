@@ -71,9 +71,11 @@ namespace llarp::link
         : manager{lm},
           router{lm.router},
           loop{std::make_unique<quic::Loop>()},
-          tls_creds{quic::GNUTLSCreds::make_from_ed_keys(
-              {reinterpret_cast<const char*>(router.secret_key().data()), 32},
-              {reinterpret_cast<const char*>(router.id().data()), 32})}
+          tls_creds{
+              router.is_service_node ? quic::GNUTLSCreds::make_from_ed_keys(
+                  {reinterpret_cast<const char*>(router.secret_key().data()), 32},
+                  {reinterpret_cast<const char*>(router.id().data()), 32})
+                                     : quic::GNUTLSCreds::make_unauthenticated()}
     {
         std::optional<quic::opt::inbound_alpns> inbound_alpn;
         if (router.is_service_node)
@@ -869,10 +871,10 @@ namespace llarp::link
         });
     }
 
+    // Establish a no-creds, no-0rtt, bootstrap or relay-testing (client ALPN) connection.
     static auto testcat = log::Cat("testing");
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> special_connect_impl(
         quic::Endpoint& endpoint,
-        std::shared_ptr<quic::GNUTLSCreds> tls_creds,
         const RelayContact& rc,
         std::string_view alpn)
     {
@@ -890,7 +892,6 @@ namespace llarp::link
 
         conn = endpoint.connect(
             quic::RemoteAddress{rc.router_id().to_view(), rc.addr()},
-            std::move(tls_creds),
             quic::opt::idle_timeout{BOOTSTRAP_IDLE_TIMEOUT},
             quic::opt::outbound_alpn(alpn),
             [bs](quic::Connection& conn) {
@@ -929,13 +930,13 @@ namespace llarp::link
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
         const RelayContact& rc)
     {
-        return special_connect_impl(*endpoint, tls_creds, rc, BOOTSTRAP_ALPN);
+        return special_connect_impl(*endpoint, rc, BOOTSTRAP_ALPN);
     }
 
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>>
     Endpoint::testing_client_connect(const RelayContact& rc)
     {
-        return special_connect_impl(*endpoint, tls_creds, rc, CLIENT_ALPN);
+        return special_connect_impl(*endpoint, rc, CLIENT_ALPN);
     }
 
 }  // namespace llarp::link
