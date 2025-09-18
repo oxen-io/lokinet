@@ -553,14 +553,15 @@ namespace llarp::link
         std::shared_ptr<quic::BTRequestStream> control_stream;
 
         std::variant<RouterID, quic::ConnectionID> remote{conn.reference_id()};
+        if (alpn == RELAY_ALPN)
+        {
+            assert(remote_key.size() == RouterID::SIZE);
+            remote.emplace<RouterID>(remote_key.first<RouterID::SIZE>());
+        }
+
         if (conn.is_inbound())
         {
             assert(router.is_service_node);
-            if (alpn == RELAY_ALPN)
-            {
-                assert(remote_key.size() == RouterID::SIZE);
-                remote.emplace<RouterID>(remote_key.first<RouterID::SIZE>());
-            }
             control_stream =
                 conn.template queue_incoming_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
                     log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
