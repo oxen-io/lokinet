@@ -158,6 +158,18 @@ namespace llarp::link
         // would become a parallel connection).
         int num_relay_conns(bool include_pending = false) const;
 
+        // If all current established outbound client-to-relay edge connections share the same
+        // distinct IP range (according to the unique-hop-mask config setting) then this returns
+        // that range.  If there are multiple ranges (or no established connections, or the unique
+        // range setting is disabled) then this returns nullopt.
+        //
+        // This is used when selecting a random terminus when constructing a new inbound path to
+        // avoid selecting a terminus that would be forced to violate the unique range setting
+        // because of the lack of distinct available edge connection IP networks.
+        //
+        // This method is only meaningful for clients; relays always return std::nullopt.
+        std::optional<quic::ipv4_net> unique_edge_range() const;
+
         //        bool establish_connection(
         //            quic::RemoteAddress remote,
         //            RouterID rid,

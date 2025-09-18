@@ -278,6 +278,29 @@ namespace llarp::link
         return ret;
     }
 
+    std::optional<quic::ipv4_net> Endpoint::unique_edge_range() const
+    {
+        std::optional<quic::ipv4_net> network;
+
+        auto mask = router.config().paths.unique_hop_netmask;
+        if (not mask or router.is_service_node)
+            return network;
+
+        for (auto& [rid, conn] : client_conns)
+        {
+            auto ip = conn->conn->remote().to_ipv4();
+            if (not network)
+                network = ip % mask;
+            else if (not network->contains(ip))
+            {
+                // There are at least two different networks
+                network.reset();
+                break;
+            }
+        }
+        return network;
+    }
+
     bool Endpoint::connected_to_relay(const RouterID& relay, bool include_pending) const
     {
         if (router.is_service_node ? relay_conns.contains(relay) : client_conns.contains(relay))

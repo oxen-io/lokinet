@@ -3,6 +3,7 @@
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/link/endpoint.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
@@ -276,8 +277,28 @@ namespace llarp::handlers
             needed,
             _target_paths);
 
-        // Exclude any inbound pivots we are already using so that we diversify:
-        auto filter = [this](const RelayContact& rc) {
+        // If we *don't* have distinct IP ranges from our current edges (e.g. by random chance, or
+        // with only a single edge, or just because that's how the pinned edges pan out) then we
+        // want to exclude the random terminus that we choose to exclude that singleton range from
+        // being the terminus: because otherwise we can end up in a situation where it is impossible
+        // to respect the distinct-ip-range setting because once we have selected a pivot, and feed
+        // it into PathHandler::select_hops_to_remote, it has no choice but to use that pivot *and*
+        // the edge, and those conflict.
+        //
+        // (If we have multiple ranges for edges then it's not an issue because whichever pivot we
+        // select will have at least one available edge not in its range).
+        //
+        // So, if we're in that only-one-edge-ip-range case, we apply the edge exclusion back here at
+        // terminus selection so that our selection here doesn't force select_hops_to_remote into
+        // that situation.
+
+        auto unique_edge_range = router.link_endpoint().unique_edge_range();
+
+        auto filter = [this, &unique_edge_range](const RelayContact& rc) {
+            if (unique_edge_range and unique_edge_range->contains(rc.addr().to_ipv4()))
+                return false;
+
+            // Exclude any inbound pivots we are already using so that we diversify:
             const auto& rid = rc.router_id();
             for (const auto& p : paths())
                 if (p.terminal_rid() == rid)
