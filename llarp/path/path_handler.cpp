@@ -134,14 +134,14 @@ namespace llarp::path
         return nlohmann::json{{"numHops", _num_hops}, {"targetPaths", _target_paths}, {"paths", std::move(paths)}};
     }
 
-    std::optional<RelayContact> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
+    const RelayContact* PathHandler::select_first_hop(std::function<bool(const RelayContact&)> pred) const
     {
 #ifdef LOKINET_DEBUG_PATH_SEED
         auto current_remotes_unsorted =
 #else
         auto current_remotes =
 #endif
-            router.link_manager().endpoint.get_current_relays();
+            router.link_endpoint().get_current_relays();
 
 #ifdef LOKINET_DEBUG_PATH_SEED
         std::vector<RouterID> current_remotes;
@@ -155,11 +155,18 @@ namespace llarp::path
         }
 #endif
 
-        RouterID edge;
+        const RelayContact* selected = nullptr;
         int acceptable = 0;
         for (auto& rid : current_remotes)
         {
-            if (pred && !pred(rid))
+            auto* rc = router.node_db().get_rc(rid);
+            if (!rc)
+            {
+                log::debug(logcat, "Skipping {}: missing RC", rid);
+                continue;
+            }
+
+            if (pred && !pred(*rc))
                 log::trace(
                     logcat, "Not considering {} for first hop selection because it failed the given predicate", rid);
             else if (router.router_profiling().is_bad_for_path(rid))  // always returns false on testnet
@@ -176,24 +183,15 @@ namespace llarp::path
                         rng ? std::uniform_int_distribution<int>{0, acceptable}(*rng) :
 #endif
                             std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0))
-                    edge = rid;
+                    selected = rc;
                 acceptable++;
             }
         }
 
-        if (acceptable == 0)
-        {
+        if (!selected)
             log::debug(logcat, "Failed to select first hop: no acceptable candidates found");
-            return std::nullopt;
-        }
-        if (auto* rc = router.node_db().get_rc(edge))
-        {
-            log::debug(logcat, "Selected {} as edge router", edge);
-            return *rc;
-        }
 
-        log::debug(logcat, "Selected {} as edge router, but no RC found for that relay", edge);
-        return std::nullopt;
+        return selected;
     }
 
     int PathHandler::num_active_paths(std::chrono::milliseconds expiry_ts) const
@@ -272,29 +270,6 @@ namespace llarp::path
 
         exclude(*pivot_rc);
 
-        // First hop selection has its own distinct criteria:
-        auto maybe_first = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); });
-
-        // If that failed, retry first hop selection *without* the IP range exclusion being applied:
-        // this is so that if the pivot happens to be in the same range as all your current (or
-        // allowed) edges, you can still connect to it.
-        if (!maybe_first)
-            maybe_first = select_first_hop();
-
-        if (maybe_first)
-        {
-            --hops_needed;
-            hops->push_back(std::move(*maybe_first));
-            exclude(hops->back());
-        }
-        else
-        {
-            log::warning(logcat, "No suitable first hop candidate for path to {}", pivot);
-            return std::nullopt;
-        }
-
-        log::trace(logcat, "First/last hop selected, {} hops remaining to select", hops_needed);
-
         auto filter =
             [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RelayContact& rc) {
                 auto& rid = rc.router_id();
@@ -314,6 +289,84 @@ namespace llarp::path
 
                 return true;
             };
+
+        // Edge selection has its own distinct criteria: we can only select from edge routers we
+        // have established connections to.  We take up to three passes to find a suitable edge:
+        // 1. Try finding one with exclusion of `pivot`'s net range (when netmask exclusions are
+        //    enabled).
+        // 2. Try finding one that only excludes the pivot itself.
+        // 3. Use the pivot as the first hop, and force path length of at least 3 (because
+        //    client-A-A is not a valid path, so we need to force client-A-B-A).
+        //
+        // Ideally we want to avoid cases 2 or 3 but sometimes that is simply impossible: for
+        // example if you need to build a path to A specifically, and A happens to be your only
+        // pinned edge.  If we do find ourselves in case 2 or 3, we extend the path length by 1 (if
+        // possible) to compensate for the repeated network in the path.
+        //
+        // We avoid cases 2/3 for inbound/utility paths by detecting when we have all edges in the
+        // same range and avoiding that range for pivot selection.  For outbound paths it is
+        // sometimes unavoidable because outbound paths need a specific terminus, leaving us with no
+        // choice.
+        const RelayContact* maybe_first = nullptr;
+        bool extend_path = false;
+        if (netmask)
+        {
+            maybe_first = select_first_hop(filter);
+
+            if (!maybe_first)
+                // We failed to find any edge that doesn't overlap with pivot's range, so extend the
+                // path length by one to compensate.
+                extend_path = true;
+        }
+
+        // Without a netmask filter, or if we couldn't find anything with the filter applied, open
+        // up the selection to simply any relay that isn't the pivot itself:
+        if (!maybe_first)
+            maybe_first = select_first_hop([&pivot](const RelayContact& rc) { return rc.router_id() != pivot; });
+
+        // If even that failed then we have to use the pivot itself.  This seems weird, but can
+        // happen if you are connected to only a single router (e.g. with a pinned edge) *and* want
+        // to build a path to that router.
+        if (!maybe_first)
+        {
+            extend_path = true;
+            maybe_first = router.node_db().get_rc(pivot);
+        }
+
+        // If that failed, retry first hop selection *without* the IP range exclusion being applied:
+        // this is so that if the pivot happens to be in the same range as all your current (or
+        // allowed) edges, you can still connect to it.
+        if (!maybe_first)
+            maybe_first = select_first_hop();
+
+        if (!maybe_first)
+        {
+            log::warning(logcat, "No suitable first hop candidate for path to {}", pivot);
+            return std::nullopt;
+        }
+
+        --hops_needed;
+        hops->push_back(std::move(*maybe_first));
+        exclude(hops->back());
+
+        // If we're in two-hop mode, and went through the last selection fallback above, then we
+        // could have just selected a path (client-A-A) but that is not valid: so in that special
+        // case we forcible extend the path length by 1 to construct a path client-A-B-A instead.
+        if (extend_path and hops_needed < BUILD_LENGTH - 2)
+        {
+            log::debug(
+                logcat,
+                "Extending path length from {} to {} because of unavoidable edge/terminus network overlap"
+                " (edge: {}, terminus: {})",
+                hops_needed + 2,
+                hops_needed + 3,
+                maybe_first->addr(),
+                pivot_rc->addr());
+            ++hops_needed;
+        }
+
+        log::trace(logcat, "First/last hop selected, {} hops remaining to select", hops_needed);
+
         for (; hops_needed > 0; hops_needed--)
         {
             // We can't use get_n_random_rcs here to select hops_needed all at once because as we

@@ -180,8 +180,9 @@ namespace llarp
 
             /// pick a first hop; if predicate is given, only routers for which it returns true are
             /// permitted.  (Note that the path build limiter and router profile are always checked,
-            /// regardless of the predicate).
-            std::optional<RelayContact> select_first_hop(std::function<bool(const RouterID&)> pred = nullptr) const;
+            /// regardless of the predicate).  Returns nullptr if no acceptable first hops are
+            /// found.
+            const RelayContact* select_first_hop(std::function<bool(const RelayContact&)> pred = nullptr) const;
 
           private:
             /// Checks whether we are currently able to build the given path (e.g. not stopped, the
