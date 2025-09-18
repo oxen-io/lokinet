@@ -419,8 +419,7 @@ namespace llarp::link
                 quic::RemoteAddress{rid.to_view(), rc.addr()},
                 tls_creds,
                 quic::opt::keep_alive{router.is_service_node ? RELAY_OUTBOUND_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
-                quic::opt::idle_timeout{router.is_service_node ? RELAY_OUTBOUND_IDLE_TIMEOUT : CLIENT_IDLE_TIMEOUT},
-                [this](quic::Connection& conn) { on_conn_established(conn); });
+                quic::opt::idle_timeout{router.is_service_node ? RELAY_OUTBOUND_IDLE_TIMEOUT : CLIENT_IDLE_TIMEOUT});
 
             auto control_stream = make_control(*conn, rid, router.is_service_node ? RELAY_ALPN : CLIENT_ALPN);
 
@@ -711,7 +710,6 @@ namespace llarp::link
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        auto alpn = conn.selected_alpn();
 
         std::shared_ptr<quic::BTRequestStream> inbound_cstream;
         if (conn.is_inbound())
@@ -874,9 +872,7 @@ namespace llarp::link
     // Establish a no-creds, no-0rtt, bootstrap or relay-testing (client ALPN) connection.
     static auto testcat = log::Cat("testing");
     std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> special_connect_impl(
-        quic::Endpoint& endpoint,
-        const RelayContact& rc,
-        std::string_view alpn)
+        quic::Endpoint& endpoint, const RelayContact& rc, std::string_view alpn)
     {
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> ret;
         auto& [conn, control] = ret;
