@@ -56,7 +56,7 @@ set(ZLIB_HASH SHA256=38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f8
 set(ZSTD_VERSION 1.5.7 CACHE STRING "zstd version")
 set(ZSTD_MIRROR ${LOCAL_MIRROR} https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}
     CACHE STRING "zstd mirror(s)")
-set(ZSTD_SOURCE zstd-${ZSTD_VERSION}.tar.gz
+set(ZSTD_SOURCE zstd-${ZSTD_VERSION}.tar.gz)
 set(ZSTD_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
     CACHE STRING "zstd source hash")
 
@@ -246,7 +246,7 @@ if(NOT TARGET libzstd::static)
   add_static_target(zstd zstd_external libzstd.a)
   # Use the same target name as libsession-util so that we can use libsession's static zstd if we
   # are being built as part of libsession:
-  add_library(libzstd::static ALIAS zstd_external)
+  add_library(libzstd::static ALIAS zstd)
 endif()
 
 

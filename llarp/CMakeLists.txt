@@ -235,8 +235,10 @@ target_link_libraries(lokinet-dns
   PUBLIC
   lokinet-cryptography
   lokinet-config
-  lokinet-platform
 )
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-dns PUBLIC lokinet-platform)
+endif()
 
 target_link_libraries(lokinet-path
   PUBLIC
