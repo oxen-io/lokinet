@@ -99,9 +99,9 @@ namespace llarp::consensus
                     {
                         log::info(
                             logcat,
-                            "Testing of {} failed: Bootstrap fetch failed: {}",
+                            "Testing of {} failed: {}",
                             rid.to_network_address(true),
-                            m.timed_out ? "timeout" : m.body());
+                            m.timed_out ? "request timed out" : m.body());
                         add_failing_node(rid, prev_fails);
                     }
                     router.oxend()->inform_connection(rid, (bool)m);
