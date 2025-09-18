@@ -849,12 +849,19 @@ namespace llarp
                     oxenc::bt_dict_consumer top{content};
                     RouterID rid{top.require_span<std::byte, RouterID::SIZE>("@")};
                     if (rid != filename_rid)
+                        throw std::runtime_error{"pubkey {} does not match filename {}"_format(rid, f.path())};
+
+                    if (top.skip_until("R"))
                     {
-                        log::error(
-                            logcat, "Invalid stored 0RTT ticket: pubkey {} does not match filename {}", rid, f.path());
-                        purge.push_back(f);
-                        continue;
+                        if (!_router.is_service_node)
+                            throw std::runtime_error{"ticket is for a relay but we are a client"};
+
+                        RouterID check_rid{top.consume_span<std::byte, RouterID::SIZE>()};
+                        if (check_rid != _router.id())
+                            throw std::runtime_error{"ticket is for a different relay"};
                     }
+                    else if (_router.is_service_node)
+                        throw std::runtime_error{"ticket is for a client but we are a relay"};
 
                     std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>> tickets;
                     auto recs = top.consume_list_consumer();
@@ -1148,7 +1155,17 @@ namespace llarp
                     if (!tickets.empty())
                     {
                         oxenc::bt_dict_producer top;
+                        // Target relay RID, for verification that this is actually connecting to
+                        // the expected place:
                         top.append("@", rid.span());
+
+                        // If *we* are a relay then record our own pubkey here (and otherwise
+                        // don't), so that when loading we refuse to load a file that doesn't match
+                        // our pubkey and/or relay state, just in case someone copies the nodedb
+                        // with tickets in it from one data dir to another.
+                        if (_router.is_service_node)
+                            top.append("R", _router.id().to_view());
+
                         auto recs = top.append_list("r");
                         for (const auto& [data, exp] : tickets)
                         {
