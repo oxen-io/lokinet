@@ -695,12 +695,7 @@ namespace llarp::link
             // because the stream must be queued before stream data gets processed (which could
             // happen immediately after this method call returns) so that we don't accidentally end
             // up with a plain Stream for the stream id rather than a BTRequestStream.
-            //
-            if (alpn == RELAY_ALPN)
-            {
-                assert(conn.remote_key().size() == RouterID::SIZE);
-                inbound_cstream = make_control(conn, conn.remote_key(), conn.selected_alpn());
-            }
+            inbound_cstream = make_control(conn, conn.remote_key(), conn.selected_alpn());
         }
 
         router.loop.call([this, weak = conn.weak_from_this(), inbound_cstream = std::move(inbound_cstream)]() mutable {
