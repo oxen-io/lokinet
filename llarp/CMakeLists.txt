@@ -45,8 +45,6 @@ endif()
 lokinet_add_library(lokinet-core
   context.cpp
   
-  consensus/reachability_testing.cpp
-  
   link/connection.cpp
   link/endpoint.cpp
   link/link_manager.cpp
@@ -57,7 +55,11 @@ lokinet_add_library(lokinet-core
 )
 
 if (LOKINET_FULL)
-  target_sources(lokinet-core PRIVATE router/route_poker.cpp)
+  target_sources(lokinet-core
+    PRIVATE
+    router/route_poker.cpp
+    consensus/reachability_testing.cpp
+  )
 endif()
 
 if (LOKINET_FULL)

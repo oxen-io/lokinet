@@ -64,6 +64,8 @@ namespace llarp
         _omq->MAX_MSG_SIZE = -1;
         if (_config.router.worker_threads > 0)
             _omq->set_general_threads(_config.router.worker_threads);
+
+        _router_testing = std::make_shared<consensus::reachability_testing>(*this);
 #endif
 
         init_logging();
@@ -255,7 +257,7 @@ namespace llarp
             });
 
             if (not _config.lokid.disable_testing)
-                _router_testing.start();
+                _router_testing->start();
         }
         else
 #endif
@@ -1034,7 +1036,12 @@ namespace llarp
         }
     }
 
-    void Router::on_test_ping() { _router_testing.incoming_ping(); }
+    void Router::on_test_ping()
+    {
+#ifndef LOKINET_EMBEDDED_ONLY
+        _router_testing->incoming_ping();
+#endif
+    }
 
     void Router::stop()
     {
@@ -1059,9 +1066,9 @@ namespace llarp
                 log::debug(logcat, "stopping service manager...");
                 llarp::sys::service_manager->stopping();
             }
-#endif
 
-            _router_testing.stop();
+            _router_testing->stop();
+#endif
 
             _session_endpoint->stop(true);
 

@@ -2,7 +2,6 @@
 
 #include "route_poker.hpp"
 
-#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/key_manager.hpp>
@@ -43,6 +42,11 @@ namespace llarp
         class RPCServer;
         class OxendRPC;
     }  // namespace rpc
+
+    namespace consensus
+    {
+        class reachability_testing;
+    }  // namespace consensus
 
     namespace quic = oxen::quic;
 
@@ -112,7 +116,8 @@ namespace llarp
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
 
-        consensus::reachability_testing _router_testing{*this};
+        // Not actually shared, but not available at all in non-full builds.
+        std::shared_ptr<consensus::reachability_testing> _router_testing;
 
         // The actual network address we use for communications:
         quic::Address _listen_address;
