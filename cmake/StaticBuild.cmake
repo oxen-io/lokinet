@@ -199,8 +199,8 @@ function(build_external target)
   endforeach()
   string(REPLACE ___TARGET___ ${target} arg_BUILD_BYPRODUCTS "${arg_BUILD_BYPRODUCTS}")
 
-  if(arg_CONFIGURE_COMMAND STREQUAL DEFAULT_CMAKE)
-    set(configure)
+  if(arg_CONFIGURE_COMMAND MATCHES "^DEFAULT_CMAKE")
+      string(REGEX REPLACE "^DEFAULT_CMAKE(;?)" "CMAKE_ARGS;-DCMAKE_INSTALL_PREFIX=${DEPS_DESTDIR}\\1" configure "${arg_CONFIGURE_COMMAND}")
   else()
     set(configure CONFIGURE_COMMAND ${arg_CONFIGURE_COMMAND})
   endif()
@@ -238,15 +238,15 @@ endif()
 if(NOT TARGET libzstd::static)
   build_external(zstd
       CONFIGURE_COMMAND DEFAULT_CMAKE
+        -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_DICTBUILDER=OFF
       SOURCE_SUBDIR build/cmake
       BUILD_BYPRODUCTS
         ${DEPS_DESTDIR}/lib/libzstd.a
         ${DEPS_DESTDIR}/include/zstd.h
   )
-  add_static_target(zstd zstd_external libzstd.a)
-  # Use the same target name as libsession-util so that we can use libsession's static zstd if we
-  # are being built as part of libsession:
-  add_library(libzstd::static ALIAS zstd)
+  # Use the same libzstd::static target name as libsession-util so that we can use libsession's
+  # static zstd if we are being built as part of libsession:
+  add_static_target(libzstd::static zstd_external libzstd.a)
 endif()
 
 
@@ -285,9 +285,9 @@ if(LOKINET_FULL)
   )
   add_static_target(libunbound unbound_external libunbound.a)
   if(NOT WIN32)
-    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle")
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "hogweed::hogweed;nettle::nettle")
   else()
-    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle;ws2_32;crypt32;iphlpapi")
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "hogweed::hogweed;nettle::nettle;ws2_32;crypt32;iphlpapi")
   endif()
 
 
