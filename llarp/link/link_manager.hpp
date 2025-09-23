@@ -31,6 +31,7 @@ namespace llarp
 }
 namespace llarp::link
 {
+    using session::session_tag;
     // Keep-alive and idle timeouts.  For relay-to-relay connections, the keep-alive is every 10s;
     // for client-to-relay connections, we use a longer, 20s keep-alive.
     //
@@ -126,32 +127,45 @@ namespace llarp::link
 
         void handle_fetch_bootstrap_rcs(quic::message m);
 
-        // Inner handlers for relayed requests
-        void handle_path_control(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_publish_cc(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_fetch_rcs(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_fetch_router_ids(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_find_cc(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_resolve_sns(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_initiate_session(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_close_session(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_path_switch(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_path_ping(quic::message, std::optional<std::string> = std::nullopt);
+        void handle_direct_request(void (Manager::*respond)(std::span<const std::byte>, std::function<void(std::string)>, bool), quic::message m);
+
+        // handlers for requests which could come over a path or a relay request
+        void handle_publish_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+        void handle_find_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+        void handle_fetch_rcs(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+
+        void handle_path_control(quic::message);
+
+        // handlers for path requests
+        void handle_path_publish_cc(std::span<const std::byte> body, std::function<void(std::string)> respond);
+        void handle_path_fetch_router_ids(std::span<const std::byte> body, std::function<void(std::string)> respond);
+        void handle_path_find_cc(std::span<const std::byte> body, std::function<void(std::string)> respond);
+        void handle_path_fetch_rcs(std::span<const std::byte> body, std::function<void(std::string)> respond);
+        void handle_path_resolve_sns(std::span<const std::byte> body, std::function<void(std::string)> respond);
+        void handle_path_ping(std::span<const std::byte> body, std::function<void(std::string)> respond);
 
         // Path messages
         void handle_path_build(quic::message, const std::variant<RouterID, quic::ConnectionID>& from);
         void handle_path_latency(quic::message);
 
+        void handle_path_session_control(quic::message m);
+
+        // session messages
+        void handle_initiate_session(quic::message, std::optional<std::string> = std::nullopt);
+        void handle_close_session(quic::message, std::optional<std::string> = std::nullopt);
+        void handle_path_switch(quic::message, std::optional<std::string> = std::nullopt);
+
         // These requests come over a path (as a "path_control" request),
         // we may or may not need to make a request to another relay,
         // then respond (onioned) back along the path.
-        static std::unordered_map<std::string_view, void (Manager::*)(quic::message, std::optional<std::string>)>
+        static std::unordered_map<std::string_view, void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
             path_requests;
 
         // Path relaying
-        void handle_path_data_message(std::vector<std::byte> msg);
-        void handle_path_request(quic::message, std::span<const std::byte> payload);
+        void handle_session_message(std::vector<std::byte> msg, bool control = false);
+        void handle_path_request(std::span<const std::byte> payload, std::function<void(std::string)> respond);
         void handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce);
+        void handle_session_control(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce);
 
         // Path responses
         void handle_path_latency_response(quic::message);

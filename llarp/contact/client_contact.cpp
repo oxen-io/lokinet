@@ -104,8 +104,6 @@ namespace llarp
         return ret;
     }
 
-    session_tag ClientContact::generate_session_tag() const { return session_tag{_protos}; }
-
     bool ClientContact::is_expired(std::chrono::milliseconds now) const
     {
         // We only need to check the first one, because this is sorted newest-to-oldest and so if

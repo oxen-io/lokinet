@@ -7,11 +7,6 @@ namespace llarp
 {
     struct Config;
 
-    namespace handlers
-    {
-        class SessionEndpoint;
-    }
-
     // KeyManager manages the cryptographic keys stored on disk for the local
     // node. This includes private keys as well as the self-signed router contact
     // file (e.g. "self.signed").

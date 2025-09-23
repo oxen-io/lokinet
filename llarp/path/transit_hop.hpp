@@ -81,7 +81,7 @@ namespace llarp::path
         // been dropped.
         bool is_dead{false};
 
-        std::optional<std::pair<std::variant<RouterID, oxen::quic::ConnectionID>, HopID>> next_id(const HopID& h) const;
+        std::pair<std::variant<RouterID, oxen::quic::ConnectionID>, HopID> next_id(const HopID& h) const;
 
         // Returns true if this TransitHop matches the same transit components as other, that is,
         // has the same tx/rxids and upstream/downstream.  This is not equality, however, as this

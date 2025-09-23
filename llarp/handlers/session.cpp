@@ -115,7 +115,7 @@ namespace llarp::handlers
         if (auto it = _sessions.find(remote); it != _sessions.end())
         {
             if (auto& s = it->second)
-                _session_tags.erase(s->tag());
+                _session_tags.erase(s->inbound_tag());
             _sessions.erase(it);
         }
     }
@@ -162,26 +162,6 @@ namespace llarp::handlers
             log::warning(logcat, "Received path-switch request for unknown session (tag:{})", t);
 
         return false;
-    }
-
-    void SessionEndpoint::outbound_session_established(const session::Session& s)
-    {
-        if (auto it = _sessions.find(s.remote()); it != _sessions.end())
-        {
-            auto [it2, ins] = _session_tags.emplace(s.tag(), it->second);
-            if (!ins)
-            {
-                // TODO FIXME: we should redesign how session tags are constructed so that this
-                // isn't possible, e.g. by incorporating some local data into the tag value.
-                log::error(
-                    logcat,
-                    "Failed to insert outbound session tag for {}: tag {} already exists (associated with {})",
-                    s.remote(),
-                    s.tag(),
-                    it2->second->remote());
-            }
-            log::debug(logcat, "Associated session tag {} with outbound remote {}", s.tag(), s.remote());
-        }
     }
 
     bool SessionEndpoint::close_session(NetworkAddress remote, bool send_close)
@@ -898,76 +878,58 @@ namespace llarp::handlers
         return std::nullopt;
     }
 
-    std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        const NetworkAddress& initiator,
-        const HopID& remote_pivot_txid,
-        std::shared_ptr<path::Path> path,
-        const SharedSecret& session_key)
+    void SessionEndpoint::handle_session_init(
+            std::vector<std::byte>&& payload,
+            std::shared_ptr<path::Path> path)
     {
-        assert(!router.is_service_node);
-        // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
-        // Rather we should be retrying until we find one that isn't in _session_tags so that it
-        // can't possible conflict below.
-        session_tag tag{protocols};
-
-        return setup_inbound_session(std::make_shared<session::InboundClientSession>(
-            initiator, *this, tag, session_key, std::move(path), remote_pivot_txid));
-    }
-    std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        const NetworkAddress& initiator,
-        const HopID& remote_pivot_txid,
-        std::shared_ptr<path::TransitHop> thop,
-        const SharedSecret& session_key)
-    {
-        assert(router.is_service_node);
-        // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
-        // Rather we should be retrying until we find one that isn't in _session_tags so that it
-        // can't possible conflict below.
-        session_tag tag{protocols};
-
-        return setup_inbound_session(std::make_shared<session::InboundRelaySession>(
-            initiator, *this, tag, session_key, std::move(thop), remote_pivot_txid));
+        std::shared_ptr<session::Session> new_session{};
+        try
+        {
+            new_session = std::make_shared<session::InboundClientSession>(*this, std::move(path), std::move(payload));
+        }
+        catch (const std::exception& e)
+        {
+            log::info(logcat, "Inbound session rejected: {}", e.what());
+        }
     }
 
-    std::optional<session_tag> SessionEndpoint::setup_inbound_session(std::shared_ptr<session::Session> session)
+    void SessionEndpoint::handle_session_init(
+            std::vector<std::byte>&& payload,
+            std::shared_ptr<path::TransitHop> thop)
     {
-        if (!map_session(*session))
+        std::shared_ptr<session::Session> new_session{};
+        try
+        {
+            new_session = std::make_shared<session::InboundRelaySession>(*this, std::move(thop), std::move(payload));
+        }
+        catch (const std::exception& e)
+        {
+            log::info(logcat, "Inbound session rejected: {}", e.what());
+        }
+        // FIXME: for now only tun clients can have inbound sessions, but eventually that will
+        //        not be the case and we'll need to "if tun" this.
+        if (!map_session(*new_session))
         {
             log::warning(
                 logcat,
                 "Unable to map session to tun IP (or not allowing inbound sessions); dropping inbound session from {}",
-                session->remote());
-            return std::nullopt;
+                new_session->remote());
+            return;
         }
 
         // TODO FIXME: this is racy, e.g. if two clients establish a session to each other at the
         // same time, then they can drop different ones.  We should instead use a decision metric
         // for dropping that decides the same way on both sides (e.g. prefer session initiated by
         // the side with the smaller pubkey).
-        auto& s = _sessions[session->remote()];
+        // FIXME: If the initiator does not get our response in time, they will try again
+        // to establish a session; in that case we should replace what we have.
+        auto& s = _sessions[new_session->remote()];
         if (!s)
         {
-            s = std::move(session);
-            auto& st = _session_tags[s->tag()];
-            if (!st)
-                st = s;
-            else
-            {
-                // TODO FIXME: we should be producing the remote the session tag to use with us,
-                // rather than using the remote's tag on both sides, so that we can't conflict like
-                // this.
-                log::error(logcat, "Dropping inbound session because of conflicting session tag");
-                _sessions.erase(session->remote());
-                return std::nullopt;
-            }
+            s = std::move(new_session);
+            _session_tags[s->inbound_tag()] = s;
+            // TODO: response with our inbound tag
         }
-        else
-        {
-            log::warning(logcat, "Dropping duplicate inbound session with initiator {}", session->remote());
-            return std::nullopt;
-        }
-
-        return s->tag();
     }
 
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
@@ -1120,15 +1082,27 @@ namespace llarp::handlers
                     }
                 }
             }
-            else if (remote.client())
-                s = router.loop.make_shared<session::OutboundClientSession>(
-                    remote, *this, std::move(on_attempted), timeout);
             else
-                s = router.loop.make_shared<session::OutboundRelaySession>(
-                    remote, *this, std::move(on_attempted), timeout);
+            {
+                auto tag = next_tag();
+                if (remote.client())
+                    s = router.loop.make_shared<session::OutboundClientSession>(
+                        remote, *this, tag, std::move(on_attempted), timeout);
+                else
+                    s = router.loop.make_shared<session::OutboundRelaySession>(
+                        remote, *this, tag, std::move(on_attempted), timeout);
+                _session_tags.emplace(tag, s);
+            }
 
             return s;
         });
     }
 
+    session_tag SessionEndpoint::next_tag()
+    {
+        // zero tag used to represent a session init for convenience
+        while (_session_tags.contains(last_tag) || last_tag == 0)
+            last_tag++;
+        return last_tag;
+    }
 }  //  namespace llarp::handlers

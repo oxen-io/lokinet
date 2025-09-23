@@ -90,7 +90,7 @@ namespace llarp::link
             [this](quic::datagram dgram) {
                 // Transfer handling to the router loop:
                 router.loop.call([this, msg = std::move(dgram).extract()]() mutable {
-                    manager.handle_path_data_message(std::move(msg));
+                    manager.handle_session_message(std::move(msg));
                 });
             },
             inbound_alpn,

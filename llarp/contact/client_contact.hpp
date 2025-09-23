@@ -1,7 +1,6 @@
 #pragma once
 
 #include "client_intro.hpp"
-#include "tag.hpp"
 
 #include <llarp/constants/version.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -21,11 +20,6 @@
 namespace llarp
 {
     struct EncryptedClientContact;
-
-    namespace handlers
-    {
-        class SessionEndpoint;
-    }
 
     // TESTNET:
     inline static constexpr auto CC_PUBLISH_INTERVAL{5min};
@@ -98,8 +92,6 @@ namespace llarp
         std::optional<net::ExitPolicy> _exit_policy;
 
         std::vector<std::byte> bt_encode() const;
-
-        session_tag generate_session_tag() const;
 
       public:
         bool operator==(const ClientContact& other) const

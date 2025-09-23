@@ -5,6 +5,8 @@
 
 #include <llarp/contact/router_id.hpp>
 
+#include <sodium/crypto_aead_xchacha20poly1305.h>
+
 #include <cstdint>
 
 namespace llarp
@@ -19,6 +21,18 @@ namespace llarp::crypto
 
     /// xchacha symmetric cipher
     void xchacha20(std::span<std::byte> buf, const SharedSecret&, const SymmNonce&);
+
+    static constexpr size_t MAC_SIZE = crypto_aead_xchacha20poly1305_ietf_ABYTES;
+
+    /// encrypts a buffer in-place, putting a MAC in the final bytes
+    void xchacha20_poly1305_encrypt(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce);
+    void xchacha20_poly1305_encrypt(std::vector<std::byte>& buf, const SharedSecret& secret, const SymmNonce& nonce);
+    void xchacha20_poly1305_encrypt(std::string& buf, const SharedSecret& secret, const SymmNonce& nonce);
+
+    /// decrypts a buffer in-place, validating it against the appended MAC
+    /// empty span means decryption failed; technically I don't know if an encrypted payload
+    /// of size 0 (but authenticated with poly1305) is allowed, but we're not allowing it
+    std::span<std::byte> xchacha20_poly1305_decrypt(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce);
 
     /// path dh creator's side
     ///

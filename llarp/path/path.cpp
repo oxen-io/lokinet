@@ -186,11 +186,11 @@ namespace llarp::path
         send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
 
-    void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type)
+    void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type, bool with_mac)
     {
         auto& hopid = edge().rxid;
         auto inner_size = data.size();
-        data.resize(inner_size + ENCRYPT_PATH_MESSAGE_OVERHEAD);
+        data.resize(inner_size + (with_mac ? ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC : ENCRYPT_PATH_MESSAGE_OVERHEAD));
 
         static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
         static_assert(sizeof(HopID) == HopID::SIZE);
@@ -198,9 +198,16 @@ namespace llarp::path
         auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(data);
         assert(inner_payload.size() == inner_size);
 
+        bool first{true};
         for (const auto& hop : std::ranges::reverse_view(hops))
         {
-            crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
+            if (first && with_mac) {
+                first = false;
+                crypto::xchacha20_poly1305_encrypt(inner_payload, hop.shared_secret, nonce);
+            }
+            else
+                crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
+
             nonce ^= hop.xor_nonce;
         }
 
@@ -211,20 +218,26 @@ namespace llarp::path
 
     void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
-        encrypt_path_message(data, std::move(nonce), DATA_MESSAGE_TYPE);
+        encrypt_path_message(data, std::move(nonce), DATA_MESSAGE_TYPE, false /* mac on session payload */);
         _router.link_endpoint().send_datagram(edge().router_id, std::move(data));
     }
 
     void Path::send_path_control_message(
-        std::string_view endpoint, std::span<const std::byte> body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
     {
-        auto inner_payload = PATH::CONTROL::serialize(endpoint, body);
+        auto inner_payload = PATH::CONTROL::serialize(method, body);
         std::vector<std::byte> payload;
-        payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD);
+        payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC);
         payload.resize(inner_payload.size());
         std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
-        encrypt_path_message(payload, SymmNonce::make_random(), CONTROL_MESSAGE_TYPE);
+        encrypt_path_message(payload, SymmNonce::make_random(), CONTROL_MESSAGE_TYPE, true /* include mac */);
         _router.link_endpoint().send_command(edge().router_id, "path_control", std::move(payload), std::move(func));
+    }
+
+    void Path::send_session_control_message(std::vector<std::byte>&& body, SymmNonce&& nonce)
+    {
+        encrypt_path_message(body, std::move(nonce), CONTROL_MESSAGE_TYPE, false /* mac on session payload */);
+        _router.link_endpoint().send_command(edge().router_id, "session_control", std::move(body), nullptr);
     }
 
     std::string Path::to_string() const { return "Path{{{}}}[{}]"_format(path_log_id, hop_string()); }
