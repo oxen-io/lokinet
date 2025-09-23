@@ -388,7 +388,7 @@ namespace llarp::session
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (!_is_established)
+        if (!_is_established and !init)
         {
             log::debug(logcat, "Session not yet established: queuing packet for delayed delivery");
             queue_data_message(data, type);
@@ -1154,7 +1154,7 @@ namespace llarp::session
         btdp.append("n", dh_nonce.span());
         btdp.append("x", inner_payload);
 
-        send_session_data_message(btdp.span<std::byte>(), 0, true);
+        send_session_data_message(btdp.span<std::byte>(), 0, true, true);
     }
 
     void OutboundSession::switch_path(path::Path& path, const HopID& pivot_hopid)
