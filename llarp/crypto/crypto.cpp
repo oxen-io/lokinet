@@ -105,7 +105,7 @@ namespace llarp::crypto
     {
         if (buf.size() <= MAC_SIZE)
         {
-            const auto err = fmt::format("Payload size {} is < poly1305 AEAD size ({})!", buf.size(), MAC_SIZE);
+            const auto err = fmt::format("Payload size {} is <= poly1305 AEAD size ({})!", buf.size(), MAC_SIZE);
             log::error(logcat, "{}", err);
             throw std::invalid_argument{err};
         }
