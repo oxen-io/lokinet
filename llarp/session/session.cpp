@@ -822,7 +822,7 @@ namespace llarp::session
     {
         if (check_dead(path, s))
         {
-            log::debug(logcat, "Unable to send session data message: no current path");
+            log::debug(logcat, "Unable to send session control message: no current path");
             return;
         }
         if (!path->is_established())

@@ -823,7 +823,7 @@ namespace llarp::link
                 }
                 catch (const std::exception& e)
                 {
-                    log::warning(logcat, "Failed encryptin path control message response: {}", e.what());
+                    log::warning(logcat, "Failed encrypting path control message response: {}", e.what());
                     return;
                 }
                 nonce ^= hop->xor_nonce;
