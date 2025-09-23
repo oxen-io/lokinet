@@ -189,8 +189,8 @@ namespace llarp::path
     void Path::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type, bool with_mac)
     {
         auto& hopid = edge().rxid;
-        auto inner_size = data.size();
-        data.resize(inner_size + (with_mac ? ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC : ENCRYPT_PATH_MESSAGE_OVERHEAD));
+        auto inner_size = data.size() + (with_mac ? crypto::MAC_SIZE : 0);
+        data.resize(inner_size + ENCRYPT_PATH_MESSAGE_OVERHEAD);
 
         static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
         static_assert(sizeof(HopID) == HopID::SIZE);
