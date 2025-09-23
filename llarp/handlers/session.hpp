@@ -66,7 +66,7 @@ namespace llarp
             void on_path_build_failure(int64_t build_id, path::Path* path, bool timeout) override;
             void on_path_build_success(int64_t build_id, path::Path& p) override;
 
-            void session_post_init(std::shared_ptr<session::Session> new_session);
+            void session_post_init(std::shared_ptr<session::InboundSession> new_session);
 
           public:
             SessionEndpoint(Router& r);

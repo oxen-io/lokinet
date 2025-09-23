@@ -1,7 +1,5 @@
 #include "session.hpp"
 
-#include <llarp/path/path.hpp>
-
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -11,6 +9,7 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/path.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/session/session.hpp>
@@ -882,7 +881,7 @@ namespace llarp::handlers
 
     void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::Path> path)
     {
-        std::shared_ptr<session::Session> new_session{};
+        std::shared_ptr<session::InboundSession> new_session{};
         try
         {
             new_session = std::make_shared<session::InboundClientSession>(*this, std::move(path), std::move(payload));
@@ -896,7 +895,8 @@ namespace llarp::handlers
 
     void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop)
     {
-        std::shared_ptr<session::Session> new_session{};
+        log::warning(logcat, "SessionEndpoint::handle_session_init (relay)");
+        std::shared_ptr<session::InboundSession> new_session{};
         try
         {
             new_session = std::make_shared<session::InboundRelaySession>(*this, std::move(thop), std::move(payload));
@@ -905,10 +905,11 @@ namespace llarp::handlers
         {
             log::info(logcat, "Inbound session rejected: {}", e.what());
         }
+        log::warning(logcat, "SessionEndpoint::handle_session_init (relay) calling post_init");
         session_post_init(std::move(new_session));
     }
 
-    void SessionEndpoint::session_post_init(std::shared_ptr<session::Session> new_session)
+    void SessionEndpoint::session_post_init(std::shared_ptr<session::InboundSession> new_session)
     {
         // FIXME: for now only tun clients can have inbound sessions, but eventually that will
         //        not be the case and we'll need to "if tun" this.
@@ -928,12 +929,15 @@ namespace llarp::handlers
         // FIXME: If the initiator does not get our response in time, they will try again
         // to establish a session; in that case we should replace what we have.
         auto& s = _sessions[new_session->remote()];
+        auto* sptr = new_session.get();
         if (!s)
         {
             s = std::move(new_session);
             _session_tags[s->inbound_tag()] = s;
             // TODO: response with our inbound tag
         }
+        log::warning(logcat, "sending session_init_accept");
+        sptr->session_init_accept();
     }
 
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
