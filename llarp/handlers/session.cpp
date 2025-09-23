@@ -888,7 +888,8 @@ namespace llarp::handlers
         }
         catch (const std::exception& e)
         {
-            log::info(logcat, "Inbound session rejected: {}", e.what());
+            log::warning(logcat, "Inbound session rejected: {}", e.what());
+            return;
         }
         session_post_init(std::move(new_session));
     }
@@ -903,7 +904,8 @@ namespace llarp::handlers
         }
         catch (const std::exception& e)
         {
-            log::info(logcat, "Inbound session rejected: {}", e.what());
+            log::warning(logcat, "Inbound session rejected: {}", e.what());
+            return;
         }
         log::warning(logcat, "SessionEndpoint::handle_session_init (relay) calling post_init");
         session_post_init(std::move(new_session));
