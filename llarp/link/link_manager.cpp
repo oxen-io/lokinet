@@ -248,10 +248,10 @@ namespace llarp::link
 
         std::vector<std::byte> response_raw;
         // We don't know the size in advance, so write a dummy value, compress, then fill it in:
-        constexpr auto compress_template = "d1:z999999999:"sv;
+        constexpr auto compress_prefix = "d1:z999999999:"sv;
         try
         {
-            response_raw = compressor->compress(rcs, zstd::compressor::DEFAULT_LEVEL, compress_template);
+            response_raw = compressor->compress(rcs, zstd::compressor::DEFAULT_LEVEL, compress_prefix);
         }
         catch (const std::exception& e)
         {
@@ -260,7 +260,7 @@ namespace llarp::link
             return;
         }
 
-        size_t comp_size = response_raw.size() - compress_template.size();
+        size_t comp_size = response_raw.size() - compress_prefix.size();
 
 #ifndef NDEBUG
         size_t rcs_size = 0;
@@ -277,11 +277,11 @@ namespace llarp::link
         // Now we need to rewrite the actual `d1:ZNNN:` prefix with the correct NNN for the
         // compressed data:
         std::string actual = "d1:Z{}:"_format(comp_size);
-        assert(actual.size() <= compress_template.size());
+        assert(actual.size() <= compress_prefix.size());
         // Our actual size is almost certainly shorter than the 999999999 value we used, so we skip
         // however many leading bytes as needed to represent the proper final value without needing
         // to shift the compressed data around in the buffer:
-        size_t skip = compress_template.size() - actual.size();
+        size_t skip = compress_prefix.size() - actual.size();
         std::memcpy(response_raw.data() + skip, actual.data(), actual.size());
         // Response dict terminator:
         response_raw.push_back(std::byte{'e'});

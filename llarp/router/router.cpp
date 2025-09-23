@@ -244,9 +244,9 @@ namespace llarp
             if (auto* rc = _node_db->get_rc(id());
                 rc && rc->age(llarp::time_now_ms()) < RelayContact::MIN_GOSSIP_RC_AGE)
             {
-                // If we already have our own RC, and it's very new then the network won't accept it
-                // right now anyway, so delay by an additional minimum acceptable gossip age before
-                // sending out the first one.
+                // If we already have our own RC, and it's very new then most likely the network
+                // won't accept it right now anyway because we will have just sent it and restarted,
+                // so delay by additional minimum acceptable gossip age before first sending it out.
                 delay += RelayContact::MIN_GOSSIP_RC_AGE;
             }
             log::debug(logcat, "Delaying initial RC broadcast for {}", delay);
