@@ -111,7 +111,8 @@ namespace llarp::crypto
         }
         auto payload_size = buf.size() - MAC_SIZE;
         auto* buf_cptr = reinterpret_cast<unsigned char*>(buf.data());
-        crypto_aead_xchacha20poly1305_ietf_encrypt(buf_cptr, nullptr, buf_cptr, payload_size, nullptr, 0, nullptr, nonce.data(), secret.data());
+        crypto_aead_xchacha20poly1305_ietf_encrypt(
+            buf_cptr, nullptr, buf_cptr, payload_size, nullptr, 0, nullptr, nonce.data(), secret.data());
     }
 
     void xchacha20_poly1305_encrypt(std::vector<std::byte>& buf, const SharedSecret& secret, const SymmNonce& nonce)
@@ -121,10 +122,12 @@ namespace llarp::crypto
 
     void xchacha20_poly1305_encrypt(std::string& buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
-        xchacha20_poly1305_encrypt(std::span<std::byte>{reinterpret_cast<std::byte*>(buf.data()), buf.size()}, secret, nonce);
+        xchacha20_poly1305_encrypt(
+            std::span<std::byte>{reinterpret_cast<std::byte*>(buf.data()), buf.size()}, secret, nonce);
     }
 
-    std::span<std::byte> xchacha20_poly1305_decrypt(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
+    std::span<std::byte> xchacha20_poly1305_decrypt(
+        std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
         if (buf.size() <= MAC_SIZE)
         {
@@ -133,7 +136,10 @@ namespace llarp::crypto
         }
         auto* buf_cptr = reinterpret_cast<unsigned char*>(buf.data());
         unsigned long long payload_size{0};
-        if (crypto_aead_xchacha20poly1305_ietf_decrypt(buf_cptr, &payload_size, nullptr, buf_cptr, buf.size(), nullptr, 0, nonce.data(), secret.data()) != 0) {
+        if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+                buf_cptr, &payload_size, nullptr, buf_cptr, buf.size(), nullptr, 0, nonce.data(), secret.data())
+            != 0)
+        {
             log::warning(logcat, "On decryption, payload failed authentication!");
             return {};
         }

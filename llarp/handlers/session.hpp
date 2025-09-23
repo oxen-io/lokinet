@@ -146,7 +146,6 @@ namespace llarp
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
             void unmap_remote_by_name(const std::string& name);
 
-
             void handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::Path> path);
             void handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop);
 

@@ -878,9 +878,7 @@ namespace llarp::handlers
         return std::nullopt;
     }
 
-    void SessionEndpoint::handle_session_init(
-            std::vector<std::byte>&& payload,
-            std::shared_ptr<path::Path> path)
+    void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::Path> path)
     {
         std::shared_ptr<session::Session> new_session{};
         try
@@ -893,9 +891,7 @@ namespace llarp::handlers
         }
     }
 
-    void SessionEndpoint::handle_session_init(
-            std::vector<std::byte>&& payload,
-            std::shared_ptr<path::TransitHop> thop)
+    void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop)
     {
         std::shared_ptr<session::Session> new_session{};
         try

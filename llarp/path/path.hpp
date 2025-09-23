@@ -115,7 +115,8 @@ namespace llarp::path
         // this value to reserve the vector to be able to store the overhead without additional
         // allocations.
         inline static constexpr size_t ENCRYPT_PATH_MESSAGE_OVERHEAD = SymmNonce::SIZE + HopID::SIZE + 1;
-        inline static constexpr size_t ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC = ENCRYPT_PATH_MESSAGE_OVERHEAD + crypto::MAC_SIZE;
+        inline static constexpr size_t ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC =
+            ENCRYPT_PATH_MESSAGE_OVERHEAD + crypto::MAC_SIZE;
 
         // Takes a payload and encrypts and extends it in-place to make it suitable for sending
         // down either the datagram channel (carrying traffic) or stream (carrying network
@@ -134,7 +135,8 @@ namespace llarp::path
         // messages.  (All other values are reserved for future versions of the protocol that
         // may need to change the fundamental structure of encrypted data, or send different
         // types of data)
-        void encrypt_path_message(std::vector<std::byte>& payload, SymmNonce&& nonce, std::byte type, bool with_mac = false);
+        void encrypt_path_message(
+            std::vector<std::byte>& payload, SymmNonce&& nonce, std::byte type, bool with_mac = false);
 
         bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const
         {

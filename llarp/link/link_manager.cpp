@@ -46,7 +46,9 @@ namespace llarp::link
     // These requests come over a path (as a "path_control" request),
     // we may or may not need to make a request to another relay,
     // then respond (onioned) back along the path.
-    std::unordered_map<std::string_view, void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
+    std::unordered_map<
+        std::string_view,
+        void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
         Manager::path_requests = {
             {"publish_cc"sv, &Manager::handle_path_publish_cc},
             {"find_cc"sv, &Manager::handle_path_find_cc},
@@ -55,13 +57,12 @@ namespace llarp::link
             {"resolve_sns"sv, &Manager::handle_path_resolve_sns},
             {"path_ping"sv, &Manager::handle_path_ping}};
 
-    void Manager::handle_direct_request(void (Manager::*handler)(std::span<const std::byte>, std::function<void(std::string)>, bool), quic::message m)
+    void Manager::handle_direct_request(
+        void (Manager::*handler)(std::span<const std::byte>, std::function<void(std::string)>, bool), quic::message m)
     {
-            auto body_str = m.body<std::byte>();
-            auto resp = [msg = std::move(m)](std::string response) {
-                msg.respond(response, false);
-            };
-            (this->*handler)(body_str, resp, true);
+        auto body_str = m.body<std::byte>();
+        auto resp = [msg = std::move(m)](std::string response) { msg.respond(response, false); };
+        (this->*handler)(body_str, resp, true);
     }
 
     void Manager::register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote)
@@ -96,7 +97,9 @@ namespace llarp::link
         });
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_direct_request(&Manager::handle_fetch_rcs, std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_fetch_rcs, std::move(msg));
+            });
         });
 
         s.register_handler("gossip_rc"s, [this](quic::message m) {
@@ -104,11 +107,15 @@ namespace llarp::link
         });
 
         s.register_handler("publish_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_direct_request(&Manager::handle_publish_cc, std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_publish_cc, std::move(msg));
+            });
         });
 
         s.register_handler("find_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_direct_request(&Manager::handle_find_cc, std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_find_cc, std::move(msg));
+            });
         });
 
         // Endpoint called to test connectivity by other relays during relay testing.  It simply
@@ -292,7 +299,10 @@ namespace llarp::link
         m.respond(std::span{response_raw.data() + skip, response_raw.size() - skip});
     }
 
-    void Manager::handle_fetch_rcs(std::span<const std::byte> body, std::function<void(std::string)> respond, [[maybe_unused]] bool source_is_relay)
+    void Manager::handle_fetch_rcs(
+        std::span<const std::byte> body,
+        std::function<void(std::string)> respond,
+        [[maybe_unused]] bool source_is_relay)
     {
         log::debug(logcat, "Handling FetchRC request...");
         // this handler should not be registered for clients
@@ -337,7 +347,8 @@ namespace llarp::link
         handle_fetch_rcs(std::move(body), std::move(respond), false);
     }
 
-    void Manager::handle_path_fetch_router_ids([[maybe_unused]] std::span<const std::byte> body, std::function<void(std::string)> respond)
+    void Manager::handle_path_fetch_router_ids(
+        [[maybe_unused]] std::span<const std::byte> body, std::function<void(std::string)> respond)
     {
         log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
@@ -357,8 +368,7 @@ namespace llarp::link
         respond(std::move(btdp).str());
     }
 
-    void Manager::handle_path_resolve_sns(
-        std::span<const std::byte> body, std::function<void(std::string)> respond)
+    void Manager::handle_path_resolve_sns(std::span<const std::byte> body, std::function<void(std::string)> respond)
     {
 #ifdef LOKINET_EMBEDDED_ONLY
         throw std::logic_error{"This lokinet is not a service node!"};
@@ -397,7 +407,8 @@ namespace llarp::link
 #endif
     }
 
-    void Manager::handle_publish_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
+    void Manager::handle_publish_cc(
+        std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
     {
         log::trace(logcat, "Received request to publish client contact!");
 
@@ -406,8 +417,7 @@ namespace llarp::link
 
         try
         {
-            std::tie(enc, location) =
-                PublishClientContact::deserialize(oxenc::bt_dict_consumer{body});
+            std::tie(enc, location) = PublishClientContact::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
@@ -494,9 +504,8 @@ namespace llarp::link
                     logcat,
                     "Ignoring ECC publish from a client with {} publish index",
                     location ? "invalid ({})"_format(*location) : "missing");
-                respond(
-                    messages::serialize_status_response(
-                        location ? "INVALID PUBLISH LOCATION" : "MISSING PUBLISH LOCATION"));
+                respond(messages::serialize_status_response(
+                    location ? "INVALID PUBLISH LOCATION" : "MISSING PUBLISH LOCATION"));
                 return;
             }
 
@@ -560,15 +569,15 @@ namespace llarp::link
         handle_publish_cc(std::move(body), std::move(respond), false);
     }
 
-    void Manager::handle_find_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
+    void Manager::handle_find_cc(
+        std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
     {
         log::trace(logcat, "Received request to find client contact!");
 
         PubKey blinded_pubkey;
         try
         {
-            blinded_pubkey =
-                FindClientContact::deserialize(oxenc::bt_dict_consumer{body});
+            blinded_pubkey = FindClientContact::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
@@ -767,16 +776,15 @@ namespace llarp::link
         std::vector<std::byte> payload;
         SymmNonce nonce;
 
-
         payload.assign(body.begin(), body.end());
 
-        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC == crypto::MAC_SIZE + SymmNonce::SIZE + HopID::SIZE + 1);
+        static_assert(
+            path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC == crypto::MAC_SIZE + SymmNonce::SIZE + HopID::SIZE + 1);
         auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
         std::byte type = msgtype[0];
         if (type != std::byte{0x01})
         {
-            log::warning(
-                logcat, "Invalid/unknown path_control encrypted message type {}", static_cast<int>(type));
+            log::warning(logcat, "Invalid/unknown path_control encrypted message type {}", static_cast<int>(type));
             log::trace(logcat, "Failed path_control payload: {}", buffer_printer{body});
             m.respond(messages::ERROR_RESPONSE, true);
             return;
@@ -826,7 +834,8 @@ namespace llarp::link
                 static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
                 static_assert(sizeof(HopID) == HopID::SIZE);
 
-                auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(resp_span);
+                auto [inner_payload, bnonce, bhop, msgtype] =
+                    split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(resp_span);
                 assert(inner_payload.size() == inner_size);
 
                 nonce.copy_to(bnonce);
@@ -895,8 +904,13 @@ namespace llarp::link
 
                 payload.assign(body.begin(), body.end());
                 auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
-                if (msgtype[0] != type) {
-                    log::warning(logcat, "Path control message response type byte mismatch!  Expected {}, got {}", static_cast<int>(type), static_cast<int>(msgtype[0]));
+                if (msgtype[0] != type)
+                {
+                    log::warning(
+                        logcat,
+                        "Path control message response type byte mismatch!  Expected {}, got {}",
+                        static_cast<int>(type),
+                        static_cast<int>(msgtype[0]));
                     prev_message.respond(messages::ERROR_RESPONSE, true);
                     return;
                 }
@@ -904,7 +918,8 @@ namespace llarp::link
                 SymmNonce nonce;
                 recv_hopid.assign(bhop);
                 nonce.assign(bnonce);
-                if (recv_hopid != hop->txid) {
+                if (recv_hopid != hop->txid)
+                {
                     log::warning(logcat, "Path control message response type unexpected hop id...");
                     prev_message.respond(messages::ERROR_RESPONSE, true);
                     return;
@@ -1029,7 +1044,7 @@ namespace llarp::link
             tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
             message.resize(message.size() - sizeof(session_tag));
 
-            if (tag == 0) // session init
+            if (tag == 0)  // session init
             {
             }
             if (control)
@@ -1160,7 +1175,8 @@ namespace llarp::link
             log::warning(logcat, "Could not find session {} to receive session data message!", tag);
     }
 
-    void Manager::handle_session_control(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
+    void Manager::handle_session_control(
+        std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
     {
         if (auto session = router.session_endpoint().get_session(tag))
             session->recv_session_control_message(std::move(payload), nonce);

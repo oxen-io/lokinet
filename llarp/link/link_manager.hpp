@@ -127,12 +127,17 @@ namespace llarp::link
 
         void handle_fetch_bootstrap_rcs(quic::message m);
 
-        void handle_direct_request(void (Manager::*respond)(std::span<const std::byte>, std::function<void(std::string)>, bool), quic::message m);
+        void handle_direct_request(
+            void (Manager::*respond)(std::span<const std::byte>, std::function<void(std::string)>, bool),
+            quic::message m);
 
         // handlers for requests which could come over a path or a relay request
-        void handle_publish_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
-        void handle_find_cc(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
-        void handle_fetch_rcs(std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+        void handle_publish_cc(
+            std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+        void handle_find_cc(
+            std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
+        void handle_fetch_rcs(
+            std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay = true);
 
         void handle_path_control(quic::message);
 
@@ -158,7 +163,9 @@ namespace llarp::link
         // These requests come over a path (as a "path_control" request),
         // we may or may not need to make a request to another relay,
         // then respond (onioned) back along the path.
-        static std::unordered_map<std::string_view, void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
+        static std::unordered_map<
+            std::string_view,
+            void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
             path_requests;
 
         // Path relaying

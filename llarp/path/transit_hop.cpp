@@ -8,11 +8,12 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
-#include <stdexcept>
 
 #include <nlohmann/json.hpp>
 #include <oxen/quic/connection_ids.hpp>
 #include <sodium/randombytes.h>
+
+#include <stdexcept>
 
 namespace llarp::path
 {

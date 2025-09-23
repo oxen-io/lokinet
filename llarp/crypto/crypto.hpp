@@ -32,7 +32,8 @@ namespace llarp::crypto
     /// decrypts a buffer in-place, validating it against the appended MAC
     /// empty span means decryption failed; technically I don't know if an encrypted payload
     /// of size 0 (but authenticated with poly1305) is allowed, but we're not allowing it
-    std::span<std::byte> xchacha20_poly1305_decrypt(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce);
+    std::span<std::byte> xchacha20_poly1305_decrypt(
+        std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce);
 
     /// path dh creator's side
     ///

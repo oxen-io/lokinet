@@ -201,7 +201,8 @@ namespace llarp::path
         bool first{true};
         for (const auto& hop : std::ranges::reverse_view(hops))
         {
-            if (first && with_mac) {
+            if (first && with_mac)
+            {
                 first = false;
                 crypto::xchacha20_poly1305_encrypt(inner_payload, hop.shared_secret, nonce);
             }

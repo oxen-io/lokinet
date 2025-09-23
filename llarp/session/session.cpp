@@ -276,7 +276,8 @@ namespace llarp::session
         // this is a bit ugly, but bt_dict_consumer only gives const spans/views, and
         // it is safe here to have non-const and avoid a copy.
         auto inner_payload_const = outer_btdc.require_span<std::byte>("x");
-        std::span<std::byte> inner_payload{const_cast<std::byte*>(inner_payload_const.data()), inner_payload_const.size()};
+        std::span<std::byte> inner_payload{
+            const_cast<std::byte*>(inner_payload_const.data()), inner_payload_const.size()};
         outer_btdc.finish();
 
         crypto::dh_server(_shared_secret, eph_pubkey, _r.secret_key(), dh_nonce);
@@ -287,30 +288,34 @@ namespace llarp::session
         remote_rid.assign(inner_btdc.require_span<std::byte, RouterID::SIZE>("i"));
         _remote = {remote_rid, true};
         _remote_pivot_txid.assign(inner_btdc.require_span<std::byte, HopID::SIZE>("p"));
-        _outbound_tag = oxenc::load_big_to_host<session_tag>(inner_btdc.require_span<std::byte, sizeof(session_tag)>("t").data());
+        _outbound_tag =
+            oxenc::load_big_to_host<session_tag>(inner_btdc.require_span<std::byte, sizeof(session_tag)>("t").data());
 
-        inner_btdc.require_signature(
-            "~", [remote_rid](std::span<const std::byte> msg, std::span<const std::byte> sig) {
-                if (sig.size() != SIGSIZE)
-                    throw std::runtime_error{fmt::format("Invalid signature: not {} bytes", SIGSIZE)};
+        inner_btdc.require_signature("~", [remote_rid](std::span<const std::byte> msg, std::span<const std::byte> sig) {
+            if (sig.size() != SIGSIZE)
+                throw std::runtime_error{fmt::format("Invalid signature: not {} bytes", SIGSIZE)};
 
-                if (not crypto::verify(remote_rid, msg, sig.first<SIGSIZE>()))
-                    throw std::runtime_error{"Failed to verify session_init identity signature"};
-            });
+            if (not crypto::verify(remote_rid, msg, sig.first<SIGSIZE>()))
+                throw std::runtime_error{"Failed to verify session_init identity signature"};
+        });
         inner_btdc.finish();
         _inbound_tag = _parent.next_tag();
     }
 
-    Session::Session(Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, session_tag inbound_tag)
-        : _r{r}, _parent{parent}, _inbound_tag{inbound_tag}, _remote{remote}, is_outbound{true}, is_relay_session{_remote.relay()}
+    Session::Session(
+        Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, session_tag inbound_tag)
+        : _r{r},
+          _parent{parent},
+          _inbound_tag{inbound_tag},
+          _remote{remote},
+          is_outbound{true},
+          is_relay_session{_remote.relay()}
     {
         // Maybe we should make this on demand rather than on construction?
         tcp_tunnel = std::make_unique<TCPTunnel>(*this);
     }
 
-    Session::Session(
-        Router& r,
-        handlers::SessionEndpoint& parent)
+    Session::Session(Router& r, handlers::SessionEndpoint& parent)
         : _r{r},
           _parent{parent},
           _is_established{true},  // Inbound sessions are established from construction
@@ -327,9 +332,7 @@ namespace llarp::session
         close(false);
     }
 
-    bool Session::send_session_control_message(
-            std::string_view method,
-            std::span<const std::byte> body)
+    bool Session::send_session_control_message(std::string_view method, std::span<const std::byte> body)
     {
         if (!_is_established)
         {
@@ -510,7 +513,7 @@ namespace llarp::session
         // session init messages are already encrypted and encoded, so no mac here
         size_t chacha_size_with_mac = data.size() + (control ? 0 : 1) + (init ? 0 : crypto::MAC_SIZE);
         std::vector<std::byte> everything;
-        auto target_size =  chacha_size_with_mac + sizeof(tag) + (relay_session_return ? 0 : _remote_pivot_txid.size());
+        auto target_size = chacha_size_with_mac + sizeof(tag) + (relay_session_return ? 0 : _remote_pivot_txid.size());
         everything.reserve(target_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
         everything.resize(target_size);
         auto [ciphertext, tag_span, pivot] = split_span(everything, chacha_size_with_mac, sizeof(tag));
@@ -598,7 +601,7 @@ namespace llarp::session
 
     void Session::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
     {
-        //send_session_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
+        // send_session_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
     }
 
     void Session::handle_udp_from_remote(IPPacket&& pkt)
@@ -710,7 +713,7 @@ namespace llarp::session
         if (send_close)
         {
             log::debug(logcat, "Dispatching close session message...");
-            //send_session_control_message("session_close", as_bspan(CloseSession::serialize(_tag)));
+            // send_session_control_message("session_close", as_bspan(CloseSession::serialize(_tag)));
         }
     }
 
@@ -913,7 +916,8 @@ namespace llarp::session
         session_tag inbound_tag,
         std::function<void(OutboundSession& session)> on_est,
         std::optional<std::chrono::milliseconds> on_est_timeout)
-        : OutboundSession{remote, parent, parent.router.config().paths.relay_hops(), inbound_tag, std::move(on_est), on_est_timeout}
+        : OutboundSession{
+              remote, parent, parent.router.config().paths.relay_hops(), inbound_tag, std::move(on_est), on_est_timeout}
     {
         _parent.lookup_relay_contact(_remote.router_id(), [this](std::optional<llarp::RelayContact> rc) mutable {
             if (rc)
@@ -1007,7 +1011,8 @@ namespace llarp::session
         session_tag inbound_tag,
         std::function<void(OutboundSession& session)> on_est,
         std::optional<std::chrono::milliseconds> timeout)
-        : OutboundSession{remote, parent, parent.router.config().paths.client_hops, inbound_tag, std::move(on_est), timeout}
+        : OutboundSession{
+              remote, parent, parent.router.config().paths.client_hops, inbound_tag, std::move(on_est), timeout}
     {
         assert(!is_relay_session);
 
@@ -1172,7 +1177,7 @@ namespace llarp::session
         }
         else
         {
-            //TODO
+            // TODO
             log::debug(
                 logcat,
                 "Dispatching path-switch request to remote {} to use hopid {} (for path {})",
@@ -1314,8 +1319,7 @@ namespace llarp::session
             timeout ? "build request timed out" : "path construction failed");
     }
 
-    InboundSession::InboundSession(handlers::SessionEndpoint& parent)
-        : Session{parent.router, parent}
+    InboundSession::InboundSession(handlers::SessionEndpoint& parent) : Session{parent.router, parent}
     {
         log::debug(logcat, "InboundSession from {} created", _remote);
     }
@@ -1341,7 +1345,7 @@ namespace llarp::session
         }
         oxenc::bt_dict_consumer btdc{params};
         _outbound_tag = btdc.require<session_tag>("t"sv);
-        
+
         log::debug(logcat, "Remote provided session tag: {}", _outbound_tag);
 
         log::trace(logcat, "Outbound session to {} successfully created.", remote());
@@ -1350,8 +1354,7 @@ namespace llarp::session
         if (pre_establish_data_queue)
         {
             for (const auto& d : *pre_establish_data_queue)
-                send_session_data_message(
-                    std::span{d.data(), d.size() - 1}, static_cast<uint8_t>(d.back()));
+                send_session_data_message(std::span{d.data(), d.size() - 1}, static_cast<uint8_t>(d.back()));
             pre_establish_data_queue.reset();
         }
 
@@ -1359,9 +1362,7 @@ namespace llarp::session
     }
 
     InboundClientSession::InboundClientSession(
-        handlers::SessionEndpoint& parent,
-        std::shared_ptr<path::Path> p,
-        std::vector<std::byte>&& request)
+        handlers::SessionEndpoint& parent, std::shared_ptr<path::Path> p, std::vector<std::byte>&& request)
         : InboundSession{parent}, _current_path{std::move(p)}
     {
         _dead_path = !_current_path;
@@ -1369,9 +1370,7 @@ namespace llarp::session
     }
 
     InboundRelaySession::InboundRelaySession(
-        handlers::SessionEndpoint& parent,
-        std::shared_ptr<path::TransitHop> thop,
-        std::vector<std::byte>&& request)
+        handlers::SessionEndpoint& parent, std::shared_ptr<path::TransitHop> thop, std::vector<std::byte>&& request)
         : InboundSession{parent}, _current_thop{std::move(thop)}
     {
         _dead_path = !_current_thop;
@@ -1437,6 +1436,7 @@ namespace llarp::session
         }
 
         encrypt_path_message(data, std::move(nonce), path::Path::CONTROL_MESSAGE_TYPE);
-        _parent.router.link_endpoint().send_command(_current_thop->downstream, "session_control"s, std::move(data), nullptr);
+        _parent.router.link_endpoint().send_command(
+            _current_thop->downstream, "session_control"s, std::move(data), nullptr);
     }
 }  // namespace llarp::session

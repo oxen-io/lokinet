@@ -109,11 +109,10 @@ namespace llarp
             std::shared_ptr<bool> _destructor_canary{std::make_shared<bool>(true)};
             std::weak_ptr<bool> canary() { return _destructor_canary; }
 
-            Session(Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, session_tag inbound_tag);
-
             Session(
-                Router& r,
-                handlers::SessionEndpoint& parent);
+                Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, session_tag inbound_tag);
+
+            Session(Router& r, handlers::SessionEndpoint& parent);
 
             virtual ~Session();
 
@@ -145,16 +144,15 @@ namespace llarp
 
             // Attempts to send a session control message down the current path.  Returns false
             // (without calling `func`) if there is no current path, otherwise returns true
-            bool send_session_control_message(
-                std::string_view method,
-                std::span<const std::byte> body);
+            bool send_session_control_message(std::string_view method, std::span<const std::byte> body);
 
             void recv_session_control_message(std::vector<std::byte>&& message, const SymmNonce& nonce);
 
             virtual void handle_session_accept(std::span<const std::byte> params);
 
             void send_session_data_message(std::span<const std::byte> data, net::IPProtocol proto);
-            void send_session_data_message(std::span<const std::byte> data, uint8_t type, bool control = false, bool init = false);
+            void send_session_data_message(
+                std::span<const std::byte> data, uint8_t type, bool control = false, bool init = false);
 
             virtual void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
             virtual void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
@@ -302,7 +300,6 @@ namespace llarp
                 std::function<void(OutboundSession& session)> on_established,
                 std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
-
             void update_paths(std::chrono::milliseconds now) override;
 
             // void stop(bool send_close = false) override;
@@ -361,8 +358,8 @@ namespace llarp
             ~InboundSession() override = default;
 
             void init(std::vector<std::byte>&& request);
-          public:
 
+          public:
             void session_init_accept();
         };
 
@@ -376,9 +373,7 @@ namespace llarp
 
           public:
             InboundClientSession(
-                    handlers::SessionEndpoint& parent,
-                    std::shared_ptr<path::Path> p,
-                    std::vector<std::byte>&& request);
+                handlers::SessionEndpoint& parent, std::shared_ptr<path::Path> p, std::vector<std::byte>&& request);
 
             void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path);
 
@@ -398,9 +393,9 @@ namespace llarp
 
           public:
             InboundRelaySession(
-                    handlers::SessionEndpoint& parent,
-                    std::shared_ptr<path::TransitHop> thop,
-                    std::vector<std::byte>&& request);
+                handlers::SessionEndpoint& parent,
+                std::shared_ptr<path::TransitHop> thop,
+                std::vector<std::byte>&& request);
 
             void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
 
