@@ -288,8 +288,7 @@ namespace llarp::session
         remote_rid.assign(inner_btdc.require_span<std::byte, RouterID::SIZE>("i"));
         _remote = {remote_rid, true};
         _remote_pivot_txid.assign(inner_btdc.require_span<std::byte, HopID::SIZE>("p"));
-        _outbound_tag =
-            oxenc::load_big_to_host<session_tag>(inner_btdc.require_span<std::byte, sizeof(session_tag)>("t").data());
+        _outbound_tag = inner_btdc.require<session_tag>("t");
 
         inner_btdc.require_signature("~", [remote_rid](std::span<const std::byte> msg, std::span<const std::byte> sig) {
             if (sig.size() != SIGSIZE)
