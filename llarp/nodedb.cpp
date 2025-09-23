@@ -454,11 +454,9 @@ namespace llarp
 
         if (not _router.is_service_node)
         {
-            _rc_fetch_ticker = _router.loop.call_every(
-                FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
+            _rc_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rcs(); }, not need_bootstrap);
 
-            _rid_fetch_ticker = _router.loop.call_every(
-                FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
+            _rid_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
         }
 
         _0rtt_saver = _router.disk_loop.make_wakeable([this] { _0rtt_save(); });

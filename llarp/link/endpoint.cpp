@@ -73,8 +73,8 @@ namespace llarp::link
           loop{std::make_unique<quic::Loop>()},
           tls_creds{
               router.is_service_node ? quic::GNUTLSCreds::make_from_ed_keys(
-                  {reinterpret_cast<const char*>(router.secret_key().data()), 32},
-                  {reinterpret_cast<const char*>(router.id().data()), 32})
+                                           {reinterpret_cast<const char*>(router.secret_key().data()), 32},
+                                           {reinterpret_cast<const char*>(router.id().data()), 32})
                                      : quic::GNUTLSCreds::make_unauthenticated()}
     {
         std::optional<quic::opt::inbound_alpns> inbound_alpn;
@@ -710,7 +710,6 @@ namespace llarp::link
     void Endpoint::on_conn_established(quic::Connection& conn)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
 
         std::shared_ptr<quic::BTRequestStream> inbound_cstream;
         if (conn.is_inbound())
