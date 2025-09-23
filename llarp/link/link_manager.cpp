@@ -1046,6 +1046,7 @@ namespace llarp::link
 
             if (tag == 0)  // session init
             {
+                return router.session_endpoint().handle_session_init(std::move(message), path->shared_from_this());
             }
             if (control)
             {
@@ -1097,6 +1098,12 @@ namespace llarp::link
                 tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
                 message.resize(payload.size());
 
+                if (tag == 0)  // session init
+                {
+                    // getting shared_ptr here instead of above saves an atomic op on other messages
+                    return router.session_endpoint().handle_session_init(
+                        std::move(message), router.path_context.get_transit_hop_ptr(hop_id));
+                }
                 if (control)
                 {
                     log::trace(logcat, "Incoming control message is a relay session control message");

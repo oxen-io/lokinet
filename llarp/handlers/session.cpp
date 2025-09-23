@@ -891,6 +891,7 @@ namespace llarp::handlers
         {
             log::info(logcat, "Inbound session rejected: {}", e.what());
         }
+        session_post_init(std::move(new_session));
     }
 
     void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop)
@@ -904,6 +905,11 @@ namespace llarp::handlers
         {
             log::info(logcat, "Inbound session rejected: {}", e.what());
         }
+        session_post_init(std::move(new_session));
+    }
+
+    void SessionEndpoint::session_post_init(std::shared_ptr<session::Session> new_session)
+    {
         // FIXME: for now only tun clients can have inbound sessions, but eventually that will
         //        not be the case and we'll need to "if tun" this.
         if (!map_session(*new_session))
