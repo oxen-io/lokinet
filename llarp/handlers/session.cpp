@@ -1,5 +1,7 @@
 #include "session.hpp"
 
+#include <llarp/path/path.hpp>
+
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -543,20 +545,20 @@ namespace llarp::handlers
         log::debug(logcat, "Looking up SNS name {}", sns);
 
         auto remaining = std::make_shared<int>(0);
-        auto response_handler = [sns, remaining, func = std::move(func)](quic::message m) {
+        auto response_handler = [sns, remaining, func = std::move(func)](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
                 return;  // Some other request beat us to it
 
             std::optional<NetworkAddress> client_addr;
 
-            if (m)
+            if (resp.ok())
             {
                 try
                 {
                     log::debug(logcat, "Call to ResolveSNS succeeded!");
 
-                    auto enc = ResolveSNS::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                    auto enc = ResolveSNS::deserialize_response(oxenc::bt_dict_consumer{resp.body});
 
                     client_addr = enc.decrypt(sns);
                     if (client_addr)
@@ -616,21 +618,21 @@ namespace llarp::handlers
 
         auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+        auto response_handler = [this, remote, func = std::move(func), remaining](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
             {  // Some other path handler already replied
-                log::trace(logcat, "Dropping duplicate `fetch_rc` response (success: {})", not m.is_error());
+                log::trace(logcat, "Dropping duplicate `fetch_rc` response (success: {})", resp.ok());
                 return;
             }
 
             std::optional<RelayContact> rc;
             try
             {
-                if (m)
+                if (resp.ok())
                 {
                     log::info(logcat, "Call to FetchRC succeeded!");
-                    auto rcs = FetchRC::deserialize_response(router.netid(), oxenc::bt_dict_consumer{m.body()});
+                    auto rcs = FetchRC::deserialize_response(router.netid(), oxenc::bt_dict_consumer{resp.body});
 
                     if (rcs.empty())
                         log::warning(logcat, "Received empty response from `fetch_rc` request!");
@@ -647,7 +649,7 @@ namespace llarp::handlers
                 else
                 {
                     std::optional<std::string> status = std::nullopt;
-                    oxenc::bt_dict_consumer btdc{m.body()};
+                    oxenc::bt_dict_consumer btdc{resp.body};
 
                     if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
                         status = s;
@@ -723,22 +725,22 @@ namespace llarp::handlers
 
         auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+        auto response_handler = [this, remote, func = std::move(func), remaining](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
             {
                 // Another path response already returned it
-                log::trace(logcat, "Dropping duplicate `find_cc` response (success: {})", not m.is_error());
+                log::trace(logcat, "Dropping duplicate `find_cc` response (success: {})", resp.ok());
                 return;
             }
 
             std::optional<ClientContact> cc;
             try
             {
-                if (m)
+                if (resp.ok())
                 {
                     log::info(logcat, "Call to FindClientContact succeeded!");
-                    auto enc = FindClientContact::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                    auto enc = FindClientContact::deserialize_response(oxenc::bt_dict_consumer{resp.body});
 
                     if (auto intro = enc.decrypt(remote))
                     {
@@ -752,7 +754,7 @@ namespace llarp::handlers
                 else
                 {
                     std::optional<std::string> status = std::nullopt;
-                    oxenc::bt_dict_consumer btdc{m.body()};
+                    oxenc::bt_dict_consumer btdc{resp.body};
 
                     if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
                         status = s;
@@ -995,27 +997,26 @@ namespace llarp::handlers
             p.publish_client_contact(
                 ecc,
                 location,
-                [started = now, remaining_success, via = p.terminal_rid(), location, cc_num = cc_count](
-                    quic::message m) {
+                [started = now, remaining_success, via = p.terminal_rid(), location, cc_num = cc_count](auto resp) {
                     auto elapsed =
                         std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
 
                     log::debug(
                         logcat,
                         "{} CC#{} publish[{}] via relay {} in {}",
-                        m                 ? "Successful"
-                            : m.timed_out ? "Timeout during"
-                                          : "Error during",
+                        resp.ok()            ? "Successful"
+                            : resp.timed_out ? "Timeout during"
+                                             : "Error during",
                         cc_num,
                         location,
                         via,
                         elapsed);
-                    if (m.is_error())
-                        log::debug(logcat, "CC publish error response: {}", buffer_printer(m.body()));
+                    if (!resp.ok())
+                        log::debug(logcat, "CC publish error response: {}", buffer_printer(resp.body));
 
                     auto& [remaining, success] = *remaining_success;
                     remaining--;
-                    if (m)
+                    if (resp.ok())
                         success++;
 
                     if (not remaining)

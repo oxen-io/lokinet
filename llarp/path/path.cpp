@@ -89,69 +89,70 @@ namespace llarp::path
         next_ping = start_time + _router.config().paths.ping_interval - 20ms;
 
         log::trace(logcat, "Pinging path TXID={}", edge().txid);
-        send_path_control_message("path_ping", {}, [this, wself = weak_from_this(), start_time](quic::message m) {
-            auto sself = wself.lock();
-            if (!sself)
-                return;
-            std::chrono::milliseconds now = llarp::time_now_ms();
-            auto time_taken = now - start_time;
-            if (m)
-            {
-                ping_responses++;
-                ping_recent_timeouts = 0;
-                ping_cumulative += time_taken;
-                ping_sq_cumulative += time_taken.count() * time_taken.count();
-
-                if (m.body() == messages::OK_RESPONSE)
-                    log::debug(
-                        logcat,
-                        "Ping response for path {} (txid={}) response received in {} ({})",
-                        *this,
-                        edge().txid,
-                        time_taken,
-                        printable_ping_stats());
-                else
-                    log::warning(
-                        logcat,
-                        "Path {} ping was successful (in {}) but had unexpected response body: {}",
-                        *this,
-                        time_taken,
-                        buffer_printer(m.body()));
-            }
-            else
-            {
-                bool expire = true;
-                if (m.timed_out)
+        send_path_control_message(
+            "path_ping", {}, [this, wself = weak_from_this(), start_time](path_control_response resp) {
+                auto sself = wself.lock();
+                if (!sself)
+                    return;
+                std::chrono::milliseconds now = llarp::time_now_ms();
+                auto time_taken = now - start_time;
+                if (resp.ok())
                 {
-                    ping_timeouts++;
-                    log::debug(
-                        logcat,
-                        "Ping response for path {} (txid={}) timed out after {} ({})",
-                        *this,
-                        edge().txid,
-                        time_taken,
-                        printable_ping_stats());
-                    expire = ++ping_recent_timeouts > _router.config().paths.max_missed_pings;
-                    if (expire)
-                        log::warning(
+                    ping_responses++;
+                    ping_recent_timeouts = 0;
+                    ping_cumulative += time_taken;
+                    ping_sq_cumulative += time_taken.count() * time_taken.count();
+
+                    if (resp.body == messages::OK_RESPONSE)
+                        log::debug(
                             logcat,
-                            "Path {} (txid={}) had too many ping timeouts ({}); expiring path.",
+                            "Ping response for path {} (txid={}) response received in {} ({})",
                             *this,
                             edge().txid,
-                            ping_recent_timeouts);
+                            time_taken,
+                            printable_ping_stats());
+                    else
+                        log::warning(
+                            logcat,
+                            "Path {} ping was successful (in {}) but had unexpected response body: {}",
+                            *this,
+                            time_taken,
+                            buffer_printer(resp.body));
                 }
                 else
-                    log::warning(
-                        logcat,
-                        "{} path_ping returned a path error (in {}): {}",
-                        *this,
-                        time_taken,
-                        buffer_printer(m.body()));
+                {
+                    bool expire = true;
+                    if (resp.timed_out)
+                    {
+                        ping_timeouts++;
+                        log::debug(
+                            logcat,
+                            "Ping response for path {} (txid={}) timed out after {} ({})",
+                            *this,
+                            edge().txid,
+                            time_taken,
+                            printable_ping_stats());
+                        expire = ++ping_recent_timeouts > _router.config().paths.max_missed_pings;
+                        if (expire)
+                            log::warning(
+                                logcat,
+                                "Path {} (txid={}) had too many ping timeouts ({}); expiring path.",
+                                *this,
+                                edge().txid,
+                                ping_recent_timeouts);
+                    }
+                    else
+                        log::warning(
+                            logcat,
+                            "{} path_ping returned a path error (in {}): {}",
+                            *this,
+                            time_taken,
+                            buffer_printer(resp.body));
 
-                if (expire)
-                    _expiry = start_time;
-            }
-        });
+                    if (expire)
+                        _expiry = start_time;
+                }
+            });
     }
 
     bool Path::operator==(const Path& other) const
@@ -160,28 +161,29 @@ namespace llarp::path
             hops, other.hops, [](const TransitHop& a, const TransitHop& b) { return a.same_transit(b); });
     }
 
-    void Path::fetch_relay_contact(const RouterID& needed, std::function<void(quic::message)> func)
+    void Path::fetch_relay_contact(const RouterID& needed, std::function<void(path_control_response)> func)
     {
         send_path_control_message("fetch_rcs", FetchRC::serialize({&needed, 1}), std::move(func));
     }
 
-    void Path::fetch_relay_contacts(std::span<const RouterID> needed, std::function<void(quic::message)> func)
+    void Path::fetch_relay_contacts(std::span<const RouterID> needed, std::function<void(path_control_response)> func)
     {
         send_path_control_message("fetch_rcs", FetchRC::serialize(needed), std::move(func));
     }
 
-    void Path::find_client_contact(const PubKey& blinded_pk, std::function<void(quic::message)> func)
+    void Path::find_client_contact(const PubKey& blinded_pk, std::function<void(path_control_response)> func)
     {
         send_path_control_message("find_cc", FindClientContact::serialize(blinded_pk), std::move(func));
     }
 
     void Path::publish_client_contact(
-        const EncryptedClientContact& ecc, int location, std::function<void(quic::message)> func)
+        const EncryptedClientContact& ecc, int location, std::function<void(path_control_response)> func)
     {
         send_path_control_message("publish_cc", PublishClientContact::serialize(ecc, location), std::move(func));
     }
 
-    void Path::resolve_sns(std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(quic::message)> func)
+    void Path::resolve_sns(
+        std::span<const std::byte, SHORTHASHSIZE> name_hash, std::function<void(path_control_response)> func)
     {
         send_path_control_message("resolve_sns", ResolveSNS::serialize(name_hash), std::move(func));
     }
@@ -217,6 +219,37 @@ namespace llarp::path
         msgtype[0] = type;
     }
 
+    std::string Path::decrypt_path_message(std::string_view payload)
+    {
+        if (payload.size() <= ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC)
+        {
+            log::warning(logcat, "received too-short response to path control message.");
+            return {};
+        }
+        std::string body{payload};
+        std::span<std::byte> body_span{reinterpret_cast<std::byte*>(body.data()), body.size()};
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(body_span);
+        SymmNonce nonce;
+        nonce.assign(bnonce);
+        try
+        {
+            for (size_t i = 0; i != hops.size() - 1; i++)
+            {
+                nonce ^= hops[i].xor_nonce;
+                crypto::xchacha20(inner_payload, hops[i].shared_secret, nonce);
+            }
+            const auto& last_hop = hops.back();
+            nonce ^= last_hop.xor_nonce;
+            auto decrypted = crypto::xchacha20_poly1305_decrypt(inner_payload, last_hop.shared_secret, nonce);
+            return {reinterpret_cast<const char*>(decrypted.data()), decrypted.size()};
+        }
+        catch (std::exception& e)
+        {
+            log::warning(logcat, "path control message response decryption failed: {}", e.what());
+        }
+        return {};
+    }
+
     void Path::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
         encrypt_path_message(data, std::move(nonce), DATA_MESSAGE_TYPE, false /* mac on session payload */);
@@ -224,15 +257,37 @@ namespace llarp::path
     }
 
     void Path::send_path_control_message(
-        std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
+        std::string_view method, std::span<const std::byte> body, std::function<void(path_control_response)> func)
     {
+        auto decryptor = [wself = weak_from_this(), func = std::move(func)](quic::message m) {
+            path_control_response resp;
+
+            auto self = wself.lock();
+            if (!self)
+            {
+                log::info(logcat, "Path control response received, but path is gone.");
+                resp.timed_out = true;
+                func(std::move(resp));
+                return;
+            }
+
+            resp.timed_out = m.timed_out;
+            resp.error = !m;
+            if (m.timed_out || m.is_error())
+                resp.body = m.body();
+            else
+                resp.body = self->decrypt_path_message(m.body());
+            func(std::move(resp));
+        };
+
         auto inner_payload = PATH::CONTROL::serialize(method, body);
         std::vector<std::byte> payload;
         payload.reserve(inner_payload.size() + ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC);
         payload.resize(inner_payload.size());
         std::memcpy(payload.data(), inner_payload.data(), inner_payload.size());
         encrypt_path_message(payload, SymmNonce::make_random(), CONTROL_MESSAGE_TYPE, true /* include mac */);
-        _router.link_endpoint().send_command(edge().router_id, "path_control", std::move(payload), std::move(func));
+        _router.link_endpoint().send_command(
+            edge().router_id, "path_control", std::move(payload), std::move(decryptor));
     }
 
     void Path::send_session_control_message(std::vector<std::byte>&& body, SymmNonce&& nonce)

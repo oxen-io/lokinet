@@ -299,13 +299,13 @@ namespace llarp
             return;
         }
 
-        selected_path->fetch_relay_contacts(to_fetch, [this](quic::message m) mutable {
+        selected_path->fetch_relay_contacts(to_fetch, [this](auto resp) mutable {
             std::string error;
-            if (m)
+            if (resp.ok())
             {
                 try
                 {
-                    auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{m.body()});
+                    auto rcs = FetchRC::deserialize_response(_router.netid(), oxenc::bt_dict_consumer{resp.body});
                     log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", rcs.size());
                     for (auto& rc : rcs)
                     {
@@ -321,7 +321,7 @@ namespace llarp
             }
             else
             {
-                error = m.timed_out ? "timed out" : "failed: {}"_format(m.body());
+                error = resp.timed_out ? "timed out" : "failed: {}"_format(resp.body);
             }
         });
     }
@@ -366,22 +366,22 @@ namespace llarp
 
         for (auto* path : selected_paths)
         {
-            auto result_cb = [this, results, result_count, source = path->terminal_rid()](quic::message m) {
+            auto result_cb = [this, results, result_count, source = path->terminal_rid()](auto resp) {
                 (*result_count)++;
-                if (not m)
+                if (not resp.ok())
                 {
                     log::warning(
                         logcat,
                         "RID fetch from {} {}",
                         source,
-                        m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
+                        resp.timed_out ? "timed out" : "failed: {}"_format(resp.body));
                 }
                 else
                 {
                     try
                     {
                         auto& router_ids = results->at(source);
-                        oxenc::bt_dict_consumer btdc{m.body()};
+                        oxenc::bt_dict_consumer btdc{resp.body};
 
                         btdc.required("r");
 
