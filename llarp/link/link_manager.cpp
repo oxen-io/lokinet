@@ -807,7 +807,17 @@ namespace llarp::link
                 }
                 auto& hopid = hop->rxid;
                 auto nonce = SymmNonce::make_random();
-                crypto::xchacha20_poly1305_encrypt(response, hop->shared_secret, nonce);
+                response.reserve(response.size() + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC);
+                response.resize(response.size() + crypto::MAC_SIZE);
+                try
+                {
+                    crypto::xchacha20_poly1305_encrypt(response, hop->shared_secret, nonce);
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(logcat, "Failed encryptin path control message response: {}", e.what());
+                    return;
+                }
                 nonce ^= hop->xor_nonce;
                 auto inner_size = response.size();
                 response.resize(inner_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
@@ -1014,7 +1024,6 @@ namespace llarp::link
             // and remove the session tag then give the remainder for be session-decrypted.  The
             // nonce (after the above mutations) also matches the nonce we want to use for the
             // session encryption.
-            // FIXME: poly1305 mac goes in here somewhere too!
             session_tag tag;
             auto tag_span = std::span{message}.last<sizeof(session_tag)>();
             tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
