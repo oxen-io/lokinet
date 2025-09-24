@@ -1082,9 +1082,12 @@ namespace llarp
             log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
             _loop_ticker.reset();
 
-            rv = _service_stat_ticker->stop();
-            log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
-            _service_stat_ticker.reset();
+            if (_service_stat_ticker)
+            {
+                rv = _service_stat_ticker->stop();
+                log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
+                _service_stat_ticker.reset();
+            }
 
             if (_reachability_ticker)
             {
