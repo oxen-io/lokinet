@@ -328,7 +328,7 @@ namespace llarp
             // nullopt if no pivot is available right now, otherwise the router id and the lifetime
             // of paths to that pivot (so that we avoid creating paths that will become stale paths
             // living beyond the expiry of the pivot).
-            std::optional<std::pair<RouterID, std::chrono::seconds>> select_pivot();
+            std::optional<std::pair<RouterID, std::pair<std::chrono::seconds, HopID>>> select_pivot();
 
             void select_new_current() override;
 

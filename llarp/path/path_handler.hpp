@@ -145,7 +145,7 @@ namespace llarp
 
             void ping_paths(std::chrono::milliseconds now);
 
-            bool build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime = path::MAX_LIFETIME);
+            Path* build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime = path::MAX_LIFETIME);
 
             std::optional<std::vector<RelayContact>> select_hops_to_remote(const RouterID& pivot);
 
@@ -158,7 +158,7 @@ namespace llarp
             /// The return value is a unique id for the path that is passed into the
             /// path_build_failed/_succeeded methods to uniquely identify the path, or 0 if the path
             /// build is not currently possible.
-            int64_t build(
+            Path* build(
                 std::span<const RelayContact> hops,
                 std::chrono::milliseconds expiry_ts = llarp::time_now_ms() + path::MAX_LIFETIME);
 

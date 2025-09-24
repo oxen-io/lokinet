@@ -1118,8 +1118,14 @@ namespace llarp::session
         while (count < needed)
         {
             auto p = select_pivot();
-            if (p && build_path_to_remote(p->first, p->second))
-                count++;
+            if (p)
+            {
+                if (auto* path_ptr = build_path_to_remote(p->first, p->second.first); path_ptr)
+                {
+                    path_ptr->aligned_hopid = p->second.second;
+                    count++;
+                }
+            }
             else
                 break;
         }
@@ -1242,7 +1248,7 @@ namespace llarp::session
         return obj;
     }
 
-    std::optional<std::pair<RouterID, std::chrono::seconds>> OutboundClientSession::select_pivot()
+    std::optional<std::pair<RouterID, std::pair<std::chrono::seconds, HopID>>> OutboundClientSession::select_pivot()
     {
         // We've been asked to select a new pivot to build a path to.  We select using various
         // criteria:
@@ -1256,7 +1262,7 @@ namespace llarp::session
         // start doubling up on a pivot if we need to maintain more paths than there are pivots.
 
         auto now = llarp::time_now_ms();
-        std::unordered_map<RouterID, std::chrono::seconds> select_from;
+        std::unordered_map<RouterID, std::pair<std::chrono::seconds, HopID>> select_from;
         int min_path_count = std::numeric_limits<int>::max();
         auto acceptable_cutoff =
             std::chrono::sys_time<std::chrono::milliseconds>{now + router.config().paths.acceptable_expiry};
@@ -1278,12 +1284,16 @@ namespace llarp::session
                 select_from.clear();
                 min_path_count = existing_count;
             }
-            // In the case of duplicate router ids, choose the later implied lifetime so that paths
-            // we might build are good for either hopid on the pivot.
+            // In the case of duplicate router ids, replace with the newer (longer?) expiry
+            // and that Intro's HopID
             auto exp = std::min<std::chrono::seconds>(
                 std::chrono::floor<std::chrono::seconds>(intro.expires_in(now)), path::MAX_LIFETIME);
-            if (auto [it, inserted] = select_from.emplace(intro.relay, exp); not inserted and it->second < exp)
-                it->second = exp;
+            if (auto [it, inserted] = select_from.emplace(intro.relay, std::make_pair(exp, intro.hop));
+                not inserted and it->second.first < exp)
+            {
+                it->second.first = exp;
+                it->second.second = intro.hop;
+            }
         }
 
         if (select_from.empty())
