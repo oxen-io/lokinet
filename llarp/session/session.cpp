@@ -383,11 +383,25 @@ namespace llarp::session
             hopid.assign(hop_span);
             inner_btdc.finish();
             if (is_relay_session)
-                static_cast<InboundRelaySession*>(this)->handle_path_switch(
-                    std::move(hopid), std::get<std::shared_ptr<path::TransitHop>>(std::move(source)));
+            {
+                auto p = std::get<std::shared_ptr<path::TransitHop>>(std::move(source));
+                if (hopid != p->rxid)
+                {
+                    log::warning(logcat, "Received relay session path switch, hopid mismatch with receiving path.");
+                    return;
+                }
+                static_cast<InboundRelaySession*>(this)->handle_path_switch(std::move(hopid), std::move(p));
+            }
             else
-                static_cast<InboundClientSession*>(this)->handle_path_switch(
-                    std::move(hopid), std::get<std::shared_ptr<path::Path>>(std::move(source)));
+            {
+                auto p = std::get<std::shared_ptr<path::Path>>(std::move(source));
+                if (hopid == p->terminal_hopid())
+                {
+                    log::warning(logcat, "Received client session path switch, hopid collides with receiving path.");
+                    return;
+                }
+                static_cast<InboundClientSession*>(this)->handle_path_switch(std::move(hopid), std::move(p));
+            }
         }
     }
 
