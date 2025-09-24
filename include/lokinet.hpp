@@ -80,6 +80,21 @@ namespace lokinet
         // Destructor stops the lokinet instance.  The destructor blocks until shutdown is complete.
         ~Lokinet();
 
+        // Schedules the given callback to be fired when Lokinet edge connections are mostly
+        // established (and thus Lokinet is ready to start building paths).  If lokinet is already
+        // established, this will schedule an immediate invocation of the callback.
+        //
+        // If persist is true then the callback will be stored and called *each* time Lokinet enters
+        // the connected state (i.e. it will be called again if Lokinet loses all connectivity and
+        // then regains connections).
+        void on_connected(std::function<void()> callback, bool persist = false);
+
+        // Schedules the given callback to be fired when Lokinet becomes fully disconnected, i.e.
+        // loses all established edge connections.  If persist is true then the callback will be
+        // fired *each* time Lokinet transitions from connected to disconnected state.  If Lokinet
+        // is not currently connected then the callback will be scheduled immediately.
+        void on_disconnected(std::function<void()> callback, bool persist = false);
+
         // Establishes a UDP session to the given remote (.loki or .snode) and port.  When the
         // lokinet session to the remote is established, the callback is invoked with the info
         // corresponding to the session and tunnel.  This call can happen instantly (before this

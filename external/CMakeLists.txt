@@ -60,7 +60,7 @@ endmacro()
 system_or_submodule(OXENC oxenc oxenc::oxenc liboxenc>=1.5.0 oxen-libquic/external/oxen-encoding)
 system_or_submodule(OXENLOGGING oxen-logging oxen::logging liboxen-logging>=1.2.0 oxen-libquic/external/oxen-logging)
 if(LOKINET_FULL)
-    system_or_submodule(OXENMQ oxenmq oxenmq::oxenmq liboxenmq>=1.2.22 oxen-mq)
+    system_or_submodule(OXENMQ oxenmq oxenmq::oxenmq liboxenmq>=1.3 oxen-mq)
 endif()
 system_or_submodule(FMT fmt fmt::fmt fmt>=9 oxen-libquic/external/oxen-logging/fmt)
 

@@ -2,6 +2,7 @@
 
 #include <llarp/constants/version.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/file.hpp>
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
@@ -17,10 +18,17 @@ namespace llarp
 {
     static auto logcat = log::Cat("relay-contact");
 
+    using namespace oxenc::literals;
+
     void RelayContact::load(NetID netid, bool accept_expired)
     {
         oxenc::bt_dict_consumer btdc{_payload};
-        if (auto rc_ver = btdc.require<uint8_t>(""); rc_ver != RelayContact::VERSION)
+
+        // The "" key containing the RC version key is optional: if omitted we assume version 0.  We
+        // still look for it, though, so that if we need to introduce backwards-incompatible RC
+        // changes for some reason we can do so in such a way that older versions will properly
+        // reject them.
+        if (uint8_t rc_ver = btdc.maybe<uint8_t>("").value_or(0); rc_ver != RelayContact::VERSION)
             throw std::runtime_error{"Invalid RC: do not know how to parse v{} RCs"_format(rc_ver)};
 
         auto parsed_netid = static_cast<NetID>(btdc.maybe<int>("#").value_or(static_cast<int>(NetID::MAINNET)));
@@ -90,14 +98,14 @@ namespace llarp
                     throw std::runtime_error{"Invalid signature: not 64 bytes"};
 
                 if (!accept_expired and is_expired(time_now_ms()))
-                    throw std::runtime_error{"Rejecting expired RemoteRC!"};
+                    throw std::runtime_error{"Rejecting expired relay contact!"};
 
                 if (not crypto::verify(router_id(), msg, sig.first<64>()))
-                    throw std::runtime_error{"Failed to verify RemoteRC signature"};
+                    throw std::runtime_error{"Failed to verify relay contact signature"};
             });
 
         if (not btdc.is_finished())
-            throw std::runtime_error{"RemoteRC has invalid trailing fields"};
+            throw std::runtime_error{"relay contact has invalid post-signature fields"};
 
         btdc.finish();
     }
@@ -165,45 +173,27 @@ namespace llarp
     }
 
     static const std::unordered_set<std::string_view> obsolete_bootstraps{
-        "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
-        "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
+        // Currently none (since Lokinet network reboot invalidated all old ones anyway)
+        // "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"_hex,
     };
 
-    bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.ToHex()); }
+    bool RelayContact::is_obsolete() const { return obsolete_bootstraps.contains(_router_id.to_view()); }
 
     bool RelayContact::address_changed(const RelayContact& other) const
     {
         return std::tie(_addr, _addr6) != std::tie(other._addr, other._addr6);
     }
 
-    LocalRC::LocalRC(Ed25519SecretKey secret, quic::Address local, NetID netid) : _secret_key{std::move(secret)}
-    {
-        _router_id.assign(_secret_key.pubkey_span());
-        _addr = std::move(local);
-        _netid = netid;
-        if (_addr.is_ipv6())
-            _addr6.emplace(&_addr.in6());
-        resign();
-    }
-
-    RemoteRC LocalRC::to_remote() const { return RemoteRC{_payload, _netid}; }
-
-    void LocalRC::bt_sign_and_store(oxenc::bt_dict_producer&& btdp)
-    {
-        btdp.append_signature("~", [this](std::span<const std::byte> to_sign) -> std::span<const std::byte, SIGSIZE> {
-            _secret_key.sign(_signature, to_sign);
-            return _signature;
-        });
-
-        auto v = btdp.view();
-        _payload.resize(v.size());
-        std::memcpy(_payload.data(), v.data(), v.size());
-    }
-
-    oxenc::bt_dict_producer LocalRC::bt_encode_for_signing()
+    RelayContact::RelayContact(const Router& router)
+        : _router_id{router.id()},
+          _addr{router.public_addr()},
+          _timestamp{std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now())},
+          _netid{router.netid()},
+          _router_version{llarp::LOKINET_VERSION}
     {
         oxenc::bt_dict_producer btdp;
-        btdp.append("", VERSION);
+        if (VERSION != 0)
+            btdp.append("", VERSION);
 
         if (_netid != NetID::MAINNET)
             btdp.append("#", static_cast<int>(_netid));
@@ -240,43 +230,20 @@ namespace llarp
         btdp.append("t", _timestamp.time_since_epoch().count());
 
         static_assert(llarp::LOKINET_VERSION.size() == 3);
-        btdp.append("v", std::span{llarp::LOKINET_VERSION});
+        btdp.append("v", std::span{_router_version});
 
-        return btdp;
+        btdp.append_signature("~", [&router](std::span<const std::byte> to_sign) {
+            std::array<std::byte, SIGSIZE> sig;
+            router.secret_key().sign(sig, to_sign);
+            return sig;
+        });
+        _payload = std::move(btdp).str();
+
+        if (_payload.size() > MAX_RC_SIZE)
+            throw std::invalid_argument{"Invalid RC: exceeds maximum size"};
     }
 
-    void LocalRC::resign()
-    {
-        _timestamp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-        bt_sign_and_store(bt_encode_for_signing());
-    }
-
-    /// Mutators for the private member attributes. Calling on the mutators
-    /// will clear the current signature and re-sign the RC
-    void LocalRC::set_addr(quic::Address new_addr)
-    {
-        if (!new_addr.is_ipv4() || !new_addr.is_public())
-            throw std::invalid_argument{"set_addr requires a public IPv4 address/port"};
-        _addr = std::move(new_addr);
-        resign();
-    }
-
-    void LocalRC::set_addr6(quic::Address new_addr)
-    {
-        if (!new_addr.is_ipv6() || !new_addr.is_public())
-            throw std::invalid_argument{"set_addr6 requires a public IPv6 address/port"};
-        _addr6 = std::move(new_addr);
-        resign();
-    }
-    void LocalRC::clear_addr6() { _addr6.reset(); }
-
-    void LocalRC::set_router_id(RouterID rid)
-    {
-        _router_id = std::move(rid);
-        resign();
-    }
-
-    RemoteRC::RemoteRC(std::string_view data, NetID netid, bool accept_expired)
+    RelayContact::RelayContact(std::string_view data, NetID netid, bool accept_expired)
     {
         if (data.size() > MAX_RC_SIZE)
             throw std::invalid_argument{"Invalid RC: exceeds maximum size"};
@@ -285,7 +252,7 @@ namespace llarp
     }
 
     template <>
-    RemoteRC::RemoteRC(const std::filesystem::path& fname, NetID netid, bool accept_expired)
+    RelayContact::RelayContact(const std::filesystem::path& fname, NetID netid, bool accept_expired)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _payload = util::file_to_string(fname);

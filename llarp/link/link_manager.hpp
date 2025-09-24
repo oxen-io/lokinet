@@ -11,9 +11,11 @@
 #include <llarp/router/router.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <oxen/quic/btstream.hpp>
 #include <oxen/quic/connection.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/endpoint.hpp>
 #include <oxen/quic/format.hpp>
 #include <oxen/quic/loop.hpp>
@@ -75,9 +77,11 @@ namespace llarp::link
 
         std::atomic<bool> is_stopping{false};
 
+        std::optional<zstd::compressor> compressor;
+
         // Registers commands on the client or relay end of a client-relay or relay-relay connection
         // NB: this could be called from either the network or router loop thread!
-        void register_commands(quic::BTRequestStream& s, const RouterID& rid, bool client_only = false);
+        void register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote);
 
         // Registered the bootstrap command (bfetch_rcs) on the server (i.e. incoming) bootstrap
         // connection (i.e.  to the relay being used as a bootstrap).  The client side of such a
@@ -96,7 +100,7 @@ namespace llarp::link
         // void test_reachability(const RouterID& rid, connection_established_callback, connection_closed_callback);
 
         void connect_to(
-            const RemoteRC& rc, connection_established_callback = nullptr, connection_closed_callback = nullptr);
+            const RelayContact& rc, connection_established_callback = nullptr, connection_closed_callback = nullptr);
 
         // Closes all connections and releases the network event loop.
         void stop();
@@ -113,15 +117,13 @@ namespace llarp::link
         // Sends the given RC to all our relay peers, excluding connections to the RC pubkey itself,
         // and (if not-nullptr) the given quic connection.  Returns the number of relay connections
         // we sent it to.
-        int gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender = nullptr);
+        int gossip_rc(const RelayContact& rc, const quic::ConnectionID* sender = nullptr);
 
         ~Manager();
 
       private:
         void handle_gossip_rc(quic::message);
 
-        void fetch_bootstrap_rcs(
-            const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func);
         void handle_fetch_bootstrap_rcs(quic::message m);
 
         // Inner handlers for relayed requests
@@ -137,7 +139,7 @@ namespace llarp::link
         void handle_path_ping(quic::message, std::optional<std::string> = std::nullopt);
 
         // Path messages
-        void handle_path_build(quic::message, const RouterID& from);
+        void handle_path_build(quic::message, const std::variant<RouterID, quic::ConnectionID>& from);
         void handle_path_latency(quic::message);
 
         // These requests come over a path (as a "path_control" request),

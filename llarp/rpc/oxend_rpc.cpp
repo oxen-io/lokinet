@@ -1,4 +1,4 @@
-#include "rpc_client.hpp"
+#include "oxend_rpc.hpp"
 
 #include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
@@ -7,13 +7,14 @@
 #include <nlohmann/json.hpp>
 #include <oxenc/hex.h>
 
+#include <exception>
 #include <stdexcept>
 
 namespace llarp::rpc
 {
-    static auto logcat = log::Cat("rpc.client");
+    static auto logcat = log::Cat("rpc.oxend");
 
-    RPCClient::RPCClient(oxenmq::OxenMQ& omq, Router& r) : _omq{omq}, _router{r}
+    OxendRPC::OxendRPC(oxenmq::OxenMQ& omq, Router& r) : _omq{omq}, _router{r}
     {
         // new block handler
         _omq.add_category("notify", oxenmq::Access{oxenmq::AuthLevel::none})
@@ -24,7 +25,7 @@ namespace llarp::rpc
         _is_updating_list = false;
     }
 
-    void RPCClient::connect_async(oxenmq::address url)
+    void OxendRPC::connect_async(oxenmq::address url)
     {
         if (not _router.is_service_node)
         {
@@ -42,13 +43,13 @@ namespace llarp::rpc
             });
     }
 
-    void RPCClient::command(std::string_view cmd)
+    void OxendRPC::command(std::string_view cmd)
     {
         log::debug(logcat, "Oxend command: {}", cmd);
         _omq.send(*_conn, std::move(cmd));
     }
 
-    void RPCClient::handle_new_block(oxenmq::Message& msg)
+    void OxendRPC::handle_new_block(oxenmq::Message& msg)
     {
         if (msg.data.size() != 2)
         {
@@ -71,14 +72,16 @@ namespace llarp::rpc
         }
 
         log::trace(logcat, "new block at height {}", _block_height);
-        // don't upadate on block notification if an update is pending
         update_service_node_list();
     }
 
-    void RPCClient::update_service_node_list()
+    void OxendRPC::update_service_node_list(std::shared_ptr<std::promise<void>> on_updated)
     {
         if (_is_updating_list.exchange(true))
-            return;  // update already in progress
+        {
+            assert(!on_updated);  // When using a promise it should be the first call
+            return;               // update already in progress
+        }
 
         nlohmann::json req{{"fields", {"pubkey_ed25519", "block_hash"}}};
         if (!_last_hash_update.empty())
@@ -86,11 +89,12 @@ namespace llarp::rpc
 
         request(
             "rpc.get_service_nodes",
-            [this](bool success, std::vector<std::string> data) {
+            [this, on_updated = std::move(on_updated)](bool success, std::vector<std::string> data) mutable {
+                std::string fail_msg;
                 if (not success)
-                    log::warning(logcat, "Failed to update service node list");
+                    fail_msg = "Failed to update service node list";
                 else if (data.size() < 2)
-                    log::warning(logcat, "Oxend gave empty reply for service node list");
+                    fail_msg = "Oxend gave empty reply for service node list";
                 else
                 {
                     try
@@ -107,11 +111,14 @@ namespace llarp::rpc
                                 _last_hash_update = it->get<std::string>();
                             else
                                 _last_hash_update.clear();
+                            if (on_updated)
+                                on_updated->set_value();
                         }
                     }
                     catch (const std::exception& ex)
                     {
-                        log::error(logcat, "Failed to process service node list: {}", ex.what());
+                        fail_msg = fmt::format("Failed to process service node list: {}", ex.what());
+                        log::error(logcat, "{}", fail_msg);
                     }
                 }
 
@@ -119,14 +126,26 @@ namespace llarp::rpc
                 // finished with the previous update; and 2) so that m_UpdatingList also guards
                 // m_LastUpdateHash
                 _is_updating_list = false;
+
+                if (!fail_msg.empty() && on_updated)
+                {
+                    try
+                    {
+                        throw std::runtime_error{fail_msg};
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        on_updated->set_exception(std::current_exception());
+                    }
+                }
             },
             req.dump());
     }
 
-    void RPCClient::ping()
+    void OxendRPC::ping()
     {
         // send a ping
-        auto pk = _router.local_rid();
+        auto pk = _router.id();
 
         nlohmann::json payload = {
             {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
@@ -157,16 +176,16 @@ namespace llarp::rpc
         update_service_node_list();
     }
 
-    void RPCClient::start_pings()
+    void OxendRPC::start_pings()
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        log::info(logcat, "Starting RPCClient ping ticker...");
+        log::info(logcat, "Starting OxendRPC ping ticker...");
         ping();
         _ping_ticker = _router.loop.call_every(PING_INTERVAL, [this] { ping(); });
     }
 
-    void RPCClient::handle_new_service_node_list(const nlohmann::json& j)
+    void OxendRPC::handle_new_service_node_list(const nlohmann::json& j)
     {
         std::unordered_set<RouterID> registered;
         if (not j.is_array())
@@ -193,7 +212,7 @@ namespace llarp::rpc
         _router.node_db().set_registered_relays(std::move(registered));
     }
 
-    void RPCClient::inform_connection(RouterID router, bool success)
+    void OxendRPC::inform_connection(RouterID router, bool success)
     {
         _router.loop.call([router, success, this]() {
             const nlohmann::json req = {{"passed", success}, {"pubkey", router.ToHex()}, {"type", "lokinet"}};
@@ -211,7 +230,7 @@ namespace llarp::rpc
         });
     }
 
-    Ed25519SecretKey RPCClient::obtain_identity_key()
+    Ed25519SecretKey OxendRPC::obtain_identity_key()
     {
         std::promise<Ed25519SecretKey> promise;
         request("admin.get_service_privkeys", [&promise](bool success, std::vector<std::string> data) {
@@ -247,7 +266,7 @@ namespace llarp::rpc
         return ftr.get();
     }
 
-    void RPCClient::lookup_sns_hash(
+    void OxendRPC::lookup_sns_hash(
         std::string namehash, std::function<void(std::optional<EncryptedSNSRecord>)> resultHandler)
     {
         log::debug(logcat, "Looking Up ONS NameHash {}", namehash);

@@ -167,7 +167,7 @@ namespace llarp
             void lookup_remote_srv(
                 std::string name, std::string service, std::function<void(std::vector<dns::SRVData>)> handler);
 
-            void lookup_relay_contact(RouterID remote, std::function<void(std::optional<RemoteRC>)> func);
+            void lookup_relay_contact(RouterID remote, std::function<void(std::optional<RelayContact>)> func);
 
             void lookup_client_intro(RouterID remote, std::function<void(std::optional<ClientContact>)> func);
 

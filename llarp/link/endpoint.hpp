@@ -7,6 +7,7 @@
 #include <llarp/util/time.hpp>
 
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/endpoint.hpp>
 #include <oxen/quic/gnutls_crypto.hpp>
 
@@ -93,19 +94,18 @@ namespace llarp::link
         // `relay_conns` (relays).
         std::unordered_map<RouterID, std::shared_ptr<link::Connection>> pending_outbound;
 
-        // Stores established client-to-relay connections.  (That is, outbound connections for a
-        // client, and inbound client connections for a relay).
+        // Stores established client-to-relay connections (i.e. outbound edge connections).  Client
+        // only.
         std::unordered_map<RouterID, std::shared_ptr<link::Connection>> client_conns;
+
+        // Stores established inbound client-to-relay connections (i.e. edge connections).  Relay
+        // only.
+        std::unordered_map<quic::ConnectionID, std::shared_ptr<link::Connection>> inbound_clients;
 
         std::unique_ptr<quic::Loop> loop;
         std::shared_ptr<quic::Endpoint> endpoint;
         std::shared_ptr<quic::Ticker> redundancy_ticker;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
-
-        // Tracks client connectivity: a client becomes "connected" when it reaches the configured
-        // number of router connections, and becomes disconnected when it loses all connections.
-        // (And so in between could be in either state).
-        bool _client_connected{false};
 
       public:
         void start_tickers();
@@ -120,7 +120,9 @@ namespace llarp::link
         // are flowing on the mutually preferred connection.
         void close_redundant(std::chrono::milliseconds now = llarp::time_now_ms());
 
-        link::Connection* get_client_conn(const RouterID&) const;
+        // Returns an established client->relay connection, if one exists.  Client only.  Returns
+        // nullptr if there is no current established connection to the given relay.
+        link::Connection* get_client_conn(const RouterID& rid) const;
 
         // Returns a set of all relays with established (or pending, if `include_pending`)
         // connections.
@@ -138,7 +140,7 @@ namespace llarp::link
         //   next two values.
         // - number of established outbound relay-to-relay connections.
         // - number of inbound relay-to-relay connections.
-        // - number of pending outbound connections.
+        // - number of pending outbound connections (i.e. to other relays).
         // - number of incoming connections from clients.
         std::array<int, 5> relay_connection_counts() const;
 
@@ -156,6 +158,18 @@ namespace llarp::link
         // would become a parallel connection).
         int num_relay_conns(bool include_pending = false) const;
 
+        // If all current established outbound client-to-relay edge connections share the same
+        // distinct IP range (according to the unique-hop-mask config setting) then this returns
+        // that range.  If there are multiple ranges (or no established connections, or the unique
+        // range setting is disabled) then this returns nullopt.
+        //
+        // This is used when selecting a random terminus when constructing a new inbound path to
+        // avoid selecting a terminus that would be forced to violate the unique range setting
+        // because of the lack of distinct available edge connection IP networks.
+        //
+        // This method is only meaningful for clients; relays always return std::nullopt.
+        std::optional<quic::ipv4_net> unique_edge_range() const;
+
         //        bool establish_connection(
         //            quic::RemoteAddress remote,
         //            RouterID rid,
@@ -165,7 +179,7 @@ namespace llarp::link
         // If there is no existing or pending connection to the given relay, initiates a new
         // outbound connection to it, otherwise does nothing.  Returns true a with the remote is
         // already established, false if it was initiated by this call or was already pending.
-        bool ensure_connection(const RemoteRC& rc);
+        bool ensure_connection(const RelayContact& rc);
 
         // Returns a reference to the control stream currently in use to send commands to the given
         // relay.  If no connection exists yet with that relay, a new one is constructed (and so the
@@ -175,14 +189,14 @@ namespace llarp::link
         // their callbacks fired in the network endpoint event loop rather than the router event
         // loop; instead see control_command for a wrapper that transfers callback execution to the
         // router loop.
-        quic::BTRequestStream& control_stream_for(const RemoteRC& rc);
+        quic::BTRequestStream& control_stream_for(const RelayContact& rc);
 
         // Sends a command on the control stream with `rc`, initiating a new connection if needed to
         // reach `rc`.  This is almost equivalent to `control_stream_for(rc).command(...)` except
         // that the callback, when it fires, is wrapped and transferred to the router loop rather
         // than executing in the endpoint event loop.
         void send_command(
-            const RemoteRC& rc,
+            const RelayContact& rc,
             std::string endpoint,
             std::vector<std::byte> body,
             std::function<void(quic::message)> response_handler);
@@ -196,11 +210,44 @@ namespace llarp::link
             std::vector<std::byte> body,
             std::function<void(quic::message)> response_handler);
 
-        // Send a data message (i.e. datagram) to the given remote.  Returns true if we were able to
-        // queue the datagram for sending, false otherwise (such as when there is no fully
-        // established connection to the given remote yet).  Unlike `control_command`, this does not
-        // initiate a new connection if there is not already one established.
-        bool send_datagram(const RouterID& remote, std::vector<std::byte> data);
+        // Sends a command to a client (i.e. from an edge) on the control stream for the given
+        // incoming client connection ID.  Returns true if the message was queued, false if the
+        // connection is not valid.
+        bool send_command(
+            const quic::ConnectionID& client_cid,
+            std::string endpoint,
+            std::vector<std::byte> body,
+            std::function<void(quic::message)> response_handler);
+
+        // Calls one of the above, based on which thing `target` holds
+        bool send_command(
+            const std::variant<RouterID, quic::ConnectionID>& target,
+            std::string endpoint,
+            std::vector<std::byte> body,
+            std::function<void(quic::message)> response_handler)
+        {
+            return std::visit(
+                [&](const auto& tgt) {
+                    return send_command(tgt, std::move(endpoint), std::move(body), std::move(response_handler));
+                },
+                target);
+        }
+
+        // Send a data message (i.e. datagram) to the given relay, if connected.  Returns true if we
+        // were able to queue the datagram for sending, false otherwise (such as when there is no
+        // fully established connection to the given relay yet).  Unlike `control_command`, this
+        // does not initiate a new connection if there is not already one established.
+        bool send_datagram(const RouterID& relay, std::vector<std::byte> data);
+
+        // Sends a data message (i.e. datagram) on the given inbound client quic connection, if
+        // still connected.  Returns true if we were able to queue it for sending, false otherwise.
+        bool send_datagram(const quic::ConnectionID& client_cid, std::vector<std::byte> data);
+
+        // Calls one of the above, based on which thing `target` holds
+        bool send_datagram(const std::variant<RouterID, quic::ConnectionID>& target, std::vector<std::byte> data)
+        {
+            return std::visit([&](const auto& tgt) { return send_datagram(tgt, std::move(data)); }, target);
+        }
 
         // Calls `func` for every relay connection.  If any relays have dual inbound/outbound
         // connections, this is only called for the preferred direction.
@@ -210,11 +257,6 @@ namespace llarp::link
 
         // Closes all connections and stops the network event loop
         void shutdown();
-
-        // Returns true if the endpoint is "connected", that is, has reached the target number of
-        // connections.  Once true, this value becomes false if all router connections are lost.  No
-        // meaningful value for service nodes.
-        bool is_client_connected() const;
 
         // Makes a new connection to the given relay as a Lokinet bootstrap client (i.e. using the
         // special bootstrapping ALPN, even if this node is a relay) *without* using an existing
@@ -226,11 +268,23 @@ namespace llarp::link
         // Returns the connection and the control stream through which a bfetch_rc command can be
         // issued.  (This is the only command supported under the bootstrap ALPN).
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> bootstrap_connect(
-            const RemoteRC& rc);
+            const RelayContact& rc);
+
+        // Makes a new connection to the given relay as a Lokinet client (i.e. using the client
+        // ALPN, even if this node is a relay) *without* using an existing connection or tracking it
+        // in existing connections.  This is primarily used for service node testing to ensure we
+        // can establish a new connection and avoid having the connection get treated as a regular
+        // relay connection on either side of the connection.  The connection does not use
+        // keep-alive and is expected to be short lived.
+        //
+        // Returns the connection and the control stream through which a ping command can be
+        // issued.
+        std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> testing_client_connect(
+            const RelayContact& rc);
 
       private:
         std::shared_ptr<quic::BTRequestStream> make_control(
-            quic::Connection& conn, const RouterID& rid, std::string_view alpn);
+            quic::Connection& conn, std::span<const unsigned char> remote_key, std::string_view alpn);
 
         void on_inbound_conn(std::shared_ptr<quic::Connection> conn, std::shared_ptr<quic::BTRequestStream> control);
         void on_outbound_conn(std::shared_ptr<quic::Connection> conn);
@@ -239,7 +293,7 @@ namespace llarp::link
 
         void on_conn_closed(quic::Connection& conn, uint64_t ec);
 
-        std::pair<bool, quic::BTRequestStream*> ctrl_stream_impl(const RemoteRC& rc);
+        std::pair<bool, quic::BTRequestStream*> ctrl_stream_impl(const RelayContact& rc);
     };
 
 }  // namespace llarp::link

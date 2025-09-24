@@ -2,7 +2,6 @@
 
 #include "route_poker.hpp"
 
-#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/key_manager.hpp>
@@ -41,15 +40,27 @@ namespace llarp
     namespace rpc
     {
         class RPCServer;
-        class RPCClient;
+        class OxendRPC;
     }  // namespace rpc
+
+    namespace consensus
+    {
+        class reachability_testing;
+    }  // namespace consensus
 
     namespace quic = oxen::quic;
 
+    inline constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL{250ms};
+
     inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{10min};
 
-    // as we advance towards full mesh, we try to connect to this number per tick
-    inline constexpr int FULL_MESH_ITERATION{1};
+    // Upon startup, relays will attempt to connect to this many nodes per second (divided into the
+    // number of ticks per second) to try to reach full mesh as quickly as possible.  Note that a
+    // single node restarting will full mesh almost instantly regardless of this setting (because
+    // all other nodes will want to re-connect to it), and so this mainly affects how quickly the
+    // network reestablishes after a significant number of nodes restart or regain connectivity all
+    // at once.
+    inline constexpr int RELAY_CONNECTS_PER_TICK{10};
 
     // DISCUSS: ask tom and jason about this
     // how big of a time skip before we reset network state
@@ -62,6 +73,13 @@ namespace llarp
 
     inline constexpr auto SERVICE_MANAGER_REPORT_INTERVAL{5s};
 
+    // The proportion of its target number of edge connections a client needs to have established
+    // connections with before we consider it "connected" to the network.  We allow less than full
+    // connectivity so that a single relay connection timeout doesn't stall connectivity for the
+    // full timeout duration, but generally want more than 1 so that we don't end up clustering all
+    // initial path builds through a single edge.
+    using CLIENT_CONNECTED_THRESHOLD = std::ratio<2, 3>;
+
     class ContactDB;
     class NodeDB;
 
@@ -73,7 +91,7 @@ namespace llarp
             Config conf,
             std::shared_ptr<quic::Loop> loop,
             std::shared_ptr<vpn::Platform> vpnPlatform,
-            std::promise<void> p);
+            std::promise<void> close_promise);
 
         ~Router();
 
@@ -84,13 +102,10 @@ namespace llarp
 
         Config _config;
         const std::shared_ptr<quic::Loop> _loop;
-        std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
         std::filesystem::path our_rc_file;
 
-        // our router contact
-        LocalRC relay_contact;
         std::shared_ptr<oxenmq::OxenMQ> _omq{};
 
         std::atomic<bool> _is_stopping{false};
@@ -101,12 +116,16 @@ namespace llarp
         // FIXME: we probably don't need two separate config options for this!
         bool _is_exit_node{_config.network.allow_exit || _config.exit.exit_enabled};
 
-        bool _testing_disabled{_config.lokid.disable_testing};
+        // Not actually shared, but not available at all in non-full builds.
+        std::shared_ptr<consensus::reachability_testing> _router_testing;
 
-        consensus::reachability_testing router_testing;
-
-        std::optional<quic::Address> _public_address;  // public addr for relays
+        // The actual network address we use for communications:
         quic::Address _listen_address;
+
+        // The advertised public IP address for relays.  This is often the same as _listen_address,
+        // but can be different in exotic setups (e.g. where a known public IP is forwarded to an
+        // internal IP).  Always set for a relay.
+        std::optional<quic::Address> _public_address;
 
         std::unique_ptr<handlers::SessionEndpoint> _session_endpoint;
 
@@ -120,6 +139,12 @@ namespace llarp
 
         std::promise<void> _close_promise;
 
+      public:
+        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.  (It
+        // is up here because it must destroy after _node_db, which uses it.)
+        quic::Loop disk_loop;
+
+      private:
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
@@ -135,16 +160,21 @@ namespace llarp
         std::chrono::milliseconds _last_stats_report{0s};
         std::chrono::milliseconds _next_dereg_warning{time_now_ms() + 15s};
 
-        std::chrono::milliseconds _last_path_ping{0s};
+        // Application callback(s) to fire as soon as we reach "connected" or "disconnected" status,
+        // which means when we have established our target number of edge connections or lost all
+        // edge connections, respectively.  Typically used as a "ready-to-go" callback during
+        // initialization.  The bool value indicates whether the callback is persistent (true) or
+        // one-time (false).  Note that callbacks are only called when the connected state changes:
+        // that is when we were disconnected and became connected, or were connected and became
+        // disconnected.
+        std::list<std::pair<std::function<void()>, bool>> _on_connected, _on_disconnected;
 
         // These aren't actually shared, but we unique_ptr requires destructor visibility, which
         // embedded-only clients won't have as they don't compile any RPC code.
         std::shared_ptr<rpc::RPCServer> _rpc_server;
-        std::shared_ptr<rpc::RPCClient> _rpc_client;
+        std::shared_ptr<rpc::OxendRPC> _oxend;
 
         Profiling _router_profiling;
-
-        int _client_target_outbounds = 0;
 
         bool should_report_stats(std::chrono::milliseconds now) const;
 
@@ -152,15 +182,11 @@ namespace llarp
 
         void report_stats();
 
-        void save_rc();
-
         bool insufficient_peers() const;
 
         void init_logging();
 
-        void process_routerconfig();
-
-        void process_netconfig();
+        void process_config();
 
         void _relay_tick(std::chrono::milliseconds now);
 
@@ -178,8 +204,6 @@ namespace llarp
         const bool is_service_node{_config.router.is_relay};
 
         bool is_fully_meshed() const;
-
-        int client_target_outbounds() const { return _client_target_outbounds; }
 
         const std::shared_ptr<handlers::TunEPBase>& tun_endpoint() { return _tun; }
 
@@ -235,25 +259,27 @@ namespace llarp
         oxenmq::OxenMQ* omq() { return _omq.get(); }
         const oxenmq::OxenMQ* omq() const { return _omq.get(); }
 
-        const std::shared_ptr<rpc::RPCClient>& rpc_client() const { return _rpc_client; }
+        rpc::OxendRPC* oxend() const { return _oxend.get(); }
 
-        const Ed25519SecretKey& identity() const { return key_manager.identity_key; }
-
-        const RouterID& local_rid() const { return key_manager.router_id(); }
+        const Ed25519SecretKey& secret_key() const { return key_manager.secret_key; }
+        const RouterID& id() const { return key_manager.router_id(); }
 
         Profiling& router_profiling() { return _router_profiling; }
 
         quic::Loop& loop{*_loop};
 
-        // Tiny event loop + thread for handling disk I/O jobs without affecting other loops.
-        quic::Loop disk_loop;
-
-        const LocalRC& rc() const { return relay_contact; }
-
-        // Updates and re-signs the local RC and queues it for saving to disk.
-        void update_rc();
+        // If this router is not a registered service node, does nothing.  Otherwise this regenerate
+        // the RC for this router, add it to the nodedb, saves it to disk, and gossips it.
+        void regenerate_rc();
 
         const quic::Address& listen_addr() const { return _listen_address; }
+
+        // Returns the relay's advertised public address.  MUST NOT BE CALLED ON A CLIENT INSTANCE!
+        const quic::Address& public_addr() const
+        {
+            assert(_public_address);
+            return *_public_address;
+        }
 
         nlohmann::json ExtractStatus() const;
 
@@ -270,20 +296,35 @@ namespace llarp
 
         void set_router_close_cb(std::function<void(void)> hook) { _router_close_cb = hook; }
 
-        bool looks_alive() const { return now() - _last_tick <= 30s; }
+        bool looks_alive() const { return llarp::time_now_ms() - _last_tick <= 30s; }
 
         // RoutePoker& route_poker() { return *_route_poker; }
         // const RoutePoker& route_poker() const { return *_route_poker; }
 
         std::string status_line();
 
-        // Client connectivity status: we enter "client connected" state when we have reached our
-        // target number of router connections, and we lose connected state when we fall to 0 router
-        // connections.  These log when we flip from disconnected to connected (info) or vice versa
-        // (warning).
-        void set_connected();
-        void set_disconnected();
+        // Returns the client connectivity status: we enter "connected" state once the target number
+        // of edge router connections is reached, and we lose connected state when we lose all edge
+        // connections.  Application code can monitor this state by setting callbacks via
+        // `on_connected`/`on_disconnected`.
         bool is_connected() const;
+
+        // Adds an application callback to invoke when the connectivity state changes to
+        // "connected".  If the state is already connected when this is called, the callback will be
+        // invoked immediately.  If `persistent` is true then the callback will be stored and called
+        // again if the state leaves and re-enters the connected state.
+        void on_connected(std::function<void()> callback, bool persistent);
+
+        // Like `is_connected`, but fires on disconnections.
+        void on_disconnected(std::function<void()> callback, bool persistent);
+
+        // Internal method: called from link::Endpoint to re-check and possibly change connected
+        // state when a client edge connection is established or lost.
+        void on_edge_conn_change();
+
+        // Called when we get a relay testing ping to pass through to the router tester so that it
+        // can warn if we haven't received pings in a long time.
+        void on_test_ping();
 
         bool is_running() const { return _is_running; }
 
@@ -298,9 +339,7 @@ namespace llarp
         /// stop running the router logic gracefully
         void stop();
 
-        void fetch_snode_identity();
-
-        std::chrono::milliseconds now() const { return llarp::time_now_ms(); }
+        void fetch_snode_keys();
 
         void teardown();
     };

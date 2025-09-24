@@ -137,8 +137,6 @@ namespace llarp
 
             bool is_stopped() const;
 
-            std::chrono::milliseconds now() const;
-
             /// Called each path handler tick to allow subclasses to perform path checks, updates,
             /// rotations, start new paths, etc. as needed.  If not overridden this does nothing.
             virtual void update_paths(std::chrono::milliseconds /*now*/) {}
@@ -149,7 +147,7 @@ namespace llarp
 
             bool build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime = path::MAX_LIFETIME);
 
-            std::optional<std::vector<RemoteRC>> select_hops_to_remote(const RouterID& pivot);
+            std::optional<std::vector<RelayContact>> select_hops_to_remote(const RouterID& pivot);
 
             /// Attempts to build the given path and send it to the network, initiating the path
             /// build.  When the build is done it calls either path_build_succeeded or
@@ -161,7 +159,7 @@ namespace llarp
             /// path_build_failed/_succeeded methods to uniquely identify the path, or 0 if the path
             /// build is not currently possible.
             int64_t build(
-                std::span<const RemoteRC> hops,
+                std::span<const RelayContact> hops,
                 std::chrono::milliseconds expiry_ts = llarp::time_now_ms() + path::MAX_LIFETIME);
 
             /// Returns a view over all current paths (as `Path&` references)
@@ -182,18 +180,20 @@ namespace llarp
 
             /// pick a first hop; if predicate is given, only routers for which it returns true are
             /// permitted.  (Note that the path build limiter and router profile are always checked,
-            /// regardless of the predicate).
-            std::optional<RemoteRC> select_first_hop(std::function<bool(const RouterID&)> pred = nullptr) const;
+            /// regardless of the predicate).  Returns nullptr if no acceptable first hops are
+            /// found.
+            const RelayContact* select_first_hop(std::function<bool(const RelayContact&)> pred = nullptr) const;
 
           private:
             /// Checks whether we are currently able to build the given path (e.g. not stopped, the
             /// path edge is not build limited, valid number of hops).
-            bool can_build(std::span<const RemoteRC> hops);
+            bool can_build(std::span<const RelayContact> hops);
 
             /// Takes a set of path hops (edge, hop1, hop2, ..., pivot) and initializes a Path
             /// following those hops, including generating path IDs that will be used along the
             /// path.
-            std::shared_ptr<Path> build_init_path(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts);
+            std::shared_ptr<Path> build_init_path(
+                std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts);
 
             /// Takes a path as constructed by build_init_path and constructs an encoded network
             /// path build message containing the frames required to build the path.
@@ -211,7 +211,7 @@ namespace llarp
             static std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> decrypt_build_frame(
                 std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
                 const Router& r,
-                const RouterID& src,
+                const std::variant<RouterID, quic::ConnectionID>& src,
                 std::chrono::milliseconds now);
         };
     }  // namespace path

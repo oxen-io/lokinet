@@ -16,9 +16,11 @@
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <nlohmann/json.hpp>
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/context.hpp>
 #include <oxen/quic/opt.hpp>
 #include <oxenc/bt_producer.h>
@@ -32,7 +34,7 @@
 #include <ranges>
 
 #ifndef LOKINET_EMBEDDED_ONLY
-#include <llarp/rpc/rpc_client.hpp>
+#include <llarp/rpc/oxend_rpc.hpp>
 #endif
 
 namespace llarp::link
@@ -55,18 +57,15 @@ namespace llarp::link
             {"path_switch"sv, &Manager::handle_path_switch},
             {"path_ping"sv, &Manager::handle_path_ping}};
 
-    void Manager::register_commands(quic::BTRequestStream& s, const RouterID& remote_rid, bool client_only)
+    void Manager::register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote)
     {
-        // TODO FIXME: registering all these commands on every stream feels icky; a quic fallback
-        // handler could do this better.
-
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         s.register_handler("path_control"s, [this](quic::message m) {
             router.loop.call([this, msg = std::move(m)]() mutable { handle_path_control(std::move(msg)); });
         });
 
-        if (client_only)
+        if (not router.is_service_node)
         {
             log::trace(logcat, "Registered all client-only BTStream commands!");
             return;
@@ -84,9 +83,9 @@ namespace llarp::link
             router.loop.call([this, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
         });
 
-        s.register_handler("path_build"s, [this, remote_rid](quic::message m) {
+        s.register_handler("path_build"s, [this, remote](quic::message m) {
             router.loop.call(
-                [this, remote_rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote_rid); });
+                [this, remote, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote); });
         });
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
@@ -109,7 +108,15 @@ namespace llarp::link
             router.loop.call([this, msg = std::move(m)]() mutable { handle_resolve_sns(std::move(msg)); });
         });
 
-        log::trace(logcat, "Registered all commands for connection to remote RID:{}", remote_rid);
+        // Endpoint called to test connectivity by other relays during relay testing.  It simply
+        // replies with "pong" (we don't actually need a loop transfer here for the reply, but do it anyway so
+        // that ping requests check that our router loop isn't stuck).
+        s.register_handler("ping"s, [this](quic::message m) {
+            router.loop.call([this, m = std::move(m)] {
+                m.respond("pong");
+                router.on_test_ping();
+            });
+        });
     }
 
     void Manager::register_bootstrap_commands(quic::BTRequestStream& s)
@@ -154,34 +161,24 @@ namespace llarp::link
 
     void Manager::connect_to_keep_alive(int num_conns)
     {
-        if (router.node_db().strict_connect_enabled())
-        {
-            assert(not router.is_service_node);
+        auto rcs = router.node_db().get_n_random_edge_rcs(
+            num_conns, false /* shuffling not needed */, [this](const RelayContact& rc) {
+                return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
+            });
 
-            // TESTNET: TODO: if given strict-connects, fetch their RCs SPECIFICALLY in bootstrapping
-            // TODO FIXME: why?  That sounds rather metadata-leaky.
-            log::warning(logcat, "FINISH STRICT CONNECT (SEE COMMENT)");
-        }
+        for (const auto* rc : rcs)
+            endpoint.ensure_connection(*rc);
 
-        if (auto rcs = router.node_db().get_n_random_rcs(
-                num_conns,
-                true,
-                [this](const RemoteRC& rc) {
-                    return not router.link_endpoint().connected_to_relay(rc.router_id(), /*include_pending=*/true);
-                });
-            !rcs.empty())
-            for (const auto* rc : rcs)
-                endpoint.ensure_connection(*rc);
-        else
-            log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
+        if (rcs.empty())
+            log::debug(logcat, "NodeDB query for {} edge RCs returned none", num_conns);
     }
 
-    int Manager::gossip_rc(const RemoteRC& rc, const quic::ConnectionID* sender)
+    int Manager::gossip_rc(const RelayContact& rc, const quic::ConnectionID* sender)
     {
         int count = 0;
         endpoint.for_each_relay_conn([&rc, &sender, &count](const RouterID& rid, link::Connection& conn) {
             // Don't gossip this to RC's origin, or back along the connection that sent it to us:
-            if (rid == rc.router_id() or (sender && *sender == conn.conn->reference_id()))
+            if (rid == rc.router_id() or (sender and *sender == conn.conn->reference_id()))
                 return;
 
             conn.control_stream->command("gossip_rc", rc.view());
@@ -193,11 +190,11 @@ namespace llarp::link
 
     void Manager::handle_gossip_rc(quic::message m)
     {
-        RemoteRC rc;
+        RelayContact rc;
 
         try
         {
-            rc = RemoteRC{m.body(), router.netid()};
+            rc = RelayContact{m.body(), router.netid()};
         }
         catch (const std::exception& e)
         {
@@ -220,90 +217,76 @@ namespace llarp::link
                 rc.router_id().short_string());
     }
 
-    void Manager::fetch_bootstrap_rcs(
-        const RemoteRC& source, std::vector<std::byte> payload, std::function<void(quic::message)> func)
-    {
-        assert(router.loop.inside());
-        endpoint.send_command(source, "bfetch_rcs", std::move(payload), std::move(func));
-    }
-
     void Manager::handle_fetch_bootstrap_rcs(quic::message m)
     {
         // this handler should not be registered for clients
         assert(router.is_service_node);
-        log::critical(logcat, "Handling bootstrap fetch request...");
-
-        std::optional<RemoteRC> remote;
-        size_t quantity;
-
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            if (btdc.skip_until("l"))
-                remote.emplace(btdc.consume_dict_data(), router.netid());
-
-            quantity = btdc.require<size_t>("q");
-        }
-        catch (const std::exception& e)
-        {
-            log::critical(logcat, "Exception handling bootstrap RC Fetch request (body:{}): {}", m.body(), e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-
-        if (remote)
-        {
-            auto& remote_rc = *remote;
-            if (router.node_db().is_registered(remote_rc.router_id()))
-            {
-                router.node_db().put_rc(remote_rc);
-                log::debug(
-                    logcat,
-                    "Bootstrap node confirmed RID:{} is registered; approving fetch request and saving RC!",
-                    remote_rc.router_id());
-            }
-            else
-                log::warning(
-                    logcat,
-                    "Bootstrap node failed to confirm RID:{} is not registered; something is wrong",
-                    remote_rc.router_id());
-        }
-
-        auto& src = router.node_db().get_known_rcs();
-        auto count = src.size();
-
-        // if quantity is 0, then the service node requesting this wants all the RC's; otherwise,
-        // send the amount requested in the message
-        quantity = quantity == 0 || quantity > count ? count : quantity;
-
-        auto now = llarp::time_now_ms();
+        log::info(logcat, "Handling bootstrap fetch request");
 
         std::vector<std::string_view> rcs;
-        rcs.reserve(quantity);
-        for (const auto& [rid, rc] : src)
-        {
+        rcs.push_back("l"sv);
+        auto& src = router.node_db().get_known_rcs();
+
+        rcs.reserve(src.size());
+        auto now = llarp::time_now_ms();
+        for (const auto& rc : std::views::values(src))
             if (not rc.is_expired(now))
-            {
                 rcs.push_back(rc.view());
-                if (rcs.size() > quantity)
-                    break;
-            }
-        }
-        if (rcs.empty())
+        rcs.push_back("e"sv);
+
+        if (rcs.size() == 2)
         {
             m.respond("No RCs", true);
             return;
         }
 
-        std::ranges::shuffle(rcs, llarp::csrng);
-        oxenc::bt_dict_producer btdp;
+        if (!compressor)
+            compressor.emplace();
+
+        // Our output is a dict containing a single key `z` which contains the zstd-compressed bytes
+        // of a bt-encoded list of all RCs.
+
+        std::vector<std::byte> response_raw;
+        // We don't know the size in advance, so write a dummy value, compress, then fill it in:
+        constexpr auto compress_prefix = "d1:z999999999:"sv;
+        try
         {
-            auto rc_list = btdp.append_list("r");
-            rc_list.reserve(rcs[0].size() * (rcs.size() + 1));  // might be a waste of time
-            for (const auto& rc : rcs)
-                rc_list.append_encoded(rc);
+            response_raw = compressor->compress(rcs, zstd::compressor::DEFAULT_LEVEL, compress_prefix);
         }
-        m.respond(std::move(btdp).str());
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Bootstrap request RCs compression failed: {}", e.what());
+            m.respond("Compress failed", true);
+            return;
+        }
+
+        size_t comp_size = response_raw.size() - compress_prefix.size();
+
+#ifndef NDEBUG
+        size_t rcs_size = 0;
+        for (auto& rc : rcs)
+            rcs_size += rc.size();
+        log::debug(
+            logcat,
+            "compressed RC list to {}B ({:.1f}% of raw {}B)",
+            comp_size,
+            comp_size * 100.0 / rcs_size,
+            rcs_size);
+#endif
+
+        // Now we need to rewrite the actual `d1:ZNNN:` prefix with the correct NNN for the
+        // compressed data:
+        std::string actual = "d1:Z{}:"_format(comp_size);
+        assert(actual.size() <= compress_prefix.size());
+        // Our actual size is almost certainly shorter than the 999999999 value we used, so we skip
+        // however many leading bytes as needed to represent the proper final value without needing
+        // to shift the compressed data around in the buffer:
+        size_t skip = compress_prefix.size() - actual.size();
+        std::memcpy(response_raw.data() + skip, actual.data(), actual.size());
+        // Response dict terminator:
+        response_raw.push_back(std::byte{'e'});
+
+        m.respond(std::span{response_raw.data() + skip, response_raw.size() - skip});
     }
 
     void Manager::handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)
@@ -389,7 +372,8 @@ namespace llarp::link
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        router.rpc_client()->lookup_sns_hash(
+        assert(router.oxend());
+        router.oxend()->lookup_sns_hash(
             name_hash, [prev_msg = std::move(m)](std::optional<EncryptedSNSRecord> maybe_enc) mutable {
                 if (maybe_enc)
                 {
@@ -513,7 +497,7 @@ namespace llarp::link
 
             const auto& rid = closest_rids[*location];
 
-            if (rid == router.local_rid())
+            if (rid == router.id())
             {
                 // Special case: we *are* the intended location
                 router.contact_db().put_cc(std::move(enc));
@@ -553,7 +537,7 @@ namespace llarp::link
         // Oxen block update with a new or removed registration at just the wrong time could shift
         // indices, and we still want to store it even if we shifted (e.g. from 3nd to 2nd).
         for (auto& rid : closest_rids)
-            if (rid == router.local_rid())
+            if (rid == router.id())
             {
                 router.contact_db().put_cc(std::move(enc));
                 m.respond(messages::OK_RESPONSE);
@@ -589,7 +573,7 @@ namespace llarp::link
         // We don't provide the answer ourselves unless we are in the closest-4 set because it's
         // possible we *were* in the closest 4 but then dropped out, but still have a stale record
         // hanging around.
-        auto authoritative = std::ranges::count(closest_rids, router.local_rid());
+        auto authoritative = std::ranges::count(closest_rids, router.id());
         assert(authoritative <= 1);
 
         if (authoritative)
@@ -653,13 +637,13 @@ namespace llarp::link
         auto forwarded_find_cc = FindClientContact::serialize(blinded_pubkey);
         for (const auto& rid : closest_rids)
         {
-            if (rid == router.local_rid())
+            if (rid == router.id())
                 continue;
             endpoint.send_command(rid, "find_cc", forwarded_find_cc, hook);
         }
     }
 
-    void Manager::handle_path_build(quic::message m, const RouterID& from)
+    void Manager::handle_path_build(quic::message m, const std::variant<RouterID, quic::ConnectionID>& from)
     {
         if (!router.path_context.is_transit_allowed())
         {
@@ -839,7 +823,7 @@ namespace llarp::link
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        const auto& [next_rid, next_hopid] = *next;
+        const auto& [next_target, next_hopid] = *next;
 
         // We're relaying this message down a path, and we've already done our decryption to the
         // inner_payload so now we just need to replace the nonce and next hop ID in the outer
@@ -848,7 +832,7 @@ namespace llarp::link
         next_hopid.copy_to(bhop);
 
         endpoint.send_command(
-            next_rid,
+            next_target,
             "path_control",
             std::move(payload),
             [hop_weak = std::weak_ptr{hop}, hop_id, prev_message = std::move(m)](quic::message response) mutable {
@@ -1083,7 +1067,7 @@ namespace llarp::link
             log::error(logcat, "No next hop found in transit hop?!");
             return;
         }
-        auto& [next_rid, next_hopid] = *next;
+        auto& [next_target, next_hopid] = *next;
 
         // We chopped off the 0x01, hop_id, and nonce at the top of this function, but now lets put
         // the new ones back on to make it suitable for the next hop.  (We're just resizing a vector
@@ -1096,7 +1080,7 @@ namespace llarp::link
         next_hopid.copy_to(bhop);
         bmsgtype[0] = std::byte{0x01};
 
-        endpoint.send_datagram(next_rid, std::move(message));
+        endpoint.send_datagram(next_target, std::move(message));
     }
 
     void Manager::handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
@@ -1147,10 +1131,11 @@ namespace llarp::link
         {
             if (inner_body)
             {
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.identity());
+                params =
+                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.secret_key());
             }
             else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.identity());
+                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.secret_key());
         }
         catch (const std::exception& e)
         {
@@ -1158,7 +1143,7 @@ namespace llarp::link
             return;
         }
 
-        if (params.remote.router_id() == router.local_rid())
+        if (params.remote.router_id() == router.id())
         {
             log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
             return m.respond(InitiateSession::BAD_ADDRESS, true);

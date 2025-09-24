@@ -300,7 +300,7 @@ namespace llarp::handlers
         log::debug(logcat, "Tun constructing IPRange iterator on local network: {}", _local_net);
         _local_range_iterator = IPRangeIterator{_local_net};
 
-        _local_netaddr = NetworkAddress{_router.local_rid(), !_router.is_service_node};
+        _local_netaddr = NetworkAddress{_router.id(), !_router.is_service_node};
         _local_ipv4_mapping.insert_or_assign(_local_net.ip, std::move(_local_netaddr));
 
         vpn::InterfaceInfo info;
@@ -457,7 +457,7 @@ namespace llarp::handlers
             return false;
         }
 
-        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node).to_string();
+        std::string our_name = _router.id().to_network_address(_router.is_service_node).to_string();
 
         std::string qname = msg.questions[0].Name();
         const auto nameparts = split(qname, ".");
@@ -1040,7 +1040,7 @@ namespace llarp::handlers
                 {
                     _router.session_endpoint().lookup_relay_contact(
                         remote.router_id(),
-                        [this, remote, pkt = std::move(pkt)](std::optional<llarp::RemoteRC> rc) mutable {
+                        [this, remote, pkt = std::move(pkt)](std::optional<llarp::RelayContact> rc) mutable {
                             if (rc)
                             {
                                 log::debug(logcat, "Relay contact for {} found: {}", remote, *rc);

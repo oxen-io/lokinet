@@ -75,9 +75,9 @@ namespace
 
     static void app_loop(cli_opts&& options, std::promise<void>&& p)
     {
-        auto rpc = controller::rpc_controller::make(oxenlog_to_omq_level(options.oxen_log_level));
+        controller::rpc_controller rpc;
 
-        if (not rpc->start(options.rpc_paths))
+        if (not rpc.start(options.rpc_paths))
         {
             log::critical(controller::logcat, "RPC controller failed to bind; exiting...");
             p.set_value_at_thread_exit();
@@ -109,10 +109,10 @@ namespace
 
         auto* list_subcom =
             app.add_subcommand("list", "List all lokinet instances currently running on the local machine");
-        list_subcom->callback([&]() { rpc->list_all(); })->immediate_callback();
+        list_subcom->callback([&]() { rpc.list_all(); })->immediate_callback();
 
         auto* refresh_subcom = app.add_subcommand("refresh", "Refresh local lokinet instance information");
-        refresh_subcom->callback([&]() { rpc->refresh(); });
+        refresh_subcom->callback([&]() { rpc.refresh(); });
 
         auto* instance_subcom =
             app.add_subcommand("instance", "Select a lokinet instance")->require_option(1)->require_subcommand(1);
@@ -130,18 +130,18 @@ namespace
 
         init_subcom->callback([&]() {
             if (not address.empty())
-                rpc->initiate(omq::address{std::move(address)}, std::move(pubkey));
+                rpc.initiate(omq::address{std::move(address)}, std::move(pubkey));
             else
-                rpc->initiate(index, std::move(pubkey));
+                rpc.initiate(index, std::move(pubkey));
         });
 
         auto* status_subcom = instance_subcom->add_subcommand("status", "Query status of local lokinet instance");
 
         status_subcom->callback([&]() {
             if (not address.empty())
-                rpc->status(omq::address{std::move(address)});
+                rpc.status(omq::address{std::move(address)});
             else
-                rpc->status(index);
+                rpc.status(index);
         });
 
         auto* close_subcom =
@@ -150,18 +150,18 @@ namespace
 
         close_subcom->callback([&]() {
             if (not address.empty())
-                rpc->close(omq::address{std::move(address)}, std::move(pubkey));
+                rpc.close(omq::address{std::move(address)}, std::move(pubkey));
             else
-                rpc->close(index, std::move(pubkey));
+                rpc.close(index, std::move(pubkey));
         });
 
         auto* halt_subcom = instance_subcom->add_subcommand("halt", "Immediately halt lokinet instance");
 
         halt_subcom->callback([&]() {
             if (not address.empty())
-                rpc->halt(omq::address{std::move(address)});
+                rpc.halt(omq::address{std::move(address)});
             else
-                rpc->halt(index);
+                rpc.halt(index);
         });
 
         // notify startup successful

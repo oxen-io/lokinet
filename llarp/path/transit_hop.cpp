@@ -10,6 +10,7 @@
 #include <llarp/util/time.hpp>
 
 #include <nlohmann/json.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <sodium/randombytes.h>
 
 namespace llarp::path
@@ -20,9 +21,10 @@ namespace llarp::path
         : std::runtime_error{"TransitHop construction failed: {}"_format(err_code)}, error_code{std::move(err_code)}
     {}
 
-    std::optional<std::pair<RouterID, HopID>> TransitHop::next_id(const HopID& h) const
+    std::optional<std::pair<std::variant<RouterID, quic::ConnectionID>, HopID>> TransitHop::next_id(
+        const HopID& h) const
     {
-        std::optional<std::pair<RouterID, HopID>> ret = std::nullopt;
+        std::optional<std::pair<std::variant<RouterID, quic::ConnectionID>, HopID>> ret;
 
         if (h == rxid)
             ret = {upstream, txid};
@@ -38,10 +40,17 @@ namespace llarp::path
             {"rid", router_id.ToHex()}, {"rxid", rxid.ToHex()}, {"txid", txid.ToHex()}, {"expiry", to_json(expiry)}};
     }
 
+    static std::string short_string(const std::variant<RouterID, quic::ConnectionID>& downstream)
+    {
+        if (auto* rid = std::get_if<RouterID>(&downstream))
+            return rid->short_string().to_string();
+        return std::get<quic::ConnectionID>(downstream).to_string();
+    }
+
     std::string TransitHop::to_string() const
     {
         return "TransitHop:[ Terminal:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
-            terminal_hop, txid, rxid, upstream.short_string(), downstream.short_string(), expiry.count());
+            terminal_hop, txid, rxid, upstream.short_string(), short_string(downstream), expiry.count());
     }
 
 }  // namespace llarp::path

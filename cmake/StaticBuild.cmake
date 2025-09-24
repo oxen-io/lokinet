@@ -53,6 +53,13 @@ set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.xz)
 set(ZLIB_HASH SHA256=38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32
   CACHE STRING "zlib source hash")
 
+set(ZSTD_VERSION 1.5.7 CACHE STRING "zstd version")
+set(ZSTD_MIRROR ${LOCAL_MIRROR} https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}
+    CACHE STRING "zstd mirror(s)")
+set(ZSTD_SOURCE zstd-${ZSTD_VERSION}.tar.gz)
+set(ZSTD_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+    CACHE STRING "zstd source hash")
+
 include(ExternalProject)
 
 set(DEPS_DESTDIR ${CMAKE_BINARY_DIR}/static-deps)
@@ -192,6 +199,12 @@ function(build_external target)
   endforeach()
   string(REPLACE ___TARGET___ ${target} arg_BUILD_BYPRODUCTS "${arg_BUILD_BYPRODUCTS}")
 
+  if(arg_CONFIGURE_COMMAND MATCHES "^DEFAULT_CMAKE")
+      string(REGEX REPLACE "^DEFAULT_CMAKE(;?)" "CMAKE_ARGS;-DCMAKE_INSTALL_PREFIX=${DEPS_DESTDIR}\\1" configure "${arg_CONFIGURE_COMMAND}")
+  else()
+    set(configure CONFIGURE_COMMAND ${arg_CONFIGURE_COMMAND})
+  endif()
+
   string(TOUPPER "${target}" prefix)
   expand_urls(urls ${${prefix}_SOURCE} ${${prefix}_MIRROR})
   ExternalProject_Add("${target}_external"
@@ -202,7 +215,7 @@ function(build_external target)
     URL_HASH ${${prefix}_HASH}
     DOWNLOAD_NO_PROGRESS ON
     PATCH_COMMAND ${arg_PATCH_COMMAND}
-    CONFIGURE_COMMAND ${arg_CONFIGURE_COMMAND}
+    ${configure}
     BUILD_COMMAND ${arg_BUILD_COMMAND}
     INSTALL_COMMAND ${arg_INSTALL_COMMAND}
     BUILD_BYPRODUCTS ${arg_BUILD_BYPRODUCTS}
@@ -219,6 +232,21 @@ endif()
 if(LOKINET_PEERSTATS)
   build_external(sqlite3)
   add_static_target(sqlite3 sqlite3_external libsqlite3.a)
+endif()
+
+
+if(NOT TARGET libzstd::static)
+  build_external(zstd
+      CONFIGURE_COMMAND DEFAULT_CMAKE
+        -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_DICTBUILDER=OFF
+      SOURCE_SUBDIR build/cmake
+      BUILD_BYPRODUCTS
+        ${DEPS_DESTDIR}/lib/libzstd.a
+        ${DEPS_DESTDIR}/include/zstd.h
+  )
+  # Use the same libzstd::static target name as libsession-util so that we can use libsession's
+  # static zstd if we are being built as part of libsession:
+  add_static_target(libzstd::static zstd_external libzstd.a)
 endif()
 
 
@@ -257,9 +285,9 @@ if(LOKINET_FULL)
   )
   add_static_target(libunbound unbound_external libunbound.a)
   if(NOT WIN32)
-    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle")
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "hogweed::hogweed;nettle::nettle")
   else()
-    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "nettle::nettle;ws2_32;crypt32;iphlpapi")
+    set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "hogweed::hogweed;nettle::nettle;ws2_32;crypt32;iphlpapi")
   endif()
 
 

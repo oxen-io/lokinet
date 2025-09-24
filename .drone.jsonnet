@@ -12,13 +12,14 @@ local default_deps_base = std.set([
   'libsystemd-dev',
   'libunbound-dev',
   'libzmq3-dev',
+  'libzstd-dev',
   'make',
   'nettle-dev',
   'nlohmann-json3-dev',
   'python3-dev',
 ]);
 local default_deps(add=[], remove=[]) = std.setDiff(
-  std.setUnion(default_deps, if std.isArray(add) then std.set(add) else [add]),
+  std.setUnion(default_deps_base, if std.isArray(add) then std.set(add) else [add]),
   std.set(if std.isArray(remove) then std.set(remove) else [remove])
 );
 local static_deps = std.set(['g++', 'python3-dev', 'automake', 'libtool']);

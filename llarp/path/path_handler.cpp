@@ -66,8 +66,6 @@ namespace llarp::path
                 p->do_ping(now);
     }
 
-    std::chrono::milliseconds PathHandler::now() const { return router.now(); }
-
     void PathHandler::expire_paths(std::chrono::milliseconds now)
     {
         Lock_t lock{paths_mutex};
@@ -112,7 +110,7 @@ namespace llarp::path
 
         expire_paths(now);
 
-        if (not router.is_service_node and not router.link_endpoint().is_client_connected())
+        if (not router.is_service_node and not router.is_connected())
             // If we are not yet fully connected then we can't initiate path builds.  (In theory we
             // could whe not yet fully connected, but don't want to because that would bias edge
             // router selection towards faster ones).
@@ -136,15 +134,14 @@ namespace llarp::path
         return nlohmann::json{{"numHops", _num_hops}, {"targetPaths", _target_paths}, {"paths", std::move(paths)}};
     }
 
-    std::optional<RemoteRC> PathHandler::select_first_hop(std::function<bool(const RouterID&)> pred) const
+    const RelayContact* PathHandler::select_first_hop(std::function<bool(const RelayContact&)> pred) const
     {
 #ifdef LOKINET_DEBUG_PATH_SEED
         auto current_remotes_unsorted =
 #else
         auto current_remotes =
 #endif
-            router.node_db().strict_connect_enabled() ? router.node_db().pinned_edges()
-                                                      : router.link_manager().endpoint.get_current_relays();
+            router.link_endpoint().get_current_relays();
 
 #ifdef LOKINET_DEBUG_PATH_SEED
         std::vector<RouterID> current_remotes;
@@ -158,11 +155,18 @@ namespace llarp::path
         }
 #endif
 
-        RouterID edge;
+        const RelayContact* selected = nullptr;
         int acceptable = 0;
         for (auto& rid : current_remotes)
         {
-            if (pred && !pred(rid))
+            auto* rc = router.node_db().get_rc(rid);
+            if (!rc)
+            {
+                log::debug(logcat, "Skipping {}: missing RC", rid);
+                continue;
+            }
+
+            if (pred && !pred(*rc))
                 log::trace(
                     logcat, "Not considering {} for first hop selection because it failed the given predicate", rid);
             else if (router.router_profiling().is_bad_for_path(rid))  // always returns false on testnet
@@ -179,24 +183,15 @@ namespace llarp::path
                         rng ? std::uniform_int_distribution<int>{0, acceptable}(*rng) :
 #endif
                             std::uniform_int_distribution<int>{0, acceptable}(llarp::csrng) == 0))
-                    edge = rid;
+                    selected = rc;
                 acceptable++;
             }
         }
 
-        if (acceptable == 0)
-        {
+        if (!selected)
             log::debug(logcat, "Failed to select first hop: no acceptable candidates found");
-            return std::nullopt;
-        }
-        if (auto* rc = router.node_db().get_rc(edge))
-        {
-            log::debug(logcat, "Selected {} as edge router", edge);
-            return *rc;
-        }
 
-        log::debug(logcat, "Selected {} as edge router, but no RC found for that relay", edge);
-        return std::nullopt;
+        return selected;
     }
 
     int PathHandler::num_active_paths(std::chrono::milliseconds expiry_ts) const
@@ -229,9 +224,6 @@ namespace llarp::path
 
         if (_path_rotater)
         {
-            if (_path_rotater->is_running())
-                _path_rotater->stop();
-
             _path_rotater.reset();
             log::trace(logcat, "Path rotation ticker stopped!");
         }
@@ -241,14 +233,14 @@ namespace llarp::path
 
     bool PathHandler::is_stopped() const { return !_running.load(); }
 
-    std::optional<std::vector<RemoteRC>> PathHandler::select_hops_to_remote(const RouterID& pivot)
+    std::optional<std::vector<RelayContact>> PathHandler::select_hops_to_remote(const RouterID& pivot)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         assert(_num_hops);
 
         int hops_needed = _num_hops;
 
-        auto hops = std::make_optional<std::vector<RemoteRC>>();
+        auto hops = std::make_optional<std::vector<RelayContact>>();
 
         auto* pivot_rc = router.node_db().get_rc(pivot);
         if (!pivot_rc)
@@ -270,7 +262,7 @@ namespace llarp::path
         if (netmask)
             excluded_ranges.reserve(_num_hops);
 
-        auto exclude = [&netmask, &to_exclude, &excluded_ranges](const RemoteRC& rc) {
+        auto exclude = [&netmask, &to_exclude, &excluded_ranges](const RelayContact& rc) {
             to_exclude.insert(rc.router_id());
             if (netmask)
                 excluded_ranges.push_back(rc.addr().to_ipv4() % netmask);
@@ -278,8 +270,68 @@ namespace llarp::path
 
         exclude(*pivot_rc);
 
-        // First hop selection has its own distinct criteria:
-        auto maybe_first = select_first_hop([&to_exclude](const RouterID& rid) { return !to_exclude.contains(rid); });
+        auto filter =
+            [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RelayContact& rc) {
+                auto& rid = rc.router_id();
+                if (to_exclude.contains(rid))
+                    return false;
+
+                if (netmask)
+                {
+                    auto v4 = rc.addr().to_ipv4();
+                    for (auto& r : excluded_ranges)
+                        if (r.contains(v4))
+                            return false;
+                }
+
+                if (rp.is_bad_for_path(rc.router_id(), 1))
+                    return false;
+
+                return true;
+            };
+
+        // Edge selection has its own distinct criteria: we can only select from edge routers we
+        // have established connections to.  We take up to three passes to find a suitable edge:
+        // 1. Try finding one with exclusion of `pivot`'s net range (when netmask exclusions are
+        //    enabled).
+        // 2. Try finding one that only excludes the pivot itself.
+        // 3. Use the pivot as the first hop, and force path length of at least 3 (because
+        //    client-A-A is not a valid path, so we need to force client-A-B-A).
+        //
+        // Ideally we want to avoid cases 2 or 3 but sometimes that is simply impossible: for
+        // example if you need to build a path to A specifically, and A happens to be your only
+        // pinned edge.  If we do find ourselves in case 2 or 3, we extend the path length by 1 (if
+        // possible) to compensate for the repeated network in the path.
+        //
+        // We avoid cases 2/3 for inbound/utility paths by detecting when we have all edges in the
+        // same range and avoiding that range for pivot selection.  For outbound paths it is
+        // sometimes unavoidable because outbound paths need a specific terminus, leaving us with no
+        // choice.
+        const RelayContact* maybe_first = nullptr;
+        bool extend_path = false;
+        if (netmask)
+        {
+            maybe_first = select_first_hop(filter);
+
+            if (!maybe_first)
+                // We failed to find any edge that doesn't overlap with pivot's range, so extend the
+                // path length by one to compensate.
+                extend_path = true;
+        }
+
+        // Without a netmask filter, or if we couldn't find anything with the filter applied, open
+        // up the selection to simply any relay that isn't the pivot itself:
+        if (!maybe_first)
+            maybe_first = select_first_hop([&pivot](const RelayContact& rc) { return rc.router_id() != pivot; });
+
+        // If even that failed then we have to use the pivot itself.  This seems weird, but can
+        // happen if you are connected to only a single router (e.g. with a pinned edge) *and* want
+        // to build a path to that router.
+        if (!maybe_first)
+        {
+            extend_path = true;
+            maybe_first = router.node_db().get_rc(pivot);
+        }
 
         // If that failed, retry first hop selection *without* the IP range exclusion being applied:
         // this is so that if the pivot happens to be in the same range as all your current (or
@@ -287,38 +339,34 @@ namespace llarp::path
         if (!maybe_first)
             maybe_first = select_first_hop();
 
-        if (maybe_first)
-        {
-            --hops_needed;
-            hops->push_back(std::move(*maybe_first));
-            exclude(hops->back());
-        }
-        else
+        if (!maybe_first)
         {
             log::warning(logcat, "No suitable first hop candidate for path to {}", pivot);
             return std::nullopt;
         }
 
+        --hops_needed;
+        hops->push_back(std::move(*maybe_first));
+        exclude(hops->back());
+
+        // If we're in two-hop mode, and went through the last selection fallback above, then we
+        // could have just selected a path (client-A-A) but that is not valid: so in that special
+        // case we forcible extend the path length by 1 to construct a path client-A-B-A instead.
+        if (extend_path and hops_needed < BUILD_LENGTH - 2)
+        {
+            log::debug(
+                logcat,
+                "Extending path length from {} to {} because of unavoidable edge/terminus network overlap"
+                " (edge: {}, terminus: {})",
+                hops_needed + 2,
+                hops_needed + 3,
+                maybe_first->addr(),
+                pivot_rc->addr());
+            ++hops_needed;
+        }
+
         log::trace(logcat, "First/last hop selected, {} hops remaining to select", hops_needed);
 
-        auto filter = [&rp = router.router_profiling(), &excluded_ranges, &to_exclude, &netmask](const RemoteRC& rc) {
-            auto& rid = rc.router_id();
-            if (to_exclude.contains(rid))
-                return false;
-
-            if (netmask)
-            {
-                auto v4 = rc.addr().to_ipv4();
-                for (auto& r : excluded_ranges)
-                    if (r.contains(v4))
-                        return false;
-            }
-
-            if (rp.is_bad_for_path(rc.router_id(), 1))
-                return false;
-
-            return true;
-        };
         for (; hops_needed > 0; hops_needed--)
         {
             // We can't use get_n_random_rcs here to select hops_needed all at once because as we
@@ -363,7 +411,7 @@ namespace llarp::path
         return false;
     }
 
-    bool PathHandler::can_build(std::span<const RemoteRC> hops)
+    bool PathHandler::can_build(std::span<const RelayContact> hops)
     {
         if (is_stopped())
         {
@@ -393,7 +441,7 @@ namespace llarp::path
     }
 
     std::shared_ptr<Path> PathHandler::build_init_path(
-        std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
+        std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
     {
         auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
 
@@ -551,7 +599,7 @@ namespace llarp::path
     std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> PathHandler::decrypt_build_frame(
         std::span<const std::byte, path::BUILD_FRAME_SIZE> frame,
         const Router& r,
-        const RouterID& src,
+        const std::variant<RouterID, quic::ConnectionID>& src,
         std::chrono::milliseconds now)
     {
         std::pair<std::shared_ptr<path::TransitHop>, SymmNonce> ret;
@@ -577,7 +625,7 @@ namespace llarp::path
             throw path::TransitHopError::INVALID_DATA();
         }
 
-        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.identity(), dh_nonce))
+        if (!crypto::dh_server(hop.shared_secret, eph_pubkey, r.secret_key(), dh_nonce))
         {
             log::warning(logcat, "Failed to derive shared secret!");
             throw path::TransitHopError::DH_PUBKEY();
@@ -608,7 +656,7 @@ namespace llarp::path
 
         // If we are a terminal hop then two things must be true: upstream must be this router, and
         // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
-        hop.terminal_hop = hop.upstream == r.local_rid();
+        hop.terminal_hop = hop.upstream == r.id();
         bool terminal_mismatch = hop.terminal_hop != (hop.txid == hop.rxid);
         if (hop.txid.is_zero() || hop.rxid.is_zero() || terminal_mismatch)
             throw path::TransitHopError::INVALID_HOP_ID();
@@ -619,7 +667,7 @@ namespace llarp::path
     }
 
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RemoteRC> hops, std::chrono::milliseconds expiry_ts)
+    int64_t PathHandler::build(std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
     {
         Lock_t lock{paths_mutex};
 

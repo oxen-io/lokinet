@@ -24,7 +24,7 @@ namespace llarp::path
     size_t Path::next_path_log_id = 0;
 
     Path::Path(
-        Router& rtr, std::span<const RemoteRC> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
+        Router& rtr, std::span<const RelayContact> hop_rcs, PathHandler& handler, std::chrono::milliseconds expiry_ts)
         : handler{handler.weak_from_this()}, _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
         hops.resize(hop_rcs.size());
@@ -41,7 +41,7 @@ namespace llarp::path
             // Last hop upstream is it's own RID, the rest are the next hop RID
             hop.upstream = last ? hop.router_id : hop_rcs[i + 1].router_id();
             // First hop downstream is client's RID, the rest are the previous hop RID
-            hop.downstream = i == 0 ? _router.local_rid() : hops[i - 1].router_id;
+            hop.downstream = i == 0 ? _router.id() : hops[i - 1].router_id;
 
             // hop.shared_secret and hop.xor_nonce are not set yet: they get set via a call to
             // PathHandler::path_build_onion when we make the actual build path message (because

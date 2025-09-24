@@ -3,10 +3,14 @@
 #include <llarp/crypto/types.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/fetch.hpp>
+#include <llarp/util/file.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/zstd.hpp>
 
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/loop.hpp>
+#include <oxenc/base32z.h>
 #include <sodium/crypto_generichash.h>
 
 #include <algorithm>
@@ -22,88 +26,103 @@ namespace llarp
 {
     static auto logcat = llarp::log::Cat("nodedb");
 
-    static const std::filesystem::path RC_FILE_EXT{".signed"};
-
     std::array<int, 3> NodeDB::db_stats() const { return {num_rcs(), num_rids(), num_bootstraps()}; }
 
-#ifdef LOKINET_DEBUG_PATH_SEED
-    static std::vector<const std::pair<const RouterID, RemoteRC>*> debug_sort_admissable(
-        const std::unordered_map<RouterID, RemoteRC>& known_rcs, const std::function<bool(const RemoteRC&)>& predicate)
+    template <typename RCContainer, std::predicate<const RelayContact&> Pred, typename RNG>
+    static std::vector<const RelayContact*> sample_rcs(
+        Router& router, const RCContainer& rcs, int n, const Pred& predicate, RNG& rng, bool shuffle)
     {
-        std::vector<const std::pair<const RouterID, RemoteRC>*> admitted;
-        if (!predicate)
-            admitted.reserve(known_rcs.size());
-        for (const auto& x : known_rcs)
-            if (!predicate || predicate(x.second))
-                admitted.push_back(&x);
-        // We need a sorted list of known rcs because of the potentially non-reproducible order
-        // of elements in an unordered map:
-        std::sort(admitted.begin(), admitted.end(), [](const auto& a, const auto& b) { return a->first < b->first; });
-        return admitted;
-    }
-#endif
+        auto now = llarp::time_now_ms();
+        const auto& blacklist = router.config().paths.snode_blacklist;
 
-    const RemoteRC* NodeDB::get_random_rc(const std::function<bool(const RemoteRC&)>& predicate) const
-    {
-#ifdef LOKINET_DEBUG_PATH_SEED
-        if (auto& s = _router.config().paths.debug_path_seed)
-        {
-            auto admitted = debug_sort_admissable(known_rcs, predicate);
-            if (admitted.empty())
-                return nullptr;
-            std::mt19937_64 rng{*s};
-            return &admitted[std::uniform_int_distribution<size_t>{0, admitted.size() - 1}(rng)]->second;
-        }
-#endif
-        const RemoteRC* result = nullptr;
+        std::vector<const RelayContact*> rand;
+        rand.resize(n);
         int admitted = 0;
-        for (const auto& rc : std::views::values(known_rcs))
+
+        for (const RelayContact& rc : rcs)
         {
-            if (!predicate || predicate(rc))
+            if (rc.is_expired(now))
+                continue;
+            if (router.is_service_node)
             {
-                if (admitted == 0 || std::uniform_int_distribution<int>{0, admitted}(llarp::csrng) == 0)
-                    result = &rc;
-                admitted++;
+                if (rc.router_id() == router.id())
+                    continue;
             }
+            else if (blacklist.contains(rc.router_id()))
+                continue;
+            if (predicate and not predicate(rc))
+                continue;
+
+            auto pos = admitted < n ? admitted : std::uniform_int_distribution<int>{0, admitted}(rng);
+            admitted++;
+            if (pos < n)
+                rand[pos] = &rc;
         }
-        return result;
+        if (admitted < n)
+            rand.resize(admitted);
+        if (shuffle && rand.size() > 1)
+            std::ranges::shuffle(rand, rng);
+        return rand;
     }
 
-    std::vector<const RemoteRC*> NodeDB::get_n_random_rcs(
-        int n, bool shuffle, const std::function<bool(const RemoteRC&)>& predicate) const
+    std::vector<const RelayContact*> NodeDB::get_n_random_rcs(
+        int n, bool shuffle, const std::function<bool(const RelayContact&)>& predicate) const
     {
         assert(_router.loop.inside());
-        std::vector<const RemoteRC*> rand;
-        rand.resize(n);
+#ifdef LOKINET_DEBUG_PATH_SEED
+        if (auto& s = _router.config().paths.debug_path_seed)
+        {
+            std::vector<std::reference_wrapper<const RelayContact>> rcs;
+            rcs.reserve(known_rcs.size());
+            for (const auto& rc : known_rcs | std::views::values)
+                rcs.push_back(std::cref(rc));
+            // We need a sorted list of known rcs because of the potentially non-reproducible order
+            // of elements in an unordered map:
+            std::ranges::sort(
+                rcs, [](const RelayContact& a, const RelayContact& b) { return a.router_id() < b.router_id(); });
+            std::mt19937_64 rng{*s};
+            return sample_rcs(_router, rcs, n, predicate, rng, shuffle);
+        }
+#endif
+
+        return sample_rcs(_router, known_rcs | std::views::values, n, predicate, llarp::csrng, shuffle);
+    }
+
+    const RelayContact* NodeDB::get_random_rc(const std::function<bool(const RelayContact&)>& predicate) const
+    {
+        auto randos = get_n_random_rcs(1, false, predicate);
+        return randos.empty() ? nullptr : randos.front();
+    }
+
+    std::vector<const RelayContact*> NodeDB::get_n_random_edge_rcs(
+        int n, bool shuffle, const std::function<bool(const RelayContact&)>& predicate) const
+    {
+        assert(_router.loop.inside());
+        auto& strict = _router.config().paths.strict_edges;
+        if (_router.is_service_node || strict.empty())
+            return get_n_random_rcs(n, shuffle, predicate);
+
+        n = std::min(n, static_cast<int>(strict.size()));
+
+        // With strict edges the set of edges is typically small, so we iterate through just those
+        // edges rather than sampling from *everything* with an "is in strict" lookups added to the
+        // predicate.
+        std::vector<std::reference_wrapper<const RelayContact>> strict_rcs;
+        for (const auto& rid : strict)
+            if (auto* rc = get_rc(rid))
+                strict_rcs.emplace_back(std::cref(*rc));
 
 #ifdef LOKINET_DEBUG_PATH_SEED
         if (auto& s = _router.config().paths.debug_path_seed)
         {
-            auto admitted = debug_sort_admissable(known_rcs, predicate);
-            log::warning(logcat, "DPS mode with {}", admitted.size());
-            for (auto& a : admitted)
-                log::warning(logcat, "   - {}", a->first);
+            std::ranges::sort(
+                strict_rcs, [](const RelayContact& a, const RelayContact& b) { return a.router_id() < b.router_id(); });
             std::mt19937_64 rng{*s};
-            auto end = std::ranges::sample(
-                admitted | std::views::transform([](const auto* x) { return &x->second; }), rand.begin(), n, rng);
-            if (auto len = std::distance(rand.begin(), end); len < n)
-                rand.resize(len);
-            if (shuffle && rand.size() > 1)
-                std::ranges::shuffle(rand, rng);
-            return rand;
+            return sample_rcs(_router, strict_rcs, n, predicate, rng, shuffle);
         }
 #endif
 
-        auto all_rcs = known_rcs | std::views::values;
-        auto to_ptr = std::views::transform([](const auto& rc) { return &rc; });
-        auto end = predicate
-            ? std::ranges::sample(all_rcs | std::views::filter(predicate) | to_ptr, rand.begin(), n, csrng)
-            : std::ranges::sample(all_rcs | to_ptr, rand.begin(), n, csrng);
-        if (auto len = std::distance(rand.begin(), end); len < n)
-            rand.resize(len);
-        if (shuffle && rand.size() > 1)
-            std::ranges::shuffle(rand, csrng);
-        return rand;
+        return sample_rcs(_router, strict_rcs, n, predicate, llarp::csrng, shuffle);
     }
 
     void NodeDB::bootstrap()
@@ -121,7 +140,7 @@ namespace llarp
         {
             NodeDB& nodedb;
             size_t rc_i = 0;
-            std::vector<std::byte> body;
+            std::string body;
             RouterID source;
 
             // Shared pointer to ourself to keep us alive.  This is released once we run out of rcs,
@@ -174,9 +193,8 @@ namespace llarp
         };
         auto bs = std::make_shared<bs_data>(*this);
         bs->keep_alive = bs;
-        bs->body = BootstrapFetch::serialize(
-            _router.is_service_node ? std::make_optional(_router.rc()) : std::nullopt,
-            _router.is_service_node ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT);
+
+        bs->body = "de";
 
         bs->try_next();
     }
@@ -192,7 +210,7 @@ namespace llarp
             return;
         }
 
-        remove_rcs_if([this, now](const RemoteRC& rc) -> bool {
+        remove_rcs_if([this, now](const RelayContact& rc) -> bool {
             // if for some reason we stored an RC that isn't a valid router
             // purge this entry
             if (not rc.addr().is_public())
@@ -220,7 +238,7 @@ namespace llarp
                     return false;
                 }
 
-                if (not is_connection_allowed(rc.router_id()))
+                if (not is_registered(rc.router_id()))
                 {
                     log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
                     return true;
@@ -245,9 +263,9 @@ namespace llarp
         }
     }
 
-    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
+    std::filesystem::path NodeDB::get_path_by_pubkey(const RouterID& pubkey, const std::filesystem::path& ext) const
     {
-        return _root / std::filesystem::path{pubkey.to_string()}.replace_extension(RC_FILE_EXT);
+        return _root / std::filesystem::path{pubkey.to_string()}.replace_extension(ext);
     }
 
     void NodeDB::fetch_rcs()
@@ -441,6 +459,9 @@ namespace llarp
             _rid_fetch_ticker = _router.loop.call_every(FETCH_INTERVAL, [this] { fetch_rids(); }, not need_bootstrap);
         }
 
+        _0rtt_saver = _router.disk_loop.make_wakeable([this] { _0rtt_save(); });
+        _0rtt_saver->wake();
+
         if (need_bootstrap)
             bootstrap();
     }
@@ -500,6 +521,19 @@ namespace llarp
         load_bootstraps();
 
         load_from_disk();
+
+        if (_router.is_service_node)
+        {
+            // Make self.signed a symlink to the full ID.signed file.  (The full file might not
+            // exist if we aren't a relay, but that's okay: we intentionally leave a dangling
+            // symlink in that case).
+            auto self_signed = _root / our_rc_filename;
+            std::error_code ec;  // Ignore errors on the below as this is just for convenience but
+                                 // doesn't otherwise matter.
+            remove(self_signed, ec);
+            create_symlink(
+                std::filesystem::path{_router.id().to_string()}.replace_extension(RC_FILE_EXT), self_signed, ec);
+        }
     }
 
     void NodeDB::load_bootstrap(const std::filesystem::path& fpath)
@@ -567,6 +601,9 @@ namespace llarp
         if (obsolete > 0)
             log::info(logcat, "Removed {} obsolete bootstraps RCs", obsolete);
 
+        if (std::erase_if(_bootstraps, [this](const auto& bs) { return bs.router_id() == _router.id(); }) > 0)
+            log::info(logcat, "Found and removed ourself ({}) from the bootstrap list", _router.id());
+
         if (_bootstraps.empty())
         {
             log::debug(logcat, "Bootstrap list is empty; loading built-in fallbacks");
@@ -626,28 +663,34 @@ namespace llarp
         assert(_router.loop.inside());
         log::debug(logcat, "Received response to BootstrapRC fetch request...");
 
-        int num = 0, accepted = 0;
+        int num = 0, n_new = 0;
 
         try
         {
             oxenc::bt_dict_consumer btdc{body};
 
-            btdc.required("r");
+            auto compressed_rcs = btdc.require_span<std::byte>("Z");
 
-            {
-                auto sublist = btdc.consume_list_consumer();
-
-                while (not sublist.is_finished())
-                {
-                    // if we're trusting the bootstrap for RCs regardless of RouterID, we
-                    // should trust the RouterID as well.
-                    RemoteRC new_rc{sublist.consume_dict_data(), _router.netid()};
-                    known_rids.insert(new_rc.router_id());
-                    accepted += put_rc(std::move(new_rc));
-                    ++num;
-                }
-            }
             btdc.finish();
+
+            zstd::decompressor decompressor;
+            // 20M here is just a safety margin so that a malicious bootstrap can't feed us some
+            // tiny data that decompresses into something that exhausts memory:
+            auto rcs_data = zstd::decompressor{}.decompress(compressed_rcs, 20'000'000);
+            if (!rcs_data)
+                throw std::runtime_error{"Failed to decompress RC list"};
+
+            oxenc::bt_list_consumer rclist{*rcs_data};
+
+            while (not rclist.is_finished())
+            {
+                RelayContact new_rc{rclist.consume_dict_data(), _router.netid()};
+                // if we're trusting the bootstrap for RCs regardless of RouterID, we
+                // should trust the RouterID as well.
+                known_rids.insert(new_rc.router_id());
+                n_new += put_rc(std::move(new_rc));
+                ++num;
+            }
         }
         catch (const std::exception& e)
         {
@@ -656,7 +699,7 @@ namespace llarp
             return false;
         }
 
-        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, accepted);
+        log::info(logcat, "Bootstrap fetch successfully retrieved {} RCs ({} new)", num, n_new);
         return true;
     }
 
@@ -685,6 +728,23 @@ namespace llarp
             log::debug(logcat, "Updated SN list from oxend with {} registered relays", size);
     }
 
+    void NodeDB::load_registered_relays_fallback()
+    {
+        std::unique_lock lock{_registered_relays_mutex};
+
+        if (not _registered_relays.empty())
+        {
+            // Perhaps a race with a result fetch?
+            log::debug(logcat, "Not loading registered relay fallback: we already have registered relays");
+            return;
+        }
+
+        auto now = llarp::time_now_ms();
+        for (auto& [rid, rc] : known_rcs)
+            if (!rc.is_expired(now))
+                _registered_relays.insert(rid);
+    }
+
     std::vector<RouterID> NodeDB::get_registered_relays() const
     {
         std::vector<RouterID> result;
@@ -711,35 +771,6 @@ namespace llarp
         return result;
     }
 
-    bool NodeDB::is_connection_allowed(const RouterID& remote) const
-    {
-        assert(_router.loop.inside());
-        if (not _router.is_service_node)
-        {
-            if (_pinned_edges.size() and not _pinned_edges.contains(remote))
-                return false;
-
-            return known_rids.contains(remote);
-        }
-
-        return known_rids.contains(remote) and is_registered(remote);
-    }
-
-    bool NodeDB::is_first_hop_allowed(const RouterID& remote) const
-    {
-        assert(_router.loop.inside());
-        if (_pinned_edges.size() && _pinned_edges.count(remote) == 0)
-            return false;
-
-        return true;
-    }
-
-    void NodeDB::set_pinned_edges(std::unordered_set<RouterID> edges)
-    {
-        _strict_connect = true;
-        _pinned_edges = std::move(edges);
-    }
-
     void NodeDB::load_from_disk()
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -750,40 +781,130 @@ namespace llarp
         std::vector<std::filesystem::path> purge;
 
         const auto now = time_now_ms();
+        const auto real_now = std::chrono::system_clock::now();
 
         for (const auto& f : std::filesystem::directory_iterator{_root})
         {
-            if (not f.is_regular_file() or f.path().extension() != RC_FILE_EXT)
+            if (not f.is_regular_file())
                 continue;
 
-            std::optional<RemoteRC> rc;
-            try
+            RouterID filename_rid;
+            // Ignoring anything that doesn't look like PUBKEY.ext:
+            if (auto no_ext = f.path().stem().u8string(); no_ext.size() == oxenc::to_base32z_size(RouterID::SIZE)
+                and oxenc::is_base32z(no_ext.begin(), no_ext.end()))
             {
-                rc.emplace(f.path(), _router.netid());
+                oxenc::from_base32z(no_ext.begin(), no_ext.end(), filename_rid.begin());
             }
-            catch (const std::exception& e)
+            else
             {
-                log::warning(logcat, "Failed to load {} from stored RCs: {}", f.path(), e.what());
-            }
-
-            if (not rc or rc->is_expired(now))
-            {
-                // try loading it, purge it if it is junk or expired
-                purge.push_back(f);
+                log::debug(logcat, "Skipping {}: does not match PUBKEY.(ext) filename format", f.path());
                 continue;
             }
 
-            auto rid = rc->router_id();
-            known_rids.insert(rid);
-            known_rcs.emplace(std::move(rid), std::move(*rc));
+            auto ext = f.path().extension();
+            if (ext == RC_FILE_EXT)
+            {
+                std::optional<RelayContact> rc;
+                try
+                {
+                    rc.emplace(f.path(), _router.netid());
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(logcat, "Failed to load {} from stored RCs: {}", f.path(), e.what());
+                }
+
+                if (not rc or rc->is_expired(now))
+                {
+                    // try loading it, purge it if it is junk or expired
+                    purge.push_back(f);
+                    continue;
+                }
+
+                auto rid = rc->router_id();
+
+                if (rid != filename_rid)
+                {
+                    log::error(
+                        logcat,
+                        "Invalid stored RC: RC contains pubkey {} which does not match filename {}",
+                        rid,
+                        f.path());
+                    purge.push_back(f);
+                    continue;
+                }
+
+                if (not _router.is_service_node)
+                    known_rids.insert(rid);  // Only clients use this container
+                known_rcs.emplace(std::move(rid), std::move(*rc));
+            }
+            else if (ext == ZRTT_FILE_EXT)
+            {
+                std::string content;
+                try
+                {
+                    content = util::file_to_string(f.path());
+                    oxenc::bt_dict_consumer top{content};
+                    RouterID rid{top.require_span<std::byte, RouterID::SIZE>("@")};
+                    if (rid != filename_rid)
+                        throw std::runtime_error{"pubkey {} does not match filename {}"_format(rid, f.path())};
+
+                    if (top.skip_until("R"))
+                    {
+                        if (!_router.is_service_node)
+                            throw std::runtime_error{"ticket is for a relay but we are a client"};
+
+                        RouterID check_rid{top.consume_span<std::byte, RouterID::SIZE>()};
+                        if (check_rid != _router.id())
+                            throw std::runtime_error{"ticket is for a different relay"};
+                    }
+                    else if (_router.is_service_node)
+                        throw std::runtime_error{"ticket is for a client but we are a relay"};
+
+                    std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>> tickets;
+                    auto recs = top.consume_list_consumer();
+                    while (!recs.is_finished())
+                    {
+                        auto rec = recs.consume_dict_consumer();
+                        auto data_sp = rec.require_span<unsigned char>("d");
+                        std::vector<unsigned char> data{data_sp.begin(), data_sp.end()};
+                        std::chrono::sys_seconds expiry{std::chrono::seconds{rec.require<int64_t>("e")}};
+                        if (expiry > real_now)
+                            tickets.emplace_back(std::move(data), expiry);
+                        rec.finish();
+                    }
+                    top.finish();
+
+                    if (tickets.empty())
+                    {
+                        // Everything expired
+                        log::debug(logcat, "Deleting 0RTT ticket file {}: no unexpired tickets found", f.path());
+                        purge.push_back(f);
+                        continue;
+                    }
+                    _0rtt_tickets[rid] = std::move(tickets);
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(
+                        logcat, "Failed to load {} from stored 0RTT data: {}; deleting it.", f.path(), e.what());
+                    purge.push_back(f);
+                    continue;
+                }
+            }
+            else
+                log::trace(logcat, "Skipping file with unknown extension: {}", f.path());
         }
 
         if (not purge.empty())
         {
-            log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+            log::info(logcat, "removing {} invalid or expired RC/0RTT files from disk", purge.size());
             for (const auto& fpath : purge)
                 remove(fpath);
         }
+
+        log::info(
+            logcat, "Loaded {} RCs + 0-RTT tickets for {} relays from disk", known_rcs.size(), _0rtt_tickets.size());
     }
 
     void NodeDB::cleanup()
@@ -812,21 +933,18 @@ namespace llarp
         log::debug(logcat, "NodeDB cleared all tickers...");
     }
 
-    const RemoteRC* NodeDB::get_rc(const RouterID& pk) const
+    const RelayContact* NodeDB::get_rc(const RouterID& pk) const
     {
         assert(_router.loop.inside());
         auto it = known_rcs.find(pk);
         return it != known_rcs.end() ? &it->second : nullptr;
     }
 
-    bool NodeDB::put_rc(const RemoteRC& rc)
+    bool NodeDB::put_rc(RelayContact rc)
     {
         assert(_router.loop.inside());
 
-        if (rc.router_id() == _router.local_rid())
-            return false;
-
-        auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), rc);
+        auto [it, new_rc] = known_rcs.try_emplace(rc.router_id(), std::move(rc));
         auto& stored = it->second;
         bool should_gossip;
         if (new_rc)
@@ -834,7 +952,7 @@ namespace llarp
             // If this is a brand new RC then we want to gossip it to make sure everyone gets it.
             should_gossip = true;
         }
-        else if (!rc.newer_than(stored, RemoteRC::MIN_GOSSIP_RC_AGE))
+        else if (!rc.newer_than(stored, RelayContact::MIN_GOSSIP_RC_AGE))
         {
             // The RC is too new since the last one we stored, so drop it.
             return false;
@@ -848,37 +966,49 @@ namespace llarp
             // we don't gossip it because the full-mesh network connections means it will send it
             // directly to everyone (and other nodes don't need to update to be able to full mesh
             // with it).
-            should_gossip = rc.newer_than(stored, RemoteRC::OUTDATED_AGE) || rc.address_changed(stored);
-            stored = rc;
+            //
+            // For our own RC, we always return true if we get here because we always want to gossip
+            // our *own* RC whenever it gets updated.
+            should_gossip = rc.router_id() == _router.id() || rc.newer_than(stored, RelayContact::OUTDATED_AGE)
+                || rc.address_changed(stored);
+            stored = std::move(rc);
         }
 
         // We inserted or updated the record, so queue saving it to disk on the disk loop
-        _router.disk_loop.call_soon([rc, path = get_path_by_pubkey(rc.router_id())] { rc.write(path); });
+        _router.disk_loop.call_soon([rc = stored, path = get_path_by_pubkey(rc.router_id())] { rc.write(path); });
 
         return should_gossip;
     }
 
-    bool NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
+    bool NodeDB::verify_store_gossip_rc(RelayContact rc)
     {
         assert(_router.loop.inside());
-        if (not is_registered(rc.router_id()))
+        if (not is_registered(rc.router_id()) || rc.router_id() == _router.id())
             return false;
-        return put_rc(rc);
+        return put_rc(std::move(rc));
     }
 
-    int NodeDB::num_rcs() const
+    int NodeDB::num_rcs(bool include_self) const
     {
         assert(_router.loop.inside());
-        return static_cast<int>(known_rcs.size());
+        int total = static_cast<int>(known_rcs.size());
+        if (not include_self and _router.is_service_node and known_rcs.contains(_router.id()))
+            --total;
+        return total;
     }
 
     int NodeDB::num_rids() const
     {
         assert(_router.loop.inside());
+        if (_router.is_service_node)
+        {
+            std::shared_lock lock{_registered_relays_mutex};
+            return static_cast<int>(_registered_relays.size());
+        }
         return static_cast<int>(known_rids.size());
     }
 
-    void NodeDB::remove_rcs_if(const std::function<bool(const RemoteRC&)>& remove)
+    void NodeDB::remove_rcs_if(const std::function<bool(const RelayContact&)>& remove)
     {
         assert(_router.loop.inside());
 
@@ -964,4 +1094,118 @@ namespace llarp
             result.push_back(*rid);
         return result;
     }
+
+    void NodeDB::store_0rtt(const RouterID& rid, std::vector<unsigned char> data, std::chrono::sys_seconds expiry)
+    {
+        std::lock_guard lock{_0rtt_mutex};
+        auto& tickets = _0rtt_tickets[rid];
+        while (tickets.size() >= MAX_0RTT_TICKETS)
+            tickets.pop_front();
+        tickets.emplace_back(std::move(data), expiry);
+        _0rtt_dirty.insert(rid);
+        _0rtt_saver->wake();
+    }
+
+    std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
+    {
+        std::lock_guard lock{_0rtt_mutex};
+        std::optional<std::vector<unsigned char>> ret;
+        auto now = std::chrono::system_clock::now();
+        auto it = _0rtt_tickets.find(rid);
+        if (it != _0rtt_tickets.end())
+        {
+            auto& tickets = it->second;
+            // Delete any expired tickets:
+            while (!tickets.empty() && tickets.front().second < now)
+                tickets.pop_front();
+            if (!tickets.empty())
+            {
+                ret = std::move(tickets.front().first);
+                tickets.pop_front();
+            }
+            _0rtt_dirty.insert(rid);
+            _0rtt_saver->wake();
+        }
+        return ret;
+    }
+
+    void NodeDB::_0rtt_save()
+    {
+        std::list<std::pair<std::filesystem::path, std::string>> rewrite;
+        std::list<std::filesystem::path> erase;
+
+        {
+            std::lock_guard lock{_0rtt_mutex};
+            auto now = std::chrono::system_clock::now();
+            for (const auto& rid : _0rtt_dirty)
+            {
+                auto path = get_path_by_pubkey(rid, ZRTT_FILE_EXT);
+                auto it = _0rtt_tickets.find(rid);
+                if (it == _0rtt_tickets.end())
+                    erase.push_back(std::move(path));
+                else
+                {
+                    auto& tickets = it->second;
+                    // Delete any expired tickets:
+                    while (!tickets.empty() && tickets.front().second < now)
+                        tickets.pop_front();
+
+                    if (!tickets.empty())
+                    {
+                        oxenc::bt_dict_producer top;
+                        // Target relay RID, for verification that this is actually connecting to
+                        // the expected place:
+                        top.append("@", rid.span());
+
+                        // If *we* are a relay then record our own pubkey here (and otherwise
+                        // don't), so that when loading we refuse to load a file that doesn't match
+                        // our pubkey and/or relay state, just in case someone copies the nodedb
+                        // with tickets in it from one data dir to another.
+                        if (_router.is_service_node)
+                            top.append("R", _router.id().to_view());
+
+                        auto recs = top.append_list("r");
+                        for (const auto& [data, exp] : tickets)
+                        {
+                            auto e = recs.append_dict();
+                            e.append("d", std::span{reinterpret_cast<const std::byte*>(data.data()), data.size()});
+                            e.append("e", exp.time_since_epoch().count());
+                        }
+                        rewrite.emplace_back(std::move(path), std::move(top).str());
+                        ++it;
+                    }
+                    else
+                    {
+                        erase.push_back(std::move(path));
+                        it = _0rtt_tickets.erase(it);
+                    }
+                }
+            }
+            _0rtt_dirty.clear();
+        }
+
+        for (const auto& path : erase)
+        {
+            try
+            {
+                std::filesystem::remove(path);
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Failed to remove expired 0RTT ticket file {}: {}", path, e.what());
+            }
+        }
+        for (const auto& [path, data] : rewrite)
+        {
+            try
+            {
+                util::buffer_to_file(path, data);
+            }
+            catch (const std::exception& e)
+            {
+                log::error(logcat, "Failed to update 0RTT ticket file {}: {}", path, e.what());
+            }
+        }
+    }
+
 }  // namespace llarp

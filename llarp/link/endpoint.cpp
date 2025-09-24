@@ -6,7 +6,9 @@
 #include <llarp/util/time.hpp>
 
 #include <oxen/quic/btstream.hpp>
+#include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/context.hpp>  // TODO FIXME: can't construct an Endpoint without this!
+#include <oxen/quic/opt.hpp>
 #include <sodium/crypto_generichash_blake2b.h>
 
 namespace llarp::link
@@ -69,9 +71,11 @@ namespace llarp::link
         : manager{lm},
           router{lm.router},
           loop{std::make_unique<quic::Loop>()},
-          tls_creds{quic::GNUTLSCreds::make_from_ed_keys(
-              {reinterpret_cast<const char*>(router.identity().data()), 32},
-              {reinterpret_cast<const char*>(router.local_rid().data()), 32})}
+          tls_creds{
+              router.is_service_node ? quic::GNUTLSCreds::make_from_ed_keys(
+                                           {reinterpret_cast<const char*>(router.secret_key().data()), 32},
+                                           {reinterpret_cast<const char*>(router.id().data()), 32})
+                                     : quic::GNUTLSCreds::make_unauthenticated()}
     {
         std::optional<quic::opt::inbound_alpns> inbound_alpn;
         if (router.is_service_node)
@@ -80,7 +84,7 @@ namespace llarp::link
         endpoint = quic::Endpoint::endpoint(
             *loop,
             router.listen_addr(),
-            quic::opt::static_secret{make_static_secret(router.identity())},
+            quic::opt::static_secret{make_static_secret(router.secret_key())},
             [this](quic::Connection& conn) { on_conn_established(conn); },
             [this](quic::Connection& conn, uint64_t ec) { on_conn_closed(conn, ec); },
             [this](quic::datagram dgram) {
@@ -93,29 +97,72 @@ namespace llarp::link
             quic::opt::outbound_alpns{{router.is_service_node ? RELAY_ALPN : CLIENT_ALPN}},
             quic::opt::enable_datagrams{quic::Splitting::ACTIVE});
 
+        tls_creds->enable_outbound_0rtt(
+            [this](
+                const quic::RemoteAddress& remote, std::vector<unsigned char> data, std::chrono::sys_seconds expiry) {
+                RouterID rid;
+                if (remote.view_remote_key().size() != RouterID::SIZE)
+                {
+                    log::warning(
+                        logcat,
+                        "Not storing 0RTT ticker: unexpected remote pubkey size {}",
+                        remote.view_remote_key().size());
+                    return;
+                }
+                rid.assign(remote.view_remote_key().first<RouterID::SIZE>());
+                router.node_db().store_0rtt(rid, std::move(data), expiry);
+            },
+            [this](const quic::RemoteAddress& remote) {
+                std::optional<std::vector<unsigned char>> ret;
+                if (remote.view_remote_key().size() != RouterID::SIZE)
+                    return ret;
+                RouterID rid{remote.view_remote_key().first<RouterID::SIZE>()};
+                ret = router.node_db().extract_0rtt(rid);
+                return ret;
+            });
+
         if (router.is_service_node)
         {
-            tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
+            tls_creds->enable_inbound_0rtt(0s, 48h);
+
+            tls_creds->request_client_keys([this](const std::span<const uint8_t> key, const std::string_view alpn) {
                 // NB: this code *must not* call_get into the router event loop, because there are
                 // lots of places that router call-get's into endloop.loop, and so any attempt to
                 // call-get the other direction is a recipe for deadlock.
 
-                if (key.size() != RouterID::SIZE)
+                if (alpn != RELAY_ALPN)
                 {
+                    // For non-relay (i.e. client or bootstrap) conns we don't need a key, but if
+                    // they provided one, it has to at least be of the correct size for an Ed25519
+                    // pubkey.
+                    if (key.empty() || key.size() == PubKey::SIZE)
+                        return true;
+
                     log::warning(
                         logcat,
-                        "Rejecting incoming connection with invalid/unsupported pubkey ({} bytes, expected {})",
+                        "Rejecting incoming {} connection with invalid optional pubkey ({} bytes, expected {})",
+                        alpn,
                         key.size(),
                         RouterID::SIZE);
                     return false;
                 }
 
-                if (alpn == CLIENT_ALPN || alpn == BOOTSTRAP_ALPN)
-                    return true;
+                // Otherwise the incoming conn is from a relay: we only request client keys, but if
+                // the incoming connection is a relay (using the relay ALPN) then it must provide
+                // one:
+                if (key.size() != RouterID::SIZE)
+                {
+                    log::warning(
+                        logcat,
+                        "Rejecting incoming {} connection with missing or invalid pubkey ({} bytes, expected {})",
+                        alpn,
+                        key.size(),
+                        RouterID::SIZE);
+                    return false;
+                }
+                RouterID other{key.first<RouterID::SIZE>()};
 
-                RouterID other{key.first<32>()};
-
-                if (other == router.local_rid())
+                if (other == router.id())
                 {
                     log::error(
                         logcat,
@@ -178,6 +225,8 @@ namespace llarp::link
 
     link::Connection* Endpoint::get_client_conn(const RouterID& remote) const
     {
+        if (router.is_service_node)
+            return nullptr;
         return router.loop.call_get([this, remote]() -> link::Connection* {
             if (auto itr = client_conns.find(remote); itr != client_conns.end())
                 return itr->second.get();
@@ -231,6 +280,29 @@ namespace llarp::link
         return ret;
     }
 
+    std::optional<quic::ipv4_net> Endpoint::unique_edge_range() const
+    {
+        std::optional<quic::ipv4_net> network;
+
+        auto mask = router.config().paths.unique_hop_netmask;
+        if (not mask or router.is_service_node)
+            return network;
+
+        for (auto& [rid, conn] : client_conns)
+        {
+            auto ip = conn->conn->remote().to_ipv4();
+            if (not network)
+                network = ip % mask;
+            else if (not network->contains(ip))
+            {
+                // There are at least two different networks
+                network.reset();
+                break;
+            }
+        }
+        return network;
+    }
+
     bool Endpoint::connected_to_relay(const RouterID& relay, bool include_pending) const
     {
         if (router.is_service_node ? relay_conns.contains(relay) : client_conns.contains(relay))
@@ -248,10 +320,17 @@ namespace llarp::link
         relay_conns.clear();
         relay_bidir.clear();
 
-        for (auto& conn : client_conns)
-            conn.second->close_quietly();
+        for (auto& conn : pending_outbound | std::views::values)
+            conn->close_quietly();
+        pending_outbound.clear();
 
+        for (auto& conn : client_conns | std::views::values)
+            conn->close_quietly();
         client_conns.clear();
+
+        for (auto& conn : inbound_clients | std::views::values)
+            conn->close_quietly();
+        inbound_clients.clear();
 
         log::debug(logcat, "Closing quic endpoint");
         endpoint.reset();
@@ -269,7 +348,7 @@ namespace llarp::link
             auto& [relays, out, in, pending, clients] = result;
 
             relays = static_cast<int>(relay_conns.size());
-            clients = static_cast<int>(client_conns.size());
+            clients = static_cast<int>(inbound_clients.size());
             pending = static_cast<int>(pending_outbound.size());
             for (const auto& c : std::views::values(relay_conns))
             {
@@ -310,13 +389,13 @@ namespace llarp::link
                 // We are a client, and so *all* connections are outbound to a relay that we
                 // initiated: Unlike the above, we would never initiate to an already pending or
                 // already connected node, so don't have to worry about duplicates.
-                c = static_cast<int>(client_conns.size() + pending_outbound.size());
+                c = static_cast<int>(client_conns.size() + (include_pending ? pending_outbound.size() : 0));
             }
             return c;
         });
     }
 
-    std::pair<bool, quic::BTRequestStream*> Endpoint::ctrl_stream_impl(const RemoteRC& rc)
+    std::pair<bool, quic::BTRequestStream*> Endpoint::ctrl_stream_impl(const RelayContact& rc)
     {
         assert(router.loop.inside());
         std::pair<bool, quic::BTRequestStream*> result;
@@ -340,8 +419,7 @@ namespace llarp::link
                 quic::RemoteAddress{rid.to_view(), rc.addr()},
                 tls_creds,
                 quic::opt::keep_alive{router.is_service_node ? RELAY_OUTBOUND_KEEP_ALIVE : CLIENT_KEEP_ALIVE},
-                quic::opt::idle_timeout{router.is_service_node ? RELAY_OUTBOUND_IDLE_TIMEOUT : CLIENT_IDLE_TIMEOUT},
-                [this](quic::Connection& conn) { on_conn_established(conn); });
+                quic::opt::idle_timeout{router.is_service_node ? RELAY_OUTBOUND_IDLE_TIMEOUT : CLIENT_IDLE_TIMEOUT});
 
             auto control_stream = make_control(*conn, rid, router.is_service_node ? RELAY_ALPN : CLIENT_ALPN);
 
@@ -352,20 +430,20 @@ namespace llarp::link
         return result;
     }
 
-    bool Endpoint::ensure_connection(const RemoteRC& rc)
+    bool Endpoint::ensure_connection(const RelayContact& rc)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return ctrl_stream_impl(rc).first;
     }
 
-    quic::BTRequestStream& Endpoint::control_stream_for(const RemoteRC& rc)
+    quic::BTRequestStream& Endpoint::control_stream_for(const RelayContact& rc)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         return *ctrl_stream_impl(rc).second;
     }
 
     void Endpoint::send_command(
-        const RemoteRC& rc,
+        const RelayContact& rc,
         std::string endpoint,
         std::vector<std::byte> body,
         std::function<void(quic::message)> response_handler)
@@ -403,30 +481,87 @@ namespace llarp::link
         return true;
     }
 
-    bool Endpoint::send_datagram(const RouterID& remote, std::vector<std::byte> body)
+    bool Endpoint::send_command(
+        const quic::ConnectionID& client_cid,
+        std::string endpoint,
+        std::vector<std::byte> body,
+        std::function<void(quic::message)> response_handler)
+    {
+        assert(router.is_service_node);
+        if (manager.is_stopping)
+            return false;
+
+        auto it = inbound_clients.find(client_cid);
+        if (it == inbound_clients.end())
+        {
+            log::debug(
+                logcat, "Unable to send {} control command to client[{}]: connection not found", endpoint, client_cid);
+            return false;
+        }
+
+        auto& conn = it->second;
+        if (!conn || conn->conn->is_closing())
+        {
+            log::debug(
+                logcat, "Unable to send {} control command to client[{}]: connection is closing", endpoint, client_cid);
+            return false;
+        }
+
+        if (response_handler)
+            // Wrap the handler to transfer to the router loop for execution:
+            response_handler = [f = std::move(response_handler), &rloop = router.loop](quic::message m) mutable {
+                rloop.call([f = std::move(f), m = std::move(m)]() mutable { f(std::move(m)); });
+            };
+
+        conn->control_stream->command(std::move(endpoint), std::move(body), std::move(response_handler));
+        return true;
+    }
+
+    bool Endpoint::send_datagram(const RouterID& relay, std::vector<std::byte> body)
     {
         if (manager.is_stopping)
             return false;
 
-        auto* conn = get_relay_conn(remote);
-        if (!conn)
-            conn = get_client_conn(remote);
-        if (!conn)
-            // Unlike send_command, if we don't have an established connection yet then we simply
-            // drop this rather than trying to store it in a queue.
+        if (auto* conn = get_relay_conn(relay))
+        {
+            conn->datagrams->send(std::move(body));
+            return true;
+        }
+
+        // Unlike send_command, if we don't have an established connection yet then we simply
+        // drop this rather than trying to store it in a queue.
+        return false;
+    }
+
+    bool Endpoint::send_datagram(const quic::ConnectionID& cid, std::vector<std::byte> body)
+    {
+        if (manager.is_stopping)
             return false;
 
-        conn->datagrams->send(std::move(body));
+        auto it = inbound_clients.find(cid);
+        if (it == inbound_clients.end())
+            return false;
+
+        auto& conn = *it->second;
+        conn.datagrams->send(std::move(body));
         return true;
     }
 
     std::shared_ptr<quic::BTRequestStream> Endpoint::make_control(
-        quic::Connection& conn, const RouterID& remote, std::string_view alpn)
+        quic::Connection& conn, std::span<const unsigned char> remote_key, std::string_view alpn)
     {
         std::shared_ptr<quic::BTRequestStream> control_stream;
 
+        std::variant<RouterID, quic::ConnectionID> remote{conn.reference_id()};
+        if (alpn == RELAY_ALPN)
+        {
+            assert(remote_key.size() == RouterID::SIZE);
+            remote.emplace<RouterID>(remote_key.first<RouterID::SIZE>());
+        }
+
         if (conn.is_inbound())
         {
+            assert(router.is_service_node);
             control_stream =
                 conn.template queue_incoming_stream<quic::BTRequestStream>([](quic::Stream&, uint64_t error_code) {
                     log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
@@ -454,7 +589,7 @@ namespace llarp::link
         }
 
         if (alpn != BOOTSTRAP_ALPN)
-            manager.register_commands(*control_stream, remote, not router.is_service_node);
+            manager.register_commands(*control_stream, remote);
 
         return control_stream;
     }
@@ -464,52 +599,49 @@ namespace llarp::link
         std::shared_ptr<quic::Connection> qconn, std::shared_ptr<quic::BTRequestStream> control)
     {
         assert(router.is_service_node);
-        assert(qconn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
-        RouterID rid{qconn->remote_key().first<RouterID::SIZE>()};
+
+        std::optional<RouterID> rid;
+        if (not qconn->remote_key().empty())
+        {
+            assert(
+                qconn->remote_key().size() == RouterID::SIZE);  // Should have been checked in the key verify callback
+            rid.emplace(qconn->remote_key().first<RouterID::SIZE>());
+        }
 
         auto alpn = qconn->selected_alpn();
         if (alpn == BOOTSTRAP_ALPN)
         {
-            log::debug(log_bs, "New incoming bootstrap connection from {} ({})", qconn->remote(), rid.short_string());
+            log::debug(log_bs, "New incoming bootstrap connection from {}", qconn->remote());
             return;
         }
 
-        bool is_relay = alpn != CLIENT_ALPN;
-
         auto conn = std::make_shared<link::Connection>(std::move(qconn), std::move(control));
-
-        if (is_relay)
+        if (alpn == RELAY_ALPN)
         {
-            auto [it, ins] = relay_conns.emplace(rid, rid < router.local_rid());
+            assert(rid);  // key verification should have enforced this
+            auto [it, ins] = relay_conns.emplace(*rid, *rid < router.id());
             auto& relcon = it->second;
             assert(ins ? !relcon.conn : !!relcon.conn);
             bool already_had_inbound{relcon.inbound};
             relcon.set_conn(std::move(conn), true);
             if (relcon.outbound)
-                relay_bidir[rid] = llarp::time_now_ms();
+                relay_bidir[*rid] = llarp::time_now_ms();
 
             log::debug(
                 logcat,
                 "{} incoming relay connection from {} ({} outbound connection)",
                 already_had_inbound ? "Replaced existing" : "New",
-                rid.to_network_address(true),
+                rid->to_network_address(true),
                 !relcon.outbound          ? "no current"
                     : relcon.inbound_wins ? "have redundant"
                                           : "have more-preferred");
         }
         else
         {
-            // We are a service node; this container holds client connections to us:
-            auto& cc = client_conns[rid];
-            bool replaced{cc};
-            if (replaced)
-                cc->close_quietly();
-            cc = std::move(conn);
-            log::debug(
-                logcat,
-                "{} incoming client connection from {}",
-                replaced ? "Replaced existing" : "New",
-                rid.to_network_address(false));
+            // We are a service node, and so we use this container to holds client connections to us:
+            log::debug(logcat, "New incoming client connection from {}", conn->conn->remote());
+            auto& cid = conn->conn->reference_id();
+            inbound_clients.emplace(cid, std::move(conn));
         }
     }
 
@@ -529,7 +661,7 @@ namespace llarp::link
 
         if (router.is_service_node)
         {
-            auto [it, ins] = relay_conns.emplace(rid, rid < router.local_rid());
+            auto [it, ins] = relay_conns.emplace(rid, rid < router.id());
             auto& relcon = it->second;
             assert(ins ? !relcon.conn : !!relcon.conn);
             bool already_had_outbound{relcon.outbound};
@@ -570,6 +702,9 @@ namespace llarp::link
         }
 
         pending_outbound.erase(pit);
+
+        if (not router.is_service_node)
+            router.on_edge_conn_change();
     }
 
     void Endpoint::on_conn_established(quic::Connection& conn)
@@ -578,12 +713,15 @@ namespace llarp::link
 
         std::shared_ptr<quic::BTRequestStream> inbound_cstream;
         if (conn.is_inbound())
+        {
             // We have to set up the control stream here, before the router loop transfer below,
-            // because the stream must be queued before stream data gets processed which could
-            // happen immediately after this callback.
-            inbound_cstream = make_control(conn, RouterID{conn.remote_key().first<32>()}, conn.selected_alpn());
+            // because the stream must be queued before stream data gets processed (which could
+            // happen immediately after this method call returns) so that we don't accidentally end
+            // up with a plain Stream for the stream id rather than a BTRequestStream.
+            inbound_cstream = make_control(conn, conn.remote_key(), conn.selected_alpn());
+        }
 
-        router.loop.call([this, weak = conn.weak_from_this(), inbound_cstream = std::move(inbound_cstream)]() {
+        router.loop.call([this, weak = conn.weak_from_this(), inbound_cstream = std::move(inbound_cstream)]() mutable {
             auto conn = weak.lock();
             if (not conn)
             {
@@ -595,154 +733,206 @@ namespace llarp::link
                 on_inbound_conn(std::move(conn), std::move(inbound_cstream));
             else
                 on_outbound_conn(std::move(conn));
-
-            if (not router.is_service_node and not _client_connected)
-                if (int n = num_relay_conns(/*include_pending=*/false); n >= router.client_target_outbounds())
-                {
-                    _client_connected = true;
-                    log::info(
-                        log_global,
-                        "Lokinet is now connected to the network ({}) with {} relay connections",
-                        router.config().network.is_reachable ? router.local_rid().to_network_address(false).to_string()
-                                                             : "outgoing-only",
-                        n);
-                }
         });
     }
 
     void Endpoint::on_conn_closed(quic::Connection& conn, uint64_t ec)
     {
-        if (conn.remote_key().size() != RouterID::SIZE)
+        auto alpn = conn.selected_alpn();
+        if (alpn == BOOTSTRAP_ALPN)
         {
-            log::debug(logcat, "on_conn_closed on rejected connection (ec={}), nothing to do", ec);
-            return;
-        }
+            assert(conn.is_inbound());  // Outbound bs conns should not use this callback
 
-        if (conn.selected_alpn() == BOOTSTRAP_ALPN)
-        {
             // These are untracked, so don't need to enter the below cleanup code.
             log::debug(logcat, "bootstrap connection closed, ec={}", ec);
             return;
         }
 
-        router.loop.call([this,
-                          ref_id = conn.reference_id(),
-                          rid = RouterID{conn.remote_key().first<32>()},
-                          ec,
-                          path = conn.path()] {
-            if (auto it = relay_conns.find(rid); it != relay_conns.end())
+        if (alpn == RELAY_ALPN && conn.remote_key().size() != RouterID::SIZE)
+        {
+            log::debug(logcat, "Rejected inbound connection (ec={}), nothing to do", ec);
+            return;
+        }
+
+        router.loop.call([this, connptr = conn.shared_from_this(), ec] {
+            auto& conn = *connptr;
+            auto alpn = conn.selected_alpn();
+
+            std::optional<RouterID> rid;
+            if (conn.remote_key().size() == RouterID::SIZE)
+                rid.emplace(conn.remote_key().first<RouterID::SIZE>());
+
+            bool found = false;
+
+            if (alpn == RELAY_ALPN)
             {
                 assert(router.is_service_node);
-                auto& relcon = it->second;
-                bool found = false;
-                if (relcon.inbound && ref_id == relcon.inbound->conn->reference_id())
+                assert(rid);
+                if (auto it = relay_conns.find(*rid); it != relay_conns.end())
                 {
-                    relcon.close_quietly(true);
+                    assert(router.is_service_node);
+                    auto& relcon = it->second;
+                    if (relcon.inbound && connptr == relcon.inbound->conn)
+                    {
+                        relcon.close_quietly(true);
+                        found = true;
+                        log::debug(
+                            logcat, "Inbound connection from {} closed (ec={})", rid->to_network_address(true), ec);
+                    }
+                    if (relcon.outbound && connptr == relcon.outbound->conn)
+                    {
+                        relcon.close_quietly(false);
+                        found = true;
+                        log::debug(
+                            logcat, "Outbound connection to {} closed (ec={})", rid->to_network_address(true), ec);
+                    }
+                    if (!relcon.conn)
+                    {
+                        log::debug(logcat, "No remaining relay connection with {}!", rid->to_network_address(true));
+                        relay_conns.erase(it);
+                    }
+                    if (found)
+                    {
+                        relay_bidir.erase(*rid);
+                        return;
+                    }
+                }
+
+                if (auto it = pending_outbound.find(*rid); it != pending_outbound.end())
+                {
+                    log::debug(
+                        logcat,
+                        "Pending relay connection to {} closed before establishing (ec={})",
+                        rid->to_network_address(true),
+                        ec);
+                    pending_outbound.erase(it);
                     found = true;
-                    log::debug(logcat, "Inbound connection from {} closed (ec={})", rid.to_network_address(true), ec);
-                }
-                if (relcon.outbound && ref_id == relcon.outbound->conn->reference_id())
-                {
-                    relcon.close_quietly(false);
-                    found = true;
-                    log::debug(logcat, "Outbound connection to {} closed (ec={})", rid.to_network_address(true), ec);
-                }
-                if (!relcon.conn)
-                {
-                    log::debug(logcat, "No remaining relay connection with {}!", rid.to_network_address(true));
-                    relay_conns.erase(it);
-                }
-                if (found)
-                {
-                    relay_bidir.erase(rid);
-                    return;
                 }
             }
-            if (auto it = client_conns.find(rid);
-                it != client_conns.end() and ref_id == it->second->conn->reference_id())
+            else if (alpn == CLIENT_ALPN)
             {
-                log::debug(
-                    logcat,
-                    "Closed {} {} (ec={})",
-                    router.is_service_node ? "client connection from" : "connection to",
-                    rid.to_network_address(!router.is_service_node),
-                    ec);
-                client_conns.erase(it);
+                if (router.is_service_node)
+                {
+                    assert(conn.is_inbound());  // Relays do make outbound client conns for testing,
+                                                // but they do not use this close callback.
+                    if (auto it = inbound_clients.find(conn.reference_id()); it != inbound_clients.end())
+                    {
+                        log::debug(logcat, "Client connection from {} closed (ec={})", conn.remote(), ec);
+                        it->second->close_quietly();
+                        inbound_clients.erase(it);
+                        found = true;
+                    }
+                }
+                else
+                {
+                    assert(conn.is_outbound());
+
+                    if (auto it = client_conns.find(*rid); it != client_conns.end() and connptr == it->second->conn)
+                    {
+                        log::debug(
+                            logcat,
+                            "Closed connection to {} (ec={})",
+                            rid->to_network_address(!router.is_service_node),
+                            ec);
+                        client_conns.erase(it);
+                        found = true;
+                    }
+                }
             }
-            else if (auto it = pending_outbound.find(rid); it != pending_outbound.end())
+            else if (conn.is_outbound())
             {
-                log::debug(
-                    logcat,
-                    "Pending connection to {} closed before establishing (ec={})",
-                    rid.to_network_address(true),
-                    ec);
-                pending_outbound.erase(it);
+                // Unknown or empty ALPN -- this is an outbound conn that didn't establish (and thus
+                // didn't negotiate the ALPN):
+                assert(rid);  // Outbound conns start out with the target pubkey known
+                if (auto it = pending_outbound.find(*rid); it != pending_outbound.end() and connptr == it->second->conn)
+                {
+                    pending_outbound.erase(it);
+                    found = true;
+                }
             }
             else
-            {
+                assert(false);  // Somehow we have an *inbound* conn without an ALPN, but that should
+                                // never have been established in the first place.
+
+            if (!found)
                 log::warning(
                     logcat,
-                    "Closed untracked connection to {} (ref_id={}, ec={})",
-                    rid.to_network_address(true /* don't know! */),
-                    ref_id,
+                    "Closed untracked connection {} {} @ {} (cid={}, ec={})",
+                    conn.is_inbound() ? "from" : "to",
+                    rid ? rid->to_network_address(true /* don't know! */).to_string() : "",
+                    conn.remote(),
+                    conn.reference_id(),
                     ec);
-            }
-            if (not router.is_service_node and _client_connected and num_relay_conns(/*include_pending=*/false) == 0)
-            {
-                _client_connected = false;
-                log::warning(log_global, "Lokinet is no longer connected to the network!");
-            }
+
+            if (not router.is_service_node)
+                router.on_edge_conn_change();
         });
     }
 
-    bool Endpoint::is_client_connected() const
-    {
-        return router.loop.call_get([this] { return _client_connected; });
-    }
-
-    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
-        const RemoteRC& rc)
+    // Establish a no-creds, no-0rtt, bootstrap or relay-testing (client ALPN) connection.
+    static auto testcat = log::Cat("testing");
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> special_connect_impl(
+        quic::Endpoint& endpoint, const RelayContact& rc, std::string_view alpn)
     {
         std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> ret;
         auto& [conn, control] = ret;
+
+        bool bs = alpn == BOOTSTRAP_ALPN;
+
         log::debug(
             logcat,
-            "Initiating new bootstrap connection to {} @ {}",
+            "Initiating new {} connection to {} @ {}",
+            alpn,
             rc.router_id().to_network_address(true),
             rc.addr());
 
-        conn = endpoint->connect(
+        conn = endpoint.connect(
             quic::RemoteAddress{rc.router_id().to_view(), rc.addr()},
-            tls_creds,
             quic::opt::idle_timeout{BOOTSTRAP_IDLE_TIMEOUT},
-            quic::opt::outbound_alpns{{BOOTSTRAP_ALPN}},
-            [](quic::Connection& conn) {
+            quic::opt::outbound_alpn(alpn),
+            [bs](quic::Connection& conn) {
                 log::debug(
-                    logcat,
-                    "Successfully connected to bootstrap {} @ {}",
+                    bs ? logcat : testcat,
+                    "Successfully connected to {} {} @ {}",
+                    bs ? "bootstrap" : "testee",
                     RouterID{conn.remote_key().first<32>()}.to_network_address(true),
                     conn.remote());
             },
-            [](quic::Connection& conn, uint64_t ec) {
+            [bs](quic::Connection& conn, uint64_t ec) {
                 if (ec)
-                    log::warning(
-                        logcat,
-                        "{} while connecting to bootstrap {} @ {}",
+                    log::log(
+                        bs ? logcat : testcat,
+                        bs ? log::Level::warn : log::Level::debug,
+                        "{} while connecting to {} {} @ {}",
                         ec == static_cast<uint64_t>(NGTCP2_ERR_HANDSHAKE_TIMEOUT)
                             ? "Connection timeout"
                             : "An error occurred (ec={})"_format(ec),
+                        bs ? "bootstrap" : "testee",
                         RouterID{conn.remote_key().first<32>()}.to_network_address(true),
                         conn.remote());
                 else
                     log::debug(
-                        logcat,
-                        "Connection to bootstrap {} closed.",
+                        bs ? logcat : testcat,
+                        "Connection to {} {} closed.",
+                        bs ? "bootstrap" : "testee",
                         RouterID{conn.remote_key().first<32>()}.to_network_address(true));
             });
 
         control = conn->open_stream<quic::BTRequestStream>();
 
         return ret;
+    }
+
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>> Endpoint::bootstrap_connect(
+        const RelayContact& rc)
+    {
+        return special_connect_impl(*endpoint, rc, BOOTSTRAP_ALPN);
+    }
+
+    std::pair<std::shared_ptr<quic::Connection>, std::shared_ptr<quic::BTRequestStream>>
+    Endpoint::testing_client_connect(const RelayContact& rc)
+    {
+        return special_connect_impl(*endpoint, rc, CLIENT_ALPN);
     }
 
 }  // namespace llarp::link

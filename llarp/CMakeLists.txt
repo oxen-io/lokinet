@@ -45,8 +45,6 @@ endif()
 lokinet_add_library(lokinet-core
   context.cpp
   
-  consensus/reachability_testing.cpp
-  
   link/connection.cpp
   link/endpoint.cpp
   link/link_manager.cpp
@@ -57,14 +55,18 @@ lokinet_add_library(lokinet-core
 )
 
 if (LOKINET_FULL)
-  target_sources(lokinet-core PRIVATE router/route_poker.cpp)
+  target_sources(lokinet-core
+    PRIVATE
+    router/route_poker.cpp
+    consensus/reachability_testing.cpp
+  )
 endif()
 
 if (LOKINET_FULL)
   lokinet_add_library(lokinet-rpc
     rpc/json_binary_proxy.cpp
     rpc/json_conversions.cpp
-    rpc/rpc_client.cpp
+    rpc/oxend_rpc.cpp
     rpc/rpc_request_parser.cpp
     rpc/rpc_server.cpp
   )
@@ -81,6 +83,7 @@ lokinet_add_library(lokinet-utils
   util/thread/queue_manager.cpp  
   util/thread/threading.cpp
   util/time.cpp
+  util/zstd.cpp
 )
 
 add_dependencies(lokinet-utils genversion)
@@ -234,8 +237,10 @@ target_link_libraries(lokinet-dns
   PUBLIC
   lokinet-cryptography
   lokinet-config
-  lokinet-platform
 )
+if(LOKINET_FULL)
+  target_link_libraries(lokinet-dns PUBLIC lokinet-platform)
+endif()
 
 target_link_libraries(lokinet-path
   PUBLIC
@@ -305,6 +310,15 @@ if(NOT TARGET libevent::core)
   add_library(libevent::core ALIAS libevent_core)
 endif()
 target_link_libraries(lokinet-addressing PRIVATE libevent::core)
+
+
+# libzstd
+if(TARGET libzstd::static)  # static dep or libsession-util's embedded static target
+    target_link_libraries(lokinet-utils PRIVATE libzstd::static)
+else()
+    pkg_check_modules(LIBZSTD libzstd>=1.3 IMPORTED_TARGET REQUIRED)
+    target_link_libraries(lokinet-utils PRIVATE PkgConfig::LIBZSTD)
+endif()
 
 
 add_library(liblokinet lokinet.cpp)

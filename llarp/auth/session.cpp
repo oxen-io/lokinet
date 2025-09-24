@@ -11,11 +11,11 @@ namespace llarp::auth
         : AuthPolicy{r}, _is_snode_service{is_snode}, _is_exit_service{is_exit}, _remote{remote, not _is_snode_service}
     {
         // These can both be false but CANNOT both be true
-        if (_is_exit_service & _is_snode_service)
+        if (_is_exit_service and _is_snode_service)
             throw std::runtime_error{"Cannot create SessionAuthPolicy for a remote exit and remote service!"};
 
         if (_is_snode_service)
-            _session_key = _router.identity();
+            _session_key = _router.secret_key();
         else
             _session_key = crypto::generate_ed25519();
     }
@@ -31,7 +31,7 @@ namespace llarp::auth
         return ret;
     }
 
-    bool SessionAuthPolicy::load_identity_from_file(const char* fname)
+    bool SessionAuthPolicy::load_key_from_file(const char* fname)
     {
         try
         {
@@ -40,7 +40,7 @@ namespace llarp::auth
         }
         catch (const std::exception& e)
         {
-            log::error(logcat, "Failed to load identity key from {}: {}", fname, e.what());
+            log::error(logcat, "Failed to load secret key from {}: {}", fname, e.what());
         }
         return false;
     }

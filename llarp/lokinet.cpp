@@ -60,6 +60,16 @@ namespace lokinet
         context->wait();
     }
 
+    void Lokinet::on_connected(std::function<void()> callback, bool persist)
+    {
+        context->router->on_connected(std::move(callback), persist);
+    }
+
+    void Lokinet::on_disconnected(std::function<void()> callback, bool persist)
+    {
+        context->router->on_disconnected(std::move(callback), persist);
+    }
+
     void Lokinet::establish_udp(
         std::string_view remote,
         uint16_t port,
