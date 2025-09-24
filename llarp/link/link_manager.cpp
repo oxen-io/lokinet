@@ -83,14 +83,6 @@ namespace llarp::link
             return;
         }
 
-        s.register_handler("path_switch"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
-        });
-
-        s.register_handler("session_close"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
-        });
-
         s.register_handler("path_build"s, [this, remote](quic::message m) {
             router.loop.call(
                 [this, remote, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), remote); });
@@ -1051,13 +1043,14 @@ namespace llarp::link
             if (control)
             {
                 log::trace(logcat, "Handling incoming session control message at the client end of a path");
-                return handle_session_control(std::move(message), tag, nonce);
+                handle_session_control(std::move(message), tag, nonce, path->shared_from_this());
             }
             else
             {
                 log::trace(logcat, "Handling incoming data message at the client end of a path");
-                return handle_session_data(std::move(message), tag, nonce);
+                handle_session_data(std::move(message), tag, nonce);
             }
+            return;
         }
 
         // Cases 2-4: relay.
@@ -1107,7 +1100,8 @@ namespace llarp::link
                 if (control)
                 {
                     log::trace(logcat, "Incoming control message is a relay session control message");
-                    handle_session_control(std::move(message), tag, nonce);
+                    handle_session_control(
+                        std::move(message), tag, nonce, router.path_context.get_transit_hop_ptr(hop_id));
                 }
                 else
                 {
@@ -1183,12 +1177,22 @@ namespace llarp::link
     }
 
     void Manager::handle_session_control(
-        std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
+        std::vector<std::byte>&& payload,
+        const session_tag& tag,
+        const SymmNonce& nonce,
+        std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source)
     {
-        if (auto session = router.session_endpoint().get_session(tag))
-            session->recv_session_control_message(std::move(payload), nonce);
-        else
-            log::warning(logcat, "Could not find session {} to receive session control message!", tag);
+        try
+        {
+            if (auto session = router.session_endpoint().get_session(tag))
+                session->recv_session_control_message(std::move(payload), nonce, source);
+            else
+                log::warning(logcat, "Could not find session {} to receive session control message!", tag);
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Error handling session control message: {}", e.what());
+        }
     }
 
     void Manager::handle_path_request(std::span<const std::byte> payload, std::function<void(std::string)> respond)
@@ -1215,93 +1219,10 @@ namespace llarp::link
             log::warning(logcat, "Received path control request (`{}`), which has no local handler!", endpoint);
     }
 
-    void Manager::handle_path_switch(quic::message m, std::optional<std::string> inner_body)
-    {
-        /*
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        session_tag tag;
-        HopID remote_pivot_txid, local_pivot_txid;
-
-        std::string_view body{inner_body ? *inner_body : m.body()};
-        try
-        {
-            std::tie(tag, remote_pivot_txid, local_pivot_txid) =
-                SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{body});
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            return m.respond(messages::ERROR_RESPONSE, true);
-        }
-
-        if (!router.is_service_node)
-        {
-            auto path = router.path_context.get_path(local_pivot_txid);
-
-            if (not path)
-            {
-                log::warning(
-                    logcat, "Received path-switch request for unknown local path (pivot txid:{})", local_pivot_txid);
-                return m.respond(SessionPathSwitch::BAD_ID, true);
-            }
-
-            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), path->terminal_hopid()))
-                return m.respond(messages::OK_RESPONSE);
-        }
-        else
-        {
-            auto hop = router.path_context.get_transit_hop_ptr(local_pivot_txid);
-
-            if (not hop)
-            {
-                log::warning(
-                    logcat, "Received path-switch request for unknown local hop (pivot txid:{})", local_pivot_txid);
-                return m.respond(SessionPathSwitch::BAD_ID, true);
-            }
-
-            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), std::move(hop)))
-                return m.respond(messages::OK_RESPONSE);
-        }
-
-        log::warning(logcat, "Received path-switch request for unknown session (tag:{})", tag);
-        return m.respond(SessionPathSwitch::BAD_TAG, true);
-        */
-    }
-
     void Manager::handle_path_ping(std::span<const std::byte>, std::function<void(std::string)> respond)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         respond(messages::OK_RESPONSE);
-    }
-
-    void Manager::handle_close_session(quic::message m, std::optional<std::string> inner_body)
-    {
-        /*
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        // No reply expected from this endpoint.
-
-        session_tag tag;
-
-        try
-        {
-            if (inner_body)
-                tag = CloseSession::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                tag = CloseSession::deserialize(oxenc::bt_dict_consumer{m.body()});
-
-            // TODO FIXME: we should be verifying where this came from so that someone can't close
-            // someone else's tag.  (Perhaps some extra encrypted/signed data in the close session
-            // message?).
-
-            router.session_endpoint().close_session(tag, false);
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-        }
-        */
     }
 
     void Manager::handle_path_latency(quic::message m)

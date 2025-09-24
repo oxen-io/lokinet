@@ -121,50 +121,6 @@ namespace llarp::handlers
         }
     }
 
-    bool SessionEndpoint::recv_path_switch(
-        const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (auto* s = get_session<session::InboundRelaySession>(t))
-        {
-            log::debug(
-                logcat,
-                "Successfully matched path-switch request to InboundRelaySession over transit hop {}",
-                *new_thop);
-
-            s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_thop));
-            return true;
-        }
-
-        return false;
-    }
-
-    bool SessionEndpoint::recv_path_switch(
-        const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid)
-    {
-        // FIXME: this needs to be encrypted
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (auto* s = get_session<session::InboundClientSession>(t))
-        {
-            // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
-            if (auto* path = get_path_by_terminus(local_pivot_txid))
-            {
-                log::debug(
-                    logcat, "Successfully matched path-switch request to InboundClientSession over path:{}", *path);
-                s->recv_path_switch(remote_pivot_txid, path->shared_from_this());
-                return true;
-            }
-
-            log::warning(logcat, "Received path-switch request for unknown local pivot txid: {}", local_pivot_txid);
-        }
-        else
-            log::warning(logcat, "Received path-switch request for unknown session (tag:{})", t);
-
-        return false;
-    }
-
     bool SessionEndpoint::close_session(NetworkAddress remote, bool send_close)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -959,20 +915,7 @@ namespace llarp::handlers
                 cc_count,
                 session->remote());
 
-            session->publish_client_contact(ecc, [started = now, to = session->remote()](quic::message m) {
-                log::log(
-                    logcat,
-                    m ? log::Level::debug : log::Level::warn,
-                    "{} new CC to {} via established session in {}",
-                    m                 ? "Pushed"
-                        : m.timed_out ? "Timeout pushing"
-                                      : "Error pushing",
-                    to,
-                    std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started));
-
-                if (m.is_error())
-                    log::debug(logcat, "CC push error response: {}", buffer_printer{m.body()});
-            });
+            session->publish_client_contact(ecc);
         }
 
         // Pick four random inbound paths to publish on, and then on each one we send along a 0-3

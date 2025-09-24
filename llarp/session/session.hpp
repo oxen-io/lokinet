@@ -114,6 +114,8 @@ namespace llarp
 
             Session(Router& r, handlers::SessionEndpoint& parent);
 
+            virtual void handle_client_contact(std::span<const std::byte> payload);
+
             virtual ~Session();
 
           public:
@@ -146,7 +148,10 @@ namespace llarp
             // (without calling `func`) if there is no current path, otherwise returns true
             bool send_session_control_message(std::string_view method, std::span<const std::byte> body);
 
-            void recv_session_control_message(std::vector<std::byte>&& message, const SymmNonce& nonce);
+            void recv_session_control_message(
+                std::vector<std::byte>&& message,
+                const SymmNonce& nonce,
+                std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source);
 
             virtual void handle_session_accept(std::span<const std::byte> params);
 
@@ -167,7 +172,7 @@ namespace llarp
 
             void recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce);
 
-            void publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
+            void publish_client_contact(const EncryptedClientContact& ecc);
 
             void handle_udp_from_remote(IPPacket&& pkt);
 
@@ -332,6 +337,9 @@ namespace llarp
 
             void select_new_current() override;
 
+          protected:
+            void handle_client_contact(std::span<const std::byte> payload) override;
+
           public:
             // Initiates a client intro lookup via the session endpoint.  This can be called even if
             // there already is intros, to refresh/replace them.
@@ -375,7 +383,7 @@ namespace llarp
             InboundClientSession(
                 handlers::SessionEndpoint& parent, std::shared_ptr<path::Path> p, std::vector<std::byte>&& request);
 
-            void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path);
+            void handle_path_switch(HopID pivot, std::shared_ptr<path::Path> path);
 
             std::string to_string() const override;
         };
@@ -397,7 +405,7 @@ namespace llarp
                 std::shared_ptr<path::TransitHop> thop,
                 std::vector<std::byte>&& request);
 
-            void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
+            void handle_path_switch(HopID pivot, std::shared_ptr<path::TransitHop> thop);
 
             std::string to_string() const override;
         };

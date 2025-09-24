@@ -350,7 +350,10 @@ namespace llarp::session
         return true;
     }
 
-    void Session::recv_session_control_message(std::vector<std::byte>&& message, const SymmNonce& nonce)
+    void Session::recv_session_control_message(
+        std::vector<std::byte>&& message,
+        const SymmNonce& nonce,
+        [[maybe_unused]] std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source)
     {
         auto decrypted = crypto::xchacha20_poly1305_decrypt(message, _shared_secret, nonce);
         if (decrypted.size() == 0)
@@ -365,6 +368,48 @@ namespace llarp::session
 
         if (method == "session_accept"sv)
             handle_session_accept(params);
+        else if (method == "publish_cc"sv)
+            handle_client_contact(params);
+        else if (method == "path_switch"sv)
+        {
+            if (is_outbound)
+            {
+                log::warning(logcat, "Received path switch on outbound path, dropping.");
+                return;
+            }
+            auto inner_btdc = oxenc::bt_dict_consumer{params};
+            auto hop_span = inner_btdc.require_span<std::byte, HopID::SIZE>("p"sv);
+            HopID hopid;
+            hopid.assign(hop_span);
+            inner_btdc.finish();
+            if (is_relay_session)
+                static_cast<InboundRelaySession*>(this)->handle_path_switch(
+                    std::move(hopid), std::get<std::shared_ptr<path::TransitHop>>(std::move(source)));
+            else
+                static_cast<InboundClientSession*>(this)->handle_path_switch(
+                    std::move(hopid), std::get<std::shared_ptr<path::Path>>(std::move(source)));
+        }
+    }
+
+    void InboundClientSession::handle_path_switch(HopID pivot, std::shared_ptr<path::Path> path)
+    {
+        log::debug(
+            logcat,
+            "Session with {} switching to path {} with pivot hopid {}",
+            _remote.router_id(),
+            *path,
+            pivot.to_view());
+        _current_path = std::move(path);
+        _dead_path = !_current_path;
+        _remote_pivot_txid = std::move(pivot);
+    }
+
+    void InboundRelaySession::handle_path_switch(HopID pivot, std::shared_ptr<path::TransitHop> thop)
+    {
+        log::debug(logcat, "Session with {} switching to transit hop with pivot hopid {}", _remote.router_id(), pivot);
+        _current_thop = std::move(thop);
+        _dead_path = !_current_thop;
+        _remote_pivot_txid = std::move(pivot);
     }
 
     void Session::send_session_data_message(std::span<const std::byte> data, net::IPProtocol proto)
@@ -598,9 +643,28 @@ namespace llarp::session
             _r.tun_endpoint()->handle_inbound_packet(IPPacket{std::move(data)}, dgram_type, _remote);
     }
 
-    void Session::publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func)
+    void Session::publish_client_contact(const EncryptedClientContact& ecc)
     {
-        // send_session_control_message("publish_cc", PublishClientContact::serialize(ecc), std::move(func));
+        auto payload_sv = ecc.bt_payload();
+        auto payload{oxen::quic::reinterpret_span<const std::byte>(payload_sv)};
+        send_session_control_message("publish_cc", payload);
+    }
+
+    void Session::handle_client_contact(std::span<const std::byte>)
+    {
+        log::warning(logcat, "Received client contact, but not OutboundClientSession.");
+    }
+
+    void OutboundClientSession::handle_client_contact(std::span<const std::byte> payload)
+    {
+        auto ecc = EncryptedClientContact{payload};
+        if (auto cc = ecc.decrypt(_remote.router_id()); cc)
+        {
+            log::debug(logcat, "Session with {} received valid new client contact, updating.", _remote.router_id());
+            update_intros(*cc);
+        }
+        else
+            log::warning(logcat, "Session with {} received invalid new client contact!", _remote.router_id());
     }
 
     void Session::handle_udp_from_remote(IPPacket&& pkt)
@@ -1182,13 +1246,16 @@ namespace llarp::session
         }
         else
         {
-            // TODO
             log::debug(
                 logcat,
                 "Dispatching path-switch request to remote {} to use hopid {} (for path {})",
                 _remote,
                 _remote_pivot_txid,
                 path);
+
+            oxenc::bt_dict_producer btdp;
+            btdp.append("p"sv, path.terminal_hopid().span());
+            send_session_control_message("path_switch"sv, btdp.span<std::byte>());
         }
     }
 
@@ -1328,10 +1395,7 @@ namespace llarp::session
             timeout ? "build request timed out" : "path construction failed");
     }
 
-    InboundSession::InboundSession(handlers::SessionEndpoint& parent) : Session{parent.router, parent}
-    {
-        log::debug(logcat, "InboundSession from {} created", _remote);
-    }
+    InboundSession::InboundSession(handlers::SessionEndpoint& parent) : Session{parent.router, parent} {}
 
     void InboundSession::session_init_accept()
     {
@@ -1384,23 +1448,6 @@ namespace llarp::session
     {
         _dead_path = !_current_thop;
         init(std::move(request));
-    }
-
-    void InboundClientSession::recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        _remote_pivot_txid = remote_pivot_txid;
-        _current_path = std::move(new_path);
-        _dead_path = !_current_path;
-    }
-
-    void InboundRelaySession::recv_path_switch(
-        const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        _remote_pivot_txid = remote_pivot_txid;
-        _current_thop = std::move(new_thop);
-        _dead_path = !_current_thop;
     }
 
     void InboundRelaySession::encrypt_path_message(std::vector<std::byte>& data, SymmNonce&& nonce, std::byte type)

@@ -155,11 +155,6 @@ namespace llarp::link
 
         void handle_path_session_control(quic::message m);
 
-        // session messages
-        void handle_initiate_session(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_close_session(quic::message, std::optional<std::string> = std::nullopt);
-        void handle_path_switch(quic::message, std::optional<std::string> = std::nullopt);
-
         // These requests come over a path (as a "path_control" request),
         // we may or may not need to make a request to another relay,
         // then respond (onioned) back along the path.
@@ -172,7 +167,11 @@ namespace llarp::link
         void handle_session_message(std::vector<std::byte> msg, bool control = false);
         void handle_path_request(std::span<const std::byte> payload, std::function<void(std::string)> respond);
         void handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce);
-        void handle_session_control(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce);
+        void handle_session_control(
+            std::vector<std::byte>&& payload,
+            const session_tag& tag,
+            const SymmNonce& nonce,
+            std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source);
 
         // Path responses
         void handle_path_latency_response(quic::message);

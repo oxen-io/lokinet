@@ -100,13 +100,6 @@ namespace llarp
             // get copy of all srv records
             std::unordered_set<dns::SRVData> srv_records() const { return _srv_records; }
 
-            // Called when a relay receives a path switch (i.e. for an inbound relay session)
-            bool recv_path_switch(
-                const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
-
-            // Called when a client receives a path switch (i.e. for an inbound client session)
-            bool recv_path_switch(const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid);
-
             template <std::derived_from<session::Session> S = session::Session>
             S* get_session(const session_tag& tag) const
             {
