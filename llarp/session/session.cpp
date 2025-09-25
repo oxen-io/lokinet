@@ -365,9 +365,12 @@ namespace llarp::session
 
         auto method = btdc.require<std::string_view>("e"sv);
         auto params = btdc.require<std::span<const std::byte>>("p"sv);
+        log::debug(logcat, "Received session control message for {} of type {}", _remote, method);
 
         if (method == "session_accept"sv)
             handle_session_accept(params);
+        else if (method == "session_close")
+            _parent.close_session(_inbound_tag, false);
         else if (method == "publish_cc"sv)
             handle_client_contact(params);
         else if (method == "path_switch"sv)
@@ -790,7 +793,7 @@ namespace llarp::session
         if (send_close)
         {
             log::debug(logcat, "Dispatching close session message...");
-            // send_session_control_message("session_close", as_bspan(CloseSession::serialize(_tag)));
+            send_session_control_message("session_close", {});
         }
     }
 
