@@ -80,8 +80,10 @@ namespace llarp::consensus
             }
 
             auto [conn, btstr] = router.link_endpoint().testing_client_connect(*rc);
-            btstr->command("ping", "", TEST_REQUEST_TIMEOUT, [this, conn, rid, prev_fails](quic::message m) mutable {
-                conn->close_connection();
+            btstr->command("ping", "", TEST_REQUEST_TIMEOUT, [this, weak_conn = std::weak_ptr{conn}, rid, prev_fails](quic::message m) mutable {
+                auto conn = weak_conn.lock();
+                if (conn)
+                    conn->close_connection();
                 router.loop.call_soon([this, rid, prev_fails, m = std::move(m)] {
                     if (m)
                     {
