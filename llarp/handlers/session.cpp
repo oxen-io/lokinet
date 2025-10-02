@@ -317,8 +317,7 @@ namespace llarp::handlers
             const std::chrono::seconds slot_size = path::MAX_LIFETIME / slots;
             assert(path::MAX_LIFETIME % slots == 0s);
 
-            std::array<int, path::MAX_LIFETIME_SLOTS> slot_count_a = {0};
-            std::span slot_count{slot_count_a.data(), static_cast<size_t>(slots)};
+            std::array<int, path::MAX_LIFETIME_SLOTS> slot_count = {0};
 
             // The base slot, as a multiple of the slot_size since our fixed basis: we consider
             // other path expiries relative to this.  We add 1 because the slot for the *current*
@@ -354,8 +353,8 @@ namespace llarp::handlers
             // however many paths we need:
             for (int i = 0; i < needed; i++)
             {
-                size_t best = 0;
-                for (size_t j = 1; j < slot_count.size(); j++)
+                int best = 0;
+                for (int j = 1; j < slots; j++)
                 {
                     if (slot_count[j] <= slot_count[best])
                         best = j;
