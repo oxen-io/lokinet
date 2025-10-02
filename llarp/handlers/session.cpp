@@ -318,7 +318,7 @@ namespace llarp::handlers
             assert(path::MAX_LIFETIME % slots == 0s);
 
             std::array<int, path::MAX_LIFETIME_SLOTS> slot_count_a = {0};
-            auto slot_count = std::span{slot_count_a}.first(slots);
+            std::span slot_count{slot_count_a.data(), static_cast<size_t>(slots)};
 
             // The base slot, as a multiple of the slot_size since our fixed basis: we consider
             // other path expiries relative to this.  We add 1 because the slot for the *current*
