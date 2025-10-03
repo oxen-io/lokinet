@@ -333,6 +333,12 @@ namespace llarp::session
         close(false);
     }
 
+    void Session::update_active()
+    {
+        last_activity =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch());
+    }
+
     bool Session::send_session_control_message(std::string_view method, std::span<const std::byte> body)
     {
         if (!_is_established)
@@ -357,6 +363,7 @@ namespace llarp::session
         const SymmNonce& nonce,
         [[maybe_unused]] std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source)
     {
+        update_active();
         auto decrypted = crypto::xchacha20_poly1305_decrypt(message, _shared_secret, nonce);
         if (decrypted.size() == 0)
         {
@@ -600,6 +607,7 @@ namespace llarp::session
 
     void OutboundSession::queue_data_message(std::span<const std::byte> data, uint8_t type)
     {
+        update_active();
         if (!pre_establish_data_queue)
             pre_establish_data_queue.emplace();
         else
@@ -614,6 +622,7 @@ namespace llarp::session
 
     void Session::recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce)
     {
+        update_active();
         if (data.empty())
         {
             log::error(logcat, "received empty session data message!");
@@ -799,6 +808,8 @@ namespace llarp::session
         }
     }
 
+    bool Session::is_expired(std::chrono::milliseconds now) const { return now - last_activity > SESSION_TIMEOUT; }
+
     std::string OutboundSession::to_string() const
     {
         return "OSession:[{}{} | {}]"_format(
@@ -863,6 +874,15 @@ namespace llarp::session
 
     void OutboundSession::tick(std::chrono::milliseconds now)
     {
+        if (_is_closed)
+            return;
+        if (is_expired(now))
+        {
+            close(false);  // don't send close message -- if we expired they already did for sure
+            for (auto& p : active_paths())
+                drop_path(p);
+            return;
+        }
         close_old_paths(now);
         path::PathHandler::tick(now);
         fire_waiting(now);
@@ -918,19 +938,23 @@ namespace llarp::session
 
     void OutboundSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
     void InboundClientSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
 
     void OutboundSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
     void InboundClientSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
 
@@ -1492,6 +1516,7 @@ namespace llarp::session
 
     void InboundRelaySession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         if (check_dead(_current_thop, *this))
         {
             log::debug(logcat, "Unable to send return relay session data message: no current transit hop");
@@ -1504,6 +1529,7 @@ namespace llarp::session
 
     void InboundRelaySession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
     {
+        update_active();
         if (check_dead(_current_thop, *this))
         {
             log::debug(logcat, "Unable to send return relay session control message: no current transit hop");

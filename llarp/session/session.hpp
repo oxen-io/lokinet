@@ -49,6 +49,9 @@ namespace llarp
 
         class Session
         {
+            // TODO FIXME: how long since last use should is_expired() return true?
+            static constexpr std::chrono::milliseconds SESSION_TIMEOUT = 30s;
+
             friend struct TCPTunnel;
             template <typename T>
             friend bool check_dead(std::shared_ptr<T>& path_like, Session& s);
@@ -102,6 +105,10 @@ namespace llarp
             std::unordered_map<uint16_t, uint16_t> udp_client_ports;
             std::unordered_map<uint16_t, uint16_t> udp_remote_ports;
             uint16_t next_udp_client_port{1024};
+            std::chrono::milliseconds last_activity = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch());
+
+            void update_active();
 
             // We capture a weak_ptr to this shared_ptr to avoid needing to use shared_from_this
             // when we need to assure we are still alive in lambdas given to external objects.  I.e.
@@ -196,6 +203,8 @@ namespace llarp
             // send a session_close control message down the active path.
             void close(bool send_close);
 
+            bool is_expired(std::chrono::milliseconds now) const;
+
             virtual std::string to_string() const = 0;
 
             static constexpr bool to_string_formattable = true;
@@ -236,12 +245,6 @@ namespace llarp
             // Closes non-active paths that are close to expiry, i.e. any paths that we would not
             // select if we need to switch paths.
             void close_old_paths(std::chrono::milliseconds now);
-
-            // TODO FIXME: these were doing nothing useful, but I think we need them to do something
-            // useful.
-            //
-            // std::chrono::milliseconds _last_use;
-            // bool is_expired(std::chrono::milliseconds now) const;
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
             void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
