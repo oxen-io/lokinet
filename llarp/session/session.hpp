@@ -105,8 +105,7 @@ namespace llarp
             std::unordered_map<uint16_t, uint16_t> udp_client_ports;
             std::unordered_map<uint16_t, uint16_t> udp_remote_ports;
             uint16_t next_udp_client_port{1024};
-            std::chrono::milliseconds last_activity = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch());
+            std::chrono::milliseconds last_activity = llarp::time_now_ms();
 
             void update_active();
 

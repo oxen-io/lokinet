@@ -333,11 +333,7 @@ namespace llarp::session
         close(false);
     }
 
-    void Session::update_active()
-    {
-        last_activity =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch());
-    }
+    void Session::update_active() { last_activity = llarp::time_now_ms(); }
 
     bool Session::send_session_control_message(std::string_view method, std::span<const std::byte> body)
     {
