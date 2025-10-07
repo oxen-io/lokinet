@@ -184,7 +184,7 @@ namespace llarp::handlers
 
     void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
-        int have = num_paths();
+        int have = num_paths(now);
         int needed = _target_paths - have;
         if (needed <= 0)
         {
@@ -320,10 +320,10 @@ namespace llarp::handlers
             std::array<int, path::MAX_LIFETIME_SLOTS> slot_count = {0};
 
             // The base slot, as a multiple of the slot_size since our fixed basis: we consider
-            // other path expiries relative to this.  We add 1 because the slot for the *current*
-            // time (after truncation) will be an expired slot time, and so we only expect to see
-            // path slots strictly greater than that.
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1;
+            // other path expiries relative to this.  There is an argument to be made to not
+            // build a path that would only have a duration of 0-5 min, but for now it's much
+            // simpler and cleaner to just build those paths anyway (if no path in that slot).
+            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size;
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
@@ -331,7 +331,7 @@ namespace llarp::handlers
             {
                 path_count++;
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
-                if (slot < 0)
+                if (slot < slot0)
                 {
                     log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
                     continue;  // Path is expired/expiring, so ignore it.
