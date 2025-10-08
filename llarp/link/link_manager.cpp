@@ -951,7 +951,8 @@ namespace llarp::link
     //
     // Warns and returns nullopt if the input vector is too short or the message type byte is
     // invalid (and thus the message should be dropped).
-    static std::optional<std::pair<HopID, SymmNonce>> extract_path_message_metadata(std::vector<std::byte>& message)
+    static std::optional<std::tuple<HopID, SymmNonce, std::byte>> extract_path_message_metadata(
+        std::vector<std::byte>& message)
     {
         if (message.size() < MIN_PATH_DATA_MESSAGE_SIZE)
         {
@@ -963,17 +964,18 @@ namespace llarp::link
         // updated here as well:
         static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
 
+        std::optional<std::tuple<HopID, SymmNonce, std::byte>> result;
+        auto& [hop_id, nonce, msgtype] = result.emplace();
+
         // For the detailed structure of this encoding, see description in session/session.cpp
-        std::byte msgtype = message.back();
-        if (msgtype != std::byte{0x01})
+        msgtype = message.back();
+        if (msgtype != std::byte{0x01} && msgtype != std::byte{0x02})
         {
-            log::warning(logcat, "Dropping data message with invalid msgtype {}", std::to_integer<int>(msgtype));
+            log::warning(logcat, "Received path message of unknown type: {}", std::to_integer<int>(msgtype));
             return std::nullopt;
         }
         message.pop_back();
 
-        std::optional<std::pair<HopID, SymmNonce>> result;
-        auto& [hop_id, nonce] = result.emplace();
         hop_id.assign(std::span{message}.last<HopID::SIZE>());
         message.resize(message.size() - HopID::SIZE);
 
@@ -988,7 +990,7 @@ namespace llarp::link
         auto maybe_hop_nonce = extract_path_message_metadata(message);
         if (!maybe_hop_nonce)
             return;
-        auto& [hop_id, nonce] = *maybe_hop_nonce;
+        auto& [hop_id, nonce, msgtype] = *maybe_hop_nonce;
 
         // The remainder of `message` is onion-encrypted.
 
@@ -1025,6 +1027,45 @@ namespace llarp::link
             {
                 crypto::xchacha20(message, hop.shared_secret, nonce);
                 nonce ^= hop.xor_nonce;
+            }
+
+            // NB: path switch is a special case, as it comes bundled as 2 messages:
+            //     a path switch session control message, and
+            //     a session init message
+            if (msgtype == path::Path::PATH_SWITCH_MESSAGE_TYPE)
+            {
+                log::debug(logcat, "client handling path switch/session init message");
+                oxenc::bt_list_consumer btlp{message};
+                auto path_switch = btlp.consume_string_view();
+                auto session_init = btlp.consume_string_view();
+                btlp.finish();
+
+                session_tag tag;
+                auto tag_span = std::span{path_switch}.last<sizeof(session_tag)>();
+                tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
+                if (router.session_endpoint().get_session(tag))
+                {
+                    std::vector<std::byte> bytes;
+                    bytes.resize(path_switch.size() - sizeof(session_tag));
+                    std::memcpy(bytes.data(), path_switch.data(), bytes.size());
+                    log::debug(logcat, "Handling incoming session path switch message at the client end of a path");
+                    handle_session_control(std::move(bytes), tag, nonce, path->shared_from_this());
+                }
+                else
+                {
+#ifndef NDEBUG
+                    session_tag zero_tag;
+                    auto zero_tag_span = std::span{session_init}.last<sizeof(session_tag)>();
+                    zero_tag = oxenc::load_big_to_host<session_tag>(zero_tag_span.data());
+                    assert(zero_tag == 0);
+#endif
+                    std::vector<std::byte> bytes;
+                    bytes.resize(session_init.size() - sizeof(session_tag));
+                    std::memcpy(bytes.data(), session_init.data(), bytes.size());
+                    log::debug(logcat, "Handling incoming session init message at the client end of a path");
+                    router.session_endpoint().handle_session_init(std::move(bytes), path->shared_from_this());
+                }
+                return;
             }
 
             // Client-bound session data has no pivot, just [encrypted][sessiontag], so we extract
@@ -1086,6 +1127,48 @@ namespace llarp::link
                 // Case 2: this is a session data message to this relay; extract the session tag and
                 // then drop everything down to the session payload for handle_session_data to deal
                 // with.
+
+                // NB: path switch is a special case, as it comes bundled as 2 messages:
+                //     a path switch session control message, and
+                //     a session init message
+                if (msgtype == path::Path::PATH_SWITCH_MESSAGE_TYPE)
+                {
+                    log::debug(logcat, "client handling path switch/session init message");
+                    oxenc::bt_list_consumer btlp{message};
+                    auto path_switch = btlp.consume_string_view();
+                    auto session_init = btlp.consume_string_view();
+                    btlp.finish();
+
+                    session_tag tag;
+                    auto tag_span = std::span{path_switch}.last<sizeof(session_tag)>();
+                    tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
+                    if (router.session_endpoint().get_session(tag))
+                    {
+                        std::vector<std::byte> bytes;
+                        bytes.resize(path_switch.size() - sizeof(session_tag));
+                        std::memcpy(bytes.data(), path_switch.data(), bytes.size());
+                        log::debug(logcat, "Handling incoming session path switch message at the client end of a path");
+                        handle_session_control(
+                            std::move(bytes), tag, nonce, router.path_context.get_transit_hop_ptr(hop_id));
+                    }
+                    else
+                    {
+#ifndef NDEBUG
+                        session_tag zero_tag;
+                        auto zero_tag_span = std::span{session_init}.last<sizeof(session_tag)>();
+                        zero_tag = oxenc::load_big_to_host<session_tag>(zero_tag_span.data());
+                        assert(zero_tag == 0);
+#endif
+                        std::vector<std::byte> bytes;
+                        bytes.resize(session_init.size() - sizeof(session_tag));
+                        std::memcpy(bytes.data(), session_init.data(), bytes.size());
+                        log::debug(logcat, "Handling incoming session init message at the client end of a path");
+                        router.session_endpoint().handle_session_init(
+                            std::move(bytes), router.path_context.get_transit_hop_ptr(hop_id));
+                    }
+                    return;
+                }
+
                 session_tag tag;
                 auto tag_span = bsession_tag.first<sizeof(session_tag)>();
                 tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
@@ -1131,14 +1214,14 @@ namespace llarp::link
             // xor happens *before* the xchacha.
 
             static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
-            auto [session_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(message);
+            auto [session_payload, bnonce, bhop, bmsgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(message);
 
             nonce ^= trans_hop->xor_nonce;
             crypto::xchacha20(session_payload, trans_hop->shared_secret, nonce);
 
             nonce.copy_to(bnonce);
             pivot_id.copy_to(bhop);
-            msgtype[0] = std::byte{0x01};
+            bmsgtype[0] = msgtype;
 
             log::trace(logcat, "Pivoting message down another path");
             if (control)
@@ -1160,7 +1243,7 @@ namespace llarp::link
         auto [enc_data, bnonce, bhop, bmsgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(message);
         nonce.copy_to(bnonce);
         next_hopid.copy_to(bhop);
-        bmsgtype[0] = std::byte{0x01};
+        bmsgtype[0] = msgtype;
 
         if (control)
             endpoint.send_command(next_target, "session_control"s, std::move(message), nullptr);

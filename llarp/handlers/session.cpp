@@ -1000,16 +1000,6 @@ namespace llarp::handlers
         return ret;
     }
 
-    std::shared_ptr<session::Session> SessionEndpoint::remote_session(const NetworkAddress& remote)
-    {
-        assert(router.loop.inside());
-
-        if (auto it = _sessions.find(remote); it != _sessions.end())
-            return it->second;
-
-        return nullptr;
-    }
-
     std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(
         const NetworkAddress& remote,
         std::function<void(session::Session& session)> on_attempted,

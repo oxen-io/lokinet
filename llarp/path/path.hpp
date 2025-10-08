@@ -107,17 +107,18 @@ namespace llarp::path
             const EncryptedClientContact& ecc, int location, std::function<void(path_control_response)> func);
 
         // The constant "type" values that we put on the end of control (stream) and data
-        // (datagram) messages, which currently must always be this value; any other value is
-        // reserved for future use.
-        static constexpr std::byte CONTROL_MESSAGE_TYPE{0x01};
+        // (datagram) messages.  Data message can overlap since it comes on a different channel
         static constexpr std::byte DATA_MESSAGE_TYPE{0x01};
+        static constexpr std::byte CONTROL_MESSAGE_TYPE{0x01};
+        static constexpr std::byte PATH_SWITCH_MESSAGE_TYPE{0x02};
 
         void send_path_data_message(std::vector<std::byte>&& body, SymmNonce&& nonce = SymmNonce::make_random());
 
         void send_path_control_message(
             std::string_view method, std::span<const std::byte> body, std::function<void(path_control_response)> func);
 
-        void send_session_control_message(std::vector<std::byte>&& body, SymmNonce&& nonce);
+        void send_session_control_message(
+            std::vector<std::byte>&& body, SymmNonce&& nonce, std::byte type = CONTROL_MESSAGE_TYPE);
 
         // The overhead added to encrypted path messages (either data messages or path control
         // messages) by the `encrypt_path_message` function.  This is the amount that the

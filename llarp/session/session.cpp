@@ -450,7 +450,8 @@ namespace llarp::session
     // TODO FIXME: we could make this take a vector&& as input, and then provide a
     // SESSION_DATA_MESSAGE constant that callers can use to reserve the needed extra storage before
     // moving the vector into here.
-    void Session::send_session_data_message(std::span<const std::byte> data, uint8_t type, bool control, bool init)
+    std::optional<std::pair<std::vector<std::byte>, SymmNonce>> Session::make_session_data_message(
+        std::span<const std::byte> data, uint8_t type, bool control, bool init, SymmNonce nonce)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -458,13 +459,13 @@ namespace llarp::session
         {
             log::debug(logcat, "Session not yet established: queuing packet for delayed delivery");
             queue_data_message(data, type);
-            return;
+            return std::nullopt;
         }
 
         if (_dead_path)
         {
             log::warning(logcat, "Dropping session data message: session has no current path");
-            return;
+            return std::nullopt;
         }
 
         // We use a single nonce for session + path encryption, but noting that path mutations
@@ -488,7 +489,6 @@ namespace llarp::session
         // down the aligned path, each one mutating it with the xor nonce; the final client
         // then undoes all of the far-side nonce mutations to arrive back at N, which it then
         // uses to also decrypt the *session* level encryption.
-        auto nonce = SymmNonce::make_random();
 
         // As this packet is what carries IP data, we want to make it as small as possible, and thus
         // don't use bt-encoding here.  We also build this "backwards" by putting the parts
@@ -594,9 +594,19 @@ namespace llarp::session
 
         if (!init)
             crypto::xchacha20_poly1305_encrypt(ciphertext, _shared_secret, nonce);
+        return std::make_pair(std::move(everything), std::move(nonce));
+    }
 
+    void Session::send_session_data_message(std::span<const std::byte> data, uint8_t type, bool control, bool init)
+    {
+        auto maybe_message = make_session_data_message(data, type, control, init);
+        if (!maybe_message)
+            return;
+
+        auto& everything = (*maybe_message).first;
+        auto& nonce = (*maybe_message).second;
         if (control)
-            send_path_control_message(std::move(everything), std::move(nonce));
+            send_path_control_message(std::move(everything), std::move(nonce), false);
         else
             send_path_data_message(std::move(everything), std::move(nonce));
     }
@@ -846,6 +856,7 @@ namespace llarp::session
     {
         if (on_est)
             on_established(std::move(on_est), est_timeout);
+        std::tie(_shared_secret, dh_pk, dh_nonce) = crypto::dh_client_gen(_remote.router_id());
         // TODO: kick off path builds immediately
     }
 
@@ -916,7 +927,11 @@ namespace llarp::session
     }
 
     static void send_path_control_impl(
-        std::shared_ptr<path::Path>& path, Session& s, std::vector<std::byte>&& data, SymmNonce&& nonce)
+        std::shared_ptr<path::Path>& path,
+        Session& s,
+        std::vector<std::byte>&& data,
+        SymmNonce&& nonce,
+        bool path_switch)
     {
         if (check_dead(path, s))
         {
@@ -929,7 +944,10 @@ namespace llarp::session
             return;
         }
 
-        path->send_session_control_message(std::move(data), std::move(nonce));
+        path->send_session_control_message(
+            std::move(data),
+            std::move(nonce),
+            path_switch ? path::Path::PATH_SWITCH_MESSAGE_TYPE : path::Path::CONTROL_MESSAGE_TYPE);
     }
 
     void OutboundSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
@@ -943,15 +961,16 @@ namespace llarp::session
         send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
 
-    void OutboundSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void OutboundSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
-        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
+        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce), path_switch);
     }
-    void InboundClientSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void InboundClientSession::send_path_control_message(
+        std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
-        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
+        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce), path_switch);
     }
 
     void OutboundSession::close_old_paths(std::chrono::milliseconds now)
@@ -1236,7 +1255,7 @@ namespace llarp::session
         log::debug(logcat, "Initiated {} path builds for {}", count, _remote);
     }
 
-    void OutboundSession::session_init(path::Path& path)
+    std::string OutboundSession::make_session_init(path::Path& path)
     {
         oxenc::bt_dict_producer inner_btdp;
 
@@ -1252,17 +1271,15 @@ namespace llarp::session
 
         auto inner_payload = std::move(inner_btdp).str();
         inner_payload.resize(inner_payload.size() + crypto::MAC_SIZE);
-        auto [secret, eph_pk, dh_nonce] = crypto::dh_client_gen(_remote.router_id());
-        _shared_secret = secret;
-        crypto::xchacha20_poly1305_encrypt(inner_payload, secret, dh_nonce);
+        crypto::xchacha20_poly1305_encrypt(inner_payload, _shared_secret, dh_nonce);
 
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("k", eph_pk.span());
+        btdp.append("k", dh_pk.span());
         btdp.append("n", dh_nonce.span());
         btdp.append("x", inner_payload);
 
-        send_session_data_message(btdp.span<std::byte>(), 0, true, true);
+        return std::move(btdp).str();
     }
 
     void OutboundSession::switch_path(path::Path& path, const HopID& pivot_hopid)
@@ -1281,7 +1298,8 @@ namespace llarp::session
                 _remote.client() ? "Aligned path for" : "Path to",
                 _remote);
 
-            session_init(path);
+            auto msg = make_session_init(path);
+            send_session_data_message(as_bspan(msg), 0, true, true);
         }
         else
         {
@@ -1292,9 +1310,32 @@ namespace llarp::session
                 _remote_pivot_txid,
                 path);
 
+            auto maybe_session_init_msg =
+                make_session_data_message(as_bspan(make_session_init(path)), 0, true, true, dh_nonce);
+            if (!maybe_session_init_msg)
+            {
+                log::warning(logcat, "Failed to create session init message");
+                return;
+            }
+
+            auto switch_nonce = dh_nonce ^ switch_xor_factor;
+
             oxenc::bt_dict_producer btdp;
             btdp.append("p"sv, path.terminal_hopid().span());
-            send_session_control_message("path_switch"sv, btdp.span<std::byte>());
+            auto maybe_path_switch_msg = make_session_data_message(
+                PATH::CONTROL::serialize("path_switch"sv, btdp.span<std::byte>()), 0, true, false, switch_nonce);
+            if (!maybe_path_switch_msg)
+            {
+                log::warning(logcat, "Failed to create path switch message");
+                return;
+            }
+
+            oxenc::bt_list_producer btlp;
+            btlp.append(std::move((*maybe_path_switch_msg).first));
+            btlp.append(std::move((*maybe_session_init_msg).first));
+            auto list_span = btlp.span<std::byte>();
+            std::vector<std::byte> payload{list_span.begin(), list_span.end()};
+            send_path_control_message(std::move(payload), SymmNonce{dh_nonce}, /*path_switch=*/true);
         }
     }
 
@@ -1523,7 +1564,8 @@ namespace llarp::session
         _parent.router.link_endpoint().send_datagram(_current_thop->downstream, std::move(data));
     }
 
-    void InboundRelaySession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void InboundRelaySession::send_path_control_message(
+        std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
         if (check_dead(_current_thop, *this))
