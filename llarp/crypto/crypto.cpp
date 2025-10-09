@@ -27,6 +27,10 @@ namespace llarp::crypto
 {
     static auto logcat = log::Cat("crypto");
 
+    static_assert(MAC_SIZE == crypto_aead_xchacha20poly1305_ietf_ABYTES);
+    static_assert(SymmNonce::SIZE == crypto_stream_xchacha20_NONCEBYTES);
+    static_assert(SharedSecret::SIZE == crypto_stream_xchacha20_KEYBYTES);
+
     static bool dh(
         SharedSecret& out,
         const PubKey& client_pk,
@@ -96,8 +100,6 @@ namespace llarp::crypto
     void xchacha20(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
         auto* d = reinterpret_cast<unsigned char*>(buf.data());
-        static_assert(SymmNonce::SIZE == crypto_stream_xchacha20_NONCEBYTES);
-        static_assert(SharedSecret::SIZE == crypto_stream_xchacha20_KEYBYTES);
         crypto_stream_xchacha20_xor(d, d, buf.size(), nonce.data(), secret.data());
     }
 
@@ -113,11 +115,6 @@ namespace llarp::crypto
         auto* buf_cptr = reinterpret_cast<unsigned char*>(buf.data());
         crypto_aead_xchacha20poly1305_ietf_encrypt(
             buf_cptr, nullptr, buf_cptr, payload_size, nullptr, 0, nullptr, nonce.data(), secret.data());
-    }
-
-    void xchacha20_poly1305_encrypt(std::vector<std::byte>& buf, const SharedSecret& secret, const SymmNonce& nonce)
-    {
-        xchacha20_poly1305_encrypt(std::span<std::byte>{buf}, secret, nonce);
     }
 
     void xchacha20_poly1305_encrypt(std::string& buf, const SharedSecret& secret, const SymmNonce& nonce)
