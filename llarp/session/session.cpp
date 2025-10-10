@@ -1493,7 +1493,10 @@ namespace llarp::session
     {
         if (_is_established)
         {
-            log::warning(logcat, "Received session accept message, but session already established.");
+            log::debug(
+                logcat,
+                "Received session accept message for established session, likely a path switch failed because the "
+                "remote restarted, so it accepted our backup session init.");
             return;
         }
         oxenc::bt_dict_consumer btdc{params};

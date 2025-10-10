@@ -1,7 +1,5 @@
 #include "link_manager.hpp"
 
-#include <llarp/session/session.hpp>
-
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/router_id.hpp>
@@ -15,6 +13,7 @@
 #include <llarp/path/path.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/session/session.hpp>
 #include <llarp/util/bspan.hpp>
 #include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
