@@ -1,5 +1,7 @@
 #include "link_manager.hpp"
 
+#include <llarp/session/session.hpp>
+
 #include <llarp/constants/path.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/router_id.hpp>
@@ -1045,6 +1047,8 @@ namespace llarp::link
                 tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
                 if (router.session_endpoint().get_session(tag))
                 {
+                    // to avoid nonce re-use, mutate by xor factor
+                    nonce ^= session::switch_xor_factor;
                     std::vector<std::byte> bytes;
                     bytes.resize(path_switch.size() - sizeof(session_tag));
                     std::memcpy(bytes.data(), path_switch.data(), bytes.size());
@@ -1144,6 +1148,8 @@ namespace llarp::link
                     tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
                     if (router.session_endpoint().get_session(tag))
                     {
+                        // to avoid nonce re-use, mutate by xor factor
+                        nonce ^= session::switch_xor_factor;
                         std::vector<std::byte> bytes;
                         bytes.resize(path_switch.size() - sizeof(session_tag));
                         std::memcpy(bytes.data(), path_switch.data(), bytes.size());
