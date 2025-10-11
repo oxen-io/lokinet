@@ -115,6 +115,10 @@ namespace llarp
             uint16_t next_udp_client_port{1024};
             std::chrono::milliseconds last_activity = llarp::time_now_ms();
 
+            // only currently useful for outbound client sessions, but more convenient here
+            // than an overload on all inbound traffic functions for that one case
+            std::chrono::milliseconds last_inbound_activity = llarp::time_now_ms();
+
             void update_active();
 
             // We capture a weak_ptr to this shared_ptr to avoid needing to use shared_from_this
@@ -344,6 +348,9 @@ namespace llarp
             std::vector<ClientIntro> _intros;
             std::unordered_set<RouterID> _pivots;
             bool _intro_update_processed = false;
+            bool updating_intros = true;
+
+            std::chrono::milliseconds last_cc_update = 0s;
 
             // Chooses the next router id to pivot to, based on introset and current paths.  Returns
             // nullopt if no pivot is available right now, otherwise the router id and the lifetime
@@ -360,6 +367,8 @@ namespace llarp
             // Initiates a client intro lookup via the session endpoint.  This can be called even if
             // there already is intros, to refresh/replace them.
             void refresh_intros();
+
+            void tick(std::chrono::milliseconds now) override;
 
             // Called with a client contact to replace the current set of client intros used by this
             // session with the ones in the given client contact.  This is called by
