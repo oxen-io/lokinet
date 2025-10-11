@@ -106,6 +106,7 @@ namespace llarp::session
                 }};
 
             auto stream_opened = [this](quic::Stream& stream) {
+/*
                 stream.set_stream_data_cb([this, prev_byte = std::optional<std::byte>{std::nullopt}](
                                               quic::Stream& stream, std::span<const std::byte> data) mutable {
                     uint16_t dest_port{0};
@@ -162,6 +163,7 @@ namespace llarp::session
                         50'000,
                         [this, tcp_conn](auto&) { tcp_conn->resume_reading(); });
                 });
+*/
                 return 0;
             };
 
