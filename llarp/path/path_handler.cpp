@@ -87,6 +87,17 @@ namespace llarp::path
             log::debug(logcat, "{} expired paths dropped", n);
     }
 
+    void PathHandler::invalidate_paths()
+    {
+        log::trace(logcat, "{} dropping all paths", __PRETTY_FUNCTION__);
+        Lock_t lock{paths_mutex};
+        for (auto itr = _paths.begin(); itr != _paths.end();)
+        {
+            router.path_context.drop(*itr->second);
+            itr = _paths.erase(itr);
+        }
+    }
+
     Path* PathHandler::get_path_by_edge(const HopID& edge_hop_id)
     {
         if (auto it = _paths.find(edge_hop_id); it != _paths.end())

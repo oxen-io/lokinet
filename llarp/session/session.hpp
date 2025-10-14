@@ -221,6 +221,8 @@ namespace llarp
             // send a session_close control message down the active path.
             void close(bool send_close);
 
+            virtual void recv_close();
+
             bool is_expired(std::chrono::milliseconds now) const;
 
             virtual std::string to_string() const = 0;
@@ -327,6 +329,8 @@ namespace llarp
 
             void update_paths(std::chrono::milliseconds now) override;
 
+            void recv_close() override;
+
             // void stop(bool send_close = false) override;
 
           private:
@@ -348,9 +352,11 @@ namespace llarp
             std::vector<ClientIntro> _intros;
             std::unordered_set<RouterID> _pivots;
             bool _intro_update_processed = false;
-            bool updating_intros = true;
+            bool updating_intros = false;
 
             std::chrono::milliseconds last_cc_update = 0s;
+            std::optional<ClientContact> current_cc{std::nullopt};
+            bool cc_ok = false;
 
             // Chooses the next router id to pivot to, based on introset and current paths.  Returns
             // nullopt if no pivot is available right now, otherwise the router id and the lifetime
@@ -377,6 +383,8 @@ namespace llarp
             void update_intros(const ClientContact& cc);
 
             void update_paths(std::chrono::milliseconds now) override;
+
+            void recv_close() override;
 
             nlohmann::json ExtractStatus() const;
 

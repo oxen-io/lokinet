@@ -376,7 +376,7 @@ namespace llarp::session
         if (method == "session_accept"sv)
             handle_session_accept(params);
         else if (method == "session_close")
-            _parent.close_session(_inbound_tag, false);
+            recv_close();
         else if (method == "publish_cc"sv)
             handle_client_contact(params);
         else if (method == "path_switch"sv)
@@ -817,6 +817,23 @@ namespace llarp::session
         }
     }
 
+    void Session::recv_close()
+    {
+        _parent.close_session(_inbound_tag, false);
+    }
+
+    void OutboundRelaySession::recv_close()
+    {
+        log::debug(logcat, "OutboundRelaySession received close, manually dropping all paths.");
+        invalidate_paths();
+    }
+
+    void OutboundClientSession::recv_close()
+    {
+        invalidate_paths();
+        cc_ok = false;
+    }
+
     bool Session::is_expired(std::chrono::milliseconds now) const { return now - last_activity > SESSION_TIMEOUT; }
 
     std::string OutboundSession::to_string() const
@@ -1167,13 +1184,23 @@ namespace llarp::session
         _parent.lookup_client_intro(
             _remote.router_id(), [this, alive = canary()](std::optional<ClientContact> cc) mutable {
                 if (!alive.lock())
+                {
+                    log::debug(logcat, "OutboundClientSession::refresh_intros lookup_client_intro callback returning early; session-alive canary is dead");
                     return;
+                }
                 updating_intros = false;
                 if (cc)
                 {
                     log::debug(logcat, "Session initiation returned client contact: {}", *cc);
+                    if (current_cc && (*cc == *current_cc))
+                    {
+                        log::debug(logcat, "Client contact received, but is old.");
+                        return;
+                    }
+                    current_cc = std::move(cc);
+                    cc_ok = true;
                     _intro_update_processed = false;
-                    update_intros(*cc);
+                    update_intros(*current_cc);
                 }
                 else
                     log::warning(logcat, "Failed to lookup intros for {}", _remote);
@@ -1184,6 +1211,7 @@ namespace llarp::session
     {
         log::debug(logcat, "Update session {} intros from client contact: {}", *this, cc);
         last_cc_update = llarp::time_now_ms();
+        last_inbound_activity = last_cc_update; // so we don't just fetch again right away
         auto intros = cc.intros();
         _intros.assign(intros.begin(), intros.end());
         log::trace(logcat, "New client intros: {}", fmt::join(_intros, ", "));
@@ -1191,7 +1219,7 @@ namespace llarp::session
         for (auto& i : _intros)
             _pivots.insert(i.relay);
 
-        update_paths(llarp::time_now_ms());
+        update_paths(last_cc_update);
     }
 
     void OutboundClientSession::update_paths(std::chrono::milliseconds now)
@@ -1200,6 +1228,12 @@ namespace llarp::session
         //   it.
         // - If we killed our currently active path then switch to another.
         // - If we end up with too few paths then start some builds.
+
+        if (!cc_ok)
+        {
+            log::debug(logcat, "{} returning early, client contact empty or no longer usable", __PRETTY_FUNCTION__);
+            return;
+        }
 
         Lock_t l(paths_mutex);
 
