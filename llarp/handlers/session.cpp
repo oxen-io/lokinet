@@ -331,7 +331,7 @@ namespace llarp::handlers
             {
                 path_count++;
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
-                if (slot < slot0)
+                if (slot <= slot0)
                 {
                     log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
                     continue;  // Path is expired/expiring, so ignore it.
@@ -359,7 +359,7 @@ namespace llarp::handlers
                     if (slot_count[j] <= slot_count[best])
                         best = j;
                 }
-                expiries.emplace_back(path_expiry_basis + (slot0 + best) * slot_size);
+                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size);
                 slot_count[best]++;
             }
 
