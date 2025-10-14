@@ -28,7 +28,8 @@ namespace llarp::handlers
     static auto logcat = log::Cat("session_ep");
 
     SessionEndpoint::SessionEndpoint(Router& r)
-        : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()},
+        : path::
+              PathHandler{r, r.config().paths.inbound_paths + r.config().paths.inbound_paths_extra, r.config().paths.inbound_hops()},
           cc_blind_keys{r.secret_key(), crypto::blinding::CLIENT_CONTACT}
     {
         const auto& netconf = router.config().network;

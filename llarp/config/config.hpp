@@ -91,6 +91,7 @@ namespace llarp
         /// Number of paths to maintain for inbound reachability and network queries (such as
         /// looking up client contacts).
         int inbound_paths = 4;
+        int inbound_paths_extra = 0;
 
         /// Length of the "inbound" paths we use for inbound connections and network queries.
         /// If unset, use client_hops.

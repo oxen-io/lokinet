@@ -1445,6 +1445,18 @@ namespace llarp
 
         conf.define_option<int>(
             "paths",
+            "inbound-paths-extra",
+            FullClientOnly,
+            Hidden,
+            Default{0},
+            Comment{
+                "Extra inbound paths to use for Lokinet connectivity.  This option is hidden as it is not",
+                "meant for normal Lokinet use, and may be removed or replaced without warning in the future",
+            },
+            lower_bounded_assignment_acceptor(inbound_paths_extra, 0, "[paths]:inbound-paths-extra"));
+
+        conf.define_option<int>(
+            "paths",
             "inbound-hops",
             ClientOnly,
             Comment{
