@@ -639,9 +639,9 @@ namespace llarp::path
 
             std::chrono::seconds lifetime{
                 oxenc::load_little_to_host<uint32_t>(inner.require_span<std::byte, sizeof(uint32_t)>("l").data())};
-            if (lifetime > path::MAX_LIFETIME)
+            if (lifetime > path::MAX_LIFETIME_ACCEPTED)
                 throw std::runtime_error{
-                    "Path lifetime {} exceeds maximum allowed path lifetime {}"_format(lifetime, path::MAX_LIFETIME)};
+                    "Path lifetime {} exceeds maximum allowed path lifetime {}"_format(lifetime, path::MAX_LIFETIME_ACCEPTED)};
             hop.expiry = now + lifetime;
             hop.rxid.assign(inner.require_span<std::byte, HopID::SIZE>("r"));
             hop.txid.assign(inner.require_span<std::byte, HopID::SIZE>("t"));

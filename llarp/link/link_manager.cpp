@@ -690,7 +690,7 @@ namespace llarp::link
             auto [hop, dh_nonce] =
                 path::PathHandler::decrypt_build_frame(frames_in.first<path::BUILD_FRAME_SIZE>(), router, from, now);
 
-            if (hop->expiry > now + path::MAX_LIFETIME || hop->expiry <= now)
+            if (hop->expiry > now + path::MAX_LIFETIME_ACCEPTED || hop->expiry <= now)
                 throw path::TransitHopError::INVALID_LIFETIME();
 
             if (router.path_context.has_transit_hop(hop->rxid) || router.path_context.has_transit_hop(hop->txid))

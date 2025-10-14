@@ -76,6 +76,14 @@ namespace llarp
             // Checks if we need more inbound paths and, if so, starts building them.
             void update_paths(std::chrono::milliseconds now) override;
 
+            // Returns a random amount of path "fuzz" to add to the path build time to make it
+            // harder to correlate repeated path builds over time from the same client.
+            //
+            // This currently returns a truncated normal distribution with truncation points at 0
+            // and MAX_LIFETIME_FUZZ such that the truncation point eliminates values above the
+            // 0.5th percentile of the distribution.
+            static std::chrono::seconds inbound_path_fuzz();
+
             // bool build_path_to_random(bool exclude_current_termini)
 
             /// Returns array of:

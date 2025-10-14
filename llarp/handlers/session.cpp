@@ -1,5 +1,6 @@
 #include "session.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -20,6 +21,7 @@
 #include <oxenc/base32z.h>
 
 #include <memory>
+#include <random>
 
 namespace llarp::handlers
 {
@@ -182,6 +184,22 @@ namespace llarp::handlers
         path::PathHandler::stop();
     }
 
+    std::chrono::seconds SessionEndpoint::inbound_path_fuzz()
+    {
+        // Note that this fuzz must not be negative!  If we allowed negative fuzz then a path could
+        // expire *before* its slot expired, and as a result we would try to build a new very short
+        // path to make up for the expired slot.
+        std::normal_distribution<float> dist{0, path::MAX_LIFETIME_FUZZ.count() / 2.575829f};
+        std::chrono::seconds fuzz;
+        do
+        {
+            fuzz = std::chrono::seconds{static_cast<int>(dist(csrng))};
+            if (fuzz < 0s)
+                fuzz = -fuzz;
+        } while (fuzz > path::MAX_LIFETIME_FUZZ);
+        return fuzz;
+    }
+
     void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
         int have = num_paths(now);
@@ -330,6 +348,13 @@ namespace llarp::handlers
             for (auto& path : paths())
             {
                 path_count++;
+                // Path expiries will be up to +MAX_LIFETIME_FUZZ of their slot target expiry time, so we need
+                // to be sure that the maximum fuzz is less then the smallest possible slot size so
+                // that it is guaranteed to be counted in the same slot:
+                static_assert(
+                    path::MAX_LIFETIME_FUZZ < path::MAX_LIFETIME / path::MAX_LIFETIME_SLOTS,
+                    "The slot calculation below requires path max fuzz be strictly smaller than the smallest allowed "
+                    "path slot size!");
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
                 if (slot <= slot0)
                 {
@@ -359,7 +384,9 @@ namespace llarp::handlers
                     if (slot_count[j] <= slot_count[best])
                         best = j;
                 }
-                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size);
+                // +1 here because slot0 is <= now, and so we want to start at slot0+1 so that our
+                // first expiry slot is somewhere in the [0-5min] range.
+                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size + inbound_path_fuzz());
                 slot_count[best]++;
             }
 
@@ -776,7 +803,19 @@ namespace llarp::handlers
 
         client_contact.update_intros(std::move(intros));
 
-        log::trace(logcat, "New ClientContact: {}", client_contact);
+        log::debug(logcat, "New ClientContact: {}", client_contact);
+#ifndef NDEBUG
+        log::trace(logcat, "ClientContact details:");
+        log::trace(logcat, "Pubkey: {}", client_contact.pubkey());
+        log::trace(logcat, "Intros ({}):", client_contact.intros().size());
+        for (const auto& ci : client_contact.intros())
+            log::trace(
+                logcat,
+                "    • {}, hopid: {}, expiry: {}",
+                ci.relay.to_network_address(),
+                ci.hop,
+                std::chrono::floor<std::chrono::seconds>(ci.expires_in(now)));
+#endif
 
         try
         {

@@ -20,7 +20,19 @@ namespace llarp::path
     /// Length of each frame of a path build.
     inline constexpr size_t BUILD_FRAME_SIZE = 169;
 
+    /// Max base lifetime of paths.  This is the lifetime of outbound paths, and is the maximum
+    /// target lifetime of inbound paths.  Inbound paths also have up some random fuzz added to
+    /// this, and so the actual maximum allowed by a relay is be slightly higher than this; see
+    /// next two variables.
     inline constexpr std::chrono::seconds MAX_LIFETIME = 20min;
+
+    /// Maximum path expiry randomness: when building paths we add a random value up to this amount
+    /// to the path lifetime, and so relays will accept paths of up to MAX_LIFETIME plus this value.
+    inline constexpr std::chrono::seconds MAX_LIFETIME_FUZZ = 3min;
+
+    /// The maximum path life accepted by a relay: this is the maximum life plus the maximum amount
+    /// of random fuzz.
+    inline constexpr std::chrono::seconds MAX_LIFETIME_ACCEPTED = MAX_LIFETIME + MAX_LIFETIME_FUZZ;
 
     /// The minimum expiry time slots for inbound paths.  See detailed comments in
     /// SessionEndpoint::update_paths().
