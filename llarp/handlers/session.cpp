@@ -343,11 +343,20 @@ namespace llarp::handlers
 
             std::array<int, path::MAX_LIFETIME_SLOTS> slot_count = {0};
 
-            // The base slot, as a multiple of the slot_size since our fixed basis: we consider
-            // other path expiries relative to this.  There is an argument to be made to not
-            // build a path that would only have a duration of 0-5 min, but for now it's much
-            // simpler and cleaner to just build those paths anyway (if no path in that slot).
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size;
+            // The base slot, measured in multiples of `slot_size` relative to our fixed basis: we
+            // consider other path expiries relative to this base slot.
+            //
+            // The +1 here is because (now-basis)/slot_size (i.e. without the +1) is going to give
+            // us a slot index that translates to a slot start time in the past (i.e. 0-5min ago),
+            // but we don't build for that slot: instead we build for slots at +5m, +10m, +15m, +20m
+            // from that now-or-earlier point.  Thus +1 brings us up to the first slot position
+            // within the next [0-5min], and that is our "slot0" value, i.e. the index 0 slot of all
+            // slots we consider building for.
+            //
+            // There is an argument to be made to not build new paths that would only have a
+            // duration of 0-5 min, but for now it's much simpler and cleaner to just build those
+            // paths anyway (if no path in that slot).
+            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1;
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
@@ -362,7 +371,7 @@ namespace llarp::handlers
                     "The slot calculation below requires path max fuzz be strictly smaller than the smallest allowed "
                     "path slot size!");
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
-                if (slot <= slot0)
+                if (slot < slot0)
                 {
                     log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
                     continue;  // Path is expired/expiring, so ignore it.
@@ -386,13 +395,9 @@ namespace llarp::handlers
             {
                 int best = 0;
                 for (int j = 1; j < slots; j++)
-                {
                     if (slot_count[j] <= slot_count[best])
                         best = j;
-                }
-                // +1 here because slot0 is <= now, and so we want to start at slot0+1 so that our
-                // first expiry slot is somewhere in the [0-5min] range.
-                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size + inbound_path_fuzz());
+                expiries.emplace_back(path_expiry_basis + (slot0 + best) * slot_size + inbound_path_fuzz());
                 slot_count[best]++;
             }
 
