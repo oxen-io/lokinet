@@ -325,6 +325,11 @@ namespace llarp::handlers
         // This is somewhat lopsided for non-multiples of 4, but there's still lots of spread in
         // there so that even with multiple paths expiring at the same time, there are still lots of
         // alternatives for remotes to switch to.
+        //
+        // Note that all of the above ignores "fuzz", i.e. each path has a small random amount of
+        // lifetime (well less than 5min) added to it to reduce the fingerprintability of path build
+        // expiries.  All of the above still holds with respect to slots, it's just that where we
+        // write "+Nm" it's actually "+Nm+fuzz[0,3m]".
 
         std::vector<std::chrono::seconds> expiries;
         expiries.reserve(needed);
