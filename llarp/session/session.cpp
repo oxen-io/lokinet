@@ -1389,16 +1389,9 @@ namespace llarp::session
                 _remote_pivot_txid,
                 path);
 
-            auto maybe_session_init_msg =
-                make_session_data_message(as_bspan(make_session_init(path)), 0, true, true, dh_nonce);
-            if (!maybe_session_init_msg)
-            {
-                log::warning(logcat, "Failed to create session init message");
-                return;
-            }
+            auto session_init_msg = make_session_init(path);
 
             auto switch_nonce = dh_nonce ^ switch_xor_factor;
-
             oxenc::bt_dict_producer btdp;
             btdp.append("p"sv, path.terminal_hopid().span());
             auto maybe_path_switch_msg = make_session_data_message(
@@ -1408,12 +1401,19 @@ namespace llarp::session
                 log::warning(logcat, "Failed to create path switch message");
                 return;
             }
+            auto& m = maybe_path_switch_msg->first;
+            m.resize(m.size() - (sizeof(session_tag) + HopID::SIZE)); // these go on outer message here
 
             oxenc::bt_list_producer btlp;
             btlp.append(std::move((*maybe_path_switch_msg).first));
-            btlp.append(std::move((*maybe_session_init_msg).first));
+            btlp.append(std::move(session_init_msg));
             auto list_span = btlp.span<std::byte>();
             std::vector<std::byte> payload{list_span.begin(), list_span.end()};
+            auto old_size = payload.size();
+            payload.resize(payload.size() + sizeof(_outbound_tag) + HopID::SIZE); // see make_session_data_message
+            auto [payload_span, tag_span, pivot_span] = split_span(payload, old_size, sizeof(_outbound_tag));
+            oxenc::write_host_as_big(_outbound_tag, tag_span.data());
+            std::memcpy(pivot_span.data(), _remote_pivot_txid.data(), _remote_pivot_txid.size());
             send_path_control_message(std::move(payload), SymmNonce{dh_nonce}, /*path_switch=*/true);
         }
     }
@@ -1570,20 +1570,21 @@ namespace llarp::session
 
     void OutboundSession::handle_session_accept(std::span<const std::byte> params)
     {
-        if (_is_established)
+        bool was_established = _is_established;
+        if (was_established)
         {
             log::debug(
                 logcat,
                 "Received session accept message for established session, likely a path switch failed because the "
                 "remote restarted, so it accepted our backup session init.");
-            return;
         }
+        _is_established = false; // become unestablished if this parsing fails to trigger a new session init
         oxenc::bt_dict_consumer btdc{params};
         _outbound_tag = btdc.require<session_tag>("t"sv);
 
         log::debug(logcat, "Remote provided session tag: {}", _outbound_tag);
 
-        log::trace(logcat, "Outbound session to {} successfully created.", remote());
+        log::trace(logcat, "Outbound session to {} successfully {}established.", remote(), was_established ? "re-"sv : ""sv);
         _is_established = true;
 
         if (pre_establish_data_queue)

@@ -1036,36 +1036,38 @@ namespace llarp::link
             if (msgtype == path::Path::PATH_SWITCH_MESSAGE_TYPE)
             {
                 log::debug(logcat, "client handling path switch/session init message");
-                oxenc::bt_list_consumer btlp{message};
-                auto path_switch = btlp.consume_string_view();
-                auto session_init = btlp.consume_string_view();
-                btlp.finish();
 
+                if (message.size() < sizeof(session::session_tag))
+                {
+                    log::info(logcat, "invalid path switch / session reinit message received");
+                    return;
+                }
                 session_tag tag;
-                auto tag_span = std::span{path_switch}.last<sizeof(session_tag)>();
+                auto tag_span = std::span{message}.last<sizeof(session_tag)>();
                 tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
+                message.resize(message.size() - sizeof(session::session_tag));
+
+                oxenc::bt_list_consumer btlc{message};
+                auto path_switch = btlc.consume_string_view();
+                auto session_init = btlc.consume_string_view();
+                btlc.finish();
+
                 if (router.session_endpoint().get_session(tag))
                 {
+                    log::debug(logcat, "Handling incoming session path switch message at the client end of a path");
                     // to avoid nonce re-use, mutate by xor factor
                     nonce ^= session::switch_xor_factor;
                     std::vector<std::byte> bytes;
-                    bytes.resize(path_switch.size() - sizeof(session_tag));
+                    bytes.resize(path_switch.size());
                     std::memcpy(bytes.data(), path_switch.data(), bytes.size());
-                    log::debug(logcat, "Handling incoming session path switch message at the client end of a path");
                     handle_session_control(std::move(bytes), tag, nonce, path->shared_from_this());
                 }
                 else
                 {
-#ifndef NDEBUG
-                    session_tag zero_tag;
-                    auto zero_tag_span = std::span{session_init}.last<sizeof(session_tag)>();
-                    zero_tag = oxenc::load_big_to_host<session_tag>(zero_tag_span.data());
-                    assert(zero_tag == 0);
-#endif
-                    std::vector<std::byte> bytes;
-                    bytes.resize(session_init.size() - sizeof(session_tag));
-                    std::memcpy(bytes.data(), session_init.data(), bytes.size());
                     log::debug(logcat, "Handling incoming session init message at the client end of a path");
+                    std::vector<std::byte> bytes;
+                    bytes.resize(session_init.size());
+                    std::memcpy(bytes.data(), session_init.data(), bytes.size());
                     router.session_endpoint().handle_session_init(std::move(bytes), path->shared_from_this());
                 }
                 return;
@@ -1137,37 +1139,31 @@ namespace llarp::link
                 if (msgtype == path::Path::PATH_SWITCH_MESSAGE_TYPE)
                 {
                     log::debug(logcat, "client handling path switch/session init message");
-                    oxenc::bt_list_consumer btlp{message};
-                    auto path_switch = btlp.consume_string_view();
-                    auto session_init = btlp.consume_string_view();
-                    btlp.finish();
+
+                    oxenc::bt_list_consumer btlc{payload};
+                    auto path_switch = btlc.consume_string_view();
+                    auto session_init = btlc.consume_string_view();
+                    btlc.finish();
 
                     session_tag tag;
-                    auto tag_span = std::span{path_switch}.last<sizeof(session_tag)>();
-                    tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
+                    tag = oxenc::load_big_to_host<session_tag>(bsession_tag.data());
                     if (router.session_endpoint().get_session(tag))
                     {
+                        log::debug(logcat, "Handling incoming session path switch message at the relay end of a path");
                         // to avoid nonce re-use, mutate by xor factor
                         nonce ^= session::switch_xor_factor;
                         std::vector<std::byte> bytes;
-                        bytes.resize(path_switch.size() - sizeof(session_tag));
+                        bytes.resize(path_switch.size());
                         std::memcpy(bytes.data(), path_switch.data(), bytes.size());
-                        log::debug(logcat, "Handling incoming session path switch message at the client end of a path");
                         handle_session_control(
                             std::move(bytes), tag, nonce, router.path_context.get_transit_hop_ptr(hop_id));
                     }
                     else
                     {
-#ifndef NDEBUG
-                        session_tag zero_tag;
-                        auto zero_tag_span = std::span{session_init}.last<sizeof(session_tag)>();
-                        zero_tag = oxenc::load_big_to_host<session_tag>(zero_tag_span.data());
-                        assert(zero_tag == 0);
-#endif
+                        log::debug(logcat, "Handling incoming session init message at the relay end of a path");
                         std::vector<std::byte> bytes;
-                        bytes.resize(session_init.size() - sizeof(session_tag));
+                        bytes.resize(session_init.size());
                         std::memcpy(bytes.data(), session_init.data(), bytes.size());
-                        log::debug(logcat, "Handling incoming session init message at the client end of a path");
                         router.session_endpoint().handle_session_init(
                             std::move(bytes), router.path_context.get_transit_hop_ptr(hop_id));
                     }
