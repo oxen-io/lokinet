@@ -185,8 +185,18 @@ namespace llarp::handlers
         path::PathHandler::stop();
     }
 
-    std::chrono::seconds SessionEndpoint::inbound_path_fuzz()
+    void SessionEndpoint::cleanup_old_fuzz(int oldest_slot)
     {
+        if (auto it = _slot_fuzz.lower_bound(oldest_slot); it != _slot_fuzz.end() && it != _slot_fuzz.begin())
+            _slot_fuzz.erase(_slot_fuzz.begin(), it);
+    }
+
+    std::chrono::seconds SessionEndpoint::inbound_path_fuzz(int slot)
+    {
+        auto it = _slot_fuzz.lower_bound(slot);
+        if (it != _slot_fuzz.end() && it->first == slot)
+            return it->second;
+
         // Note that this fuzz must not be negative!  If we allowed negative fuzz then a path could
         // expire *before* its slot expired, and as a result we would try to build a new very short
         // path to make up for the expired slot.
@@ -198,6 +208,9 @@ namespace llarp::handlers
             if (fuzz < 0s)
                 fuzz = -fuzz;
         } while (fuzz > path::MAX_LIFETIME_FUZZ);
+
+        _slot_fuzz.emplace_hint(it, slot, fuzz);
+
         return fuzz;
     }
 
@@ -388,6 +401,12 @@ namespace llarp::handlers
             log::trace(
                 logcat, "Current {} path expiry slots (oldest-newest): {}", path_count, fmt::join(slot_count, "-"));
 
+            // We want all paths built in a given slot to expire at the same time so that we publish
+            // CCs on average once every 5 minutes, even if we are using many paths, and so we reuse
+            // the same fuzz value for any paths built in the same slot (whether in this build or a
+            // previous one that we are rebuilding for here).
+            cleanup_old_fuzz(slot0);
+
             // Now we select new ones by looking for the slot with the fewest paths in it, preferring
             // later slots (i.e. longer expiries) in case of a tie, and keep repeating this for
             // however many paths we need:
@@ -397,7 +416,8 @@ namespace llarp::handlers
                 for (int j = 1; j < slots; j++)
                     if (slot_count[j] <= slot_count[best])
                         best = j;
-                expiries.emplace_back(path_expiry_basis + (slot0 + best) * slot_size + inbound_path_fuzz());
+                const auto slot = slot0 + best;
+                expiries.emplace_back(path_expiry_basis + slot * slot_size + inbound_path_fuzz(slot));
                 slot_count[best]++;
             }
 

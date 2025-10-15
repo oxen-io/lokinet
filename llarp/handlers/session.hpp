@@ -68,6 +68,22 @@ namespace llarp
 
             void session_post_init(std::shared_ptr<session::InboundSession> new_session);
 
+            // Returns a random amount of path "fuzz" to add to the path build time to make it
+            // harder to correlate repeated path builds over time from the same client.
+            //
+            // The value is cached so that repeated calls with the same slot return the same value.
+            //
+            // This currently returns a truncated normal distribution with truncation points at 0
+            // and MAX_LIFETIME_FUZZ such that the truncation point eliminates values above the
+            // 0.5th percentile of the distribution.
+            std::chrono::seconds inbound_path_fuzz(int slot);
+
+            // The cache of slot fuzz values returned by inbound_path_fuzz.
+            std::map<int, std::chrono::seconds> _slot_fuzz;
+
+            // Called to clean up expired slot values out of _slot_fuzz
+            void cleanup_old_fuzz(int oldest_slot);
+
           public:
             SessionEndpoint(Router& r);
 
@@ -75,14 +91,6 @@ namespace llarp
 
             // Checks if we need more inbound paths and, if so, starts building them.
             void update_paths(std::chrono::milliseconds now) override;
-
-            // Returns a random amount of path "fuzz" to add to the path build time to make it
-            // harder to correlate repeated path builds over time from the same client.
-            //
-            // This currently returns a truncated normal distribution with truncation points at 0
-            // and MAX_LIFETIME_FUZZ such that the truncation point eliminates values above the
-            // 0.5th percentile of the distribution.
-            static std::chrono::seconds inbound_path_fuzz();
 
             // bool build_path_to_random(bool exclude_current_termini)
 
