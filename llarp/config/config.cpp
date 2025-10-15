@@ -1472,6 +1472,20 @@ namespace llarp
 
         conf.define_option<int>(
             "paths",
+            "inbound-pivot-reuse",
+            ClientOnly,
+            Default{1},
+            Comment{
+                "This configures the maximum number of times a single relay may be used as a path pivot.",
+                "The default is one, meaning each inbound path is built to a distinct pivot, but special",
+                "cases (such as a one-hop reachable endpoint using a small number of pivots) may want to",
+                "increase this to allow multiple pivots to be used at once.  Leaving this at the default",
+                "of 1 is recommended for most cases.",
+            },
+            lower_bounded_assignment_acceptor(inbound_pivot_reuse, 1, "[paths]:inbound-pivot-reuse"));
+
+        conf.define_option<int>(
+            "paths",
             "unique-range-size",
             Default{24},
             ClientOnly,

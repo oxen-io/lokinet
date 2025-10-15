@@ -217,7 +217,12 @@ namespace llarp::handlers
     void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
         int have = num_paths(now);
-        int needed = _target_paths - have;
+        // If you ask for more than 10 inbound paths (which is only possible via an undocumented
+        // option) and more than the number of RCs we know about then silently cut off at the number
+        // of RCs we know about (or a multiple of those, if pivot reuse is allowed) to avoid seeing
+        // a warning about not being able to select new pivots every 250ms.
+        int max_paths = router.node_db().num_rcs() * router.config().paths.inbound_pivot_reuse;
+        int needed = (_target_paths > 10 && _target_paths > max_paths ? max_paths : _target_paths) - have;
         if (needed <= 0)
         {
             log::trace(
@@ -267,11 +272,14 @@ namespace llarp::handlers
             if (unique_edge_range and unique_edge_range->contains(rc.addr().to_ipv4()))
                 return false;
 
-            // Exclude any inbound pivots we are already using so that we diversify:
+            // Exclude any inbound pivots we are already using (or using more than
+            // inbound_pivot_reuse times, if that option is higher than 1) so that we diversify:
+            int count = 0;
             const auto& rid = rc.router_id();
             for (const auto& p : paths())
                 if (p.terminal_rid() == rid)
-                    return false;
+                    if (++count >= router.config().paths.inbound_pivot_reuse)
+                        return false;
 
             return not router.router_profiling().is_bad_for_path(rid, 1);
         };
@@ -369,7 +377,8 @@ namespace llarp::handlers
             // There is an argument to be made to not build new paths that would only have a
             // duration of 0-5 min, but for now it's much simpler and cleaner to just build those
             // paths anyway (if no path in that slot).
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1;
+            int slot0 =
+                static_cast<int>((std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1);
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
@@ -445,22 +454,34 @@ namespace llarp::handlers
         }
         else
         {
-            auto new_pivots = router.node_db().get_n_random_rcs(needed, true, filter);
-            if (needed > static_cast<int>(new_pivots.size()))
+            // We can potentially multi-pass through this because it can only return at most # of
+            // RCs, but pivot reuse might mean that we need to build paths using some RCs more than
+            // once.  (This is probably mostly a testnet concern).
+            int built = 0;
+            do
+            {
+                auto new_pivots = router.node_db().get_n_random_rcs(needed, true, filter);
+                if (new_pivots.empty())
+                    break;
+                needed -= static_cast<int>(new_pivots.size());
+                for (const llarp::RelayContact* rc : new_pivots)
+                {
+                    log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
+                    auto hops = select_hops_to_remote(rc->router_id());
+                    if (!hops)
+                        continue;  // No need to warn: the call above should already if it fails
+
+                    build(*hops, *next_expiry++);
+                    built++;
+                }
+            } while (needed > 0);
+
+            if (needed > 0)
                 log::warning(
                     logcat,
-                    "Unable to build {} new inbound paths: {} unused/acceptable pivots currently available",
+                    "Failed to build {} of {} new inbound paths: ran out of available unused/acceptable pivots",
                     needed,
-                    new_pivots.size());
-            for (const llarp::RelayContact* rc : new_pivots)
-            {
-                log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
-                auto hops = select_hops_to_remote(rc->router_id());
-                if (!hops)
-                    continue;  // No need to warn: the call above should already if it fails
-
-                build(*hops, *next_expiry++);
-            }
+                    needed + built);
         }
     }
 
