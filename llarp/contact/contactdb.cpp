@@ -9,16 +9,6 @@ namespace llarp
 
     ContactDB::ContactDB(Router& r) : _router{r} {}
 
-    std::optional<ClientContact> ContactDB::get_decrypted_cc(RouterID remote) const
-    {
-        PubKey blinded;
-        if (!crypto::blind(blinded, remote, crypto::blinding::CLIENT_CONTACT))
-            return std::nullopt;
-        if (auto* enc = get_encrypted_cc(blinded))
-            return enc->decrypt(remote);
-        return std::nullopt;
-    }
-
     const EncryptedClientContact* ContactDB::get_encrypted_cc(const PubKey& blinded_key) const
     {
         if (auto it = _storage.find(blinded_key); it != _storage.end() && not it->second.is_expired())
@@ -30,9 +20,7 @@ namespace llarp
 
     void ContactDB::start_tickers()
     {
-        // FIXME: this class is dumb...
-        //
-        // Need to periodically call purge_ccs?
+        _purge_ticker = _router.loop.call_every(30s, [this](){ purge_ccs(); }, true);
     }
 
     void ContactDB::purge_ccs(std::chrono::milliseconds now)
