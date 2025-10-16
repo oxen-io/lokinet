@@ -95,7 +95,7 @@ namespace llarp::link
             },
             inbound_alpn,
             quic::opt::outbound_alpns{{router.is_service_node ? RELAY_ALPN : CLIENT_ALPN}},
-            quic::opt::enable_datagrams{quic::Splitting::ACTIVE});
+            quic::opt::enable_datagrams{quic::Splitting::ACTIVE}.queue_limit(2'000'000));
 
         tls_creds->enable_outbound_0rtt(
             [this](
