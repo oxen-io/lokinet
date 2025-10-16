@@ -21,7 +21,6 @@ if(LOKINET_FULL)
   lokinet_add_library(lokinet-exit-auth
     auth/auth.cpp
     auth/file.cpp
-    auth/rpc.cpp
     auth/session.cpp
   )
 endif()
@@ -35,7 +34,6 @@ lokinet_add_library(lokinet-core-utils
   messages/dht.cpp
   messages/fetch.cpp
   messages/path.cpp
-  messages/session.cpp
 )
 
 if (LOKINET_FULL)
@@ -95,7 +93,6 @@ lokinet_add_library(lokinet-contact
   contact/relay_contact.cpp
   contact/router_id.cpp
   contact/sns.cpp
-  contact/tag.cpp
 )
 
 # Network interface files used for mediating ip traffic

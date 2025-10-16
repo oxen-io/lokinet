@@ -465,6 +465,11 @@ namespace llarp
         {
             _listen_address = _config.links.listen_addr.value_or(DEFAULT_CLIENT_ADDR);
 
+            // default listen port for clients is a specific port, we want 0 for embedded,
+            // but perhaps the default should be 0 for all clients?
+            if (_config.links.listen_addr && embedded())
+                _listen_address.set_port(0);
+
             log::info(log_global, "Lokinet client connection using {}", _listen_address);
         }
 

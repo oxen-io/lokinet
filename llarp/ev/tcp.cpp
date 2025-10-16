@@ -126,7 +126,7 @@ namespace llarp
     TCPConnection::TCPConnection(bufferevent *_bev, evutil_socket_t _fd, std::shared_ptr<quic::Stream> s)
         : bev{_bev}, fd{_fd}, stream{std::move(s)}
     {
-        stream->set_stream_data_cb([this, _bev](quic::Stream &stream, std::span<const std::byte> data) mutable {
+        stream->set_data_callback([this, _bev](quic::Stream &stream, std::span<const std::byte> data) mutable {
             // libquic FIXME: would be convenient to be able to ask the stream if it's inbound or outbound
             // here since this callback is used for both and that would make logging more clear.
             if (stream.is_paused())

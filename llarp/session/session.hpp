@@ -2,7 +2,6 @@
 
 #include <llarp/address/address.hpp>
 #include <llarp/constants/path.hpp>
-#include <llarp/contact/tag.hpp>
 #include <llarp/ev/tcp.hpp>
 #include <llarp/ev/udp.hpp>
 #include <llarp/net/ip_packet.hpp>
@@ -44,10 +43,15 @@ namespace llarp
 
     namespace session
     {
+        using session_tag = uint32_t;
+
         struct TCPTunnel;
 
         class Session
         {
+            // TODO FIXME: how long since last use should is_expired() return true?
+            static constexpr std::chrono::milliseconds SESSION_TIMEOUT = 30s;
+
             friend struct TCPTunnel;
             template <typename T>
             friend bool check_dead(std::shared_ptr<T>& path_like, Session& s);
@@ -56,7 +60,11 @@ namespace llarp
             Router& _r;
             handlers::SessionEndpoint& _parent;
 
-            session_tag _tag;
+            // The session tags.  Each side of the session decides its own inbound tag, meaning
+            // no worries about collision *and* shorter tags on each packet.
+            session_tag _inbound_tag;
+            session_tag _outbound_tag;
+
             NetworkAddress _remote;
 
             SharedSecret _shared_secret;
@@ -97,6 +105,9 @@ namespace llarp
             std::unordered_map<uint16_t, uint16_t> udp_client_ports;
             std::unordered_map<uint16_t, uint16_t> udp_remote_ports;
             uint16_t next_udp_client_port{1024};
+            std::chrono::milliseconds last_activity = llarp::time_now_ms();
+
+            void update_active();
 
             // We capture a weak_ptr to this shared_ptr to avoid needing to use shared_from_this
             // when we need to assure we are still alive in lambdas given to external objects.  I.e.
@@ -104,15 +115,12 @@ namespace llarp
             std::shared_ptr<bool> _destructor_canary{std::make_shared<bool>(true)};
             std::weak_ptr<bool> canary() { return _destructor_canary; }
 
-            Session(Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote);
-
             Session(
-                Router& r,
-                handlers::SessionEndpoint& parent,
-                const NetworkAddress& remote,
-                const SharedSecret& secret,
-                const session_tag& t,
-                const HopID& remote_pivot_txid);
+                Router& r, handlers::SessionEndpoint& parent, const NetworkAddress& remote, session_tag inbound_tag);
+
+            Session(Router& r, handlers::SessionEndpoint& parent);
+
+            virtual void handle_client_contact(std::span<const std::byte> payload);
 
             virtual ~Session();
 
@@ -136,27 +144,29 @@ namespace llarp
 
             const NetworkAddress& remote() const { return _remote; }
 
-            // Attempts to send a session control message down the current path.  Returns false
-            // (without calling `func`) if there is no current path, otherwise returns true and,
-            // when a response arrives (or timeout occurs), `func` will be called with the response.
-            virtual bool send_session_control_message(
+            std::string encode_session_control_message(
                 std::string_view method,
                 std::span<const std::byte> body,
-                std::function<void(quic::message)> func = nullptr);
+                const SymmNonce& nonce,
+                std::optional<HopID> pivot_id);
+
+            // Attempts to send a session control message down the current path.  Returns false
+            // (without calling `func`) if there is no current path, otherwise returns true
+            bool send_session_control_message(std::string_view method, std::span<const std::byte> body);
+
+            void recv_session_control_message(
+                std::vector<std::byte>&& message,
+                const SymmNonce& nonce,
+                std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source);
+
+            virtual void handle_session_accept(std::span<const std::byte> params);
 
             void send_session_data_message(std::span<const std::byte> data, net::IPProtocol proto);
-            void send_session_data_message(std::span<const std::byte> data, uint8_t type);
+            void send_session_data_message(
+                std::span<const std::byte> data, uint8_t type, bool control = false, bool init = false);
 
             virtual void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
-            virtual void send_path_control_message(
-                std::string_view method, std::span<const std::byte> body, std::function<void(quic::message)> func)
-            {
-                // TODO FIXME: this should be pure virtual!
-                log::critical(
-                    log::Cat("FIXME"),
-                    "FIXME: {} called which should be pure virtual, need overrides and currently doing nothing!",
-                    __PRETTY_FUNCTION__);
-            }
+            virtual void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
 
             // Called by send_session_data_message if trying to send a data message on a
             // not-yet-established connection (which, by definition, can only be an outbound
@@ -168,7 +178,7 @@ namespace llarp
 
             void recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce);
 
-            void publish_client_contact(const EncryptedClientContact& ecc, std::function<void(quic::message)> func);
+            void publish_client_contact(const EncryptedClientContact& ecc);
 
             void handle_udp_from_remote(IPPacket&& pkt);
 
@@ -181,8 +191,8 @@ namespace llarp
             // the session init response arrives from the remote.
             bool is_established() const;
 
-            // The session tag.  This value is only meaningful once the session is established.
-            const session_tag& tag() const { return _tag; }
+            session_tag inbound_tag() const { return _inbound_tag; }
+            session_tag outbound_tag() const { return _outbound_tag; }
 
             // Returns true if this session has been closed, i.e. it is in the middle of shutting
             // down.
@@ -191,6 +201,8 @@ namespace llarp
             // Called to close this session.  If the bool is true then the session will attempt to
             // send a session_close control message down the active path.
             void close(bool send_close);
+
+            bool is_expired(std::chrono::milliseconds now) const;
 
             virtual std::string to_string() const = 0;
 
@@ -211,6 +223,7 @@ namespace llarp
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
                 int num_hops,
+                session_tag inbound_tag,
                 std::function<void(OutboundSession& session)> on_established,
                 std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
@@ -232,13 +245,8 @@ namespace llarp
             // select if we need to switch paths.
             void close_old_paths(std::chrono::milliseconds now);
 
-            // TODO FIXME: these were doing nothing useful, but I think we need them to do something
-            // useful.
-            //
-            // std::chrono::milliseconds _last_use;
-            // bool is_expired(std::chrono::milliseconds now) const;
-
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
 
             void queue_data_message(std::span<const std::byte>, uint8_t type) override;
 
@@ -246,6 +254,8 @@ namespace llarp
             std::optional<std::deque<std::vector<std::byte>>> pre_establish_data_queue;
 
           private:
+            void session_init(path::Path& path);
+
             void fire_waiting(std::chrono::milliseconds now);
 
             using active_item = std::pair<std::chrono::milliseconds, std::function<void(OutboundSession& session)>>;
@@ -262,6 +272,8 @@ namespace llarp
             void on_path_build_success(int64_t build_id, path::Path& p) override;
 
             void on_path_build_failure(int64_t build_id, path::Path* p, bool timeout) override;
+
+            void handle_session_accept(std::span<const std::byte> params) override;
 
           public:
             // void stop_session() override;
@@ -291,13 +303,9 @@ namespace llarp
             OutboundRelaySession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
+                session_tag inbound_tag,
                 std::function<void(OutboundSession& session)> on_established,
                 std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
-
-            bool send_session_control_message(
-                std::string_view method,
-                std::span<const std::byte> body,
-                std::function<void(quic::message)> func) override;
 
             void update_paths(std::chrono::milliseconds now) override;
 
@@ -314,6 +322,7 @@ namespace llarp
             OutboundClientSession(
                 const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
+                session_tag inbound_tag,
                 std::function<void(OutboundSession& session)> on_established,
                 std::optional<std::chrono::milliseconds> establish_timeout = std::nullopt);
 
@@ -326,9 +335,12 @@ namespace llarp
             // nullopt if no pivot is available right now, otherwise the router id and the lifetime
             // of paths to that pivot (so that we avoid creating paths that will become stale paths
             // living beyond the expiry of the pivot).
-            std::optional<std::pair<RouterID, std::chrono::seconds>> select_pivot();
+            std::optional<std::pair<RouterID, std::pair<std::chrono::seconds, HopID>>> select_pivot();
 
             void select_new_current() override;
+
+          protected:
+            void handle_client_contact(std::span<const std::byte> payload) override;
 
           public:
             // Initiates a client intro lookup via the session endpoint.  This can be called even if
@@ -351,14 +363,14 @@ namespace llarp
         class InboundSession : public Session
         {
           protected:
-            InboundSession(
-                const NetworkAddress& remote,
-                handlers::SessionEndpoint& parent,
-                const session_tag& t,
-                const SharedSecret& secret,
-                const HopID& remote_pivot_txid);
+            InboundSession(handlers::SessionEndpoint& parent);
 
             ~InboundSession() override = default;
+
+            void init(std::vector<std::byte>&& request);
+
+          public:
+            void session_init_accept();
         };
 
         // Inbound Session *to* client from client (we are the target client)
@@ -367,17 +379,13 @@ namespace llarp
             std::shared_ptr<path::Path> _current_path;
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
 
           public:
             InboundClientSession(
-                const NetworkAddress& remote,
-                handlers::SessionEndpoint& parent,
-                const session_tag& t,
-                const SharedSecret& secret,
-                std::shared_ptr<path::Path> p,
-                const HopID& remote_pivot_txid);
+                handlers::SessionEndpoint& parent, std::shared_ptr<path::Path> p, std::vector<std::byte>&& request);
 
-            void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::Path> new_path);
+            void handle_path_switch(HopID pivot, std::shared_ptr<path::Path> path);
 
             std::string to_string() const override;
         };
@@ -391,21 +399,15 @@ namespace llarp
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
 
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+
           public:
             InboundRelaySession(
-                const NetworkAddress& remote,
                 handlers::SessionEndpoint& parent,
-                const session_tag& t,
-                const SharedSecret& secret,
                 std::shared_ptr<path::TransitHop> thop,
-                const HopID& remote_pivot_txid);
+                std::vector<std::byte>&& request);
 
-            void recv_path_switch(const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
-
-            bool send_session_control_message(
-                std::string_view method,
-                std::span<const std::byte> body,
-                std::function<void(quic::message)> func) override;
+            void handle_path_switch(HopID pivot, std::shared_ptr<path::TransitHop> thop);
 
             std::string to_string() const override;
         };

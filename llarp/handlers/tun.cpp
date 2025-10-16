@@ -678,8 +678,10 @@ namespace llarp::handlers
             }
             else if (auto maybe_netaddr = try_making<NetworkAddress>("{}.{}"_format(hostname, tld)))
             {
-                // TODO: handle .snode (if we want, or explicitly don't allow)
-
+                // DNS lookup implies we want a session, so make one (NOP if we have one)
+                // This also means if we don't use that session the IP mapping will release when
+                // it expires, which it wouldn't otherwise without a tedious periodic check.
+                _router.session_endpoint().initiate_remote_session(*maybe_netaddr, nullptr);
                 reply_with_mapped_address(map(*maybe_netaddr));
                 return true;
             }

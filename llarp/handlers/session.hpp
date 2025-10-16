@@ -6,6 +6,7 @@
 #include <llarp/path/path_handler.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/session/session.hpp>
+#include <llarp/util/random.hpp>
 #include <llarp/util/time.hpp>
 
 #include <chrono>
@@ -21,6 +22,8 @@ namespace llarp
 
     namespace handlers
     {
+        using session::session_tag;
+
         class SessionEndpoint final : public path::PathHandler
         {
             friend class rpc::RPCServer;
@@ -36,6 +39,8 @@ namespace llarp
 
             std::unordered_map<NetworkAddress, std::shared_ptr<session::Session>> _sessions;
             std::unordered_map<session_tag, std::shared_ptr<session::Session>> _session_tags;
+
+            session_tag last_tag = llarp::csrng();
 
             // this could probably map to a pair of vectors, or pending packets could
             // be wrapped in callbacks, but for now this works
@@ -56,12 +61,12 @@ namespace llarp
 
             std::optional<std::string_view> fetch_auth_token(const NetworkAddress& remote) const;
 
-            std::optional<session_tag> setup_inbound_session(std::shared_ptr<session::Session> s);
-
             void close_session(std::shared_ptr<session::Session>& s, bool send_close);
 
             void on_path_build_failure(int64_t build_id, path::Path* path, bool timeout) override;
             void on_path_build_success(int64_t build_id, path::Path& p) override;
+
+            void session_post_init(std::shared_ptr<session::InboundSession> new_session);
 
           public:
             SessionEndpoint(Router& r);
@@ -94,15 +99,6 @@ namespace llarp
 
             // get copy of all srv records
             std::unordered_set<dns::SRVData> srv_records() const { return _srv_records; }
-
-            // Called when a relay receives a path switch (i.e. for an inbound relay session)
-            bool recv_path_switch(
-                const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop);
-
-            // Called when a client receives a path switch (i.e. for an inbound client session)
-            bool recv_path_switch(const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid);
-
-            void outbound_session_established(const session::Session& s);
 
             template <std::derived_from<session::Session> S = session::Session>
             S* get_session(const session_tag& tag) const
@@ -142,6 +138,9 @@ namespace llarp
             void map_remote_to_local_addr(NetworkAddress remote, quic::Address local);
             void unmap_local_addr_by_remote(const NetworkAddress& remote);
             void unmap_remote_by_name(const std::string& name);
+
+            void handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::Path> path);
+            void handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop);
 
             // Called on a client when we receive a session_init from another client to create an
             // InboundClientSession.  Returns nullopt if the session cannot be created, otherwise
@@ -200,6 +199,8 @@ namespace llarp
             void tick(std::chrono::milliseconds now) override;
 
             void queue_session_packet(const NetworkAddress& remote, IPPacket pkt);
+
+            session_tag next_tag();
         };
 
     }  // namespace handlers

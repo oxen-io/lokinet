@@ -9,6 +9,7 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/path.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/session/session.hpp>
@@ -115,72 +116,8 @@ namespace llarp::handlers
         if (auto it = _sessions.find(remote); it != _sessions.end())
         {
             if (auto& s = it->second)
-                _session_tags.erase(s->tag());
+                _session_tags.erase(s->inbound_tag());
             _sessions.erase(it);
-        }
-    }
-
-    bool SessionEndpoint::recv_path_switch(
-        const session_tag& t, const HopID& remote_pivot_txid, std::shared_ptr<path::TransitHop> new_thop)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (auto* s = get_session<session::InboundRelaySession>(t))
-        {
-            log::debug(
-                logcat,
-                "Successfully matched path-switch request to InboundRelaySession over transit hop {}",
-                *new_thop);
-
-            s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_thop));
-            return true;
-        }
-
-        return false;
-    }
-
-    bool SessionEndpoint::recv_path_switch(
-        const session_tag& t, const HopID& remote_pivot_txid, const HopID& local_pivot_txid)
-    {
-        // FIXME: this needs to be encrypted
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        if (auto* s = get_session<session::InboundClientSession>(t))
-        {
-            // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
-            if (auto* path = get_path_by_terminus(local_pivot_txid))
-            {
-                log::debug(
-                    logcat, "Successfully matched path-switch request to InboundClientSession over path:{}", *path);
-                s->recv_path_switch(remote_pivot_txid, path->shared_from_this());
-                return true;
-            }
-
-            log::warning(logcat, "Received path-switch request for unknown local pivot txid: {}", local_pivot_txid);
-        }
-        else
-            log::warning(logcat, "Received path-switch request for unknown session (tag:{})", t);
-
-        return false;
-    }
-
-    void SessionEndpoint::outbound_session_established(const session::Session& s)
-    {
-        if (auto it = _sessions.find(s.remote()); it != _sessions.end())
-        {
-            auto [it2, ins] = _session_tags.emplace(s.tag(), it->second);
-            if (!ins)
-            {
-                // TODO FIXME: we should redesign how session tags are constructed so that this
-                // isn't possible, e.g. by incorporating some local data into the tag value.
-                log::error(
-                    logcat,
-                    "Failed to insert outbound session tag for {}: tag {} already exists (associated with {})",
-                    s.remote(),
-                    s.tag(),
-                    it2->second->remote());
-            }
-            log::debug(logcat, "Associated session tag {} with outbound remote {}", s.tag(), s.remote());
         }
     }
 
@@ -247,7 +184,7 @@ namespace llarp::handlers
 
     void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
-        int have = num_paths();
+        int have = num_paths(now);
         int needed = _target_paths - have;
         if (needed <= 0)
         {
@@ -380,14 +317,13 @@ namespace llarp::handlers
             const std::chrono::seconds slot_size = path::MAX_LIFETIME / slots;
             assert(path::MAX_LIFETIME % slots == 0s);
 
-            std::array<int, path::MAX_LIFETIME_SLOTS> slot_count_a = {0};
-            auto slot_count = std::span{slot_count_a}.first(slots);
+            std::array<int, path::MAX_LIFETIME_SLOTS> slot_count = {0};
 
             // The base slot, as a multiple of the slot_size since our fixed basis: we consider
-            // other path expiries relative to this.  We add 1 because the slot for the *current*
-            // time (after truncation) will be an expired slot time, and so we only expect to see
-            // path slots strictly greater than that.
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1;
+            // other path expiries relative to this.  There is an argument to be made to not
+            // build a path that would only have a duration of 0-5 min, but for now it's much
+            // simpler and cleaner to just build those paths anyway (if no path in that slot).
+            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size;
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
@@ -395,7 +331,7 @@ namespace llarp::handlers
             {
                 path_count++;
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
-                if (slot < 0)
+                if (slot <= slot0)
                 {
                     log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
                     continue;  // Path is expired/expiring, so ignore it.
@@ -417,13 +353,13 @@ namespace llarp::handlers
             // however many paths we need:
             for (int i = 0; i < needed; i++)
             {
-                size_t best = 0;
-                for (size_t j = 1; j < slot_count.size(); j++)
+                int best = 0;
+                for (int j = 1; j < slots; j++)
                 {
                     if (slot_count[j] <= slot_count[best])
                         best = j;
                 }
-                expiries.emplace_back(path_expiry_basis + (slot0 + best) * slot_size);
+                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size);
                 slot_count[best]++;
             }
 
@@ -563,20 +499,20 @@ namespace llarp::handlers
         log::debug(logcat, "Looking up SNS name {}", sns);
 
         auto remaining = std::make_shared<int>(0);
-        auto response_handler = [sns, remaining, func = std::move(func)](quic::message m) {
+        auto response_handler = [sns, remaining, func = std::move(func)](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
                 return;  // Some other request beat us to it
 
             std::optional<NetworkAddress> client_addr;
 
-            if (m)
+            if (resp.ok())
             {
                 try
                 {
                     log::debug(logcat, "Call to ResolveSNS succeeded!");
 
-                    auto enc = ResolveSNS::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                    auto enc = ResolveSNS::deserialize_response(oxenc::bt_dict_consumer{resp.body});
 
                     client_addr = enc.decrypt(sns);
                     if (client_addr)
@@ -636,21 +572,21 @@ namespace llarp::handlers
 
         auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+        auto response_handler = [this, remote, func = std::move(func), remaining](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
             {  // Some other path handler already replied
-                log::trace(logcat, "Dropping duplicate `fetch_rc` response (success: {})", not m.is_error());
+                log::trace(logcat, "Dropping duplicate `fetch_rc` response (success: {})", resp.ok());
                 return;
             }
 
             std::optional<RelayContact> rc;
             try
             {
-                if (m)
+                if (resp.ok())
                 {
                     log::info(logcat, "Call to FetchRC succeeded!");
-                    auto rcs = FetchRC::deserialize_response(router.netid(), oxenc::bt_dict_consumer{m.body()});
+                    auto rcs = FetchRC::deserialize_response(router.netid(), oxenc::bt_dict_consumer{resp.body});
 
                     if (rcs.empty())
                         log::warning(logcat, "Received empty response from `fetch_rc` request!");
@@ -667,7 +603,7 @@ namespace llarp::handlers
                 else
                 {
                     std::optional<std::string> status = std::nullopt;
-                    oxenc::bt_dict_consumer btdc{m.body()};
+                    oxenc::bt_dict_consumer btdc{resp.body};
 
                     if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
                         status = s;
@@ -743,22 +679,22 @@ namespace llarp::handlers
 
         auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, func = std::move(func), remaining](quic::message m) {
+        auto response_handler = [this, remote, func = std::move(func), remaining](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
             {
                 // Another path response already returned it
-                log::trace(logcat, "Dropping duplicate `find_cc` response (success: {})", not m.is_error());
+                log::trace(logcat, "Dropping duplicate `find_cc` response (success: {})", resp.ok());
                 return;
             }
 
             std::optional<ClientContact> cc;
             try
             {
-                if (m)
+                if (resp.ok())
                 {
                     log::info(logcat, "Call to FindClientContact succeeded!");
-                    auto enc = FindClientContact::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                    auto enc = FindClientContact::deserialize_response(oxenc::bt_dict_consumer{resp.body});
 
                     if (auto intro = enc.decrypt(remote))
                     {
@@ -772,7 +708,7 @@ namespace llarp::handlers
                 else
                 {
                     std::optional<std::string> status = std::nullopt;
-                    oxenc::bt_dict_consumer btdc{m.body()};
+                    oxenc::bt_dict_consumer btdc{resp.body};
 
                     if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
                         status = s;
@@ -898,76 +834,67 @@ namespace llarp::handlers
         return std::nullopt;
     }
 
-    std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        const NetworkAddress& initiator,
-        const HopID& remote_pivot_txid,
-        std::shared_ptr<path::Path> path,
-        const SharedSecret& session_key)
+    void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::Path> path)
     {
-        assert(!router.is_service_node);
-        // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
-        // Rather we should be retrying until we find one that isn't in _session_tags so that it
-        // can't possible conflict below.
-        session_tag tag{protocols};
-
-        return setup_inbound_session(std::make_shared<session::InboundClientSession>(
-            initiator, *this, tag, session_key, std::move(path), remote_pivot_txid));
-    }
-    std::optional<session_tag> SessionEndpoint::create_inbound_session(
-        const NetworkAddress& initiator,
-        const HopID& remote_pivot_txid,
-        std::shared_ptr<path::TransitHop> thop,
-        const SharedSecret& session_key)
-    {
-        assert(router.is_service_node);
-        // TODO FIXME: this is making a random tag, but that isn't right as it could conflict.
-        // Rather we should be retrying until we find one that isn't in _session_tags so that it
-        // can't possible conflict below.
-        session_tag tag{protocols};
-
-        return setup_inbound_session(std::make_shared<session::InboundRelaySession>(
-            initiator, *this, tag, session_key, std::move(thop), remote_pivot_txid));
+        std::shared_ptr<session::InboundSession> new_session{};
+        try
+        {
+            new_session = std::make_shared<session::InboundClientSession>(*this, std::move(path), std::move(payload));
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Inbound session rejected: {}", e.what());
+            return;
+        }
+        session_post_init(std::move(new_session));
     }
 
-    std::optional<session_tag> SessionEndpoint::setup_inbound_session(std::shared_ptr<session::Session> session)
+    void SessionEndpoint::handle_session_init(std::vector<std::byte>&& payload, std::shared_ptr<path::TransitHop> thop)
     {
-        if (!map_session(*session))
+        log::warning(logcat, "SessionEndpoint::handle_session_init (relay)");
+        std::shared_ptr<session::InboundSession> new_session{};
+        try
+        {
+            new_session = std::make_shared<session::InboundRelaySession>(*this, std::move(thop), std::move(payload));
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Inbound session rejected: {}", e.what());
+            return;
+        }
+        log::warning(logcat, "SessionEndpoint::handle_session_init (relay) calling post_init");
+        session_post_init(std::move(new_session));
+    }
+
+    void SessionEndpoint::session_post_init(std::shared_ptr<session::InboundSession> new_session)
+    {
+        // FIXME: for now only tun clients can have inbound sessions, but eventually that will
+        //        not be the case and we'll need to "if tun" this.
+        if (!map_session(*new_session))
         {
             log::warning(
                 logcat,
                 "Unable to map session to tun IP (or not allowing inbound sessions); dropping inbound session from {}",
-                session->remote());
-            return std::nullopt;
+                new_session->remote());
+            return;
         }
 
         // TODO FIXME: this is racy, e.g. if two clients establish a session to each other at the
         // same time, then they can drop different ones.  We should instead use a decision metric
         // for dropping that decides the same way on both sides (e.g. prefer session initiated by
         // the side with the smaller pubkey).
-        auto& s = _sessions[session->remote()];
+        // FIXME: If the initiator does not get our response in time, they will try again
+        // to establish a session; in that case we should replace what we have.
+        auto& s = _sessions[new_session->remote()];
+        auto* sptr = new_session.get();
         if (!s)
         {
-            s = std::move(session);
-            auto& st = _session_tags[s->tag()];
-            if (!st)
-                st = s;
-            else
-            {
-                // TODO FIXME: we should be producing the remote the session tag to use with us,
-                // rather than using the remote's tag on both sides, so that we can't conflict like
-                // this.
-                log::error(logcat, "Dropping inbound session because of conflicting session tag");
-                _sessions.erase(session->remote());
-                return std::nullopt;
-            }
+            s = std::move(new_session);
+            _session_tags[s->inbound_tag()] = s;
+            // TODO: response with our inbound tag
         }
-        else
-        {
-            log::warning(logcat, "Dropping duplicate inbound session with initiator {}", session->remote());
-            return std::nullopt;
-        }
-
-        return s->tag();
+        log::warning(logcat, "sending session_init_accept");
+        sptr->session_init_accept();
     }
 
     void SessionEndpoint::publish_client_contact(const EncryptedClientContact& ecc)
@@ -987,20 +914,7 @@ namespace llarp::handlers
                 cc_count,
                 session->remote());
 
-            session->publish_client_contact(ecc, [started = now, to = session->remote()](quic::message m) {
-                log::log(
-                    logcat,
-                    m ? log::Level::debug : log::Level::warn,
-                    "{} new CC to {} via established session in {}",
-                    m                 ? "Pushed"
-                        : m.timed_out ? "Timeout pushing"
-                                      : "Error pushing",
-                    to,
-                    std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started));
-
-                if (m.is_error())
-                    log::debug(logcat, "CC push error response: {}", buffer_printer{m.body()});
-            });
+            session->publish_client_contact(ecc);
         }
 
         // Pick four random inbound paths to publish on, and then on each one we send along a 0-3
@@ -1037,27 +951,26 @@ namespace llarp::handlers
             p.publish_client_contact(
                 ecc,
                 location,
-                [started = now, remaining_success, via = p.terminal_rid(), location, cc_num = cc_count](
-                    quic::message m) {
+                [started = now, remaining_success, via = p.terminal_rid(), location, cc_num = cc_count](auto resp) {
                     auto elapsed =
                         std::chrono::round<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
 
                     log::debug(
                         logcat,
                         "{} CC#{} publish[{}] via relay {} in {}",
-                        m                 ? "Successful"
-                            : m.timed_out ? "Timeout during"
-                                          : "Error during",
+                        resp.ok()            ? "Successful"
+                            : resp.timed_out ? "Timeout during"
+                                             : "Error during",
                         cc_num,
                         location,
                         via,
                         elapsed);
-                    if (m.is_error())
-                        log::debug(logcat, "CC publish error response: {}", buffer_printer(m.body()));
+                    if (!resp.ok())
+                        log::debug(logcat, "CC publish error response: {}", buffer_printer(resp.body));
 
                     auto& [remaining, success] = *remaining_success;
                     remaining--;
-                    if (m)
+                    if (resp.ok())
                         success++;
 
                     if (not remaining)
@@ -1120,15 +1033,27 @@ namespace llarp::handlers
                     }
                 }
             }
-            else if (remote.client())
-                s = router.loop.make_shared<session::OutboundClientSession>(
-                    remote, *this, std::move(on_attempted), timeout);
             else
-                s = router.loop.make_shared<session::OutboundRelaySession>(
-                    remote, *this, std::move(on_attempted), timeout);
+            {
+                auto tag = next_tag();
+                if (remote.client())
+                    s = router.loop.make_shared<session::OutboundClientSession>(
+                        remote, *this, tag, std::move(on_attempted), timeout);
+                else
+                    s = router.loop.make_shared<session::OutboundRelaySession>(
+                        remote, *this, tag, std::move(on_attempted), timeout);
+                _session_tags.emplace(tag, s);
+            }
 
             return s;
         });
     }
 
+    session_tag SessionEndpoint::next_tag()
+    {
+        // zero tag used to represent a session init for convenience
+        while (_session_tags.contains(last_tag) || last_tag == 0)
+            last_tag++;
+        return last_tag;
+    }
 }  //  namespace llarp::handlers

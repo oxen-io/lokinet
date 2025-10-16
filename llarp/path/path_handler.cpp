@@ -397,18 +397,17 @@ namespace llarp::path
         return hops;
     }
 
-    bool PathHandler::build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime)
+    Path* PathHandler::build_path_to_remote(const RouterID& remote, std::chrono::seconds lifetime)
     {
         Lock_t l(paths_mutex);
 
         if (auto maybe_hops = select_hops_to_remote(remote))
         {
-            build(*maybe_hops, llarp::time_now_ms() + lifetime);
-            return true;
+            return build(*maybe_hops, llarp::time_now_ms() + lifetime);
         }
 
         log::warning(logcat, "Failed to get hops for path-build to {}", remote);
-        return false;
+        return nullptr;
     }
 
     bool PathHandler::can_build(std::span<const RelayContact> hops)
@@ -667,7 +666,7 @@ namespace llarp::path
     }
 
     // TODO FIXME: investigate return type?
-    int64_t PathHandler::build(std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
+    Path* PathHandler::build(std::span<const RelayContact> hops, std::chrono::milliseconds expiry_ts)
     {
         Lock_t lock{paths_mutex};
 
@@ -676,15 +675,16 @@ namespace llarp::path
         {
             if (auto new_path = build_init_path(hops, expiry_ts))
             {
+                auto ptr = new_path.get();
                 auto id = ++_path_counter;
                 send_path_build(std::move(new_path), id);
                 // send_path_build calls the appropriate success/failure method
-                return id;
+                return ptr;
             }
         }
 
         path_build_failed(0, nullptr, false);
-        return 0;
+        return nullptr;
     }
 
     void PathHandler::send_path_build(const std::shared_ptr<Path>& new_path, int64_t id)

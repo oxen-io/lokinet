@@ -13,6 +13,8 @@
 #include <oxen/quic/connection_ids.hpp>
 #include <sodium/randombytes.h>
 
+#include <stdexcept>
+
 namespace llarp::path
 {
     static auto logcat = log::Cat("transit-hop");
@@ -21,17 +23,14 @@ namespace llarp::path
         : std::runtime_error{"TransitHop construction failed: {}"_format(err_code)}, error_code{std::move(err_code)}
     {}
 
-    std::optional<std::pair<std::variant<RouterID, quic::ConnectionID>, HopID>> TransitHop::next_id(
-        const HopID& h) const
+    std::pair<std::variant<RouterID, quic::ConnectionID>, HopID> TransitHop::next_id(const HopID& h) const
     {
-        std::optional<std::pair<std::variant<RouterID, quic::ConnectionID>, HopID>> ret;
+        std::pair<std::variant<RouterID, quic::ConnectionID>, HopID> ret;
 
+        assert(h == rxid or h == txid);
         if (h == rxid)
-            ret = {upstream, txid};
-        else if (h == txid)
-            ret = {downstream, rxid};
-
-        return ret;
+            return {upstream, txid};
+        return {downstream, rxid};
     }
 
     nlohmann::json TransitHop::ExtractStatus() const

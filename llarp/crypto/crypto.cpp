@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <stdexcept>
 #ifdef LOKINET_HAVE_CRYPT
 #include <crypt.h>
 #endif
@@ -25,6 +26,10 @@
 namespace llarp::crypto
 {
     static auto logcat = log::Cat("crypto");
+
+    static_assert(MAC_SIZE == crypto_aead_xchacha20poly1305_ietf_ABYTES);
+    static_assert(SymmNonce::SIZE == crypto_stream_xchacha20_NONCEBYTES);
+    static_assert(SharedSecret::SIZE == crypto_stream_xchacha20_KEYBYTES);
 
     static bool dh(
         SharedSecret& out,
@@ -55,7 +60,7 @@ namespace llarp::crypto
 
     std::optional<RouterID> maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view namestr)
     {
-        const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
+        const auto payloadsize = ciphertext.size() - MAC_SIZE;
         if (payloadsize != 32)
             return std::nullopt;
 
@@ -95,9 +100,48 @@ namespace llarp::crypto
     void xchacha20(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
     {
         auto* d = reinterpret_cast<unsigned char*>(buf.data());
-        static_assert(SymmNonce::SIZE == crypto_stream_xchacha20_NONCEBYTES);
-        static_assert(SharedSecret::SIZE == crypto_stream_xchacha20_KEYBYTES);
         crypto_stream_xchacha20_xor(d, d, buf.size(), nonce.data(), secret.data());
+    }
+
+    void xchacha20_poly1305_encrypt(std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
+    {
+        if (buf.size() <= MAC_SIZE)
+        {
+            const auto err = fmt::format("Payload size {} is <= poly1305 AEAD size ({})!", buf.size(), MAC_SIZE);
+            log::error(logcat, "{}", err);
+            throw std::invalid_argument{err};
+        }
+        auto payload_size = buf.size() - MAC_SIZE;
+        auto* buf_cptr = reinterpret_cast<unsigned char*>(buf.data());
+        crypto_aead_xchacha20poly1305_ietf_encrypt(
+            buf_cptr, nullptr, buf_cptr, payload_size, nullptr, 0, nullptr, nonce.data(), secret.data());
+    }
+
+    void xchacha20_poly1305_encrypt(std::string& buf, const SharedSecret& secret, const SymmNonce& nonce)
+    {
+        xchacha20_poly1305_encrypt(
+            std::span<std::byte>{reinterpret_cast<std::byte*>(buf.data()), buf.size()}, secret, nonce);
+    }
+
+    std::span<std::byte> xchacha20_poly1305_decrypt(
+        std::span<std::byte> buf, const SharedSecret& secret, const SymmNonce& nonce)
+    {
+        if (buf.size() <= MAC_SIZE)
+        {
+            log::warning(logcat, "On decryption, payload size {} is < poly1305 AEAD size ({})!", buf.size(), MAC_SIZE);
+            return {};
+        }
+        auto* buf_cptr = reinterpret_cast<unsigned char*>(buf.data());
+        unsigned long long payload_size{0};
+        if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+                buf_cptr, &payload_size, nullptr, buf_cptr, buf.size(), nullptr, 0, nonce.data(), secret.data())
+            != 0)
+        {
+            log::warning(logcat, "On decryption, payload failed authentication!");
+            return {};
+        }
+        assert(payload_size == buf.size() - MAC_SIZE);
+        return buf.subspan(0, payload_size);
     }
 
     bool dh_client(SharedSecret& shared, const PubKey& pk, const Ed25519SecretKey& sk, const SymmNonce& n)

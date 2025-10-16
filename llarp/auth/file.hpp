@@ -32,7 +32,6 @@ namespace llarp::auth
         const std::vector<std::filesystem::path> _files;
         const AuthFileType _type;
         mutable util::Mutex _m;
-        std::unordered_set<session_tag> _pending;
         /// returns an auth result for a auth info challange, opens every file until it finds a
         /// token matching it this is expected to be done in the IO thread
         AuthResult check_files(const AuthInfo& info) const;

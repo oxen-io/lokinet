@@ -41,21 +41,29 @@ namespace llarp::link
 {
     static auto logcat = llarp::log::Cat("link.manager");
 
+    using session::session_tag;
+
     // These requests come over a path (as a "path_control" request),
     // we may or may not need to make a request to another relay,
     // then respond (onioned) back along the path.
-    std::unordered_map<std::string_view, void (Manager::*)(quic::message, std::optional<std::string>)>
+    std::unordered_map<
+        std::string_view,
+        void (Manager::*)(std::span<const std::byte> payload, std::function<void(std::string)> respond)>
         Manager::path_requests = {
-            {"path_control"sv, &Manager::handle_path_control},
-            {"publish_cc"sv, &Manager::handle_publish_cc},
-            {"find_cc"sv, &Manager::handle_find_cc},
-            {"fetch_rcs"sv, &Manager::handle_fetch_rcs},
-            {"fetch_rids"sv, &Manager::handle_fetch_router_ids},
-            {"resolve_sns"sv, &Manager::handle_resolve_sns},
-            {"session_init"sv, &Manager::handle_initiate_session},
-            {"session_close"sv, &Manager::handle_close_session},
-            {"path_switch"sv, &Manager::handle_path_switch},
+            {"publish_cc"sv, &Manager::handle_path_publish_cc},
+            {"find_cc"sv, &Manager::handle_path_find_cc},
+            {"fetch_rcs"sv, &Manager::handle_path_fetch_rcs},
+            {"fetch_rids"sv, &Manager::handle_path_fetch_router_ids},
+            {"resolve_sns"sv, &Manager::handle_path_resolve_sns},
             {"path_ping"sv, &Manager::handle_path_ping}};
+
+    void Manager::handle_direct_request(
+        void (Manager::*handler)(std::span<const std::byte>, std::function<void(std::string)>, bool), quic::message m)
+    {
+        auto body_str = m.body<std::byte>();
+        auto resp = [msg = std::move(m)](std::string response) { msg.respond(response, false); };
+        (this->*handler)(body_str, resp, true);
+    }
 
     void Manager::register_commands(quic::BTRequestStream& s, const std::variant<RouterID, quic::ConnectionID>& remote)
     {
@@ -65,23 +73,15 @@ namespace llarp::link
             router.loop.call([this, msg = std::move(m)]() mutable { handle_path_control(std::move(msg)); });
         });
 
+        s.register_handler("session_control"s, [this](quic::message m) {
+            router.loop.call([this, msg = std::move(m)]() mutable { handle_path_session_control(std::move(msg)); });
+        });
+
         if (not router.is_service_node)
         {
             log::trace(logcat, "Registered all client-only BTStream commands!");
             return;
         }
-
-        s.register_handler("path_switch"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
-        });
-
-        s.register_handler("session_init"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
-        });
-
-        s.register_handler("session_close"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
-        });
 
         s.register_handler("path_build"s, [this, remote](quic::message m) {
             router.loop.call(
@@ -89,7 +89,9 @@ namespace llarp::link
         });
 
         s.register_handler("fetch_rcs"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_fetch_rcs, std::move(msg));
+            });
         });
 
         s.register_handler("gossip_rc"s, [this](quic::message m) {
@@ -97,15 +99,15 @@ namespace llarp::link
         });
 
         s.register_handler("publish_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_publish_cc(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_publish_cc, std::move(msg));
+            });
         });
 
         s.register_handler("find_cc"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_find_cc(std::move(msg)); });
-        });
-
-        s.register_handler("resolve_sns"s, [this](quic::message m) {
-            router.loop.call([this, msg = std::move(m)]() mutable { handle_resolve_sns(std::move(msg)); });
+            router.loop.call([this, msg = std::move(m)]() mutable {
+                handle_direct_request(&Manager::handle_find_cc, std::move(msg));
+            });
         });
 
         // Endpoint called to test connectivity by other relays during relay testing.  It simply
@@ -289,7 +291,10 @@ namespace llarp::link
         m.respond(std::span{response_raw.data() + skip, response_raw.size() - skip});
     }
 
-    void Manager::handle_fetch_rcs(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_fetch_rcs(
+        std::span<const std::byte> body,
+        std::function<void(std::string)> respond,
+        [[maybe_unused]] bool source_is_relay)
     {
         log::debug(logcat, "Handling FetchRC request...");
         // this handler should not be registered for clients
@@ -299,14 +304,14 @@ namespace llarp::link
 
         try
         {
-            auto btdc = inner_body ? oxenc::bt_dict_consumer{*inner_body} : oxenc::bt_dict_consumer{m.body()};
+            auto btdc = oxenc::bt_dict_consumer{body};
             for (auto sublist = btdc.require<oxenc::bt_list_consumer>("x"); !sublist.is_finished();)
                 explicit_ids.emplace(sublist.consume_span<uint8_t, 32>());
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception handling RC Fetch request: {}", e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
+            respond(messages::ERROR_RESPONSE);
             return;
         }
 
@@ -326,10 +331,16 @@ namespace llarp::link
             log::info(logcat, "Returning {} RCs for FetchRC request...", count);
         }
 
-        m.respond(std::move(btdp).str());
+        respond(std::move(btdp).str());
     }
 
-    void Manager::handle_fetch_router_ids(quic::message m, std::optional<std::string>)
+    void Manager::handle_path_fetch_rcs(std::span<const std::byte> body, std::function<void(std::string)> respond)
+    {
+        handle_fetch_rcs(std::move(body), std::move(respond), false);
+    }
+
+    void Manager::handle_path_fetch_router_ids(
+        [[maybe_unused]] std::span<const std::byte> body, std::function<void(std::string)> respond)
     {
         log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
@@ -346,11 +357,10 @@ namespace llarp::link
         }
 
         log::debug(logcat, "Returning ALL ({}) locally held RIDs to FetchRIDs request!", known_rids.size());
-        m.respond(std::move(btdp).str());
+        respond(std::move(btdp).str());
     }
 
-    void Manager::handle_resolve_sns(
-        [[maybe_unused]] quic::message m, [[maybe_unused]] std::optional<std::string> inner_body)
+    void Manager::handle_path_resolve_sns(std::span<const std::byte> body, std::function<void(std::string)> respond)
     {
 #ifdef LOKINET_EMBEDDED_ONLY
         throw std::logic_error{"This lokinet is not a service node!"};
@@ -361,35 +371,36 @@ namespace llarp::link
 
         try
         {
-            if (inner_body)
-                name_hash = ResolveSNS::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                name_hash = ResolveSNS::deserialize(oxenc::bt_dict_consumer{m.body()});
+            name_hash = ResolveSNS::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}", e.what());
-            return m.respond(messages::ERROR_RESPONSE, true);
+            return respond(messages::ERROR_RESPONSE);
         }
 
         assert(router.oxend());
         router.oxend()->lookup_sns_hash(
-            name_hash, [prev_msg = std::move(m)](std::optional<EncryptedSNSRecord> maybe_enc) mutable {
+            name_hash, [respond = std::move(respond)](std::optional<EncryptedSNSRecord> maybe_enc) mutable {
                 if (maybe_enc)
                 {
                     log::info(logcat, "RPC lookup successfully returned encrypted SNS record!");
-                    prev_msg.respond(ResolveSNS::serialize_response(*maybe_enc));
+                    auto resp = ResolveSNS::serialize_response(*maybe_enc);
+                    // FIXME: eventually respond func should take a byte span or something, but
+                    //        string was easier for now
+                    respond(std::string{reinterpret_cast<const char*>(resp.data()), resp.size()});
                 }
                 else
                 {
                     log::warning(logcat, "RPC lookup could not find SNS registry!");
-                    prev_msg.respond(ResolveSNS::NOT_FOUND, true);
+                    respond(ResolveSNS::NOT_FOUND);
                 }
             });
 #endif
     }
 
-    void Manager::handle_publish_cc(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_publish_cc(
+        std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
     {
         log::trace(logcat, "Received request to publish client contact!");
 
@@ -398,19 +409,18 @@ namespace llarp::link
 
         try
         {
-            std::tie(enc, location) =
-                PublishClientContact::deserialize(oxenc::bt_dict_consumer{inner_body ? *inner_body : m.body()});
+            std::tie(enc, location) = PublishClientContact::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
-            log::warning(logcat, "Exception: {}: payload: {}", e.what(), buffer_printer{m.body()});
-            return m.respond(messages::ERROR_RESPONSE, true);
+            log::warning(logcat, "Exception: {}: payload: {}", e.what(), buffer_printer{body});
+            return respond(messages::ERROR_RESPONSE);
         }
 
         if (enc.is_expired())
         {
             log::warning(logcat, "Received expired EncryptedClientContact!");
-            return m.respond(PublishClientContact::EXPIRED, true);
+            return respond(PublishClientContact::EXPIRED);
         }
 
         if (not router.is_service_node)
@@ -424,7 +434,7 @@ namespace llarp::link
             // message arived on.
 
             log::critical(logcat, "TODO FIXME STAGENET TOTHINK: fix incoming session CC handling");
-            m.respond("FIXME!", true);
+            respond("FIXME!");
 
 #if 0
             if (not sender.has_value())
@@ -471,16 +481,14 @@ namespace llarp::link
         // This two-step process helps ensure that publishes work even if the client has an
         // incomplete or outdated set of RCs, and doesn't require the client to build extra paths to
         // the 4 publish locations.
-        const bool is_forwarded = not inner_body;
-
         auto closest_rids = router.node_db().find_many_closest_to(cc_blind_pk, path::CC_PUBLISH_LOCATIONS + 1);
         if (closest_rids.size() < path::CC_PUBLISH_LOCATIONS)
         {
-            m.respond("No RCs available!", true);
+            respond(messages::serialize_status_response("No RCs available!"));
             return;
         }
 
-        if (!is_forwarded)
+        if (!source_is_relay)
         {
             if (!location || *location < 0 || *location >= path::CC_PUBLISH_LOCATIONS)
             {
@@ -488,10 +496,8 @@ namespace llarp::link
                     logcat,
                     "Ignoring ECC publish from a client with {} publish index",
                     location ? "invalid ({})"_format(*location) : "missing");
-                m.respond(
-                    messages::serialize_status_response(
-                        location ? "INVALID PUBLISH LOCATION" : "MISSING PUBLISH LOCATION"),
-                    true);
+                respond(messages::serialize_status_response(
+                    location ? "INVALID PUBLISH LOCATION" : "MISSING PUBLISH LOCATION"));
                 return;
             }
 
@@ -501,7 +507,7 @@ namespace llarp::link
             {
                 // Special case: we *are* the intended location
                 router.contact_db().put_cc(std::move(enc));
-                m.respond(messages::OK_RESPONSE);
+                respond(messages::OK_RESPONSE);
                 return;
             }
 
@@ -516,7 +522,7 @@ namespace llarp::link
                 rid,
                 "publish_cc",
                 PublishClientContact::serialize(std::move(enc)),
-                [prev_msg = std::move(m)](quic::message msg) mutable {
+                [respond = std::move(respond)](quic::message msg) mutable {
                     log::info(
                         logcat,
                         "Relayed PublishClientContact {}! Relaying response...",
@@ -524,7 +530,7 @@ namespace llarp::link
                             : msg.timed_out ? "timed out"
                                             : "failed");
                     log::trace(logcat, "Relayed PublishClientContact response: {}", buffer_printer{msg.body()});
-                    prev_msg.respond(msg.body(), msg.is_error());
+                    respond(std::string{msg.body()});
                 });
             return;
         }
@@ -540,35 +546,40 @@ namespace llarp::link
             if (rid == router.id())
             {
                 router.contact_db().put_cc(std::move(enc));
-                m.respond(messages::OK_RESPONSE);
+                respond(messages::OK_RESPONSE);
                 return;
             }
 
         log::warning(
             logcat, "Ignoring forwarded CC publish: we are not in the top {} publish locations", closest_rids.size());
-        m.respond(messages::ERROR_RESPONSE, true);
+        respond(messages::ERROR_RESPONSE);
         return;
     }
 
-    void Manager::handle_find_cc(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_path_publish_cc(std::span<const std::byte> body, std::function<void(std::string)> respond)
+    {
+        handle_publish_cc(std::move(body), std::move(respond), false);
+    }
+
+    void Manager::handle_find_cc(
+        std::span<const std::byte> body, std::function<void(std::string)> respond, bool source_is_relay)
     {
         log::trace(logcat, "Received request to find client contact!");
 
         PubKey blinded_pubkey;
         try
         {
-            blinded_pubkey =
-                FindClientContact::deserialize(oxenc::bt_dict_consumer{inner_body ? *inner_body : m.body()});
+            blinded_pubkey = FindClientContact::deserialize(oxenc::bt_dict_consumer{body});
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}", e.what());
-            return m.respond(messages::ERROR_RESPONSE, true);
+            return respond(messages::ERROR_RESPONSE);
         }
 
         auto closest_rids = router.node_db().find_many_closest_to(blinded_pubkey, path::CC_PUBLISH_LOCATIONS);
         if (closest_rids.size() < path::CC_PUBLISH_LOCATIONS)
-            return m.respond("No RCs!", true);
+            return respond(messages::ERROR_RESPONSE);
 
         // We don't provide the answer ourselves unless we are in the closest-4 set because it's
         // possible we *were* in the closest 4 but then dropped out, but still have a stale record
@@ -587,7 +598,10 @@ namespace llarp::link
                     logcat,
                     "Received FindClientContact request (key: {}); returning local EncryptedClientContact...",
                     blinded_pubkey);
-                return m.respond(FindClientContact::serialize_response(*maybe_cc));
+                auto resp = FindClientContact::serialize_response(*maybe_cc);
+                // FIXME: eventually respond func should take a byte span or something, but
+                //        string was easier for now
+                return respond(std::string{reinterpret_cast<const char*>(resp.data()), resp.size()});
             }
 
             log::debug(
@@ -601,18 +615,18 @@ namespace llarp::link
 
         // If the optional was nullopt, then this was a relay <-> relay request. As a result, we should NOT
         // allow it to continue propagating
-        if (not inner_body)
+        if (source_is_relay)
         {
             log::critical(
                 logcat,
                 "Received relayed FindClientContact request (key: {}); could not find locally, relaying "
                 "error...",
                 blinded_pubkey);
-            return m.respond(FindClientContact::NOT_FOUND, true);
+            return respond(FindClientContact::NOT_FOUND);
         }
 
         auto remaining = std::make_shared<size_t>(closest_rids.size() - authoritative);
-        auto hook = [m = std::move(m), remaining](quic::message msg) mutable {
+        auto hook = [respond = std::move(respond), remaining](quic::message msg) mutable {
             if (*remaining == 0)
                 return;  // Already answered by an earlier response
 
@@ -621,7 +635,7 @@ namespace llarp::link
                 *remaining = 0;
                 log::info(logcat, "Relayed FindClientContact request SUCCEEDED! Relaying response");
                 log::trace(logcat, "Relayed FindClientContact response: {}", buffer_printer{msg.body()});
-                m.respond(msg.body());
+                respond(std::string{msg.body()});
                 return;
             }
 
@@ -629,7 +643,7 @@ namespace llarp::link
                 return;  // This was an error, but there are more responses to come back
 
             log::warning(logcat, "All FindClientContact requests FAILED! Relaying failure");
-            m.respond(msg.timed_out ? messages::TIMEOUT_RESPONSE : msg.body(), true);
+            respond(msg.timed_out ? messages::TIMEOUT_RESPONSE : std::string{msg.body()});
         };
 
         log::debug(logcat, "Relaying FindClientContactMessage (key: {}) to {} peers", blinded_pubkey, *remaining);
@@ -641,6 +655,11 @@ namespace llarp::link
                 continue;
             endpoint.send_command(rid, "find_cc", forwarded_find_cc, hook);
         }
+    }
+
+    void Manager::handle_path_find_cc(std::span<const std::byte> body, std::function<void(std::string)> respond)
+    {
+        handle_find_cc(std::move(body), std::move(respond), false);
     }
 
     void Manager::handle_path_build(quic::message m, const std::variant<RouterID, quic::ConnectionID>& from)
@@ -733,60 +752,39 @@ namespace llarp::link
         }
     }
 
-    void Manager::handle_path_control(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_path_control(quic::message m)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        auto body = m.body<std::byte>();
+        if (body.size() <= path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC)
+        {
+            log::warning(logcat, "Received path control message too small to contain valid data.");
+            m.respond(messages::ERROR_RESPONSE, true);
+            return;
+        }
 
         HopID hop_id;
         std::vector<std::byte> payload;
         SymmNonce nonce;
 
-        auto body = inner_body ? as_bspan(*inner_body) : m.body<std::byte>();
-
-        if (body.size() <= path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD)
-        {
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-
         payload.assign(body.begin(), body.end());
-        static_assert(path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD == SymmNonce::SIZE + HopID::SIZE + 1);
-        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
 
-        if (msgtype[0] != std::byte{0x01})
+        static_assert(
+            path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC == crypto::MAC_SIZE + SymmNonce::SIZE + HopID::SIZE + 1);
+        auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
+        std::byte type = msgtype[0];
+        if (type != std::byte{0x01})
         {
-            log::warning(
-                logcat, "Invalid/unknown path_control encrypted message type {}", static_cast<int>(msgtype[0]));
+            log::warning(logcat, "Invalid/unknown path_control encrypted message type {}", static_cast<int>(type));
             log::trace(logcat, "Failed path_control payload: {}", buffer_printer{body});
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }
-
         nonce.assign(bnonce);
         hop_id.assign(bhop);
 
-        if (not router.is_service_node)
-        {
-            auto path = router.path_context.get_path(hop_id);
-
-            if (not path)
-            {
-                log::warning(logcat, "Client received path control with unknown rxID: {}", hop_id);
-                m.respond(messages::ERROR_RESPONSE, true);
-                return;
-            }
-
-            log::trace(logcat, "Received path control for local client: {}", buffer_printer{inner_payload});
-
-            for (auto& hop : path->hops)
-                crypto::xchacha20(inner_payload, hop.shared_secret, nonce);
-
-            handle_path_request(std::move(m), inner_payload);
-            return;
-        }
-
         auto hop = router.path_context.get_transit_hop_ptr(hop_id);
-
         if (not hop)
         {
             log::warning(logcat, "Received path control for unknown path (hop ID: {})", hop_id);
@@ -795,35 +793,59 @@ namespace llarp::link
         }
 
         nonce ^= hop->xor_nonce;
+
+        // if terminal hop, payload should contain a request (e.g. "sns_resolve"); handle and respond.
+        if (hop->terminal_hop)
+        {
+            auto payload_span = crypto::xchacha20_poly1305_decrypt(inner_payload, hop->shared_secret, nonce);
+            auto responder = [hop_weak = std::weak_ptr{hop}, msg = std::move(m), type](std::string response) {
+                auto hop = hop_weak.lock();
+                if (not hop)
+                {
+                    log::info(logcat, "Received response to path control message, but no transit hop found; dropping.");
+                    return;
+                }
+                auto& hopid = hop->rxid;
+                auto nonce = SymmNonce::make_random();
+                response.reserve(response.size() + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC);
+                response.resize(response.size() + crypto::MAC_SIZE);
+                try
+                {
+                    crypto::xchacha20_poly1305_encrypt(response, hop->shared_secret, nonce);
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(logcat, "Failed encrypting path control message response: {}", e.what());
+                    return;
+                }
+                nonce ^= hop->xor_nonce;
+                auto inner_size = response.size();
+                response.resize(inner_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
+                auto resp_span = oxen::quic::reinterpret_span<std::byte>(std::span{response});
+
+                static_assert(sizeof(SymmNonce) == SymmNonce::SIZE);
+                static_assert(sizeof(HopID) == HopID::SIZE);
+
+                auto [inner_payload, bnonce, bhop, msgtype] =
+                    split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(resp_span);
+                assert(inner_payload.size() == inner_size);
+
+                nonce.copy_to(bnonce);
+                hopid.copy_to(bhop);
+                msgtype[0] = type;
+                msg.respond(response, false);
+            };
+            log::debug(logcat, "We are terminal hop for path request: {}", *hop);
+            handle_path_request(payload_span, std::move(responder));
+            return;
+        }
+
+        // intermediate hops chacha the whole payload (MAC included)
         crypto::xchacha20(inner_payload, hop->shared_secret, nonce);
 
-        if (not inner_body)
-        {
-            // if terminal hop, payload should contain a request (e.g. "sns_resolve"); handle and respond.
-            if (hop->terminal_hop)
-            {
-                log::debug(logcat, "We are terminal hop for path request: {}", *hop);
-                handle_path_request(std::move(m), inner_payload);
-                return;
-            }
+        log::debug(logcat, "We are intermediate hop for path request: {}", *hop);
 
-            log::debug(logcat, "We are intermediate hop for path request: {}", *hop);
-        }
-        else
-        {
-            log::debug(logcat, "We are bridge node for aligned path request ({})! Forwarding downstream", *hop);
-            log::trace(logcat, "Payload: {}", buffer_printer{*inner_body});
-        }
-
-        auto next = hop->next_id(hop_id);
-
-        if (not next)
-        {
-            log::warning(logcat, "Failed to query hop ({}) for next ids (input: {})", *hop, hop_id);
-            return m.respond(messages::ERROR_RESPONSE, true);
-        }
-
-        const auto& [next_target, next_hopid] = *next;
+        const auto [next_target, next_hopid] = hop->next_id(hop_id);
 
         // We're relaying this message down a path, and we've already done our decryption to the
         // inner_payload so now we just need to replace the nonce and next hop ID in the outer
@@ -835,12 +857,12 @@ namespace llarp::link
             next_target,
             "path_control",
             std::move(payload),
-            [hop_weak = std::weak_ptr{hop}, hop_id, prev_message = std::move(m)](quic::message response) mutable {
+            [hop_weak = std::weak_ptr{hop}, prev_message = std::move(m), type](quic::message response) mutable {
                 auto hop = hop_weak.lock();
                 if (not hop)
                 {
-                    log::warning(logcat, "Received response to path control message with non-existent TransitHop!");
-                    return prev_message.respond(messages::ERROR_RESPONSE, true);
+                    log::info(logcat, "Received response to path control message, but no transit hop found; dropping.");
+                    return;
                 }
 
                 if (response.timed_out)
@@ -857,30 +879,66 @@ namespace llarp::link
                 if (response)
                     log::debug(logcat, "Path control message returned successfully");
                 else
+                {
                     log::warning(logcat, "Path control message returned an error!");
+                    prev_message.respond(response.body(), response.is_error());
+                }
 
-                prev_message.respond(response.body(), response.is_error());
+                std::vector<std::byte> payload;
 
-                // TODO: onion encrypt path message responses
-                // HopID hop_id;
-                // SymmNonce nonce;
-                // std::string payload;
+                auto body = response.body<std::byte>();
 
-                // try
-                // {
-                //     std::tie(hop_id, nonce, payload) =
-                //     ONION::deserialize_hop(oxenc::bt_dict_consumer{response.body()});
-                // }
-                // catch (const std::exception& e)
-                // {
-                //     log::warning(logcat, "Exception: {}; payload: {}", e.what(),
-                //     buffer_printer{response.body()}); return prev_message.respond(messages::ERROR_RESPONSE,
-                //     true);
-                // }
+                if (body.size() <= path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD)
+                {
+                    prev_message.respond(messages::ERROR_RESPONSE, true);
+                    return;
+                }
 
-                // auto resp_payload = ONION::serialize_hop(hop_id.to_view(), nonce, std::move(payload));
-                // prev_message.respond(std::move(resp_payload), false);
+                payload.assign(body.begin(), body.end());
+                auto [inner_payload, bnonce, bhop, msgtype] = split_span_tail<SymmNonce::SIZE, HopID::SIZE, 1>(payload);
+                if (msgtype[0] != type)
+                {
+                    log::warning(
+                        logcat,
+                        "Path control message response type byte mismatch!  Expected {}, got {}",
+                        static_cast<int>(type),
+                        static_cast<int>(msgtype[0]));
+                    prev_message.respond(messages::ERROR_RESPONSE, true);
+                    return;
+                }
+                HopID recv_hopid;
+                SymmNonce nonce;
+                recv_hopid.assign(bhop);
+                nonce.assign(bnonce);
+                if (recv_hopid != hop->txid)
+                {
+                    log::warning(logcat, "Path control message response type unexpected hop id...");
+                    prev_message.respond(messages::ERROR_RESPONSE, true);
+                    return;
+                }
+
+                crypto::xchacha20(inner_payload, hop->shared_secret, nonce);
+
+                nonce ^= hop->xor_nonce;
+                nonce.copy_to(bnonce);
+                hop->rxid.copy_to(bhop);
+
+                prev_message.respond(payload, false);
             });
+    }
+
+    void Manager::handle_path_session_control(quic::message m)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        auto body = m.body<std::byte>();
+        if (body.size() <= path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD_MAC)
+        {
+            log::warning(logcat, "Received session control message too small to contain valid data.");
+            return;
+        }
+        std::vector<std::byte> payload;
+        payload.assign(body.begin(), body.end());
+        handle_session_message(std::move(payload), true);
     }
 
     // FIXME: overhead for session MAC?
@@ -925,7 +983,7 @@ namespace llarp::link
         return result;
     }
 
-    void Manager::handle_path_data_message(std::vector<std::byte> message)
+    void Manager::handle_session_message(std::vector<std::byte> message, bool control)
     {
         auto maybe_hop_nonce = extract_path_message_metadata(message);
         if (!maybe_hop_nonce)
@@ -973,13 +1031,26 @@ namespace llarp::link
             // and remove the session tag then give the remainder for be session-decrypted.  The
             // nonce (after the above mutations) also matches the nonce we want to use for the
             // session encryption.
-            // FIXME: poly1305 mac goes in here somewhere too!
             session_tag tag;
-            tag.assign(std::span{message}.last<session_tag::SIZE>());
-            message.resize(message.size() - session_tag::SIZE);
+            auto tag_span = std::span{message}.last<sizeof(session_tag)>();
+            tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
+            message.resize(message.size() - sizeof(session_tag));
 
-            log::trace(logcat, "Handling incoming data message at the client end of a path");
-            return handle_session_data(std::move(message), tag, nonce);
+            if (tag == 0)  // session init
+            {
+                return router.session_endpoint().handle_session_init(std::move(message), path->shared_from_this());
+            }
+            if (control)
+            {
+                log::trace(logcat, "Handling incoming session control message at the client end of a path");
+                handle_session_control(std::move(message), tag, nonce, path->shared_from_this());
+            }
+            else
+            {
+                log::trace(logcat, "Handling incoming data message at the client end of a path");
+                handle_session_data(std::move(message), tag, nonce);
+            }
+            return;
         }
 
         // Cases 2-4: relay.
@@ -1002,7 +1073,7 @@ namespace llarp::link
             // What's left in message after the above xchacha is back to what the data message
             // creator set up for us: [ENCRYPTED, SESSION_TAG, PIVOT_ID].
 
-            auto [payload, bsession_tag, bpivot_id] = split_span_tail(message, session_tag::SIZE, HopID::SIZE);
+            auto [payload, bsession_tag, bpivot_id] = split_span_tail(message, sizeof(session_tag), HopID::SIZE);
 
             HopID pivot_id;
             pivot_id.assign(bpivot_id.first<HopID::SIZE>());
@@ -1016,11 +1087,27 @@ namespace llarp::link
                 // then drop everything down to the session payload for handle_session_data to deal
                 // with.
                 session_tag tag;
-                tag.assign(bsession_tag.first<session_tag::SIZE>());
+                auto tag_span = bsession_tag.first<sizeof(session_tag)>();
+                tag = oxenc::load_big_to_host<session_tag>(tag_span.data());
                 message.resize(payload.size());
 
-                log::trace(logcat, "Incoming data message is a relay session data message");
-                handle_session_data(std::move(message), tag, nonce);
+                if (tag == 0)  // session init
+                {
+                    // getting shared_ptr here instead of above saves an atomic op on other messages
+                    return router.session_endpoint().handle_session_init(
+                        std::move(message), router.path_context.get_transit_hop_ptr(hop_id));
+                }
+                if (control)
+                {
+                    log::trace(logcat, "Incoming control message is a relay session control message");
+                    handle_session_control(
+                        std::move(message), tag, nonce, router.path_context.get_transit_hop_ptr(hop_id));
+                }
+                else
+                {
+                    log::trace(logcat, "Incoming data message is a relay session data message");
+                    handle_session_data(std::move(message), tag, nonce);
+                }
                 return;
             }
 
@@ -1054,20 +1141,15 @@ namespace llarp::link
             msgtype[0] = std::byte{0x01};
 
             log::trace(logcat, "Pivoting message down another path");
-            endpoint.send_datagram(trans_hop->downstream, std::move(message));
+            if (control)
+                endpoint.send_command(trans_hop->downstream, "session_control"s, std::move(message), nullptr);
+            else
+                endpoint.send_datagram(trans_hop->downstream, std::move(message));
             return;
         }
 
         // Case 4: we're an intermediate so we forward it to the next hop
-        auto next = hop->next_id(hop_id);
-        if (not next)
-        {
-            // Log error severity because it shouldn't be possible if we found the hop in
-            // the first place
-            log::error(logcat, "No next hop found in transit hop?!");
-            return;
-        }
-        auto& [next_target, next_hopid] = *next;
+        const auto [next_target, next_hopid] = hop->next_id(hop_id);
 
         // We chopped off the 0x01, hop_id, and nonce at the top of this function, but now lets put
         // the new ones back on to make it suitable for the next hop.  (We're just resizing a vector
@@ -1080,7 +1162,10 @@ namespace llarp::link
         next_hopid.copy_to(bhop);
         bmsgtype[0] = std::byte{0x01};
 
-        endpoint.send_datagram(next_target, std::move(message));
+        if (control)
+            endpoint.send_command(next_target, "session_control"s, std::move(message), nullptr);
+        else
+            endpoint.send_datagram(next_target, std::move(message));
     }
 
     void Manager::handle_session_data(std::vector<std::byte>&& payload, const session_tag& tag, const SymmNonce& nonce)
@@ -1091,217 +1176,53 @@ namespace llarp::link
             log::warning(logcat, "Could not find session {} to receive session data message!", tag);
     }
 
-    void Manager::handle_path_request(quic::message m, std::span<const std::byte> payload)
+    void Manager::handle_session_control(
+        std::vector<std::byte>&& payload,
+        const session_tag& tag,
+        const SymmNonce& nonce,
+        std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source)
+    {
+        try
+        {
+            if (auto session = router.session_endpoint().get_session(tag))
+                session->recv_session_control_message(std::move(payload), nonce, source);
+            else
+                log::warning(logcat, "Could not find session {} to receive session control message!", tag);
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Error handling session control message: {}", e.what());
+        }
+    }
+
+    void Manager::handle_path_request(std::span<const std::byte> payload, std::function<void(std::string)> respond)
     {
         std::string endpoint, body;
 
         try
         {
+            // FIXME: unnecessary copy
             std::tie(endpoint, body) = PATH::CONTROL::deserialize(oxenc::bt_dict_consumer{payload});
-
-            if (router.is_service_node and endpoint == "path_control")
-            {
-                log::info(logcat, "Received path control relay request; deserializing intermediate payload...");
-                auto [_, i_body] = PATH::CONTROL::deserialize(oxenc::bt_dict_consumer{std::move(body)});
-                return handle_path_control(std::move(m), std::move(i_body));
-            }
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}; Payload: {}", e.what(), buffer_printer{payload});
-            return m.respond(messages::serialize_status_response("ERROR"), true);
+            return respond(messages::serialize_status_response("ERROR"));
         }
 
         if (auto it = path_requests.find(endpoint); it != path_requests.end())
         {
             log::debug(logcat, "Received path control request (`{}`); invoking endpoint...", endpoint);
-            (this->*(it->second))(std::move(m), std::move(body));
+            (this->*(it->second))(oxen::quic::reinterpret_span<std::byte>(std::span{body}), std::move(respond));
         }
         else
             log::warning(logcat, "Received path control request (`{}`), which has no local handler!", endpoint);
     }
 
-    void Manager::handle_initiate_session(quic::message m, std::optional<std::string> inner_body)
+    void Manager::handle_path_ping(std::span<const std::byte>, std::function<void(std::string)> respond)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        InitiateSession::Parameters params;
-
-        try
-        {
-            if (inner_body)
-            {
-                params =
-                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, router.secret_key());
-            }
-            else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
-                params = InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, router.secret_key());
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Failed to parse initiate session message: {}", e.what());
-            return;
-        }
-
-        if (params.remote.router_id() == router.id())
-        {
-            log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
-            return m.respond(InitiateSession::BAD_ADDRESS, true);
-        }
-
-        if (params.auth_token and not router.session_endpoint().validate(params.remote, params.auth_token))
-        {
-            log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", params.remote);
-            return m.respond(InitiateSession::AUTH_ERROR, true);
-        }
-
-        std::optional<session_tag> tag;
-
-        if (router.is_service_node)
-        {
-            if (params.local_pivot_txid != params.remote_pivot_txid)
-            {
-                log::warning(logcat, "Received misrouted path-request to initiate client<->client session...");
-                return m.respond(InitiateSession::BAD_ROUTE, true);
-            }
-
-            auto hop = router.path_context.get_transit_hop_ptr(params.local_pivot_txid);
-            if (not hop)
-            {
-                log::warning(
-                    logcat,
-                    "Received path-request to initiate session with unknown hop (ID: {})",
-                    params.local_pivot_txid);
-                return m.respond(InitiateSession::BAD_ROUTE, true);
-            }
-
-            if (not hop->terminal_hop)
-            {
-                log::warning(
-                    logcat,
-                    "Received path-request to initiate session and we are NOT terminal hop (ID: {})",
-                    params.local_pivot_txid);
-                return m.respond(InitiateSession::BAD_ROUTE, true);
-            }
-
-            tag = router.session_endpoint().create_inbound_session(
-                params.remote, params.remote_pivot_txid, std::move(hop), std::move(params.session_key));
-        }
-        else
-        {
-            auto* path = router.path_context.get_path(params.local_pivot_txid);
-            if (not path)
-            {
-                log::warning(
-                    logcat,
-                    "Failed to find local path for new inbound session over pivot txid: {}",
-                    params.local_pivot_txid);
-                return m.respond(InitiateSession::BAD_ROUTE, true);
-            }
-
-            tag = router.session_endpoint().create_inbound_session(
-                params.remote, params.remote_pivot_txid, path->shared_from_this(), std::move(params.session_key));
-        }
-
-        if (tag)
-        {
-            log::debug(
-                logcat,
-                "Inbound{}Session (tag:{}) created successfully!",
-                router.is_service_node ? "Relay" : "Client",
-                *tag);
-            // FIXME: encryption
-            return m.respond(InitiateSession::serialize_response(*tag));
-        }
-
-        log::warning(logcat, "Failed to configure InboundSession!");
-
-        m.respond(messages::ERROR_RESPONSE, true);
-    }
-
-    void Manager::handle_path_switch(quic::message m, std::optional<std::string> inner_body)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        session_tag tag;
-        HopID remote_pivot_txid, local_pivot_txid;
-
-        std::string_view body{inner_body ? *inner_body : m.body()};
-        try
-        {
-            std::tie(tag, remote_pivot_txid, local_pivot_txid) =
-                SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{body});
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            return m.respond(messages::ERROR_RESPONSE, true);
-        }
-
-        if (!router.is_service_node)
-        {
-            auto path = router.path_context.get_path(local_pivot_txid);
-
-            if (not path)
-            {
-                log::warning(
-                    logcat, "Received path-switch request for unknown local path (pivot txid:{})", local_pivot_txid);
-                return m.respond(SessionPathSwitch::BAD_ID, true);
-            }
-
-            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), path->terminal_hopid()))
-                return m.respond(messages::OK_RESPONSE);
-        }
-        else
-        {
-            auto hop = router.path_context.get_transit_hop_ptr(local_pivot_txid);
-
-            if (not hop)
-            {
-                log::warning(
-                    logcat, "Received path-switch request for unknown local hop (pivot txid:{})", local_pivot_txid);
-                return m.respond(SessionPathSwitch::BAD_ID, true);
-            }
-
-            if (router.session_endpoint().recv_path_switch(tag, std::move(remote_pivot_txid), std::move(hop)))
-                return m.respond(messages::OK_RESPONSE);
-        }
-
-        log::warning(logcat, "Received path-switch request for unknown session (tag:{})", tag);
-        return m.respond(SessionPathSwitch::BAD_TAG, true);
-    }
-
-    void Manager::handle_path_ping(quic::message m, std::optional<std::string>)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        m.respond(messages::OK_RESPONSE);
-    }
-
-    void Manager::handle_close_session(quic::message m, std::optional<std::string> inner_body)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        // No reply expected from this endpoint.
-
-        session_tag tag;
-
-        try
-        {
-            if (inner_body)
-                tag = CloseSession::deserialize(oxenc::bt_dict_consumer{*inner_body});
-            else
-                tag = CloseSession::deserialize(oxenc::bt_dict_consumer{m.body()});
-
-            // TODO FIXME: we should be verifying where this came from so that someone can't close
-            // someone else's tag.  (Perhaps some extra encrypted/signed data in the close session
-            // message?).
-
-            router.session_endpoint().close_session(tag, false);
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-        }
+        respond(messages::OK_RESPONSE);
     }
 
     void Manager::handle_path_latency(quic::message m)
