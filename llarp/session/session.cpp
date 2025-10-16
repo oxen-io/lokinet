@@ -917,7 +917,7 @@ namespace llarp::session
 
     void OutboundClientSession::tick(std::chrono::milliseconds now)
     {
-        if ((now - last_cc_update > 5min) || (now - last_inbound_activity > 10s))
+        if ((now - last_cc_update > 10min) || (now - last_inbound_activity > 30s))
         {
             log::critical(
                 logcat,
