@@ -1192,15 +1192,9 @@ namespace llarp::session
                 if (cc)
                 {
                     log::debug(logcat, "Session initiation returned client contact: {}", *cc);
-                    if (current_cc && (*cc == *current_cc))
-                    {
-                        log::debug(logcat, "Client contact received, but is old.");
-                        return;
-                    }
-                    current_cc = std::move(cc);
                     cc_ok = true;
                     _intro_update_processed = false;
-                    update_intros(*current_cc);
+                    update_intros(*cc);
                 }
                 else
                     log::warning(logcat, "Failed to lookup intros for {}", _remote);

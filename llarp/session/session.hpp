@@ -355,7 +355,6 @@ namespace llarp
             bool updating_intros = false;
 
             std::chrono::milliseconds last_cc_update = 0s;
-            std::optional<ClientContact> current_cc{std::nullopt};
             bool cc_ok = false;
 
             // Chooses the next router id to pivot to, based on introset and current paths.  Returns
