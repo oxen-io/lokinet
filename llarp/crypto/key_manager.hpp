@@ -30,9 +30,12 @@ namespace llarp
         const RouterID& router_id() const { return public_key; }
 
         // Helper functions to load a key; these are used by KeyManager itself, but are exposed as
-        // they also have some uses for key loading outside KeyManager.
+        // they also have some uses for key loading outside KeyManager.  Loading accepts either 64
+        // raw bytes, or 128 hex (with optional trailing newline), and verifies that the loaded
+        // value contains matching pubkey and seed.  Writing writes either raw bytes, or hex with a
+        // trailing newline.
         static void load_from_file(Ed25519SecretKey& key, const std::filesystem::path& fname);
-        static bool write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname);
+        static bool write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname, bool hex = true);
     };
 
 }  // namespace llarp

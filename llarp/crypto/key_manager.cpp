@@ -15,22 +15,45 @@ namespace llarp
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        // TODO FIXME: do we want to allow hex or other non-binary encodings here?
-        auto tmp = util::file_to_string(fname, 64);
-        if (tmp.size() != 64)
-            throw std::invalid_argument{"Invalid key file {}: Expected 64 bytes, not {}"_format(fname, tmp.size())};
+        auto tmp = util::file_to_string(fname);
+        if ((tmp.size() == 128 or (tmp.size() == 129 and tmp.ends_with("\n"))
+             or (tmp.size() == 130 and tmp.ends_with("\r\n")))
+            and oxenc::is_hex(tmp.begin(), tmp.begin() + 128))
+            oxenc::from_hex(tmp.begin(), tmp.begin() + 128, key.data());
+        else if (tmp.size() == 64)
+            std::memcpy(key.data(), tmp.data(), 64);
+        else if (tmp.starts_with('d') and tmp.ends_with('e')) {
+            // Old Lokinet keys were bt-dicts with the key we care about in the 's' key:
+            oxenc::bt_dict_consumer old{tmp};
+            auto oldkey = old.require_span<unsigned char, 64>("s");
+            std::memcpy(key.data(), oldkey.data(), 64);
+            old.finish();
+        }
+        else
+            throw std::invalid_argument{
+                "Invalid key file {} ({}B): Expected 64 bytes, 128 hex, or legacy lokinet key file"_format(fname, tmp.size())};
 
-        std::memcpy(key.data(), tmp.data(), 64);
         if (!key.check_pubkey())
             throw std::invalid_argument{"Invalid key file {}: Keypair seed and pubkey do not match"};
     }
 
-    bool KeyManager::write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname)
+    bool KeyManager::write_to_file(const Ed25519SecretKey& key, const std::filesystem::path& fname, bool hex)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         try
         {
-            util::buffer_to_file(fname, key.to_view());
+            if (hex)
+            {
+                std::string out;
+                out.reserve(129);
+                oxenc::to_hex(key.begin(), key.end(), std::back_inserter(out));
+                out += '\n';
+                util::buffer_to_file(fname, out);
+            }
+            else
+            {
+                util::buffer_to_file(fname, key.to_view());
+            }
         }
         catch (const std::exception& e)
         {
@@ -45,7 +68,7 @@ namespace llarp
     {
         if (not is_relay)
         {
-            if (config.network.keyfile)
+            if (config.network.keyfile and std::filesystem::exists(*config.network.keyfile))
             {
                 load_from_file(secret_key, *config.network.keyfile);
                 log::info(logcat, "Successfully loaded persistent client key from config path");
@@ -54,6 +77,12 @@ namespace llarp
             {
                 log::debug(logcat, "Client generating secret key...");
                 secret_key = crypto::generate_ed25519();
+
+                if (config.network.keyfile && !write_to_file(secret_key, *config.network.keyfile))
+                {
+                    log::critical(logcat, "Failed to save persistent key to {}", *config.network.keyfile);
+                    throw std::runtime_error{"Failed to save configured persistent key file"};
+                }
             }
 
             public_key.assign(secret_key.pubkey_span());
