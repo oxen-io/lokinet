@@ -20,7 +20,7 @@ namespace llarp
 
     void ContactDB::start_tickers()
     {
-        _purge_ticker = _router.loop.call_every(30s, [this](){ purge_ccs(); }, true);
+        _purge_ticker = _router.loop.call_every(30s, [this]() { purge_ccs(); }, true);
     }
 
     void ContactDB::purge_ccs(std::chrono::milliseconds now)

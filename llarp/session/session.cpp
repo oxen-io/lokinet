@@ -106,7 +106,7 @@ namespace llarp::session
                 }};
 
             auto stream_opened = [this](quic::Stream& stream) {
-/*
+#if 0
                 stream.set_stream_data_cb([this, prev_byte = std::optional<std::byte>{std::nullopt}](
                                               quic::Stream& stream, std::span<const std::byte> data) mutable {
                     uint16_t dest_port{0};
@@ -163,7 +163,7 @@ namespace llarp::session
                                             50'000,
                                             [this, tcp_conn](auto&) { tcp_conn->resume_reading(); });
                 });
-*/
+#endif
                 return 0;
             };
 
@@ -817,10 +817,7 @@ namespace llarp::session
         }
     }
 
-    void Session::recv_close()
-    {
-        _parent.close_session(_inbound_tag, false);
-    }
+    void Session::recv_close() { _parent.close_session(_inbound_tag, false); }
 
     void OutboundRelaySession::recv_close()
     {
@@ -1185,7 +1182,10 @@ namespace llarp::session
             _remote.router_id(), [this, alive = canary()](std::optional<ClientContact> cc) mutable {
                 if (!alive.lock())
                 {
-                    log::debug(logcat, "OutboundClientSession::refresh_intros lookup_client_intro callback returning early; session-alive canary is dead");
+                    log::debug(
+                        logcat,
+                        "OutboundClientSession::refresh_intros lookup_client_intro callback returning early; "
+                        "session-alive canary is dead");
                     return;
                 }
                 updating_intros = false;
@@ -1205,7 +1205,7 @@ namespace llarp::session
     {
         log::debug(logcat, "Update session {} intros from client contact: {}", *this, cc);
         last_cc_update = llarp::time_now_ms();
-        last_inbound_activity = last_cc_update; // so we don't just fetch again right away
+        last_inbound_activity = last_cc_update;  // so we don't just fetch again right away
         auto intros = cc.intros();
         _intros.assign(intros.begin(), intros.end());
         log::trace(logcat, "New client intros: {}", fmt::join(_intros, ", "));
@@ -1396,7 +1396,7 @@ namespace llarp::session
                 return;
             }
             auto& m = maybe_path_switch_msg->first;
-            m.resize(m.size() - (sizeof(session_tag) + HopID::SIZE)); // these go on outer message here
+            m.resize(m.size() - (sizeof(session_tag) + HopID::SIZE));  // these go on outer message here
 
             oxenc::bt_list_producer btlp;
             btlp.append(std::move((*maybe_path_switch_msg).first));
@@ -1404,7 +1404,7 @@ namespace llarp::session
             auto list_span = btlp.span<std::byte>();
             std::vector<std::byte> payload{list_span.begin(), list_span.end()};
             auto old_size = payload.size();
-            payload.resize(payload.size() + sizeof(_outbound_tag) + HopID::SIZE); // see make_session_data_message
+            payload.resize(payload.size() + sizeof(_outbound_tag) + HopID::SIZE);  // see make_session_data_message
             auto [payload_span, tag_span, pivot_span] = split_span(payload, old_size, sizeof(_outbound_tag));
             oxenc::write_host_as_big(_outbound_tag, tag_span.data());
             std::memcpy(pivot_span.data(), _remote_pivot_txid.data(), _remote_pivot_txid.size());
@@ -1572,13 +1572,14 @@ namespace llarp::session
                 "Received session accept message for established session, likely a path switch failed because the "
                 "remote restarted, so it accepted our backup session init.");
         }
-        _is_established = false; // become unestablished if this parsing fails to trigger a new session init
+        _is_established = false;  // become unestablished if this parsing fails to trigger a new session init
         oxenc::bt_dict_consumer btdc{params};
         _outbound_tag = btdc.require<session_tag>("t"sv);
 
         log::debug(logcat, "Remote provided session tag: {}", _outbound_tag);
 
-        log::trace(logcat, "Outbound session to {} successfully {}established.", remote(), was_established ? "re-"sv : ""sv);
+        log::trace(
+            logcat, "Outbound session to {} successfully {}established.", remote(), was_established ? "re-"sv : ""sv);
         _is_established = true;
 
         if (pre_establish_data_queue)

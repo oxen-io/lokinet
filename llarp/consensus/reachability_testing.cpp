@@ -80,35 +80,40 @@ namespace llarp::consensus
             }
 
             auto [conn, btstr] = router.link_endpoint().testing_client_connect(*rc);
-            btstr->command("ping", "", TEST_REQUEST_TIMEOUT, [this, weak_conn = std::weak_ptr{conn}, rid, prev_fails](quic::message m) mutable {
-                auto conn = weak_conn.lock();
-                if (conn)
-                    conn->close_connection();
-                router.loop.call_soon([this, rid, prev_fails, m = std::move(m)] {
-                    if (m)
-                    {
-                        if (prev_fails)
+            btstr->command(
+                "ping",
+                "",
+                TEST_REQUEST_TIMEOUT,
+                [this, weak_conn = std::weak_ptr{conn}, rid, prev_fails](quic::message m) mutable {
+                    auto conn = weak_conn.lock();
+                    if (conn)
+                        conn->close_connection();
+                    router.loop.call_soon([this, rid, prev_fails, m = std::move(m)] {
+                        if (m)
+                        {
+                            if (prev_fails)
+                                log::info(
+                                    logcat,
+                                    "Successful SN reachability test to {} (after {} previous failures)",
+                                    rid.to_network_address(true),
+                                    prev_fails);
+                            else
+                                log::info(
+                                    logcat, "Successful SN reachability test to {}", rid.to_network_address(true));
+                            remove_node_from_failing(rid);
+                        }
+                        else
+                        {
                             log::info(
                                 logcat,
-                                "Successful SN reachability test to {} (after {} previous failures)",
+                                "Testing of {} failed: {}",
                                 rid.to_network_address(true),
-                                prev_fails);
-                        else
-                            log::info(logcat, "Successful SN reachability test to {}", rid.to_network_address(true));
-                        remove_node_from_failing(rid);
-                    }
-                    else
-                    {
-                        log::info(
-                            logcat,
-                            "Testing of {} failed: {}",
-                            rid.to_network_address(true),
-                            m.timed_out ? "request timed out" : m.body());
-                        add_failing_node(rid, prev_fails);
-                    }
-                    router.oxend()->inform_connection(rid, (bool)m);
+                                m.timed_out ? "request timed out" : m.body());
+                            add_failing_node(rid, prev_fails);
+                        }
+                        router.oxend()->inform_connection(rid, (bool)m);
+                    });
                 });
-            });
         }
     }
 
