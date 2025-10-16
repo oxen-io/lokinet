@@ -29,8 +29,6 @@ namespace llarp
       public:
         explicit ContactDB(Router& r);
 
-        std::optional<ClientContact> get_decrypted_cc(RouterID remote) const;
-
         const EncryptedClientContact* get_encrypted_cc(const PubKey& blinded_pk) const;
 
         void put_cc(EncryptedClientContact enc);

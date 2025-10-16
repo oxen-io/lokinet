@@ -8,6 +8,7 @@
 #include <llarp/path/path.hpp>
 #include <llarp/path/path_handler.hpp>
 #include <llarp/path/transit_hop.hpp>
+#include <llarp/util/bspan.hpp>
 
 #include <oxen/quic/btstream.hpp>
 #include <oxen/quic/connection.hpp>
@@ -47,6 +48,11 @@ namespace llarp
 
         struct TCPTunnel;
 
+        // We must not use the same nonce for path switch and session init, as they can be in the
+        // same message using the same shared secret.  As such, the path switch message will use
+        // dh_nonce ^ this xor factor.
+        inline const SymmNonce switch_xor_factor = SymmNonce::filled<SymmNonce>(0x42);
+
         class Session
         {
             // TODO FIXME: how long since last use should is_expired() return true?
@@ -67,6 +73,8 @@ namespace llarp
 
             NetworkAddress _remote;
 
+            PubKey dh_pk;
+            SymmNonce dh_nonce;
             SharedSecret _shared_secret;
 
             // used for bridging data messages across aligned paths
@@ -106,6 +114,10 @@ namespace llarp
             std::unordered_map<uint16_t, uint16_t> udp_remote_ports;
             uint16_t next_udp_client_port{1024};
             std::chrono::milliseconds last_activity = llarp::time_now_ms();
+
+            // only currently useful for outbound client sessions, but more convenient here
+            // than an overload on all inbound traffic functions for that one case
+            std::chrono::milliseconds last_inbound_activity = llarp::time_now_ms();
 
             void update_active();
 
@@ -162,11 +174,18 @@ namespace llarp
             virtual void handle_session_accept(std::span<const std::byte> params);
 
             void send_session_data_message(std::span<const std::byte> data, net::IPProtocol proto);
+            std::optional<std::pair<std::vector<std::byte>, SymmNonce>> make_session_data_message(
+                std::span<const std::byte> data,
+                uint8_t type,
+                bool control = false,
+                bool init = false,
+                SymmNonce nonce = SymmNonce::make_random());
             void send_session_data_message(
                 std::span<const std::byte> data, uint8_t type, bool control = false, bool init = false);
 
             virtual void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
-            virtual void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) = 0;
+            virtual void send_path_control_message(
+                std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch) = 0;
 
             // Called by send_session_data_message if trying to send a data message on a
             // not-yet-established connection (which, by definition, can only be an outbound
@@ -202,6 +221,8 @@ namespace llarp
             // send a session_close control message down the active path.
             void close(bool send_close);
 
+            virtual void recv_close();
+
             bool is_expired(std::chrono::milliseconds now) const;
 
             virtual std::string to_string() const = 0;
@@ -233,10 +254,6 @@ namespace llarp
                 std::vector<std::pair<path::Path*, HopID>>&& good,
                 std::vector<std::pair<path::Path*, HopID>>&& fallback);
 
-            // Switches (or starts using) the given path.  If there currently is no path, this will
-            // call any waiting on-established callbacks.
-            void switch_path(path::Path& p, const HopID& new_pivot_txid);
-
             void tick(std::chrono::milliseconds now) override;
 
             virtual void select_new_current() = 0;
@@ -246,7 +263,7 @@ namespace llarp
             void close_old_paths(std::chrono::milliseconds now);
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
-            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch) override;
 
             void queue_data_message(std::span<const std::byte>, uint8_t type) override;
 
@@ -254,7 +271,10 @@ namespace llarp
             std::optional<std::deque<std::vector<std::byte>>> pre_establish_data_queue;
 
           private:
-            void session_init(path::Path& path);
+            // Switches to (or starts using) the given path.
+            void switch_path(path::Path& p, const HopID& new_pivot_txid);
+
+            std::string make_session_init(path::Path& path);
 
             void fire_waiting(std::chrono::milliseconds now);
 
@@ -309,6 +329,8 @@ namespace llarp
 
             void update_paths(std::chrono::milliseconds now) override;
 
+            void recv_close() override;
+
             // void stop(bool send_close = false) override;
 
           private:
@@ -330,6 +352,10 @@ namespace llarp
             std::vector<ClientIntro> _intros;
             std::unordered_set<RouterID> _pivots;
             bool _intro_update_processed = false;
+            bool updating_intros = false;
+
+            std::chrono::milliseconds last_cc_update = 0s;
+            bool cc_ok = false;
 
             // Chooses the next router id to pivot to, based on introset and current paths.  Returns
             // nullopt if no pivot is available right now, otherwise the router id and the lifetime
@@ -347,6 +373,8 @@ namespace llarp
             // there already is intros, to refresh/replace them.
             void refresh_intros();
 
+            void tick(std::chrono::milliseconds now) override;
+
             // Called with a client contact to replace the current set of client intros used by this
             // session with the ones in the given client contact.  This is called by
             // `refresh_intros()` upon a success fetch, but can also be called externally (such as
@@ -354,6 +382,8 @@ namespace llarp
             void update_intros(const ClientContact& cc);
 
             void update_paths(std::chrono::milliseconds now) override;
+
+            void recv_close() override;
 
             nlohmann::json ExtractStatus() const;
 
@@ -379,7 +409,7 @@ namespace llarp
             std::shared_ptr<path::Path> _current_path;
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
-            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch) override;
 
           public:
             InboundClientSession(
@@ -399,7 +429,7 @@ namespace llarp
 
             void send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
 
-            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce) override;
+            void send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch) override;
 
           public:
             InboundRelaySession(

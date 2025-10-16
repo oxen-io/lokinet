@@ -290,9 +290,9 @@ namespace llarp::path
             edge().router_id, "path_control", std::move(payload), std::move(decryptor));
     }
 
-    void Path::send_session_control_message(std::vector<std::byte>&& body, SymmNonce&& nonce)
+    void Path::send_session_control_message(std::vector<std::byte>&& body, SymmNonce&& nonce, std::byte type)
     {
-        encrypt_path_message(body, std::move(nonce), CONTROL_MESSAGE_TYPE, false /* mac on session payload */);
+        encrypt_path_message(body, std::move(nonce), type, false /* mac on session payload */);
         _router.link_endpoint().send_command(edge().router_id, "session_control", std::move(body), nullptr);
     }
 

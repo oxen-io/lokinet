@@ -654,12 +654,6 @@ namespace llarp::handlers
 
     void SessionEndpoint::lookup_client_intro(RouterID remote, std::function<void(std::optional<ClientContact>)> func)
     {
-        if (auto maybe_intro = router.contact_db().get_decrypted_cc(remote))
-        {
-            log::debug(logcat, "Decrypted ClientContact for remote (rid: {}) found locally!", remote);
-            return func(std::move(maybe_intro));
-        }
-
         PubKey remote_key;
         if (!crypto::blind(remote_key, remote, crypto::blinding::CLIENT_CONTACT))
         {
@@ -679,7 +673,7 @@ namespace llarp::handlers
 
         auto remaining = std::make_shared<int>(0);
 
-        auto response_handler = [this, remote, func = std::move(func), remaining](auto resp) {
+        auto response_handler = [remote, func = std::move(func), remaining](auto resp) {
             int rem = --*remaining;
             if (rem < 0)
             {
@@ -699,7 +693,6 @@ namespace llarp::handlers
                     if (auto intro = enc.decrypt(remote))
                     {
                         log::debug(logcat, "Storing ClientContact for remote rid:{}", remote);
-                        router.contact_db().put_cc(std::move(enc));
                         cc = std::move(intro);
                     }
                     else
@@ -998,16 +991,6 @@ namespace llarp::handlers
             ret = itr->second;
 
         return ret;
-    }
-
-    std::shared_ptr<session::Session> SessionEndpoint::remote_session(const NetworkAddress& remote)
-    {
-        assert(router.loop.inside());
-
-        if (auto it = _sessions.find(remote); it != _sessions.end())
-            return it->second;
-
-        return nullptr;
     }
 
     std::shared_ptr<session::Session> SessionEndpoint::initiate_remote_session(

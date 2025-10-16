@@ -190,6 +190,15 @@ namespace llarp
         // Used in log statements to log the value as its first 8 base32z characters:
         short_log_printer short_string() const { return {*this}; }
 
+        template <typename T>
+            requires(std::derived_from<T, AlignedBuffer<T::SIZE>>)
+        static T filled(uint8_t f)
+        {
+            T ret;
+            ret.Fill(f);
+            return ret;
+        }
+
       private:
         std::array<uint8_t, SIZE> _data;
     };

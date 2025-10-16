@@ -104,6 +104,10 @@ namespace llarp
 
             void expire_paths(std::chrono::milliseconds now);
 
+            // In case we know none of our paths are still valid, e.g. we received a close on a
+            // relay session so we assume it's restarting.
+            void invalidate_paths();
+
             void add_path(Path& path);
 
             // Returns a random path, or nullptr if there are no paths.

@@ -111,57 +111,57 @@ namespace llarp::session
                                               quic::Stream& stream, std::span<const std::byte> data) mutable {
                     uint16_t dest_port{0};
 
-                    if (data.empty())
-                    {
-                        log::error(logcat, "QUIC stream data callback with no data!");
-                        return;
-                    }
-                    if (prev_byte)
-                    {
-                        std::array<std::byte, 2> buf;
-                        buf[0] = *prev_byte;
-                        buf[1] = data[0];
-                        dest_port = oxenc::load_big_to_host<uint16_t>(buf.data());
-                        data = data.subspan(1);
-                    }
-                    else if (data.size() >= 2)
-                    {
-                        dest_port = oxenc::load_big_to_host<uint16_t>(data.data());
-                        data = data.subspan(2);
-                    }
-                    else
-                    {  // only got 1 byte total so far, need 2 for dest port
-                        prev_byte = data[0];
-                        return;
-                    }
+                                        if (data.empty())
+                                        {
+                                            log::error(logcat, "QUIC stream data callback with no data!");
+                                            return;
+                                        }
+                                        if (prev_byte)
+                                        {
+                                            std::array<std::byte, 2> buf;
+                                            buf[0] = *prev_byte;
+                                            buf[1] = data[0];
+                                            dest_port = oxenc::load_big_to_host<uint16_t>(buf.data());
+                                            data = data.subspan(1);
+                                        }
+                                        else if (data.size() >= 2)
+                                        {
+                                            dest_port = oxenc::load_big_to_host<uint16_t>(data.data());
+                                            data = data.subspan(2);
+                                        }
+                                        else
+                                        {  // only got 1 byte total so far, need 2 for dest port
+                                            prev_byte = data[0];
+                                            return;
+                                        }
 
-                    stream.pause();
+                                        stream.pause();
 
-                    // FIXME: TCPHandle::connect replaces the stream's data callback.  Perhaps
-                    // that should happen here instead.
-                    // FIXME: the connection should probably come from tun bind address, if
-                    // available, rather than always 127.0.0.1
-                    auto tcp_conn = TCPHandle::connect(
-                        session._r.loop.get_event_base(), FAKE_QUIC_ADDR, stream.shared_from_this(), dest_port);
-                    if (!tcp_conn)
-                    {
-                        stream.close(11223322);  // TODO: meaningful error code
-                        return;
-                    }
+                                        // FIXME: TCPHandle::connect replaces the stream's data callback.  Perhaps
+                                        // that should happen here instead.
+                                        // FIXME: the connection should probably come from tun bind address, if
+                                        // available, rather than always 127.0.0.1
+                                        auto tcp_conn = TCPHandle::connect(
+                                            session._r.loop.get_event_base(), FAKE_QUIC_ADDR, stream.shared_from_this(),
+                       dest_port); if (!tcp_conn)
+                                        {
+                                            stream.close(11223322);  // TODO: meaningful error code
+                                            return;
+                                        }
 
-                    _tcp_conns.push_back(tcp_conn);
+                                        _tcp_conns.push_back(tcp_conn);
 
-                    if (data.size())
-                    {
-                        // put any remaining stream data on the tcp socket
-                        stream.data_callback(stream, data);
-                    }
+                                        if (data.size())
+                                        {
+                                            // put any remaining stream data on the tcp socket
+                                            stream.data_callback(stream, data);
+                                        }
 
-                    stream.enable_watermarks(
-                        500'000,
-                        [this, tcp_conn](auto&) { tcp_conn->stop_reading(); },
-                        50'000,
-                        [this, tcp_conn](auto&) { tcp_conn->resume_reading(); });
+                                        stream.enable_watermarks(
+                                            500'000,
+                                            [this, tcp_conn](auto&) { tcp_conn->stop_reading(); },
+                                            50'000,
+                                            [this, tcp_conn](auto&) { tcp_conn->resume_reading(); });
                 });
 */
                 return 0;
@@ -359,6 +359,7 @@ namespace llarp::session
         const SymmNonce& nonce,
         [[maybe_unused]] std::variant<std::shared_ptr<path::TransitHop>, std::shared_ptr<path::Path>> source)
     {
+        last_inbound_activity = llarp::time_now_ms();
         update_active();
         auto decrypted = crypto::xchacha20_poly1305_decrypt(message, _shared_secret, nonce);
         if (decrypted.size() == 0)
@@ -375,7 +376,7 @@ namespace llarp::session
         if (method == "session_accept"sv)
             handle_session_accept(params);
         else if (method == "session_close")
-            _parent.close_session(_inbound_tag, false);
+            recv_close();
         else if (method == "publish_cc"sv)
             handle_client_contact(params);
         else if (method == "path_switch"sv)
@@ -450,7 +451,8 @@ namespace llarp::session
     // TODO FIXME: we could make this take a vector&& as input, and then provide a
     // SESSION_DATA_MESSAGE constant that callers can use to reserve the needed extra storage before
     // moving the vector into here.
-    void Session::send_session_data_message(std::span<const std::byte> data, uint8_t type, bool control, bool init)
+    std::optional<std::pair<std::vector<std::byte>, SymmNonce>> Session::make_session_data_message(
+        std::span<const std::byte> data, uint8_t type, bool control, bool init, SymmNonce nonce)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -458,13 +460,13 @@ namespace llarp::session
         {
             log::debug(logcat, "Session not yet established: queuing packet for delayed delivery");
             queue_data_message(data, type);
-            return;
+            return std::nullopt;
         }
 
         if (_dead_path)
         {
             log::warning(logcat, "Dropping session data message: session has no current path");
-            return;
+            return std::nullopt;
         }
 
         // We use a single nonce for session + path encryption, but noting that path mutations
@@ -488,7 +490,6 @@ namespace llarp::session
         // down the aligned path, each one mutating it with the xor nonce; the final client
         // then undoes all of the far-side nonce mutations to arrive back at N, which it then
         // uses to also decrypt the *session* level encryption.
-        auto nonce = SymmNonce::make_random();
 
         // As this packet is what carries IP data, we want to make it as small as possible, and thus
         // don't use bt-encoding here.  We also build this "backwards" by putting the parts
@@ -594,9 +595,19 @@ namespace llarp::session
 
         if (!init)
             crypto::xchacha20_poly1305_encrypt(ciphertext, _shared_secret, nonce);
+        return std::make_pair(std::move(everything), std::move(nonce));
+    }
 
+    void Session::send_session_data_message(std::span<const std::byte> data, uint8_t type, bool control, bool init)
+    {
+        auto maybe_message = make_session_data_message(data, type, control, init);
+        if (!maybe_message)
+            return;
+
+        auto& everything = (*maybe_message).first;
+        auto& nonce = (*maybe_message).second;
         if (control)
-            send_path_control_message(std::move(everything), std::move(nonce));
+            send_path_control_message(std::move(everything), std::move(nonce), false);
         else
             send_path_data_message(std::move(everything), std::move(nonce));
     }
@@ -618,6 +629,7 @@ namespace llarp::session
 
     void Session::recv_session_data_message(std::vector<std::byte> data, const SymmNonce& nonce)
     {
+        last_inbound_activity = llarp::time_now_ms();
         update_active();
         if (data.empty())
         {
@@ -685,6 +697,7 @@ namespace llarp::session
         if (auto cc = ecc.decrypt(_remote.router_id()); cc)
         {
             log::debug(logcat, "Session with {} received valid new client contact, updating.", _remote.router_id());
+            _intro_update_processed = false;
             update_intros(*cc);
         }
         else
@@ -804,6 +817,23 @@ namespace llarp::session
         }
     }
 
+    void Session::recv_close()
+    {
+        _parent.close_session(_inbound_tag, false);
+    }
+
+    void OutboundRelaySession::recv_close()
+    {
+        log::debug(logcat, "OutboundRelaySession received close, manually dropping all paths.");
+        invalidate_paths();
+    }
+
+    void OutboundClientSession::recv_close()
+    {
+        invalidate_paths();
+        cc_ok = false;
+    }
+
     bool Session::is_expired(std::chrono::milliseconds now) const { return now - last_activity > SESSION_TIMEOUT; }
 
     std::string OutboundSession::to_string() const
@@ -846,6 +876,7 @@ namespace llarp::session
     {
         if (on_est)
             on_established(std::move(on_est), est_timeout);
+        std::tie(_shared_secret, dh_pk, dh_nonce) = crypto::dh_client_gen(_remote.router_id());
         // TODO: kick off path builds immediately
     }
 
@@ -884,6 +915,19 @@ namespace llarp::session
         fire_waiting(now);
     }
 
+    void OutboundClientSession::tick(std::chrono::milliseconds now)
+    {
+        if ((now - last_cc_update > 10min) || (now - last_inbound_activity > 30s))
+        {
+            log::critical(
+                logcat,
+                "It has been > 5min since last cc update, or > 10s since last inbound activity; attempting to fetch a "
+                "new intro set for session to {}",
+                _remote);
+            refresh_intros();
+        }
+    }
+
     template <typename T>
     bool check_dead(std::shared_ptr<T>& path_like, Session& s)
     {
@@ -916,7 +960,11 @@ namespace llarp::session
     }
 
     static void send_path_control_impl(
-        std::shared_ptr<path::Path>& path, Session& s, std::vector<std::byte>&& data, SymmNonce&& nonce)
+        std::shared_ptr<path::Path>& path,
+        Session& s,
+        std::vector<std::byte>&& data,
+        SymmNonce&& nonce,
+        bool path_switch)
     {
         if (check_dead(path, s))
         {
@@ -929,7 +977,10 @@ namespace llarp::session
             return;
         }
 
-        path->send_session_control_message(std::move(data), std::move(nonce));
+        path->send_session_control_message(
+            std::move(data),
+            std::move(nonce),
+            path_switch ? path::Path::PATH_SWITCH_MESSAGE_TYPE : path::Path::CONTROL_MESSAGE_TYPE);
     }
 
     void OutboundSession::send_path_data_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
@@ -943,15 +994,16 @@ namespace llarp::session
         send_path_data_impl(_current_path, *this, std::move(data), std::move(nonce));
     }
 
-    void OutboundSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void OutboundSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
-        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
+        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce), path_switch);
     }
-    void InboundClientSession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void InboundClientSession::send_path_control_message(
+        std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
-        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce));
+        send_path_control_impl(_current_path, *this, std::move(data), std::move(nonce), path_switch);
     }
 
     void OutboundSession::close_old_paths(std::chrono::milliseconds now)
@@ -1125,14 +1177,23 @@ namespace llarp::session
 
     void OutboundClientSession::refresh_intros()
     {
+        if (updating_intros)
+            return;
+        updating_intros = true;
         log::debug(logcat, "Initiating intro lookup for {}", _remote);
         _parent.lookup_client_intro(
             _remote.router_id(), [this, alive = canary()](std::optional<ClientContact> cc) mutable {
                 if (!alive.lock())
+                {
+                    log::debug(logcat, "OutboundClientSession::refresh_intros lookup_client_intro callback returning early; session-alive canary is dead");
                     return;
+                }
+                updating_intros = false;
                 if (cc)
                 {
                     log::debug(logcat, "Session initiation returned client contact: {}", *cc);
+                    cc_ok = true;
+                    _intro_update_processed = false;
                     update_intros(*cc);
                 }
                 else
@@ -1143,6 +1204,8 @@ namespace llarp::session
     void OutboundClientSession::update_intros(const ClientContact& cc)
     {
         log::debug(logcat, "Update session {} intros from client contact: {}", *this, cc);
+        last_cc_update = llarp::time_now_ms();
+        last_inbound_activity = last_cc_update; // so we don't just fetch again right away
         auto intros = cc.intros();
         _intros.assign(intros.begin(), intros.end());
         log::trace(logcat, "New client intros: {}", fmt::join(_intros, ", "));
@@ -1150,7 +1213,7 @@ namespace llarp::session
         for (auto& i : _intros)
             _pivots.insert(i.relay);
 
-        update_paths(llarp::time_now_ms());
+        update_paths(last_cc_update);
     }
 
     void OutboundClientSession::update_paths(std::chrono::milliseconds now)
@@ -1160,17 +1223,46 @@ namespace llarp::session
         // - If we killed our currently active path then switch to another.
         // - If we end up with too few paths then start some builds.
 
+        if (!cc_ok)
+        {
+            log::debug(logcat, "{} returning early, client contact empty or no longer usable", __PRETTY_FUNCTION__);
+            return;
+        }
+
         Lock_t l(paths_mutex);
 
         if (!_intro_update_processed)
         {
             // Intros updated since we last updated, so we may have paths to pivots that are no
-            // longer valid and need to be dropped
-
+            // longer valid and need to be dropped.  Checking that the pivot relay is still
+            // present is not sufficient, as the remote client may have built a new path to that
+            // relay with a different terminal HopID.
+            std::unordered_map<RouterID, std::vector<HopID>> pivots;
+            for (const auto& i : _intros)
+            {
+                auto& p = pivots[i.relay];
+                p.push_back(i.hop);
+            }
             std::list<path::Path*> drop;  // Use a list because it isn't valid to drop while iterating
             for (auto& p : paths())
-                if (!_pivots.count(p.terminal_rid()))
+            {
+                const auto itr = pivots.find(p.terminal_rid());
+                bool keep = false;
+                if (itr != pivots.end())
+                {
+                    for (const auto& hopid : itr->second)
+                    {
+                        if (hopid == p.aligned_hopid)
+                        {
+                            keep = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!keep)
                     drop.push_back(&p);
+            }
 
             for (auto* drop : drop)
                 drop_path(*drop);
@@ -1236,7 +1328,7 @@ namespace llarp::session
         log::debug(logcat, "Initiated {} path builds for {}", count, _remote);
     }
 
-    void OutboundSession::session_init(path::Path& path)
+    std::string OutboundSession::make_session_init(path::Path& path)
     {
         oxenc::bt_dict_producer inner_btdp;
 
@@ -1252,17 +1344,15 @@ namespace llarp::session
 
         auto inner_payload = std::move(inner_btdp).str();
         inner_payload.resize(inner_payload.size() + crypto::MAC_SIZE);
-        auto [secret, eph_pk, dh_nonce] = crypto::dh_client_gen(_remote.router_id());
-        _shared_secret = secret;
-        crypto::xchacha20_poly1305_encrypt(inner_payload, secret, dh_nonce);
+        crypto::xchacha20_poly1305_encrypt(inner_payload, _shared_secret, dh_nonce);
 
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("k", eph_pk.span());
+        btdp.append("k", dh_pk.span());
         btdp.append("n", dh_nonce.span());
         btdp.append("x", inner_payload);
 
-        send_session_data_message(btdp.span<std::byte>(), 0, true, true);
+        return std::move(btdp).str();
     }
 
     void OutboundSession::switch_path(path::Path& path, const HopID& pivot_hopid)
@@ -1281,7 +1371,8 @@ namespace llarp::session
                 _remote.client() ? "Aligned path for" : "Path to",
                 _remote);
 
-            session_init(path);
+            auto msg = make_session_init(path);
+            send_session_data_message(as_bspan(msg), 0, true, true);
         }
         else
         {
@@ -1292,9 +1383,32 @@ namespace llarp::session
                 _remote_pivot_txid,
                 path);
 
+            auto session_init_msg = make_session_init(path);
+
+            auto switch_nonce = dh_nonce ^ switch_xor_factor;
             oxenc::bt_dict_producer btdp;
             btdp.append("p"sv, path.terminal_hopid().span());
-            send_session_control_message("path_switch"sv, btdp.span<std::byte>());
+            auto maybe_path_switch_msg = make_session_data_message(
+                PATH::CONTROL::serialize("path_switch"sv, btdp.span<std::byte>()), 0, true, false, switch_nonce);
+            if (!maybe_path_switch_msg)
+            {
+                log::warning(logcat, "Failed to create path switch message");
+                return;
+            }
+            auto& m = maybe_path_switch_msg->first;
+            m.resize(m.size() - (sizeof(session_tag) + HopID::SIZE)); // these go on outer message here
+
+            oxenc::bt_list_producer btlp;
+            btlp.append(std::move((*maybe_path_switch_msg).first));
+            btlp.append(std::move(session_init_msg));
+            auto list_span = btlp.span<std::byte>();
+            std::vector<std::byte> payload{list_span.begin(), list_span.end()};
+            auto old_size = payload.size();
+            payload.resize(payload.size() + sizeof(_outbound_tag) + HopID::SIZE); // see make_session_data_message
+            auto [payload_span, tag_span, pivot_span] = split_span(payload, old_size, sizeof(_outbound_tag));
+            oxenc::write_host_as_big(_outbound_tag, tag_span.data());
+            std::memcpy(pivot_span.data(), _remote_pivot_txid.data(), _remote_pivot_txid.size());
+            send_path_control_message(std::move(payload), SymmNonce{dh_nonce}, /*path_switch=*/true);
         }
     }
 
@@ -1450,17 +1564,21 @@ namespace llarp::session
 
     void OutboundSession::handle_session_accept(std::span<const std::byte> params)
     {
-        if (_is_established)
+        bool was_established = _is_established;
+        if (was_established)
         {
-            log::warning(logcat, "Received session accept message, but session already established.");
-            return;
+            log::debug(
+                logcat,
+                "Received session accept message for established session, likely a path switch failed because the "
+                "remote restarted, so it accepted our backup session init.");
         }
+        _is_established = false; // become unestablished if this parsing fails to trigger a new session init
         oxenc::bt_dict_consumer btdc{params};
         _outbound_tag = btdc.require<session_tag>("t"sv);
 
         log::debug(logcat, "Remote provided session tag: {}", _outbound_tag);
 
-        log::trace(logcat, "Outbound session to {} successfully created.", remote());
+        log::trace(logcat, "Outbound session to {} successfully {}established.", remote(), was_established ? "re-"sv : ""sv);
         _is_established = true;
 
         if (pre_establish_data_queue)
@@ -1523,7 +1641,8 @@ namespace llarp::session
         _parent.router.link_endpoint().send_datagram(_current_thop->downstream, std::move(data));
     }
 
-    void InboundRelaySession::send_path_control_message(std::vector<std::byte>&& data, SymmNonce&& nonce)
+    void InboundRelaySession::send_path_control_message(
+        std::vector<std::byte>&& data, SymmNonce&& nonce, bool path_switch)
     {
         update_active();
         if (check_dead(_current_thop, *this))

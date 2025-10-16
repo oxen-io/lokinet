@@ -191,11 +191,6 @@ namespace llarp
                 std::function<void(session::Session& session)> on_established,
                 std::optional<std::chrono::milliseconds> timeout = std::nullopt);
 
-            // More internal version of initiate_remote_session: this may only be called from inside
-            // the router loop, takes no callback, and returns the Session (which may be brand new
-            // if one did not already exist to the remote).
-            std::shared_ptr<session::Session> remote_session(const NetworkAddress& remote);
-
             void tick(std::chrono::milliseconds now) override;
 
             void queue_session_packet(const NetworkAddress& remote, IPPacket pkt);
