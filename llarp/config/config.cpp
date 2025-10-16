@@ -1445,6 +1445,18 @@ namespace llarp
 
         conf.define_option<int>(
             "paths",
+            "inbound-paths-extra",
+            FullClientOnly,
+            Hidden,
+            Default{0},
+            Comment{
+                "Extra inbound paths to use for Lokinet connectivity.  This option is hidden as it is not",
+                "meant for normal Lokinet use, and may be removed or replaced without warning in the future",
+            },
+            lower_bounded_assignment_acceptor(inbound_paths_extra, 0, "[paths]:inbound-paths-extra"));
+
+        conf.define_option<int>(
+            "paths",
             "inbound-hops",
             ClientOnly,
             Comment{
@@ -1457,6 +1469,20 @@ namespace llarp
                 "If not set, this value defaults to the same value as [paths]:client-hops.",
             },
             bounded_assignment_acceptor(inbound_hops_, 1, path::BUILD_LENGTH, "[paths]:inbound-hops"));
+
+        conf.define_option<int>(
+            "paths",
+            "inbound-pivot-reuse",
+            ClientOnly,
+            Default{1},
+            Comment{
+                "This configures the maximum number of times a single relay may be used as a path pivot.",
+                "The default is one, meaning each inbound path is built to a distinct pivot, but special",
+                "cases (such as a one-hop reachable endpoint using a small number of pivots) may want to",
+                "increase this to allow multiple pivots to be used at once.  Leaving this at the default",
+                "of 1 is recommended for most cases.",
+            },
+            lower_bounded_assignment_acceptor(inbound_pivot_reuse, 1, "[paths]:inbound-pivot-reuse"));
 
         conf.define_option<int>(
             "paths",

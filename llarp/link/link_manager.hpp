@@ -72,7 +72,7 @@ namespace llarp::link
         friend class Endpoint;
         friend class llarp::NodeDB;
 
-        util::DecayingHashSet<RouterID> clients{path::MAX_LIFETIME};
+        util::DecayingHashSet<RouterID> clients{path::MAX_LIFETIME_ACCEPTED};
 
         quic::Address addr;
 

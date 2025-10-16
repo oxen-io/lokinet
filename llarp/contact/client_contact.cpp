@@ -215,6 +215,6 @@ namespace llarp
 
     bool EncryptedClientContact::is_expired(std::chrono::milliseconds now) const
     {
-        return now >= signed_at + path::MAX_LIFETIME;
+        return now >= signed_at + path::MAX_LIFETIME_ACCEPTED;
     }
 }  //  namespace llarp

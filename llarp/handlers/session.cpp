@@ -1,5 +1,6 @@
 #include "session.hpp"
 
+#include <llarp/constants/path.hpp>
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/contact/relay_contact.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -20,13 +21,15 @@
 #include <oxenc/base32z.h>
 
 #include <memory>
+#include <random>
 
 namespace llarp::handlers
 {
     static auto logcat = log::Cat("session_ep");
 
     SessionEndpoint::SessionEndpoint(Router& r)
-        : path::PathHandler{r, r.config().paths.inbound_paths, r.config().paths.inbound_hops()},
+        : path::
+              PathHandler{r, r.config().paths.inbound_paths + r.config().paths.inbound_paths_extra, r.config().paths.inbound_hops()},
           cc_blind_keys{r.secret_key(), crypto::blinding::CLIENT_CONTACT}
     {
         const auto& netconf = router.config().network;
@@ -182,10 +185,44 @@ namespace llarp::handlers
         path::PathHandler::stop();
     }
 
+    void SessionEndpoint::cleanup_old_fuzz(int oldest_slot)
+    {
+        if (auto it = _slot_fuzz.lower_bound(oldest_slot); it != _slot_fuzz.end() && it != _slot_fuzz.begin())
+            _slot_fuzz.erase(_slot_fuzz.begin(), it);
+    }
+
+    std::chrono::seconds SessionEndpoint::inbound_path_fuzz(int slot)
+    {
+        auto it = _slot_fuzz.lower_bound(slot);
+        if (it != _slot_fuzz.end() && it->first == slot)
+            return it->second;
+
+        // Note that this fuzz must not be negative!  If we allowed negative fuzz then a path could
+        // expire *before* its slot expired, and as a result we would try to build a new very short
+        // path to make up for the expired slot.
+        std::normal_distribution<float> dist{0, path::MAX_LIFETIME_FUZZ.count() / 2.575829f};
+        std::chrono::seconds fuzz;
+        do
+        {
+            fuzz = std::chrono::seconds{static_cast<int>(dist(csrng))};
+            if (fuzz < 0s)
+                fuzz = -fuzz;
+        } while (fuzz > path::MAX_LIFETIME_FUZZ);
+
+        _slot_fuzz.emplace_hint(it, slot, fuzz);
+
+        return fuzz;
+    }
+
     void SessionEndpoint::update_paths(std::chrono::milliseconds now)
     {
         int have = num_paths(now);
-        int needed = _target_paths - have;
+        // If you ask for more than 10 inbound paths (which is only possible via an undocumented
+        // option) and more than the number of RCs we know about then silently cut off at the number
+        // of RCs we know about (or a multiple of those, if pivot reuse is allowed) to avoid seeing
+        // a warning about not being able to select new pivots every 250ms.
+        int max_paths = router.node_db().num_rcs() * router.config().paths.inbound_pivot_reuse;
+        int needed = (_target_paths > 10 && _target_paths > max_paths ? max_paths : _target_paths) - have;
         if (needed <= 0)
         {
             log::trace(
@@ -235,11 +272,14 @@ namespace llarp::handlers
             if (unique_edge_range and unique_edge_range->contains(rc.addr().to_ipv4()))
                 return false;
 
-            // Exclude any inbound pivots we are already using so that we diversify:
+            // Exclude any inbound pivots we are already using (or using more than
+            // inbound_pivot_reuse times, if that option is higher than 1) so that we diversify:
+            int count = 0;
             const auto& rid = rc.router_id();
             for (const auto& p : paths())
                 if (p.terminal_rid() == rid)
-                    return false;
+                    if (++count >= router.config().paths.inbound_pivot_reuse)
+                        return false;
 
             return not router.router_profiling().is_bad_for_path(rid, 1);
         };
@@ -307,6 +347,11 @@ namespace llarp::handlers
         // This is somewhat lopsided for non-multiples of 4, but there's still lots of spread in
         // there so that even with multiple paths expiring at the same time, there are still lots of
         // alternatives for remotes to switch to.
+        //
+        // Note that all of the above ignores "fuzz", i.e. each path has a small random amount of
+        // lifetime (well less than 5min) added to it to reduce the fingerprintability of path build
+        // expiries.  All of the above still holds with respect to slots, it's just that where we
+        // write "+Nm" it's actually "+Nm+fuzz[0,3m]".
 
         std::vector<std::chrono::seconds> expiries;
         expiries.reserve(needed);
@@ -319,19 +364,36 @@ namespace llarp::handlers
 
             std::array<int, path::MAX_LIFETIME_SLOTS> slot_count = {0};
 
-            // The base slot, as a multiple of the slot_size since our fixed basis: we consider
-            // other path expiries relative to this.  There is an argument to be made to not
-            // build a path that would only have a duration of 0-5 min, but for now it's much
-            // simpler and cleaner to just build those paths anyway (if no path in that slot).
-            auto slot0 = (std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size;
+            // The base slot, measured in multiples of `slot_size` relative to our fixed basis: we
+            // consider other path expiries relative to this base slot.
+            //
+            // The +1 here is because (now-basis)/slot_size (i.e. without the +1) is going to give
+            // us a slot index that translates to a slot start time in the past (i.e. 0-5min ago),
+            // but we don't build for that slot: instead we build for slots at +5m, +10m, +15m, +20m
+            // from that now-or-earlier point.  Thus +1 brings us up to the first slot position
+            // within the next [0-5min], and that is our "slot0" value, i.e. the index 0 slot of all
+            // slots we consider building for.
+            //
+            // There is an argument to be made to not build new paths that would only have a
+            // duration of 0-5 min, but for now it's much simpler and cleaner to just build those
+            // paths anyway (if no path in that slot).
+            int slot0 =
+                static_cast<int>((std::chrono::floor<std::chrono::seconds>(now) - path_expiry_basis) / slot_size + 1);
 
             // First count up all the slots we are already using with existing paths:
             int path_count = 0;
             for (auto& path : paths())
             {
                 path_count++;
+                // Path expiries will be up to +MAX_LIFETIME_FUZZ of their slot target expiry time, so we need
+                // to be sure that the maximum fuzz is less then the smallest possible slot size so
+                // that it is guaranteed to be counted in the same slot:
+                static_assert(
+                    path::MAX_LIFETIME_FUZZ < path::MAX_LIFETIME / path::MAX_LIFETIME_SLOTS,
+                    "The slot calculation below requires path max fuzz be strictly smaller than the smallest allowed "
+                    "path slot size!");
                 auto slot = (path.expiry() - path_expiry_basis) / slot_size;
-                if (slot <= slot0)
+                if (slot < slot0)
                 {
                     log::debug(logcat, "Ignoring expired/expiring path slot {}", slot);
                     continue;  // Path is expired/expiring, so ignore it.
@@ -348,6 +410,12 @@ namespace llarp::handlers
             log::trace(
                 logcat, "Current {} path expiry slots (oldest-newest): {}", path_count, fmt::join(slot_count, "-"));
 
+            // We want all paths built in a given slot to expire at the same time so that we publish
+            // CCs on average once every 5 minutes, even if we are using many paths, and so we reuse
+            // the same fuzz value for any paths built in the same slot (whether in this build or a
+            // previous one that we are rebuilding for here).
+            cleanup_old_fuzz(slot0);
+
             // Now we select new ones by looking for the slot with the fewest paths in it, preferring
             // later slots (i.e. longer expiries) in case of a tie, and keep repeating this for
             // however many paths we need:
@@ -355,11 +423,10 @@ namespace llarp::handlers
             {
                 int best = 0;
                 for (int j = 1; j < slots; j++)
-                {
                     if (slot_count[j] <= slot_count[best])
                         best = j;
-                }
-                expiries.emplace_back(path_expiry_basis + (slot0 + best + 1) * slot_size);
+                const auto slot = slot0 + best;
+                expiries.emplace_back(path_expiry_basis + slot * slot_size + inbound_path_fuzz(slot));
                 slot_count[best]++;
             }
 
@@ -387,22 +454,34 @@ namespace llarp::handlers
         }
         else
         {
-            auto new_pivots = router.node_db().get_n_random_rcs(needed, true, filter);
-            if (needed > static_cast<int>(new_pivots.size()))
+            // We can potentially multi-pass through this because it can only return at most # of
+            // RCs, but pivot reuse might mean that we need to build paths using some RCs more than
+            // once.  (This is probably mostly a testnet concern).
+            int built = 0;
+            do
+            {
+                auto new_pivots = router.node_db().get_n_random_rcs(needed, true, filter);
+                if (new_pivots.empty())
+                    break;
+                needed -= static_cast<int>(new_pivots.size());
+                for (const llarp::RelayContact* rc : new_pivots)
+                {
+                    log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
+                    auto hops = select_hops_to_remote(rc->router_id());
+                    if (!hops)
+                        continue;  // No need to warn: the call above should already if it fails
+
+                    build(*hops, *next_expiry++);
+                    built++;
+                }
+            } while (needed > 0);
+
+            if (needed > 0)
                 log::warning(
                     logcat,
-                    "Unable to build {} new inbound paths: {} unused/acceptable pivots currently available",
+                    "Failed to build {} of {} new inbound paths: ran out of available unused/acceptable pivots",
                     needed,
-                    new_pivots.size());
-            for (const llarp::RelayContact* rc : new_pivots)
-            {
-                log::debug(logcat, "Selected new inbound path terminus {}", rc->router_id().short_string());
-                auto hops = select_hops_to_remote(rc->router_id());
-                if (!hops)
-                    continue;  // No need to warn: the call above should already if it fails
-
-                build(*hops, *next_expiry++);
-            }
+                    needed + built);
         }
     }
 
@@ -769,7 +848,19 @@ namespace llarp::handlers
 
         client_contact.update_intros(std::move(intros));
 
-        log::trace(logcat, "New ClientContact: {}", client_contact);
+        log::debug(logcat, "New ClientContact: {}", client_contact);
+#ifndef NDEBUG
+        log::trace(logcat, "ClientContact details:");
+        log::trace(logcat, "Pubkey: {}", client_contact.pubkey());
+        log::trace(logcat, "Intros ({}):", client_contact.intros().size());
+        for (const auto& ci : client_contact.intros())
+            log::trace(
+                logcat,
+                "    • {}, hopid: {}, expiry: {}",
+                ci.relay.to_network_address(),
+                ci.hop,
+                std::chrono::floor<std::chrono::seconds>(ci.expires_in(now)));
+#endif
 
         try
         {

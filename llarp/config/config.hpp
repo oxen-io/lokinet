@@ -91,6 +91,11 @@ namespace llarp
         /// Number of paths to maintain for inbound reachability and network queries (such as
         /// looking up client contacts).
         int inbound_paths = 4;
+        int inbound_paths_extra = 0;
+
+        /// Number of times the same relay can be used as an inbound path pivot.  The default is 1,
+        /// which means every inbound path uses a distinct relay.
+        int inbound_pivot_reuse = 1;
 
         /// Length of the "inbound" paths we use for inbound connections and network queries.
         /// If unset, use client_hops.
