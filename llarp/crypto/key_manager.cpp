@@ -15,16 +15,23 @@ namespace llarp
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        auto tmp = util::file_to_string(fname, 130);
+        auto tmp = util::file_to_string(fname);
         if ((tmp.size() == 128 or (tmp.size() == 129 and tmp.ends_with("\n"))
              or (tmp.size() == 130 and tmp.ends_with("\r\n")))
             and oxenc::is_hex(tmp.begin(), tmp.begin() + 128))
             oxenc::from_hex(tmp.begin(), tmp.begin() + 128, key.data());
         else if (tmp.size() == 64)
             std::memcpy(key.data(), tmp.data(), 64);
+        else if (tmp.starts_with('d') and tmp.ends_with('e')) {
+            // Old Lokinet keys were bt-dicts with the key we care about in the 's' key:
+            oxenc::bt_dict_consumer old{tmp};
+            auto oldkey = old.require_span<unsigned char, 64>("s");
+            std::memcpy(key.data(), oldkey.data(), 64);
+            old.finish();
+        }
         else
             throw std::invalid_argument{
-                "Invalid key file {}: Expected 64 bytes or 128 hex, not {}"_format(fname, tmp.size())};
+                "Invalid key file {} ({}B): Expected 64 bytes, 128 hex, or legacy lokinet key file"_format(fname, tmp.size())};
 
         if (!key.check_pubkey())
             throw std::invalid_argument{"Invalid key file {}: Keypair seed and pubkey do not match"};
