@@ -1,3 +1,9 @@
+lokinet (0.9.14-1~ubuntu2604) resolute; urgency=medium
+
+  * Resolute deb
+
+ -- Jason Rhinelander <jason@session.foundation>  Tue, 07 Jul 2026 17:23:30 -0300
+
 lokinet (0.9.14-1~ubuntu2504) plucky; urgency=medium
 
   * Plucky deb
