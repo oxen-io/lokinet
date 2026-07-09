@@ -22,10 +22,10 @@ index 4bd0e88..ee6e666 100644
          }
          catch (const std::exception& e)
 diff --git a/llarp/rpc/lokid_rpc_client.cpp b/llarp/rpc/lokid_rpc_client.cpp
-index 313ed4e..1bf6b4f 100644
+index 4c34463..5e42464 100644
 --- a/llarp/rpc/lokid_rpc_client.cpp
 +++ b/llarp/rpc/lokid_rpc_client.cpp
-@@ -64,7 +64,7 @@ namespace llarp
+@@ -40,7 +40,7 @@ namespace llarp
          LogInfo("connecting to lokid via LMQ at ", url.full_address());
          m_Connection = m_lokiMQ->connect_remote(
              url,
@@ -34,7 +34,7 @@ index 313ed4e..1bf6b4f 100644
              [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
                llarp::LogWarn("Failed to connect to lokid: ", f);
                if (auto router = self->m_Router.lock())
-@@ -168,7 +168,7 @@ namespace llarp
+@@ -144,7 +144,7 @@ namespace llarp
      }
  
      void
