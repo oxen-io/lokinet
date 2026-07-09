@@ -1,3 +1,12 @@
+lokinet (0.9.15-1~ubuntu2204+1) jammy; urgency=medium
+
+  * debian/rules: disable LTO on jammy (WITH_LTO=OFF). Ubuntu 22.04
+    pairs g++-11 with a GCC-12 libstdc++ runtime that no longer exports
+    the C++20 std::string constructor symbols the mixed-LTO spdlog link
+    borrowed, breaking the link.
+
+ -- Jason Rhinelander <jason@getsession.org>  Thu, 09 Jul 2026 17:43:26 -0300
+
 lokinet (0.9.15-1~ubuntu2204) jammy; urgency=medium
 
   * drop armhf
