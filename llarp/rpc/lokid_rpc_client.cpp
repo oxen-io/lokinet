@@ -14,33 +14,9 @@ namespace llarp
 {
   namespace rpc
   {
-    static constexpr oxenmq::LogLevel
-    toLokiMQLogLevel(log::Level level)
-    {
-      switch (level)
-      {
-        case log::Level::critical:
-          return oxenmq::LogLevel::fatal;
-        case log::Level::err:
-          return oxenmq::LogLevel::error;
-        case log::Level::warn:
-          return oxenmq::LogLevel::warn;
-        case log::Level::info:
-          return oxenmq::LogLevel::info;
-        case log::Level::debug:
-          return oxenmq::LogLevel::debug;
-        case log::Level::trace:
-        case log::Level::off:
-        default:
-          return oxenmq::LogLevel::trace;
-      }
-    }
-
     LokidRpcClient::LokidRpcClient(LMQ_ptr lmq, std::weak_ptr<AbstractRouter> r)
         : m_lokiMQ{std::move(lmq)}, m_Router{std::move(r)}
     {
-      // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
-
       // new block handler
       m_lokiMQ->add_category("notify", oxenmq::Access{oxenmq::AuthLevel::none})
           .add_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
