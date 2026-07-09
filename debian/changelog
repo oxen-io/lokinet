@@ -1,3 +1,13 @@
+lokinet (0.9.15-1~ubuntu2204) jammy; urgency=medium
+
+  * drop armhf
+  * Update deb.oxen.io apt signing key (adds 2026 sha256 signing subkey)
+  * debian/rules: pass -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+  * Remove unused (and no longer compiling) code
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@session.foundation>  Thu, 09 Jul 2026 12:37:14 -0300
+
 lokinet (0.9.14-1~ubuntu2204) jammy; urgency=medium
 
   * Update mainnet bootstraps
