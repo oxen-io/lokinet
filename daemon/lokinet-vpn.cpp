@@ -102,7 +102,6 @@ main(int argc, char* argv[])
 
   // clang-format off
   opts.add_options()
-    ("v,verbose", "Verbose", cxxopts::value<bool>())
     ("h,help", "help", cxxopts::value<bool>())
     ("kill", "kill the daemon", cxxopts::value<bool>())
     ("up", "put vpn up", cxxopts::value<bool>())
@@ -121,7 +120,6 @@ main(int argc, char* argv[])
   std::string endpoint = "default";
   std::string token;
   std::optional<std::string> range;
-  oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
   bool printStatus = false;
@@ -136,10 +134,6 @@ main(int argc, char* argv[])
       return 0;
     }
 
-    if (result.count("verbose") > 0)
-    {
-      logLevel = oxenmq::LogLevel::debug;
-    }
     goUp = result.count("up") > 0;
     goDown = result.count("down") > 0;
     printStatus = result.count("status") > 0;
@@ -171,12 +165,7 @@ main(int argc, char* argv[])
   if (goUp and exitAddress.empty())
     return exit_error("no exit address provided");
 
-  oxenmq::OxenMQ omq{
-      [](oxenmq::LogLevel lvl, const char* file, int line, std::string msg) {
-        std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
-      },
-      logLevel};
-
+  oxenmq::OxenMQ omq;
   omq.start();
 
   std::promise<bool> connectPromise;
