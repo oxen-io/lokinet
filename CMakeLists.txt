@@ -25,7 +25,7 @@ endif()
 
 
 project(lokinet
-    VERSION 0.9.14
+    VERSION 0.9.15
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES ${LANGS})
 
