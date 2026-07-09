@@ -35,7 +35,7 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release \
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 		-DVERSIONTAG="deb$(DEB_VERSION)" \
 		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DWITH_TESTS=OFF -DBUILD_SHARED_LIBS=OFF \
