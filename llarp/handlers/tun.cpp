@@ -352,7 +352,12 @@ namespace llarp
       }
 
       m_OurIP = m_OurRange.addr;
-      m_UseV6 = false;
+      // .loki service addresses are IPv6-only; hardcoding this false made every
+      // client-mode AAAA lookup fall into the isV6 && !SupportsV6() branch in
+      // HandleHookedDNSMessage, which returns a synthetic "NS localhost.loki."
+      // placeholder instead of a real answer or a clean failure, for every
+      // .loki address, unconditionally. See lokinet#2288.
+      m_UseV6 = true;
 
       m_PersistAddrMapFile = conf.m_AddrMapPersistFile;
       if (m_PersistAddrMapFile)
