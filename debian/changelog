@@ -1,3 +1,9 @@
+lokinet (0.9.15-1~ubuntu2610) stonking; urgency=medium
+
+  * Stonking deb
+
+ -- Jason Rhinelander <jason@session.foundation>  Tue, 29 Sep 2026 16:32:00 -0300
+
 lokinet (0.9.15-1~ubuntu2604) resolute; urgency=medium
 
   * Use builds.session.codes for build uploads
