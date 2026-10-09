@@ -10,6 +10,7 @@
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
+#include <fmt/ranges.h>
 
 #include "util/file.hpp"
 

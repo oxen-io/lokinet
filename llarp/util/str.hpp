@@ -6,6 +6,7 @@
 #include <iterator>
 #include <charconv>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace llarp
 {
@@ -101,7 +102,7 @@ namespace llarp
   std::string
   join(std::string_view delimiter, It begin, It end)
   {
-    return fmt::format("{}", fmt::join(delimiter, begin, end));
+    return fmt::format("{}", fmt::join(begin, end, delimiter));
   }
 
   /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.

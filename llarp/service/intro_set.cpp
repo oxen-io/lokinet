@@ -3,6 +3,7 @@
 #include <llarp/path/path.hpp>
 
 #include <oxenc/bt_serialize.h>
+#include <fmt/ranges.h>
 
 namespace llarp::service
 {

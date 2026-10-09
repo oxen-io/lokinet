@@ -9,6 +9,8 @@
 
 #include <array>
 
+#include <fmt/ranges.h>
+
 namespace llarp
 {
   namespace dns
