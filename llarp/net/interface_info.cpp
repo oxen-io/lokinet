@@ -1,6 +1,6 @@
 #include "interface_info.hpp"
 
-#include <fmt/ranges.h>
+#include <llarp/util/str.hpp>
 
 namespace llarp::net
 {
@@ -11,7 +11,7 @@ namespace llarp::net
         "{}[i={}; addrs={}; gw={}]",
         name,
         index,
-        fmt::join(addrs, ","),
+        llarp::join(",", addrs),
         gateway ? net::ToString(*gateway) : "none");
   }
 }  // namespace llarp::net

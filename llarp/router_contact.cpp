@@ -7,10 +7,10 @@
 #include "util/buffer.hpp"
 #include "util/logging.hpp"
 #include "util/mem.hpp"
+#include "util/str.hpp"
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
-#include <fmt/ranges.h>
 
 #include "util/file.hpp"
 
@@ -605,7 +605,7 @@ namespace llarp
         last_updated.count(),
         netID,
         version,
-        fmt::format("{}", fmt::join(addrs, ",")),
+        llarp::join(",", addrs),
         enckey,
         signature);
   }
