@@ -879,7 +879,7 @@ namespace llarp
   {
     std::string status;
     auto out = std::back_inserter(status);
-    fmt::format_to(out, "v{}", fmt::join(llarp::VERSION, "."));
+    fmt::format_to(out, "v{}", llarp::join(".", llarp::VERSION));
     if (IsServiceNode())
     {
       fmt::format_to(
