@@ -1,5 +1,7 @@
 #include "interface_info.hpp"
 
+#include <llarp/util/str.hpp>
+
 namespace llarp::net
 {
   std::string
@@ -9,7 +11,7 @@ namespace llarp::net
         "{}[i={}; addrs={}; gw={}]",
         name,
         index,
-        fmt::join(addrs, ","),
+        llarp::join(",", addrs),
         gateway ? net::ToString(*gateway) : "none");
   }
 }  // namespace llarp::net
