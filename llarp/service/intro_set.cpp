@@ -1,6 +1,7 @@
 #include "intro_set.hpp"
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/util/str.hpp>
 
 #include <oxenc/bt_serialize.h>
 
@@ -425,7 +426,7 @@ namespace llarp::service
     return fmt::format(
         "[IntroSet addressKeys={} intros={{{}}} sntrupKey={} topic={} signedAt={} v={} sig={}]",
         addressKeys,
-        fmt::format("{}", fmt::join(intros, ",")),
+        llarp::join(",", intros),
         sntrupKey,
         topic,
         timestampSignedAt.count(),
