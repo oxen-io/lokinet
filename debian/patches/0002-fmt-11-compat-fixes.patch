@@ -1,0 +1,84 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Fri, 9 Oct 2026 18:30:51 -0300
+Subject: fmt 11 compat fixes
+
+- <fmt/ranges.h> is needed with fmt11 for fmt::join
+- llarp::join was broken (though apparently unused)
+---
+ llarp/dns/message.cpp        | 2 ++
+ llarp/net/interface_info.cpp | 2 ++
+ llarp/router_contact.cpp     | 1 +
+ llarp/service/intro_set.cpp  | 1 +
+ llarp/util/str.hpp           | 3 ++-
+ 5 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/llarp/dns/message.cpp b/llarp/dns/message.cpp
+index 48d84f7..c86b0ae 100644
+--- a/llarp/dns/message.cpp
++++ b/llarp/dns/message.cpp
+@@ -9,6 +9,8 @@
+ 
+ #include <array>
+ 
++#include <fmt/ranges.h>
++
+ namespace llarp
+ {
+   namespace dns
+diff --git a/llarp/net/interface_info.cpp b/llarp/net/interface_info.cpp
+index 370903b..ecc15b1 100644
+--- a/llarp/net/interface_info.cpp
++++ b/llarp/net/interface_info.cpp
+@@ -1,5 +1,7 @@
+ #include "interface_info.hpp"
+ 
++#include <fmt/ranges.h>
++
+ namespace llarp::net
+ {
+   std::string
+diff --git a/llarp/router_contact.cpp b/llarp/router_contact.cpp
+index dbfb574..0fd788f 100644
+--- a/llarp/router_contact.cpp
++++ b/llarp/router_contact.cpp
+@@ -10,6 +10,7 @@
+ #include "util/time.hpp"
+ 
+ #include <oxenc/bt_serialize.h>
++#include <fmt/ranges.h>
+ 
+ #include "util/file.hpp"
+ 
+diff --git a/llarp/service/intro_set.cpp b/llarp/service/intro_set.cpp
+index 07c3949..01f9640 100644
+--- a/llarp/service/intro_set.cpp
++++ b/llarp/service/intro_set.cpp
+@@ -3,6 +3,7 @@
+ #include <llarp/path/path.hpp>
+ 
+ #include <oxenc/bt_serialize.h>
++#include <fmt/ranges.h>
+ 
+ namespace llarp::service
+ {
+diff --git a/llarp/util/str.hpp b/llarp/util/str.hpp
+index eed0048..0305901 100644
+--- a/llarp/util/str.hpp
++++ b/llarp/util/str.hpp
+@@ -6,6 +6,7 @@
+ #include <iterator>
+ #include <charconv>
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ namespace llarp
+ {
+@@ -101,7 +102,7 @@ namespace llarp
+   std::string
+   join(std::string_view delimiter, It begin, It end)
+   {
+-    return fmt::format("{}", fmt::join(delimiter, begin, end));
++    return fmt::format("{}", fmt::join(begin, end, delimiter));
+   }
+ 
+   /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.
