@@ -319,7 +319,7 @@ namespace fmt
   {
     template <typename FormatContext>
     auto
-    format(const T& val, FormatContext& ctx)
+    format(const T& val, FormatContext& ctx) const
     {
       auto it = oxenc::hex_encoder{val.begin(), val.end()};
       return std::copy(it, it.end(), ctx.out());
