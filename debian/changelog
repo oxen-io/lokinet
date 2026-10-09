@@ -1,3 +1,18 @@
+lokinet (0.9.16-1~deb13) trixie; urgency=medium
+
+  * Use builds.session.codes for build uploads
+  * ci-upload: upload .ddeb debug packages and .buildinfo files
+  * fmt 11 compat fixes
+  * Drop fmt::join, and make the AlignedBuffer formatter const, for fmt 11
+  * Update cpr to 1.14.2
+  * Update nlohmann json to 3.12.0
+  * Bump oxenc, oxenmq to latest stable versions
+  * Get oxen-logging via liboxenmq
+  * 0.9.16 version bump for dep & compilation fixes
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@session.foundation>  Fri, 09 Oct 2026 20:18:19 -0300
+
 lokinet (0.9.15-1~deb13) trixie; urgency=medium
 
   * Update deb.oxen.io apt signing key (adds 2026 sha256 signing subkey)
