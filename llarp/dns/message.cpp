@@ -5,6 +5,7 @@
 #include "srv_data.hpp"
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/str.hpp>
 #include <llarp/net/ip.hpp>
 
 #include <array>
@@ -412,10 +413,10 @@ namespace llarp
           "additional={{{}}}]",
           hdr_id,
           hdr_fields,
-          fmt::format("{}", fmt::join(questions, ",")),
-          fmt::format("{}", fmt::join(answers, ",")),
-          fmt::format("{}", fmt::join(authorities, ",")),
-          fmt::format("{}", fmt::join(additional, ",")));
+          llarp::join(",", questions),
+          llarp::join(",", answers),
+          llarp::join(",", authorities),
+          llarp::join(",", additional));
     }
 
     std::optional<Message>

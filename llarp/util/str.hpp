@@ -101,7 +101,16 @@ namespace llarp
   std::string
   join(std::string_view delimiter, It begin, It end)
   {
-    return fmt::format("{}", fmt::join(delimiter, begin, end));
+    // Not fmt::join: since fmt 11 that needs <fmt/ranges.h>, which makes fmt see AlignedBuffer and
+    // its subclasses (which have begin()/end()) as ranges, conflicting with their own formatters.
+    std::string result;
+    for (auto it = begin; it != end; ++it)
+    {
+      if (it != begin)
+        result += delimiter;
+      fmt::format_to(std::back_inserter(result), "{}", *it);
+    }
+    return result;
   }
 
   /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.
