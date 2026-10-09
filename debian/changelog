@@ -1,3 +1,9 @@
+lokinet (0.9.15-1+1) unstable; urgency=medium
+
+  * Rebuild against current sid libraries
+
+ -- Jason Rhinelander <jason@session.foundation>  Fri, 09 Oct 2026 18:08:30 -0300
+
 lokinet (0.9.15-1) unstable; urgency=medium
 
   * Update deb.oxen.io apt signing key (adds 2026 sha256 signing subkey)
