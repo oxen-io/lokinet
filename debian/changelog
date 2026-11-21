@@ -1,3 +1,9 @@
+lokinet (0.9.16-1+1) unstable; urgency=medium
+
+  * Rebuild against current sid libraries
+
+ -- Jason Rhinelander <jason@session.foundation>  Sat, 21 Nov 2026 16:47:50 -0400
+
 lokinet (0.9.16-1) unstable; urgency=medium
 
   * fmt 11 compat fixes
