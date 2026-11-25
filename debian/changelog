@@ -1,3 +1,9 @@
+lokinet (0.9.16-1~deb14+2) forky; urgency=medium
+
+  * Rebuild against current forky libraries
+
+ -- Jason Rhinelander <jason@session.foundation>  Wed, 25 Nov 2026 19:37:48 -0400
+
 lokinet (0.9.16-1~deb14+1) forky; urgency=medium
 
   * Rebuild against current forky libraries
