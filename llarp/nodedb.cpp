@@ -233,7 +233,8 @@ namespace llarp
   {
     util::NullLock lock{m_Access};
     // Re-inserting an identical RC refreshes insertedAt (see RemoveStaleRCs) without a write.
-    if (auto itr = m_Entries.find(rc.pubkey); itr == m_Entries.end() or not(itr->second.rc == rc))
+    if (auto itr = m_Entries.find(rc.pubkey);
+        not m_Root.empty() and (itr == m_Entries.end() or not(itr->second.rc == rc)))
       m_Dirty.insert(rc.pubkey);
     m_Entries.erase(rc.pubkey);
     m_Entries.emplace(rc.pubkey, rc);
@@ -257,7 +258,8 @@ namespace llarp
       if (itr != m_Entries.end())
         m_Entries.erase(itr);
       // add new entry
-      m_Dirty.insert(rc.pubkey);
+      if (not m_Root.empty())
+        m_Dirty.insert(rc.pubkey);
       m_Entries.emplace(rc.pubkey, rc);
     }
   }
