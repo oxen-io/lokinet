@@ -31,6 +31,9 @@ namespace llarp
 
     NodeMap m_Entries;
 
+    /// RCs stored since the last flush; Tick writes only these.
+    std::unordered_set<RouterID> m_Dirty;
+
     const fs::path m_Root;
 
     const std::function<void(std::function<void()>)> disk;

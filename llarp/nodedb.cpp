@@ -77,12 +77,15 @@ namespace llarp
     if (now > m_NextFlushAt)
     {
       m_NextFlushAt += FlushInterval;
-      // make copy of all rcs
       std::vector<RouterContact> copy;
-      for (const auto& item : m_Entries)
-        copy.push_back(item.second.rc);
-      // flush them to disk in one big job
-      // TODO: split this up? idk maybe some day...
+      for (const auto& pk : m_Dirty)
+      {
+        if (auto itr = m_Entries.find(pk); itr != m_Entries.end())
+          copy.push_back(itr->second.rc);
+      }
+      m_Dirty.clear();
+      if (copy.empty())
+        return;
       disk([this, data = std::move(copy)]() {
         for (const auto& rc : data)
         {
@@ -229,6 +232,9 @@ namespace llarp
   NodeDB::Put(RouterContact rc)
   {
     util::NullLock lock{m_Access};
+    // Re-inserting an identical RC refreshes insertedAt (see RemoveStaleRCs) without a write.
+    if (auto itr = m_Entries.find(rc.pubkey); itr == m_Entries.end() or not(itr->second.rc == rc))
+      m_Dirty.insert(rc.pubkey);
     m_Entries.erase(rc.pubkey);
     m_Entries.emplace(rc.pubkey, rc);
   }
@@ -251,6 +257,7 @@ namespace llarp
       if (itr != m_Entries.end())
         m_Entries.erase(itr);
       // add new entry
+      m_Dirty.insert(rc.pubkey);
       m_Entries.emplace(rc.pubkey, rc);
     }
   }
